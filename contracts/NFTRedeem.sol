@@ -125,7 +125,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
         // Attempt Burn
         for (uint i=0; i<contracts.length; i++) {
             // Check that we can burn
-            require(redeemable(contracts[i], tokenIds[i]), "NFTRedeem: Invalid token");
+            require(redeemable(contracts[i], tokenIds[i]), "NFTRedeem: Invalid NFT");
 
             (bool ownerOfSuccess, bytes memory ownerOfReturnData) = contracts[i].call(abi.encodeWithSelector(IERC721.ownerOf.selector, tokenIds[i]));
             require(ownerOfSuccess, "NFTRedeem: Bad token contract");
@@ -189,22 +189,24 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
      * @dev See {IERC1155Receiver-onERC1155Received}.
      */
     function onERC1155Received(
-        address operator,
+        address,
         address from,
         uint256 id,
         uint256 value,
         bytes calldata data
     ) external override nonReentrant returns(bytes4) {
-        require(redeemable(operator, id), "NFTRedeem: Invalid token");
-        require(value == _redemptionRate, "NFTRedeem: Incorrect number of NFT's being redeemed");
+        require(redeemable(msg.sender, id), "NFTRedeem: Invalid NFT");
+        require(value == _redemptionRate, "NFTRedeem: Incorrect number of NFTs being redeemed");
 
         _redemptionRemaining--;
         
         // Burn it
-        IERC1155(operator).safeTransferFrom(address(this), address(0xdEaD), id, value, data);
+        (bool burnSuccess,) = msg.sender.call(abi.encodeWithSelector(IERC1155.safeTransferFrom.selector, address(this), address(0xdEaD), id, value, data));
+        require(burnSuccess, "NFTRedeem: Burn failure");
 
         // Mint reward
-        IERC721Creator(_creator).mint(from);
+        (bool mintSuccess,) = _creator.call(abi.encodeWithSelector(IERC721Creator.mint.selector, from));
+        require(mintSuccess, "NFTRedeem: Redemption failure");
 
         return this.onERC1155Received.selector;
     }
@@ -213,7 +215,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
      * @dev See {IERC1155Receiver-onERC1155BatchReceived}.
      */
     function onERC1155BatchReceived(
-        address operator,
+        address,
         address from,
         uint256[] calldata ids,
         uint256[] calldata values,
@@ -223,19 +225,21 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
 
         uint256 totalValue = 0;
         for (uint i=0; i<ids.length; i++) {
-            require(redeemable(operator, ids[i]), "NFTRedeem: Invalid token");
+            require(redeemable(msg.sender, ids[i]), "NFTRedeem: Invalid NFT");
             totalValue += values[i];
         }
 
-        require(totalValue == _redemptionRate, "NFTRedeem: Incorrect number of NFT's being redeemed");
+        require(totalValue == _redemptionRate, "NFTRedeem: Incorrect number of NFTs being redeemed");
 
         _redemptionRemaining--;
 
-        // Burn
-        IERC1155(operator).safeBatchTransferFrom(address(this), address(0xdEaD), ids, values, data);
+        // Burn it
+        (bool burnSuccess,) = msg.sender.call(abi.encodeWithSelector(IERC1155.safeBatchTransferFrom.selector, address(this), address(0xdEaD), ids, values, data));
+        require(burnSuccess, "NFTRedeem: Burn failure");
 
         // Mint reward
-        IERC721Creator(_creator).mint(from);
+        (bool mintSuccess,) = _creator.call(abi.encodeWithSelector(IERC721Creator.mint.selector, from));
+        require(mintSuccess, "NFTRedeem: Redemption failure");
 
         return this.onERC1155BatchReceived.selector;
     }

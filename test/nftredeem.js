@@ -134,7 +134,7 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
             await mock721.approve(redeem.address, tokenId1, {from:another});
             await mock721.approve(redeem.address, tokenId2, {from:another});
             await mock721.approve(redeem.address, tokenId3, {from:another});
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:another}), "NFTRedeem: Invalid token");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:another}), "NFTRedeem: Invalid NFT");
 
             await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2,tokenId3], [true,true,true], {from:owner});
             await redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:another});
@@ -154,6 +154,39 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
             assert.equal(await redeem.redemptionRemaining(), 0);
             
             await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId7, tokenId8, tokenId9], {from:another}), "NFTRedeem: No redemptions remaining");
+
+        });
+
+        it('core functionality test ERC1155', async function () {
+            var tokenId1 = 1;
+            var tokenId2 = 2;
+
+            await mock1155.testMint(another, tokenId1, 9, "0x0");
+            await mock1155.testMint(another, tokenId2, 6, "0x0");
+
+            // Test Redemption
+            await redeem.updateApprovedTokens(mock1155.address, [tokenId1,tokenId2], [true,false], {from:owner});
+
+            // Check failure cases
+            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId2, 3, "0x0", {from:another}), "NFTRedeem: Invalid NFT"); 
+            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 2, "0x0", {from:another}), "NFTRedeem: Incorrect number of NFTs being redeemed");
+
+            await mock1155.safeTransferFrom(another, redeem.address, tokenId1, 3, "0x0", {from:another});
+
+            assert.equal(await creator.balanceOf(another), 1);
+            assert.equal(await mock1155.balanceOf(another, tokenId1), 6);
+
+            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "NFTRedeem: Invalid NFT"); 
+            await redeem.updateApprovedTokens(mock1155.address, [tokenId1,tokenId2], [true,true], {from:owner});
+            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "NFTRedeem: Incorrect number of NFTs being redeemed"); 
+
+            mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 2], "0x0", {from:another});
+            assert.equal(await creator.balanceOf(another), 2);
+            assert.equal(await mock1155.balanceOf(another, tokenId1), 5);
+            assert.equal(await mock1155.balanceOf(another, tokenId2), 4);
+
+            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 3, "0x0", {from:another}), "NFTRedeem: No redemptions remaining");
+            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1,2], "0x0", {from:another}), "NFTRedeem: No redemptions remaining");
 
         });
 
