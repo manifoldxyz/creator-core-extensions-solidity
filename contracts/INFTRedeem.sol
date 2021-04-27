@@ -32,12 +32,18 @@ interface INFTRedeem is IAdminControl, IERC1155Receiver, IERC721CreatorExtension
     /**
      * @dev Update approved contracts that can be used to redeem. Can only be called by contract owner/admin.
      */
-    function updatedApprovedContracts(address[] calldata contracts, bool[] calldata approved) external;
+    function updateApprovedContracts(address[] calldata contracts, bool[] calldata approved) external;
 
     /**
      * @dev Update approved tokens that can be used to redeem. Can only be called by contract owner/admin.
      */
-    function updatedApprovedTokens(address contract_, uint256[] calldata tokenIds, bool[] calldata approved) external;
+    function updateApprovedTokens(address contract_, uint256[] calldata tokenIds, bool[] calldata approved) external;
+
+    /**
+     * @dev Update approved token ranges that can be used to redeem. Can only be called by contract owner/admin.
+     * Clears out old ranges
+     */
+    function updateApprovedTokenRanges(address contract_, uint256[] calldata minTokenIds, uint256[] calldata maxTokenIds) external;
 
     /**
      * @dev Get the redemption rate

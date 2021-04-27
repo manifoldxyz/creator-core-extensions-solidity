@@ -57,9 +57,9 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
     }
 
     /**
-     * @dev See {INFTRedeem-updatedApprovedContracts}
+     * @dev See {INFTRedeem-updateApprovedContracts}
      */
-    function updatedApprovedContracts(address[] calldata contracts, bool[] calldata approved) external virtual override adminRequired {
+    function updateApprovedContracts(address[] calldata contracts, bool[] calldata approved) external virtual override adminRequired {
         require(contracts.length == approved.length, "NFTRedeem: Invalid input parameters");
         for (uint i=0; i < contracts.length; i++) {
             _approvedContracts[contracts[i]] = approved[i];
@@ -67,9 +67,9 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
     }
     
     /**
-     * @dev See {INFTRedeem-updatedApprovedTokens}
+     * @dev See {INFTRedeem-updateApprovedTokens}
      */
-    function updatedApprovedTokens(address contract_, uint256[] calldata tokenIds, bool[] calldata approved) external virtual override adminRequired {
+    function updateApprovedTokens(address contract_, uint256[] calldata tokenIds, bool[] calldata approved) external virtual override adminRequired {
         require(tokenIds.length == approved.length, "NFTRedeem: Invalid input parameters");
 
         for (uint i=0; i < tokenIds.length; i++) {
@@ -77,6 +77,29 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
                 _approvedTokens[contract_].add(tokenIds[i]);
             } else if (!approved[i] && _approvedTokens[contract_].contains(tokenIds[i])) {
                 _approvedTokens[contract_].remove(tokenIds[i]);
+            }
+        }
+    }
+
+    /**
+     * @dev See {INFTRedeem-updateApprovedTokenRanges}
+     */
+    function updateApprovedTokenRanges(address contract_, uint256[] calldata minTokenIds, uint256[] calldata maxTokenIds) external virtual override adminRequired {
+        require(minTokenIds.length == maxTokenIds.length, "NFTRedeem: Invalid input parameters");
+        
+        uint existingRangesLength = _approvedTokenRange[contract_].length;
+        for (uint i=0; i < existingRangesLength; i++) {
+            _approvedTokenRange[contract_][i].min = 0;
+            _approvedTokenRange[contract_][i].max = 0;
+        }
+        
+        for (uint i=0; i < minTokenIds.length; i++) {
+            require(minTokenIds[i] < maxTokenIds[i], "NFTRedeem: min must be less than max");
+            if (i < existingRangesLength) {
+                _approvedTokenRange[contract_][i].min = minTokenIds[i];
+                _approvedTokenRange[contract_][i].max = maxTokenIds[i];
+            } else {
+                _approvedTokenRange[contract_].push(range(minTokenIds[i], maxTokenIds[i]));
             }
         }
     }
@@ -96,49 +119,34 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
     function redeemERC721(address[] calldata contracts, uint256[] calldata tokenIds) external virtual override nonReentrant {
 
         require(contracts.length == tokenIds.length, "NFTRedeem: Invalid parameters");
-
-        if (contracts.length != _redemptionRate) {
-            _revertApprovals(contracts, tokenIds);
-            revert("NFTRedeem: Incorrect number of NFT's being redeemed");
-        }
-
-        if (_redemptionRemaining <= 0) {
-            _revertApprovals(contracts, tokenIds);
-            revert("NFTRedeem: No redemptions remaining");
-        }
-
-        _redemptionRemaining--;
+        require(contracts.length == _redemptionRate, "NFTRedeem: Incorrect number of NFTs being redeemed");
+        require(_redemptionRemaining > 0, "NFTRedeem: No redemptions remaining");
 
         // Attempt Burn
         for (uint i=0; i<contracts.length; i++) {
             // Check that we can burn
-            if (!redeemable(contracts[i], tokenIds[i])) {
-                _revertApprovals(contracts, tokenIds);
-                revert("NFTRedeem: Invalid token");
-            }
-            if (IERC721(contracts[i]).ownerOf(tokenIds[i]) != msg.sender) {
-                _revertApprovals(contracts, tokenIds);
-                revert("NFTRedeem: Caller must own NFT's");
-            }
-            if (IERC721(contracts[i]).getApproved(tokenIds[i]) != address(this)) {
-                _revertApprovals(contracts, tokenIds);
-                revert("NFTRedeem: Contract must be given approval to burn NFT");
-            }
+            require(redeemable(contracts[i], tokenIds[i]), "NFTRedeem: Invalid token");
+
+            (bool ownerOfSuccess, bytes memory ownerOfReturnData) = contracts[i].call(abi.encodeWithSelector(IERC721.ownerOf.selector, tokenIds[i]));
+            require(ownerOfSuccess, "NFTRedeem: Bad token contract");
+            address ownerOfAddress = abi.decode(ownerOfReturnData, (address));
+            require(ownerOfAddress == msg.sender, "NFTRedeem: Caller must own NFTs");
+
+            (bool approvedSuccess, bytes memory approvedReturnData) = contracts[i].call(abi.encodeWithSelector(IERC721.getApproved.selector, tokenIds[i]));
+            require(approvedSuccess, "NFTRedeem: Bad token contract");
+            address approvedAddress = abi.decode(approvedReturnData, (address));
+            require(approvedAddress == address(this), "NFTRedeem: Contract must be given approval to burn NFT");
+
             // Then burn
-            IERC721(contracts[i]).transferFrom(msg.sender, address(0xdEaD), tokenIds[i]);
+            (bool burnSuccess,) = contracts[i].call(abi.encodeWithSelector(IERC721.transferFrom.selector, msg.sender, address(0xdEaD), tokenIds[i]));
+            require(burnSuccess, "NFTRedeem: Burn failure");
         }
+
+        _redemptionRemaining--;
 
         // Mint reward
-        IERC721Creator(_creator).mint(msg.sender);
-    }
-
-    function _revertApprovals(address[] calldata contracts, uint256[] calldata tokenIds) private {
-        // Revert approvals
-        for (uint i=0; i<contracts.length; i++) {
-            if (IERC721(contracts[i]).getApproved(tokenIds[i]) == address(this)) {
-                IERC721(contracts[i]).approve(address(0), tokenIds[i]);
-            }
-        }
+        (bool mintSuccess,) = _creator.call(abi.encodeWithSelector(IERC721Creator.mint.selector, msg.sender));
+        require(mintSuccess, "NFTRedeem: Redemption failure");
     }
 
     /**
@@ -169,7 +177,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
          }
          if (_approvedTokenRange[contract_].length > 0) {
              for (uint i=0; i < _approvedTokenRange[contract_].length; i++) {
-                 if (tokenId >= _approvedTokenRange[contract_][i].min && tokenId <= _approvedTokenRange[contract_][i].max) {
+                 if (_approvedTokenRange[contract_][i].max != 0 && tokenId >= _approvedTokenRange[contract_][i].min && tokenId <= _approvedTokenRange[contract_][i].max) {
                      return true;
                  }
              }
