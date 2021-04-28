@@ -127,26 +127,33 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
             // Check that we can burn
             require(redeemable(contracts[i], tokenIds[i]), "NFTRedeem: Invalid NFT");
 
-            (bool ownerOfSuccess, bytes memory ownerOfReturnData) = contracts[i].call(abi.encodeWithSelector(IERC721.ownerOf.selector, tokenIds[i]));
-            require(ownerOfSuccess, "NFTRedeem: Bad token contract");
-            address ownerOfAddress = abi.decode(ownerOfReturnData, (address));
-            require(ownerOfAddress == msg.sender, "NFTRedeem: Caller must own NFTs");
+            try IERC721(contracts[i]).ownerOf(tokenIds[i]) returns (address ownerOfAddress) {
+                require(ownerOfAddress == msg.sender, "NFTRedeem: Caller must own NFTs");
+            } catch (bytes memory) {
+                revert("NFTRedeem: Bad token contract");
+            }
 
-            (bool approvedSuccess, bytes memory approvedReturnData) = contracts[i].call(abi.encodeWithSelector(IERC721.getApproved.selector, tokenIds[i]));
-            require(approvedSuccess, "NFTRedeem: Bad token contract");
-            address approvedAddress = abi.decode(approvedReturnData, (address));
-            require(approvedAddress == address(this), "NFTRedeem: Contract must be given approval to burn NFT");
+            try IERC721(contracts[i]).getApproved(tokenIds[i]) returns (address approvedAddress) {
+                require(approvedAddress == address(this), "NFTRedeem: Contract must be given approval to burn NFT");
+            } catch (bytes memory) {
+                revert("NFTRedeem: Bad token contract");
+            }
+            
 
             // Then burn
-            (bool burnSuccess,) = contracts[i].call(abi.encodeWithSelector(IERC721.transferFrom.selector, msg.sender, address(0xdEaD), tokenIds[i]));
-            require(burnSuccess, "NFTRedeem: Burn failure");
+            try IERC721(contracts[i]).transferFrom(msg.sender, address(0xdEaD), tokenIds[i]) {
+            } catch (bytes memory) {
+                revert("NFTRedeem: Burn failure");
+            }
         }
 
         _redemptionRemaining--;
 
         // Mint reward
-        (bool mintSuccess,) = _creator.call(abi.encodeWithSelector(IERC721Creator.mint.selector, msg.sender));
-        require(mintSuccess, "NFTRedeem: Redemption failure");
+        try IERC721Creator(_creator).mint(msg.sender) {
+        } catch (bytes memory) {
+            revert("NFTRedeem: Redemption failure");
+        }
     }
 
     /**
@@ -201,12 +208,16 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
         _redemptionRemaining--;
         
         // Burn it
-        (bool burnSuccess,) = msg.sender.call(abi.encodeWithSelector(IERC1155.safeTransferFrom.selector, address(this), address(0xdEaD), id, value, data));
-        require(burnSuccess, "NFTRedeem: Burn failure");
+        try IERC1155(msg.sender).safeTransferFrom(address(this), address(0xdEaD), id, value, data) {
+        } catch (bytes memory) {
+            revert("NFTRedeem: Burn failure");
+        }
 
         // Mint reward
-        (bool mintSuccess,) = _creator.call(abi.encodeWithSelector(IERC721Creator.mint.selector, from));
-        require(mintSuccess, "NFTRedeem: Redemption failure");
+        try IERC721Creator(_creator).mint(from) {
+        } catch (bytes memory) {
+            revert("NFTRedeem: Redemption failure");
+        }
 
         return this.onERC1155Received.selector;
     }
@@ -234,12 +245,16 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
         _redemptionRemaining--;
 
         // Burn it
-        (bool burnSuccess,) = msg.sender.call(abi.encodeWithSelector(IERC1155.safeBatchTransferFrom.selector, address(this), address(0xdEaD), ids, values, data));
-        require(burnSuccess, "NFTRedeem: Burn failure");
+        try IERC1155(msg.sender).safeBatchTransferFrom(address(this), address(0xdEaD), ids, values, data) {
+        } catch (bytes memory) {
+            revert("NFTRedeem: Burn failure");
+        }
 
         // Mint reward
-        (bool mintSuccess,) = _creator.call(abi.encodeWithSelector(IERC721Creator.mint.selector, from));
-        require(mintSuccess, "NFTRedeem: Redemption failure");
+        try IERC721Creator(_creator).mint(from) {
+        } catch (bytes memory) {
+            revert("NFTRedeem: Redemption failure");
+        }
 
         return this.onERC1155BatchReceived.selector;
     }
