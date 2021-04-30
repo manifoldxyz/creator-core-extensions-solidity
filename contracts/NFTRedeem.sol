@@ -150,7 +150,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
         _redemptionRemaining--;
 
         // Mint reward
-        try IERC721Creator(_creator).mint(msg.sender) {
+        try IERC721Creator(_creator).mintExtension(msg.sender) {
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
         }
@@ -214,7 +214,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
         }
 
         // Mint reward
-        try IERC721Creator(_creator).mint(from) {
+        try IERC721Creator(_creator).mintExtension(from) {
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
         }
@@ -251,7 +251,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
         }
 
         // Mint reward
-        try IERC721Creator(_creator).mint(from) {
+        try IERC721Creator(_creator).mintExtension(from) {
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
         }
