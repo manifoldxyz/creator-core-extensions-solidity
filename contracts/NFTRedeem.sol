@@ -10,7 +10,7 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-solidity/contracts/utils/introspection/ERC165Checker.sol";
 import "openzeppelin-solidity/contracts/utils/structs/EnumerableSet.sol";
 
-import "manifoldxyz-creator-core-solidity/contracts/ERC721CreatorExtension.sol";
+import "manifoldxyz-creator-core-solidity/contracts/IERC721Creator.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/AdminControl.sol";
 
 import "./INFTRedeem.sol";
@@ -20,8 +20,11 @@ struct range{
    uint256 max;
 }
 
-contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INFTRedeem {
+contract NFTRedeem is ReentrancyGuard, AdminControl, INFTRedeem {
      using EnumerableSet for EnumerableSet.UintSet;
+
+     // The creator mint contract
+     address _creator;
 
      mapping (address => mapping (uint256 => address)) private _recoverableERC721;
 
@@ -34,16 +37,17 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtension, INF
     mapping(address => EnumerableSet.UintSet) private _approvedTokens;
     mapping(address => range[]) private _approvedTokenRange;
      
-    constructor(address creator, uint16 redemptionRate_, uint16 redemptionRemaining_) ERC721CreatorExtension(creator) {
-        require(ERC165Checker.supportsInterface(creator, type(IERC721Creator).interfaceId), "NFTRedeem: Must implement IERCreator");
+    constructor(address creator, uint16 redemptionRate_, uint16 redemptionRemaining_) {
+        require(ERC165Checker.supportsInterface(creator, type(IERC721Creator).interfaceId), "NFTRedeem: Minting reward contract must implement IERC721Creator");
         _redemptionRate = redemptionRate_;
         _redemptionRemaining = redemptionRemaining_;
+        _creator = creator;
     }     
 
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, ERC721CreatorExtension, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, IERC165) returns (bool) {
         return interfaceId == type(INFTRedeem).interfaceId
             || super.supportsInterface(interfaceId);
     }
