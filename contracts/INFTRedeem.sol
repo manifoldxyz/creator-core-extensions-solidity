@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "openzeppelin-solidity/contracts/token/ERC1155/IERC1155Receiver.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
 
 interface INFTRedeem is IAdminControl, IERC1155Receiver {
