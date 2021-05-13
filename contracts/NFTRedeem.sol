@@ -30,7 +30,9 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
      mapping (address => mapping (uint256 => address)) private _recoverableERC721;
 
      uint16 private immutable _redemptionRate;
-     uint16 private _redemptionRemaining;
+     uint16 private _redemptionMax;
+     uint16 private _redemptionCount;
+     mapping(uint256 => uint256) _mintNumbers;
 
      // approved contracts
     mapping(address => bool) private _approvedContracts;
@@ -38,10 +40,10 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
     mapping(address => EnumerableSet.UintSet) private _approvedTokens;
     mapping(address => range[]) private _approvedTokenRange;
      
-    constructor(address creator, uint16 redemptionRate_, uint16 redemptionRemaining_) {
+    constructor(address creator, uint16 redemptionRate_, uint16 redemptionMax_) {
         require(ERC165Checker.supportsInterface(creator, type(IERC721Creator).interfaceId), "NFTRedeem: Minting reward contract must implement IERC721Creator");
         _redemptionRate = redemptionRate_;
-        _redemptionRemaining = redemptionRemaining_;
+        _redemptionMax = redemptionMax_;
         _creator = creator;
     }     
 
@@ -122,10 +124,9 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
      * @dev See {INFTRedeem-redeemERC721}
      */
     function redeemERC721(address[] calldata contracts, uint256[] calldata tokenIds) external virtual override nonReentrant {
-
         require(contracts.length == tokenIds.length, "NFTRedeem: Invalid parameters");
         require(contracts.length == _redemptionRate, "NFTRedeem: Incorrect number of NFTs being redeemed");
-        require(_redemptionRemaining > 0, "NFTRedeem: No redemptions remaining");
+        require(_redemptionCount < _redemptionMax, "NFTRedeem: No redemptions remaining");
 
         // Attempt Burn
         for (uint i=0; i<contracts.length; i++) {
@@ -152,10 +153,11 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
             }
         }
 
-        _redemptionRemaining--;
+        _redemptionCount++;
 
         // Mint reward
-        try IERC721Creator(_creator).mintExtension(msg.sender) {
+        try IERC721Creator(_creator).mintExtension(msg.sender) returns(uint256 newTokenId) {
+            _mintNumbers[newTokenId] = _redemptionCount;
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
         }
@@ -172,14 +174,14 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
      * @dev See {INFTRedeem-redemptionRemaining}
      */
     function redemptionRemaining() external view virtual override returns(uint16) {
-        return _redemptionRemaining;
+        return _redemptionMax-_redemptionCount;
     }
 
     /**
      * @dev See {INFTRedeem-redeemable}
      */    
     function redeemable(address contract_, uint256 tokenId) public view virtual override returns(bool) {
-         require(_redemptionRemaining > 0, "NFTRedeem: No redemptions remaining");
+        require(_redemptionCount < _redemptionMax, "NFTRedeem: No redemptions remaining");
 
          if (_approvedContracts[contract_]) {
              return true;
@@ -197,14 +199,14 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
          return false;
     }
 
-    /*
+    /**
      * @dev See {IERC721Receiver-onERC721Received}.
      */
     function onERC721Received(address, address from, uint256 tokenId, bytes calldata data) external override nonReentrant returns (bytes4) {
         require(redeemable(msg.sender, tokenId), "NFTRedeem: Invalid NFT");
         require(_redemptionRate == 1, "NFTRedeem: Can only allow direct receiving of redemptions of 1 NFT");
         
-        _redemptionRemaining--;
+        _redemptionCount++;
         
         // Burn it
         try IERC721(msg.sender).safeTransferFrom(address(this), address(0xdEaD), tokenId, data) {
@@ -213,7 +215,8 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         }
 
         // Mint reward
-        try IERC721Creator(_creator).mintExtension(from) {
+        try IERC721Creator(_creator).mintExtension(from) returns(uint256 newTokenId) {
+            _mintNumbers[newTokenId] = _redemptionCount;
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
         }
@@ -222,7 +225,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
     }
 
 
-    /*
+    /**
      * @dev See {IERC1155Receiver-onERC1155Received}.
      */
     function onERC1155Received(
@@ -235,7 +238,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         require(redeemable(msg.sender, id), "NFTRedeem: Invalid NFT");
         require(value == _redemptionRate, "NFTRedeem: Incorrect number of NFTs being redeemed");
 
-        _redemptionRemaining--;
+        _redemptionCount++;
         
         // Burn it
         try IERC1155(msg.sender).safeTransferFrom(address(this), address(0xdEaD), id, value, data) {
@@ -244,7 +247,8 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         }
 
         // Mint reward
-        try IERC721Creator(_creator).mintExtension(from) {
+        try IERC721Creator(_creator).mintExtension(from) returns(uint256 newTokenId) {
+            _mintNumbers[newTokenId] = _redemptionCount;
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
         }
@@ -252,7 +256,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         return this.onERC1155Received.selector;
     }
 
-    /*
+    /**
      * @dev See {IERC1155Receiver-onERC1155BatchReceived}.
      */
     function onERC1155BatchReceived(
@@ -272,7 +276,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
 
         require(totalValue == _redemptionRate, "NFTRedeem: Incorrect number of NFTs being redeemed");
 
-        _redemptionRemaining--;
+        _redemptionCount++;
 
         // Burn it
         try IERC1155(msg.sender).safeBatchTransferFrom(address(this), address(0xdEaD), ids, values, data) {
@@ -281,12 +285,20 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         }
 
         // Mint reward
-        try IERC721Creator(_creator).mintExtension(from) {
+        try IERC721Creator(_creator).mintExtension(from) returns(uint256 newTokenId) {
+            _mintNumbers[newTokenId] = _redemptionCount;
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
         }
 
         return this.onERC1155BatchReceived.selector;
+    }
+
+    /**
+     * @dev See {INFTRedeem-mintNumber}.
+     */
+    function mintNumber(uint256 tokenId) external view override returns(uint256) {
+        return _mintNumbers[tokenId];
     }
 
 }

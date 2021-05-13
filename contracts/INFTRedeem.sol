@@ -59,6 +59,11 @@ interface INFTRedeem is IAdminControl, IERC721CreatorExtensionBase, IERC1155Rece
     /**
      * @dev Check if an NFT is redeemable
      */
-     function redeemable(address contract_, uint256 tokenId) external view returns(bool);
+    function redeemable(address contract_, uint256 tokenId) external view returns(bool);
+
+    /**
+     * @dev Get the mint number of a created token id
+     */
+    function mintNumber(uint256 tokenId) external view returns(uint256);
 
 }
