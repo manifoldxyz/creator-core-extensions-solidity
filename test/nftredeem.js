@@ -190,6 +190,32 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
 
         });
 
+        it('core functionality test ERC721 direct send', async function () {
+            var tokenId1 = 1;
+            var tokenId2 = 2;
+            var tokenId3 = 3;
+
+            await mock721.testMint(another, tokenId1);
+            await mock721.testMint(another, tokenId2);
+            await mock721.testMint(another, tokenId3);
+
+            // Test Redemption
+            await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2], [true,false], {from:owner});
+
+            // Check failure cases
+            await truffleAssert.reverts(mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId3, {from:another}), "NFTRedeem: Invalid NFT"); 
+            await truffleAssert.reverts(mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId1, {from:another}), "NFTRedeem: Can only allow direct receiving of redemptions of 1 NFT"); 
+
+
+            redeem = await NFTRedeem.new(creator.address, 1, redemptionMax, {from:owner});
+            await creator.registerExtension(redeem.address, "https://redeem", {from:owner})
+            await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2], [true,false], {from:owner});
+            await mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId1, {from:another});
+
+            assert.equal(await creator.balanceOf(another), 1);
+            assert.equal(await mock721.balanceOf(another), 2);
+        });
+
     });
 
 });

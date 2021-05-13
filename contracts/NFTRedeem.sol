@@ -197,6 +197,31 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, INFTRedeem {
     }
 
     /*
+     * @dev See {IERC721Receiver-onERC721Received}.
+     */
+    function onERC721Received(address, address from, uint256 tokenId, bytes calldata data) external override nonReentrant returns (bytes4) {
+        require(redeemable(msg.sender, tokenId), "NFTRedeem: Invalid NFT");
+        require(_redemptionRate == 1, "NFTRedeem: Can only allow direct receiving of redemptions of 1 NFT");
+        
+        _redemptionRemaining--;
+        
+        // Burn it
+        try IERC721(msg.sender).safeTransferFrom(address(this), address(0xdEaD), tokenId, data) {
+        } catch (bytes memory) {
+            revert("NFTRedeem: Burn failure");
+        }
+
+        // Mint reward
+        try IERC721Creator(_creator).mintExtension(from) {
+        } catch (bytes memory) {
+            revert("NFTRedeem: Redemption failure");
+        }
+
+        return this.onERC721Received.selector;
+    }
+
+
+    /*
      * @dev See {IERC1155Receiver-onERC1155Received}.
      */
     function onERC1155Received(

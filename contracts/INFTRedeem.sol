@@ -5,9 +5,10 @@ pragma solidity ^0.8.0;
 /// @author: manifold.xyz
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
 
-interface INFTRedeem is IAdminControl, IERC1155Receiver {
+interface INFTRedeem is IAdminControl, IERC1155Receiver, IERC721Receiver {
 
     /**
      * @dev Enable recovery of a given token. Can only be called by contract owner/admin.
