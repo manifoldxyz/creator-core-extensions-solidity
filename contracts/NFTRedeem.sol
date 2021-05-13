@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "manifoldxyz-creator-core-solidity/contracts/IERC721Creator.sol";
+import "manifoldxyz-creator-core-solidity/contracts/extensions/ERC721CreatorExtensionBase.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/AdminControl.sol";
 
 import "./INFTRedeem.sol";
@@ -20,7 +21,7 @@ struct range{
    uint256 max;
 }
 
-contract NFTRedeem is ReentrancyGuard, AdminControl, INFTRedeem {
+contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase, INFTRedeem {
      using EnumerableSet for EnumerableSet.UintSet;
 
      // The creator mint contract
@@ -47,7 +48,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, INFTRedeem {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, ERC721CreatorExtensionBase, IERC165) returns (bool) {
         return interfaceId == type(INFTRedeem).interfaceId
             || super.supportsInterface(interfaceId);
     }
