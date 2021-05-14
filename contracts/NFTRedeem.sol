@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import "manifoldxyz-creator-core-solidity/contracts/IERC721Creator.sol";
+import "manifoldxyz-creator-core-solidity/contracts/IERC721CreatorCore.sol";
 import "manifoldxyz-creator-core-solidity/contracts/extensions/ERC721CreatorExtensionBase.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/AdminControl.sol";
 
@@ -41,7 +41,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
     mapping(address => range[]) private _approvedTokenRange;
      
     constructor(address creator, uint16 redemptionRate_, uint16 redemptionMax_) {
-        require(ERC165Checker.supportsInterface(creator, type(IERC721Creator).interfaceId), "NFTRedeem: Minting reward contract must implement IERC721Creator");
+        require(ERC165Checker.supportsInterface(creator, type(IERC721CreatorCore).interfaceId), "NFTRedeem: Minting reward contract must implement IERC721CreatorCore");
         _redemptionRate = redemptionRate_;
         _redemptionMax = redemptionMax_;
         _creator = creator;
@@ -156,7 +156,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         _redemptionCount++;
 
         // Mint reward
-        try IERC721Creator(_creator).mintExtension(msg.sender) returns(uint256 newTokenId) {
+        try IERC721CreatorCore(_creator).mintExtension(msg.sender) returns(uint256 newTokenId) {
             _mintNumbers[newTokenId] = _redemptionCount;
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
@@ -215,7 +215,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         }
 
         // Mint reward
-        try IERC721Creator(_creator).mintExtension(from) returns(uint256 newTokenId) {
+        try IERC721CreatorCore(_creator).mintExtension(from) returns(uint256 newTokenId) {
             _mintNumbers[newTokenId] = _redemptionCount;
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
@@ -247,7 +247,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         }
 
         // Mint reward
-        try IERC721Creator(_creator).mintExtension(from) returns(uint256 newTokenId) {
+        try IERC721CreatorCore(_creator).mintExtension(from) returns(uint256 newTokenId) {
             _mintNumbers[newTokenId] = _redemptionCount;
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
@@ -285,7 +285,7 @@ contract NFTRedeem is ReentrancyGuard, AdminControl, ERC721CreatorExtensionBase,
         }
 
         // Mint reward
-        try IERC721Creator(_creator).mintExtension(from) returns(uint256 newTokenId) {
+        try IERC721CreatorCore(_creator).mintExtension(from) returns(uint256 newTokenId) {
             _mintNumbers[newTokenId] = _redemptionCount;
         } catch (bytes memory) {
             revert("NFTRedeem: Redemption failure");
