@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import "manifoldxyz-creator-core-solidity/contracts/IERC721CreatorCore.sol";
+import "manifoldxyz-creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "manifoldxyz-creator-core-solidity/contracts/extensions/ERC721CreatorExtensionBase.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/AdminControl.sol";
 
