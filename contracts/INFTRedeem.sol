@@ -6,10 +6,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/IERC721CreatorExtensionBase.sol";
+import "manifoldxyz-creator-core-solidity/contracts/extensions/ICreatorExtensionBase.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
 
-interface INFTRedeem is IAdminControl, IERC721CreatorExtensionBase, IERC1155Receiver, IERC721Receiver {
+interface INFTRedeem is IAdminControl, ICreatorExtensionBase, IERC1155Receiver, IERC721Receiver {
 
     /**
      * @dev Enable recovery of a given token. Can only be called by contract owner/admin.
