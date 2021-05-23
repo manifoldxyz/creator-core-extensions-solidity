@@ -1,4 +1,4 @@
-# collector-core-extensions-solidity
+# creator-core-extensions-solidity
 
 Using truffle framework
 
