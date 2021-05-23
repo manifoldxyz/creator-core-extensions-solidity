@@ -1,5 +1,5 @@
 {
-  "name": "manifoldxyz-nft-redeem-solidity",
+  "name": "manifoldxyz-collector-core-extensions-solidity",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -18,12 +18,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/manifoldxyz/nft-redeem-solidity.git"
+    "url": "git+https://github.com/manifoldxyz/collector-core-extensions-solidity.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/manifoldxyz/nft-redeem-solidity/issues"
+    "url": "https://github.com/manifoldxyz/collector-core-extensions-solidity/issues"
   },
-  "homepage": "https://github.com/manifoldxyz/nft-redeem-solidity#readme"
+  "homepage": "https://github.com/manifoldxyz/collector-core-extensions-solidity#readme"
 }

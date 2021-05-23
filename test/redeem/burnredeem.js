@@ -1,10 +1,10 @@
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockTestERC721Creator');
-const NFTRedeem = artifacts.require("NFTRedeem");
+const BurnRedeem = artifacts.require("BurnRedeem");
 const MockERC721 = artifacts.require('MockTestERC721');
 const MockERC1155 = artifacts.require('MockTestERC1155');
 
-contract('NFTRedeem', function ([creator, ...accounts]) {
+contract('BurnRedeem', function ([creator, ...accounts]) {
     const name = 'Token';
     const symbol = 'NFT';
     const minter = creator;
@@ -15,7 +15,7 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
            anyone,
            ] = accounts;
 
-    describe('NFTRedeem', function() {
+    describe('BurnRedeem', function() {
         var creator;
         var redeem;
         var mock721;
@@ -25,7 +25,7 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
 
         beforeEach(async function () {
             creator = await ERC721Creator.new(name, symbol, {from:owner});
-            redeem = await NFTRedeem.new(creator.address, redemptionRate, redemptionMax, {from:owner});
+            redeem = await BurnRedeem.new(creator.address, redemptionRate, redemptionMax, {from:owner});
             await creator.registerExtension(redeem.address, "https://redeem", {from:owner})
             mock721 = await MockERC721.new('721', '721', {from:owner});
             mock1155 = await MockERC1155.new('1155uri', {from:owner});
@@ -47,12 +47,12 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
             assert.equal(await mock721.balanceOf(another), 0);
             assert.equal(await mock721.balanceOf(redeem.address), 1);
 
-            await truffleAssert.reverts(redeem.recoverERC721(mock721.address, tokenId, {from:another}), "NFTRedeem: Permission denied");
+            await truffleAssert.reverts(redeem.recoverERC721(mock721.address, tokenId, {from:another}), "BurnRedeem: Permission denied");
 
-            await truffleAssert.reverts(redeem.setERC721Recoverable(anyone, tokenId, anyone, {from:owner}), "NFTRedeem: Must implement IERC721");
+            await truffleAssert.reverts(redeem.setERC721Recoverable(anyone, tokenId, anyone, {from:owner}), "BurnRedeem: Must implement IERC721");
             await redeem.setERC721Recoverable(mock721.address, tokenId, anyone, {from:owner});
             
-            await truffleAssert.reverts(redeem.recoverERC721(mock721.address, tokenId, {from:another}), "NFTRedeem: Permission denied");
+            await truffleAssert.reverts(redeem.recoverERC721(mock721.address, tokenId, {from:another}), "BurnRedeem: Permission denied");
             await redeem.recoverERC721(mock721.address, tokenId, {from:anyone});
             assert.equal(await mock721.balanceOf(another), 0);
             assert.equal(await mock721.balanceOf(anyone), 1);
@@ -65,21 +65,21 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
 
             assert.equal(await redeem.redeemable(mock721.address, 1), false);
 
-            await truffleAssert.reverts(redeem.updateApprovedTokens(mock721.address, [1,2,3], [true,false], {from:owner}), "NFTRedeem: Invalid input parameters");
+            await truffleAssert.reverts(redeem.updateApprovedTokens(mock721.address, [1,2,3], [true,false], {from:owner}), "BurnRedeem: Invalid input parameters");
             await redeem.updateApprovedTokens(mock721.address, [1,2,3], [true,false,true], {from:owner});
             assert.equal(await redeem.redeemable(mock721.address, 1), true);
             assert.equal(await redeem.redeemable(mock721.address, 2), false);
             assert.equal(await redeem.redeemable(mock721.address, 3), true);
 
-            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(mock721.address, [3], [1], {from:owner}), "NFTRedeem: min must be less than max");
-            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(mock721.address, [1], [], {from:owner}), "NFTRedeem: Invalid input parameters");
+            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(mock721.address, [3], [1], {from:owner}), "BurnRedeem: min must be less than max");
+            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(mock721.address, [1], [], {from:owner}), "BurnRedeem: Invalid input parameters");
             await redeem.updateApprovedTokenRanges(mock721.address, [1], [3], {from:owner});
             assert.equal(await redeem.redeemable(mock721.address, 1), true);
             assert.equal(await redeem.redeemable(mock721.address, 2), true);
             assert.equal(await redeem.redeemable(mock721.address, 3), true);
             assert.equal(await redeem.redeemable(mock721.address, 4), false);
 
-            await truffleAssert.reverts(redeem.updateApprovedContracts([mock721.address], [], {from:owner}), "NFTRedeem: Invalid input parameters");                            
+            await truffleAssert.reverts(redeem.updateApprovedContracts([mock721.address], [], {from:owner}), "BurnRedeem: Invalid input parameters");                            
             await redeem.updateApprovedContracts([mock721.address], [true], {from:owner});
             assert.equal(await redeem.redeemable(mock721.address, 1), true);
             assert.equal(await redeem.redeemable(mock721.address, 2), true);
@@ -125,16 +125,16 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
 
 
             // Check failure cases
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address], [tokenId1, tokenId2]), "NFTRedeem: Invalid parameters"); 
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address], [tokenId1, tokenId2]), "NFTRedeem: Incorrect number of NFTs being redeemed");
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:anyone}), "NFTRedeem: Caller must own NFTs");
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:another}), "NFTRedeem: Contract must be given approval to burn NFT");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address], [tokenId1, tokenId2]), "BurnRedeem: Invalid parameters"); 
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address], [tokenId1, tokenId2]), "BurnRedeem: Incorrect number of NFTs being redeemed");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:anyone}), "BurnRedeem: Caller must own NFTs");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:another}), "BurnRedeem: Contract must be given approval to burn NFT");
 
             // Approve to redeem
             await mock721.approve(redeem.address, tokenId1, {from:another});
             await mock721.approve(redeem.address, tokenId2, {from:another});
             await mock721.approve(redeem.address, tokenId3, {from:another});
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:another}), "NFTRedeem: Invalid NFT");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:another}), "BurnRedeem: Invalid NFT");
 
             await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2,tokenId3], [true,true,true], {from:owner});
             await redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3], {from:another});
@@ -153,7 +153,7 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
             assert.equal(await creator.balanceOf(another), 2);
             assert.equal(await redeem.redemptionRemaining(), 0);
             
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId7, tokenId8, tokenId9], {from:another}), "NFTRedeem: No redemptions remaining");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId7, tokenId8, tokenId9], {from:another}), "BurnRedeem: No redemptions remaining");
 
         });
 
@@ -168,25 +168,25 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
             await redeem.updateApprovedTokens(mock1155.address, [tokenId1,tokenId2], [true,false], {from:owner});
 
             // Check failure cases
-            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId2, 3, "0x0", {from:another}), "NFTRedeem: Invalid NFT"); 
-            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 2, "0x0", {from:another}), "NFTRedeem: Incorrect number of NFTs being redeemed");
+            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId2, 3, "0x0", {from:another}), "BurnRedeem: Invalid NFT"); 
+            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 2, "0x0", {from:another}), "BurnRedeem: Incorrect number of NFTs being redeemed");
 
             await mock1155.safeTransferFrom(another, redeem.address, tokenId1, 3, "0x0", {from:another});
 
             assert.equal(await creator.balanceOf(another), 1);
             assert.equal(await mock1155.balanceOf(another, tokenId1), 6);
 
-            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "NFTRedeem: Invalid NFT"); 
+            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "BurnRedeem: Invalid NFT"); 
             await redeem.updateApprovedTokens(mock1155.address, [tokenId1,tokenId2], [true,true], {from:owner});
-            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "NFTRedeem: Incorrect number of NFTs being redeemed"); 
+            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "BurnRedeem: Incorrect number of NFTs being redeemed"); 
 
             mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 2], "0x0", {from:another});
             assert.equal(await creator.balanceOf(another), 2);
             assert.equal(await mock1155.balanceOf(another, tokenId1), 5);
             assert.equal(await mock1155.balanceOf(another, tokenId2), 4);
 
-            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 3, "0x0", {from:another}), "NFTRedeem: No redemptions remaining");
-            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1,2], "0x0", {from:another}), "NFTRedeem: No redemptions remaining");
+            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 3, "0x0", {from:another}), "BurnRedeem: No redemptions remaining");
+            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1,2], "0x0", {from:another}), "BurnRedeem: No redemptions remaining");
 
         });
 
@@ -203,11 +203,11 @@ contract('NFTRedeem', function ([creator, ...accounts]) {
             await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2], [true,false], {from:owner});
 
             // Check failure cases
-            await truffleAssert.reverts(mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId3, {from:another}), "NFTRedeem: Invalid NFT"); 
-            await truffleAssert.reverts(mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId1, {from:another}), "NFTRedeem: Can only allow direct receiving of redemptions of 1 NFT"); 
+            await truffleAssert.reverts(mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId3, {from:another}), "BurnRedeem: Invalid NFT"); 
+            await truffleAssert.reverts(mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId1, {from:another}), "BurnRedeem: Can only allow direct receiving of redemptions of 1 NFT"); 
 
 
-            redeem = await NFTRedeem.new(creator.address, 1, redemptionMax, {from:owner});
+            redeem = await BurnRedeem.new(creator.address, 1, redemptionMax, {from:owner});
             await creator.registerExtension(redeem.address, "https://redeem", {from:owner})
             await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2], [true,false], {from:owner});
             await mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId1, {from:another});

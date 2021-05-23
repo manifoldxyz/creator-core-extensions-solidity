@@ -1,4 +1,4 @@
-# nft-redeem-solidity
+# collector-core-extensions-solidity
 
 Using truffle framework
 

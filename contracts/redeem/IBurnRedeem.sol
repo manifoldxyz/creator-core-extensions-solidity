@@ -9,7 +9,10 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "manifoldxyz-creator-core-solidity/contracts/extensions/ICreatorExtensionBase.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
 
-interface INFTRedeem is IAdminControl, ICreatorExtensionBase, IERC1155Receiver, IERC721Receiver {
+/**
+ * @dev Burn NFT's to receive another lazy minted NFT
+ */
+interface IBurnRedeem is IAdminControl, ICreatorExtensionBase, IERC1155Receiver, IERC721Receiver {
 
     /**
      * @dev Enable recovery of a given token. Can only be called by contract owner/admin.
@@ -65,5 +68,10 @@ interface INFTRedeem is IAdminControl, ICreatorExtensionBase, IERC1155Receiver, 
      * @dev Get the mint number of a created token id
      */
     function mintNumber(uint256 tokenId) external view returns(uint256);
+
+    /**
+     * @dev Get list of all minted tokens
+     */
+    function mintedTokens() external view returns(uint256[] memory);
 
 }
