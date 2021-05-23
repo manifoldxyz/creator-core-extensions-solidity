@@ -19,9 +19,9 @@ import "./IBurnRedeem.sol";
  * @dev Burn NFT's to receive another lazy minted NFT
  */
 contract BurnRedeem is ReentrancyGuard, RedeemBase, IBurnRedeem {
-     using EnumerableSet for EnumerableSet.UintSet;
+    using EnumerableSet for EnumerableSet.UintSet;
 
-     mapping (address => mapping (uint256 => address)) private _recoverableERC721;
+    mapping (address => mapping (uint256 => address)) private _recoverableERC721;
 
     constructor(address creator, uint16 redemptionRate, uint16 redemptionMax) RedeemBase(creator, redemptionRate, redemptionMax) {}
 
