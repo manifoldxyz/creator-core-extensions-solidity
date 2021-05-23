@@ -6,13 +6,13 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/ICreatorExtensionBase.sol";
-import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
+
+import "./IRedeemBase.sol";
 
 /**
  * @dev Burn NFT's to receive another lazy minted NFT
  */
-interface IBurnRedeem is IAdminControl, ICreatorExtensionBase, IERC1155Receiver, IERC721Receiver {
+interface IBurnRedeem is IRedeemBase, IERC1155Receiver, IERC721Receiver {
 
     /**
      * @dev Enable recovery of a given token. Can only be called by contract owner/admin.
@@ -32,46 +32,5 @@ interface IBurnRedeem is IAdminControl, ICreatorExtensionBase, IERC1155Receiver,
      * If the it cannot redeem the NFT, it will clear approvals
      */
     function redeemERC721(address[] calldata contracts, uint256[] calldata tokenIds) external;
-
-    /**
-     * @dev Update approved contracts that can be used to redeem. Can only be called by contract owner/admin.
-     */
-    function updateApprovedContracts(address[] calldata contracts, bool[] calldata approved) external;
-
-    /**
-     * @dev Update approved tokens that can be used to redeem. Can only be called by contract owner/admin.
-     */
-    function updateApprovedTokens(address contract_, uint256[] calldata tokenIds, bool[] calldata approved) external;
-
-    /**
-     * @dev Update approved token ranges that can be used to redeem. Can only be called by contract owner/admin.
-     * Clears out old ranges
-     */
-    function updateApprovedTokenRanges(address contract_, uint256[] calldata minTokenIds, uint256[] calldata maxTokenIds) external;
-
-    /**
-     * @dev Get the redemption rate
-     */
-    function redemptionRate() external view returns(uint16);
-
-    /**
-     * @dev Get number of redemptions left
-     */
-    function redemptionRemaining() external view returns(uint16);
-
-    /**
-     * @dev Check if an NFT is redeemable
-     */
-    function redeemable(address contract_, uint256 tokenId) external view returns(bool);
-
-    /**
-     * @dev Get the mint number of a created token id
-     */
-    function mintNumber(uint256 tokenId) external view returns(uint256);
-
-    /**
-     * @dev Get list of all minted tokens
-     */
-    function mintedTokens() external view returns(uint256[] memory);
 
 }
