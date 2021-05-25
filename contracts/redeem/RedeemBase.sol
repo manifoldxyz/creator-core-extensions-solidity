@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "manifoldxyz-creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/CreatorExtensionBase.sol";
+import "manifoldxyz-creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/AdminControl.sol";
 
 import "./IBurnRedeem.sol";
@@ -20,7 +20,7 @@ struct range{
 /**
  * @dev Burn NFT's to receive another lazy minted NFT
  */
-abstract contract RedeemBase is AdminControl, CreatorExtensionBase, IRedeemBase {
+abstract contract RedeemBase is AdminControl, CreatorExtension, IRedeemBase {
      using EnumerableSet for EnumerableSet.UintSet;
 
      // The creator mint contract
@@ -49,7 +49,7 @@ abstract contract RedeemBase is AdminControl, CreatorExtensionBase, IRedeemBase 
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, CreatorExtensionBase, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, CreatorExtension, IERC165) returns (bool) {
         return interfaceId == type(IRedeemBase).interfaceId
             || super.supportsInterface(interfaceId);
     }

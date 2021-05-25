@@ -4,13 +4,12 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "manifoldxyz-creator-core-solidity/contracts/extensions/ICreatorExtensionBase.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
 
 /**
  * @dev Base redemption interface
  */
-interface IRedeemBase is IAdminControl, ICreatorExtensionBase {
+interface IRedeemBase is IAdminControl {
 
     /**
      * @dev Update approved contracts that can be used to redeem. Can only be called by contract owner/admin.
