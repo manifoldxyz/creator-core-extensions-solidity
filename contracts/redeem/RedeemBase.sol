@@ -58,7 +58,7 @@ abstract contract RedeemBase is AdminControl, CreatorExtension, IRedeemBase {
     /**
      * @dev See {IRedeemBase-updateApprovedContracts}
      */
-    function updateApprovedContracts(address[] calldata contracts, bool[] calldata approved) external virtual override adminRequired {
+    function updateApprovedContracts(address[] memory contracts, bool[] memory approved) public virtual override adminRequired {
         require(contracts.length == approved.length, "BurnRedeem: Invalid input parameters");
         for (uint i=0; i < contracts.length; i++) {
             _approvedContracts[contracts[i]] = approved[i];
@@ -68,7 +68,7 @@ abstract contract RedeemBase is AdminControl, CreatorExtension, IRedeemBase {
     /**
      * @dev See {IRedeemBase-updateApprovedTokens}
      */
-    function updateApprovedTokens(address contract_, uint256[] calldata tokenIds, bool[] calldata approved) external virtual override adminRequired {
+    function updateApprovedTokens(address contract_, uint256[] memory tokenIds, bool[] memory approved) public virtual override adminRequired {
         require(tokenIds.length == approved.length, "BurnRedeem: Invalid input parameters");
 
         for (uint i=0; i < tokenIds.length; i++) {
@@ -83,7 +83,7 @@ abstract contract RedeemBase is AdminControl, CreatorExtension, IRedeemBase {
     /**
      * @dev See {IRedeemBase-updateApprovedTokenRanges}
      */
-    function updateApprovedTokenRanges(address contract_, uint256[] calldata minTokenIds, uint256[] calldata maxTokenIds) external virtual override adminRequired {
+    function updateApprovedTokenRanges(address contract_, uint256[] memory minTokenIds, uint256[] memory maxTokenIds) public virtual override adminRequired {
         require(minTokenIds.length == maxTokenIds.length, "BurnRedeem: Invalid input parameters");
         
         uint existingRangesLength = _approvedTokenRange[contract_].length;
