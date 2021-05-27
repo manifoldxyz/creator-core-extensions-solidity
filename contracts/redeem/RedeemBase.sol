@@ -161,7 +161,7 @@ abstract contract RedeemBase is AdminControl, CreatorExtension, IRedeemBase {
         _redemptionCount++;
         
         // Mint token
-        uint256 tokenId = _mint(to);
+        uint256 tokenId = _mint(to, _redemptionCount);
 
         _mintedTokens.push(tokenId);
         _mintNumbers[tokenId] = _redemptionCount;
@@ -170,7 +170,7 @@ abstract contract RedeemBase is AdminControl, CreatorExtension, IRedeemBase {
     /**
      * @dev override if you want to perform different mint functionality
      */
-    function _mint(address to) internal returns (uint256) {
+    function _mint(address to, uint16) internal returns (uint256) {
         return IERC721CreatorCore(_creator).mintExtension(to);
     }
 
