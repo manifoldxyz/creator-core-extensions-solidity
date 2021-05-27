@@ -10,7 +10,7 @@ import "manifoldxyz-creator-core-solidity/contracts/core/IERC721CreatorCore.sol"
 import "manifoldxyz-creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "manifoldxyz-libraries-solidity/contracts/access/AdminControl.sol";
 
-import "./IBurnRedeem.sol";
+import "./IRedeemBase.sol";
 
 struct range{
    uint256 min;
