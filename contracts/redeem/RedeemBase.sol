@@ -41,7 +41,9 @@ abstract contract RedeemBase is AdminControl, CreatorExtension, IRedeemBase {
     mapping(address => range[]) private _approvedTokenRange;
      
     constructor(address creator, uint16 redemptionRate_, uint16 redemptionMax_) {
-        require(ERC165Checker.supportsInterface(creator, type(IERC721CreatorCore).interfaceId), "BurnRedeem: Minting reward contract must implement IERC721CreatorCore");
+        require(ERC165Checker.supportsInterface(creator, type(IERC721CreatorCore).interfaceId) ||
+                ERC165Checker.supportsInterface(creator, type(IERC721CreatorCore).interfaceId ^ type(ICreatorCore).interfaceId), 
+                "BurnRedeem: Minting reward contract must implement IERC721CreatorCore");
         _redemptionRate = redemptionRate_;
         _redemptionMax = redemptionMax_;
         _creator = creator;
