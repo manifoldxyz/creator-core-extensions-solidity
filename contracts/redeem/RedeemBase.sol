@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "manifoldxyz-creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
