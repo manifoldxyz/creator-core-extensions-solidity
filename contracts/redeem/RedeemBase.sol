@@ -159,9 +159,19 @@ abstract contract RedeemBase is AdminControl, CreatorExtension, IRedeemBase {
     function _mintRedemption(address to) internal {
         require(_redemptionCount < _redemptionMax, "Redeem: No redemptions remaining");
         _redemptionCount++;
-        uint256 newTokenId = IERC721CreatorCore(_creator).mintExtension(to);
-        _mintedTokens.push(newTokenId);
-        _mintNumbers[newTokenId] = _redemptionCount;
+        
+        // Mint token
+        uint256 tokenId = _mint(to);
+
+        _mintedTokens.push(tokenId);
+        _mintNumbers[tokenId] = _redemptionCount;
+    }
+
+    /**
+     * @dev override if you want to perform different mint functionality
+     */
+    function _mint(address to) internal returns (uint256) {
+        return IERC721CreatorCore(_creator).mintExtension(to);
     }
 
 }
