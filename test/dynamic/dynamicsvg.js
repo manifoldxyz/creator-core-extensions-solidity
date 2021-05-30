@@ -1,3 +1,4 @@
+const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockTestERC721Creator');
 const DynamicSVG = artifacts.require("DynamicSVG");
@@ -34,8 +35,14 @@ contract('DynamicSVG', function ([creator, ...accounts]) {
         });
 
         it('uri test', async function () {
+            await extension.setApproveTransfer(creator.address, true, {from:owner});
             await extension.mint(anyone, {from:owner});
             console.log(await creator.tokenURI(1));
+            await helper.advanceTimeAndBlock(60*60*24*90);
+            console.log(await creator.tokenURI(1));
+            await creator.transferFrom(anyone, newOwner, 1, {from:anyone});
+            console.log(await creator.tokenURI(1));
+            
         });
 
     });

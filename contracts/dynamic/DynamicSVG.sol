@@ -12,24 +12,57 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "manifoldxyz-creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "manifoldxyz-creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "manifoldxyz-creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
+import "manifoldxyz-creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
 import "../libraries/ABDKMath64x64.sol";
 
 
-contract DynamicSVG is CreatorExtension, Ownable, ICreatorExtensionTokenURI {
+contract DynamicSVG is CreatorExtension, Ownable, ICreatorExtensionTokenURI, IERC721CreatorExtensionApproveTransfer {
 
     using Strings for uint256;
     using ABDKMath64x64 for int128;
 
-    uint256 private immutable _completionTimestamp;
+    uint256 private _creationTimestamp;
+    uint256 private _completionTimestamp;
     address private immutable _creator;
 
+    string constant private _RADIUS_TAG = '<RADIUS>';
+    string constant private _HUE1_TAG = '<HUE1>';
+    string constant private _SATURATION1_TAG = '<SATURATION1>';
+    string constant private _LIGHTNESS1_TAG = '<LIGHTNESS1>';
+    string constant private _HUE2_TAG = '<HUE2>';
+    string constant private _SATURATION2_TAG = '<SATURATION2>';
+    string constant private _LIGHTNESS2_TAG = '<LIGHTNESS2>';
+
+    string[] private _imageParts;
+
     constructor(address creator) {
-        _completionTimestamp = block.timestamp+31536000;
+        _imageParts.push("data:image/svg+xml;utf8,");
+        _imageParts.push("<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' id='fade' width='1000' height='1000' viewBox='-0.5 -0.5 1 1'>");
+            _imageParts.push("<defs><linearGradient id='g' x1='0%' x2='0%' y1='1%' y2='100%'><stop offset='0%' stop-color='hsl(");
+                _imageParts.push(_HUE1_TAG);
+                _imageParts.push(",");
+                _imageParts.push(_SATURATION1_TAG);
+                _imageParts.push("%,");
+                _imageParts.push(_LIGHTNESS1_TAG);
+                _imageParts.push("%)' /><stop offset='50%' stop-color='hsl(");
+                _imageParts.push(_HUE2_TAG);
+                _imageParts.push(",");
+                _imageParts.push(_SATURATION2_TAG);
+                _imageParts.push("%,");
+                _imageParts.push(_LIGHTNESS2_TAG);
+            _imageParts.push("%)' /><stop offset='100%' stop-color='hsl(0,0%,15%)' /></linearGradient></defs>");
+            _imageParts.push("<g><rect x='-0.5' y='-0.5' width='1' height='1' fill='hsl(0,0%,15%)' /><circle cx='0' cy='0' r='");
+                _imageParts.push(_RADIUS_TAG);
+            _imageParts.push("' fill='url(#g)'><animateTransform attributeName='transform' type='rotate' from='0' to='360' dur='60s' repeatCount='indefinite' /></circle></g>");
+        _imageParts.push("</svg>");
+
         _creator = creator;
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(CreatorExtension, IERC165) returns (bool) {
-        return interfaceId == type(ICreatorExtensionTokenURI).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(ICreatorExtensionTokenURI).interfaceId 
+        || interfaceId == type(IERC721CreatorExtensionApproveTransfer).interfaceId
+        || super.supportsInterface(interfaceId);
     }
 
     function mint(address to) external onlyOwner {
@@ -37,53 +70,105 @@ contract DynamicSVG is CreatorExtension, Ownable, ICreatorExtensionTokenURI {
     }
 
     function tokenURI(address creator, uint256 tokenId) external view override returns (string memory) {
-        //require(creator == _creator, "Invalid token");
+        require(creator == _creator, "Invalid token");
         int128 completion = 1;
         if (_completionTimestamp > block.timestamp) {
             completion = ABDKMath64x64.divu(_completionTimestamp-block.timestamp, 31536000);
         }
-        uint256 centiDistance = uint256(completion.pow(3).mul(ABDKMath64x64.div(48, 100)).add(ABDKMath64x64.div(2, 100)).muli(100));
+        uint256 milliDistance = uint256(completion.pow(3).mul(ABDKMath64x64.div(48, 100)).add(ABDKMath64x64.div(2, 100)).muli(1000))+1;
 
         //x^y = 2^(y*log_2(x))
         int128 c1curve = ABDKMath64x64.exp_2(ABDKMath64x64.div(75,100).mul(ABDKMath64x64.log_2(completion)));
         int128 c2curve = ABDKMath64x64.exp_2(ABDKMath64x64.div(125,100).mul(ABDKMath64x64.log_2(completion)));
-        int128 w1value = ABDKMath64x64.fromUInt(uint256(keccak256(abi.encodePacked(IERC721(creator).ownerOf(tokenId))))%100).div(ABDKMath64x64.fromUInt(100));
-        int128 w2value = ABDKMath64x64.fromUInt(uint256(keccak256(abi.encodePacked(IERC721(creator).ownerOf(tokenId)))>>128)%100).div(ABDKMath64x64.fromUInt(100));
+        int128 w1value = ABDKMath64x64.fromUInt(uint256(uint160(IERC721(creator).ownerOf(tokenId)) & 0xFF)).div(ABDKMath64x64.fromUInt(255));
+        int128 w2value = ABDKMath64x64.fromUInt(uint256((uint160(IERC721(creator).ownerOf(tokenId)) >> 8) & 0xFF)).div(ABDKMath64x64.fromUInt(255));
+
         int128 randHue = ABDKMath64x64.mul(w1value, ABDKMath64x64.fromUInt(360));
         int128 randOffset = ABDKMath64x64.mul(w2value, ABDKMath64x64.fromUInt(180)).add(ABDKMath64x64.fromUInt(360)).sub(ABDKMath64x64.fromUInt(90));
 
-        return string(abi.encodePacked('data:application/json;utf8,{"name":"Test Token", "description":"Test Description", "image":"data:image/svg+xml;utf8,',
-            "<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='1000' height='1000' viewBox='-0.5 -0.5 1 1'>",
-            _generateDefs(completion, c1curve, c2curve, randHue, randOffset),
-            _generateG(centiDistance),
-            "</svg>",
+        return string(abi.encodePacked('data:application/json;utf8,{"name":"Dynamic", "description":"Days passed: ',((block.timestamp-_creationTimestamp)/86400).toString(),'", "image":"',
+            _generateImage(milliDistance, completion, c1curve, c2curve, randHue, randOffset),
             '"}'));
     }
 
-    function _generateDefs(int128 completion, int128 c1curve, int128 c2curve, int128 randHue, int128 randOffset) private pure returns (string memory) {
-        uint256 g1color = uint256(int256(randHue.add(completion.mul(ABDKMath64x64.fromUInt(60))).toInt()));
-        uint256 g1saturation = uint256(c1curve.muli(100));
-        uint256 g1lightness = uint256(c1curve.muli(70)+15);
-        uint256 g2color = uint256(int256(randHue.add(completion.mul(ABDKMath64x64.fromUInt(60)).add(randOffset)).toInt()));
-        uint256 g2saturation = uint256(c2curve.muli(50));
-        uint256 g2lightness = uint256(c2curve.muli(35)+15);
-        return string(abi.encodePacked(
-                "<defs>",
-                    "<linearGradient id='g' x1='0%' x2='0%' y1='1%' y2='100%'>",
-                        "<stop id='g1' offset='0%' stop-color='hsl(",g1color.toString(),",",g1saturation.toString(),"%,",g1lightness.toString(),"%)' />",
-                        "<stop id='g2' offset='50%' stop-color='hsl(",g2color.toString(),",",g2saturation.toString(),"%,",g2lightness.toString(),"%)' />",
-                        "<stop id='g3' offset='100%' stop-color='hsl(0,0%,15%)' />",
-                    "</linearGradient>",
-                "</defs>"));
+    function updateImageParts(string[] memory imageParts) public onlyOwner {
+        _imageParts = imageParts;
     }
 
-    function _generateG(uint256 centiDistance) private pure returns (string memory) {
-        return string(abi.encodePacked(
-                "<g>",
-                    "<rect id='rect' x='-0.5' y='-0.5' width='1' height='1' fill='hsl(0,0%,15%)' />",
-                    "<circle id='circ' cx='0' cy='0' r='0.",centiDistance.toString(),"' fill='url(#g)'>",
-                        "<animateTransform attributeName='transform' type='rotate' from='0' to='360' dur='60s' repeatCount='indefinite' />",
-                    "</circle>",
-                "</g>"));
+    function _generateImage(uint256 milliDistance, int128 completion, int128 c1curve, int128 c2curve, int128 randHue, int128 randOffset) private view returns (string memory radius) {
+        bytes memory byteString;
+        for (uint i = 0; i < _imageParts.length; i++) {
+            if (_checkTag(_imageParts[i], _RADIUS_TAG)) {
+                byteString = abi.encodePacked(byteString, _radiusString(milliDistance));
+            } else if (_checkTag(_imageParts[i], _HUE1_TAG)) {
+                byteString = abi.encodePacked(byteString, _hue1string(completion, randHue));
+            } else if (_checkTag(_imageParts[i], _SATURATION1_TAG)) {
+                byteString = abi.encodePacked(byteString, _saturation1String(c1curve));
+            } else if (_checkTag(_imageParts[i], _LIGHTNESS1_TAG)) {
+                byteString = abi.encodePacked(byteString, _lightness1String(c1curve));
+            } else if (_checkTag(_imageParts[i], _HUE2_TAG)) {
+                byteString = abi.encodePacked(byteString, _hue2string(completion, randHue, randOffset));
+            } else if (_checkTag(_imageParts[i], _SATURATION2_TAG)) {
+                byteString = abi.encodePacked(byteString, _saturation2String(c2curve));
+            } else if (_checkTag(_imageParts[i], _LIGHTNESS2_TAG)) {
+                byteString = abi.encodePacked(byteString, _lightness2String(c2curve));
+            } else {
+                byteString = abi.encodePacked(byteString, _imageParts[i]);
+            }
+        }
+        return string(byteString);
     }
+
+    function _checkTag(string storage a, string memory b) private pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    }
+
+    function _radiusString(uint256 milliDistance) private pure returns (string memory radius) {
+        if (milliDistance >= 100) {
+            radius = string(abi.encodePacked('0.',milliDistance.toString()));
+        } else {
+            radius = string(abi.encodePacked('0.0',milliDistance.toString()));
+        }
+        return radius;
+    }
+
+    function _hue1string(int128 completion, int128 randHue) private pure returns (string memory) {
+        return _toString(randHue.add(completion.mul(ABDKMath64x64.fromUInt(60))).toInt() % 360);
+    }
+
+    function _saturation1String(int128 c1curve) private pure returns (string memory) {
+        return uint256(c1curve.muli(100)).toString();
+    }
+
+    function _lightness1String(int128 c1curve) private pure returns (string memory) {
+        return uint256(c1curve.muli(70)+15).toString();
+    }
+
+    function _hue2string(int128 completion, int128 randHue, int128 randOffset) private pure returns (string memory) {
+        return _toString(randHue.add(completion.mul(ABDKMath64x64.fromUInt(60)).add(randOffset)).toInt() % 360);
+    }
+
+    function _saturation2String(int128 c2curve) private pure returns (string memory) {
+        return uint256(c2curve.muli(50)).toString();
+    }
+
+    function _lightness2String(int128 c2curve) private pure returns (string memory) {
+        return uint256(c2curve.muli(35)+15).toString();
+    }
+
+    function _toString(int128 value) private pure returns (string memory) {
+        return uint256(int256(value)).toString();
+    }
+
+    function setApproveTransfer(address creator, bool enabled) public override onlyOwner {
+        IERC721CreatorCore(creator).setApproveTransferExtension(enabled);
+    }
+
+    function approveTransfer(address, address, uint256) public override returns (bool) {
+        require(msg.sender == _creator, "Invalid requester");
+        _creationTimestamp = block.timestamp;
+        _completionTimestamp = block.timestamp+31536000;        
+        return true;
+    }
+    
 }
