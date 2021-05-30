@@ -137,11 +137,11 @@ contract DynamicSVG is CreatorExtension, Ownable, ICreatorExtensionTokenURI, IER
     }
 
     function _saturation1String(int128 c1curve) private pure returns (string memory) {
-        return uint256(c1curve.muli(100)).toString();
+        return _centiToString(c1curve.muli(1000));
     }
 
     function _lightness1String(int128 c1curve) private pure returns (string memory) {
-        return uint256(c1curve.muli(70)+15).toString();
+        return _centiToString(c1curve.muli(700)+150);
     }
 
     function _hue2string(int128 completion, int128 randHue, int128 randOffset) private pure returns (string memory) {
@@ -149,17 +149,22 @@ contract DynamicSVG is CreatorExtension, Ownable, ICreatorExtensionTokenURI, IER
     }
 
     function _saturation2String(int128 c2curve) private pure returns (string memory) {
-        return uint256(c2curve.muli(50)).toString();
+        return _centiToString(c2curve.muli(500));
     }
 
     function _lightness2String(int128 c2curve) private pure returns (string memory) {
-        return uint256(c2curve.muli(35)+15).toString();
+        return _centiToString(c2curve.muli(350)+150);
     }
 
     function _toString(int128 value) private pure returns (string memory) {
         return uint256(int256(value)).toString();
     }
 
+    function _centiToString(int256 value) private pure returns (string memory) {
+        uint256 centiValue = uint256(value);
+        return string(abi.encodePacked((centiValue/10).toString(), ".", (centiValue%10).toString()));
+    }
+    
     function setApproveTransfer(address creator, bool enabled) public override onlyOwner {
         IERC721CreatorCore(creator).setApproveTransferExtension(enabled);
     }
