@@ -29,22 +29,24 @@ contract('Airdrop', function ([creator, ...accounts]) {
         });
 
         it('batch mint test', async function () {
-            // Mint 100 things
+            // Mint X things
+            const x = 100;
             var receivers = [];
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < x; i++) {
                 receivers.push(anyone);
             }
             
-            console.log("100 NFT's via batch extension - Gas Estimate: "+(await extension.methods['airdrop(address,address[])'].estimateGas(creator.address, receivers, {from:owner})));
+            const creatorBatchTx = await creator.methods['mintBaseBatch(address,uint16)'](anyone, x, {from:owner});
             const extensionTx = await extension.methods['airdrop(address,address[])'](creator.address, receivers, {from:owner});
-
             var baseGas = 0;
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < x; i++) {
                 const baseTx = await creator.methods['mintBase(address,string)'](anyone, "http://testdomain.com/testdata", {from:owner});
                 baseGas += baseTx.receipt.gasUsed;
             }
-            console.log("100 NFT's via a batch extension - Gas Cost: "+extensionTx.receipt.gasUsed);
-            console.log("100 NFT's via 1-by-1 base mint - Gas Cost: "+baseGas);
+            // 952 extra gas used per NFT for internal vs external mint.
+            console.log(x+" NFT's via simulated native batch - Gas Cost: "+(creatorBatchTx.receipt.gasUsed+952*x));
+            console.log(x+" NFT's via a batch extension - Gas Cost: "+extensionTx.receipt.gasUsed);
+            console.log(x+" NFT's via 1-by-1 base mint - Gas Cost: "+baseGas);
         });
 
     });
