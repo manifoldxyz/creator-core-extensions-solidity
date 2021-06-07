@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-/// @title: Test Token
 /// @author: manifold.xyz
 
 import "@openzeppelin/contracts/access/Ownable.sol";
