@@ -1,9 +1,9 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockTestERC721Creator');
-const DynamicArweaveHash = artifacts.require("DynamicArweaveHash");
+const JakeMeltDynamicArweaveHash = artifacts.require("JakeMeltDynamicArweaveHash");
 
-contract('DynamicArweaveHash', function ([creator, ...accounts]) {
+contract('JakeMeltDynamicArweaveHash', function ([creator, ...accounts]) {
     const name = 'Token';
     const symbol = 'NFT';
     const minter = creator;
@@ -14,7 +14,7 @@ contract('DynamicArweaveHash', function ([creator, ...accounts]) {
            anyone,
            ] = accounts;
 
-    describe('DynamicArweaveHash', function() {
+    describe('JakeMeltDynamicArweaveHash', function() {
         var creator;
         var extension;
         var mock721;
@@ -26,7 +26,7 @@ contract('DynamicArweaveHash', function ([creator, ...accounts]) {
             console.log('deploying creator');
             creator = await ERC721Creator.new(name, symbol, {from:owner});
             console.log('creator deployed');
-            extension = await DynamicArweaveHash.new(creator.address, {from:owner});
+            extension = await JakeMeltDynamicArweaveHash.new(creator.address, {from:owner});
             await creator.registerExtension(extension.address, "override", {from:owner})
         });
 
@@ -35,7 +35,6 @@ contract('DynamicArweaveHash', function ([creator, ...accounts]) {
         });
 
         it('uri test', async function () {
-            await extension.setApproveTransfer(creator.address, true, {from:owner});
             await extension.mint(anyone, {from:owner});
             console.log(await creator.tokenURI(1));
             // Advance by 1 day.
