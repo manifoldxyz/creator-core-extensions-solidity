@@ -16,6 +16,7 @@ abstract contract DynamicArweaveHash is CreatorExtension, Ownable, ICreatorExten
     using Strings for uint256;
 
     address private immutable _creator;
+    string[] public arweaveHashes;
 
     constructor(address creator) {
         _creator = creator;
@@ -48,6 +49,10 @@ abstract contract DynamicArweaveHash is CreatorExtension, Ownable, ICreatorExten
     }
 
     function _getImageHash() internal view virtual returns(string memory) {
+        revert("Must implement");
+    }
+
+    function setArweaveHashes(string[] memory _arweaveHashes) external {
         revert("Must implement");
     }
 }
