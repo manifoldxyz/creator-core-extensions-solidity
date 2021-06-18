@@ -9,7 +9,7 @@ import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
 /**
  * @dev Base redemption interface
  */
-interface IRedeemBase is IAdminControl {
+interface IERC721RedeemBase is IAdminControl {
 
     /**
      * @dev Update approved contracts that can be used to redeem. Can only be called by contract owner/admin.

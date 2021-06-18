@@ -1,10 +1,10 @@
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockTestERC721Creator');
-const BurnRedeem = artifacts.require("BurnRedeem");
+const ERC721BurnRedeem = artifacts.require("ERC721BurnRedeem");
 const MockERC721 = artifacts.require('MockTestERC721');
 const MockERC1155 = artifacts.require('MockTestERC1155');
 
-contract('BurnRedeem', function ([creator, ...accounts]) {
+contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
     const name = 'Token';
     const symbol = 'NFT';
     const minter = creator;
@@ -15,7 +15,7 @@ contract('BurnRedeem', function ([creator, ...accounts]) {
            anyone,
            ] = accounts;
 
-    describe('BurnRedeem', function() {
+    describe('ERC721BurnRedeem', function() {
         var creator;
         var redeem;
         var mock721;
@@ -25,7 +25,7 @@ contract('BurnRedeem', function ([creator, ...accounts]) {
 
         beforeEach(async function () {
             creator = await ERC721Creator.new(name, symbol, {from:owner});
-            redeem = await BurnRedeem.new(creator.address, redemptionRate, redemptionMax, {from:owner});
+            redeem = await ERC721BurnRedeem.new(creator.address, redemptionRate, redemptionMax, {from:owner});
             await creator.registerExtension(redeem.address, "https://redeem", {from:owner})
             mock721 = await MockERC721.new('721', '721', {from:owner});
             mock1155 = await MockERC1155.new('1155uri', {from:owner});
@@ -65,21 +65,21 @@ contract('BurnRedeem', function ([creator, ...accounts]) {
 
             assert.equal(await redeem.redeemable(mock721.address, 1), false);
 
-            await truffleAssert.reverts(redeem.updateApprovedTokens(mock721.address, [1,2,3], [true,false], {from:owner}), "BurnRedeem: Invalid input parameters");
+            await truffleAssert.reverts(redeem.updateApprovedTokens(mock721.address, [1,2,3], [true,false], {from:owner}), "Redeem: Invalid input parameters");
             await redeem.updateApprovedTokens(mock721.address, [1,2,3], [true,false,true], {from:owner});
             assert.equal(await redeem.redeemable(mock721.address, 1), true);
             assert.equal(await redeem.redeemable(mock721.address, 2), false);
             assert.equal(await redeem.redeemable(mock721.address, 3), true);
 
-            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(mock721.address, [3], [1], {from:owner}), "BurnRedeem: min must be less than max");
-            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(mock721.address, [1], [], {from:owner}), "BurnRedeem: Invalid input parameters");
+            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(mock721.address, [3], [1], {from:owner}), "Redeem: min must be less than max");
+            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(mock721.address, [1], [], {from:owner}), "Redeem: Invalid input parameters");
             await redeem.updateApprovedTokenRanges(mock721.address, [1], [3], {from:owner});
             assert.equal(await redeem.redeemable(mock721.address, 1), true);
             assert.equal(await redeem.redeemable(mock721.address, 2), true);
             assert.equal(await redeem.redeemable(mock721.address, 3), true);
             assert.equal(await redeem.redeemable(mock721.address, 4), false);
 
-            await truffleAssert.reverts(redeem.updateApprovedContracts([mock721.address], [], {from:owner}), "BurnRedeem: Invalid input parameters");                            
+            await truffleAssert.reverts(redeem.updateApprovedContracts([mock721.address], [], {from:owner}), "Redeem: Invalid input parameters");                            
             await redeem.updateApprovedContracts([mock721.address], [true], {from:owner});
             assert.equal(await redeem.redeemable(mock721.address, 1), true);
             assert.equal(await redeem.redeemable(mock721.address, 2), true);
@@ -153,7 +153,7 @@ contract('BurnRedeem', function ([creator, ...accounts]) {
             assert.equal(await creator.balanceOf(another), 2);
             assert.equal(await redeem.redemptionRemaining(), 0);
             
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId7, tokenId8, tokenId9], {from:another}), "BurnRedeem: No redemptions remaining");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId7, tokenId8, tokenId9], {from:another}), "Redeem: No redemptions remaining");
 
         });
 
@@ -185,8 +185,8 @@ contract('BurnRedeem', function ([creator, ...accounts]) {
             assert.equal(await mock1155.balanceOf(another, tokenId1), 5);
             assert.equal(await mock1155.balanceOf(another, tokenId2), 4);
 
-            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 3, "0x0", {from:another}), "BurnRedeem: No redemptions remaining");
-            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1,2], "0x0", {from:another}), "BurnRedeem: No redemptions remaining");
+            await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 3, "0x0", {from:another}), "Redeem: No redemptions remaining");
+            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1,2], "0x0", {from:another}), "Redeem: No redemptions remaining");
 
         });
 
@@ -207,7 +207,7 @@ contract('BurnRedeem', function ([creator, ...accounts]) {
             await truffleAssert.reverts(mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId1, {from:another}), "BurnRedeem: Can only allow direct receiving of redemptions of 1 NFT"); 
 
 
-            redeem = await BurnRedeem.new(creator.address, 1, redemptionMax, {from:owner});
+            redeem = await ERC721BurnRedeem.new(creator.address, 1, redemptionMax, {from:owner});
             await creator.registerExtension(redeem.address, "https://redeem", {from:owner})
             await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2], [true,false], {from:owner});
             await mock721.methods['safeTransferFrom(address,address,uint256)'](another, redeem.address, tokenId1, {from:another});

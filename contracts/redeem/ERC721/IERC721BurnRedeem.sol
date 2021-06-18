@@ -7,12 +7,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-import "./IRedeemBase.sol";
+import "./IERC721RedeemBase.sol";
 
 /**
  * @dev Burn NFT's to receive another lazy minted NFT
  */
-interface IBurnRedeem is IRedeemBase, IERC1155Receiver, IERC721Receiver {
+interface IERC721BurnRedeem is IERC721RedeemBase, IERC1155Receiver, IERC721Receiver {
 
     /**
      * @dev Enable recovery of a given token. Can only be called by contract owner/admin.
