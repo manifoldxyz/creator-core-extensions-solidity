@@ -4,29 +4,12 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
+import "../IRedeemBase.sol";
 
 /**
  * @dev Base redemption interface
  */
-interface IERC721RedeemBase is IAdminControl {
-
-    /**
-     * @dev Update approved contracts that can be used to redeem. Can only be called by contract owner/admin.
-     */
-    function updateApprovedContracts(address[] calldata contracts, bool[] calldata approved) external;
-
-    /**
-     * @dev Update approved tokens that can be used to redeem. Can only be called by contract owner/admin.
-     */
-    function updateApprovedTokens(address contract_, uint256[] calldata tokenIds, bool[] calldata approved) external;
-
-    /**
-     * @dev Update approved token ranges that can be used to redeem. Can only be called by contract owner/admin.
-     * Clears out old ranges
-     */
-    function updateApprovedTokenRanges(address contract_, uint256[] calldata minTokenIds, uint256[] calldata maxTokenIds) external;
-
+interface IERC721RedeemBase is IRedeemBase {
     /**
      * @dev Get the redemption rate
      */
@@ -36,11 +19,6 @@ interface IERC721RedeemBase is IAdminControl {
      * @dev Get number of redemptions left
      */
     function redemptionRemaining() external view returns(uint16);
-
-    /**
-     * @dev Check if an NFT is redeemable
-     */
-    function redeemable(address contract_, uint256 tokenId) external view returns(bool);
 
     /**
      * @dev Get the mint number of a created token id
