@@ -66,7 +66,7 @@ abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721Redee
     /**
      * @dev See {IERC721RedeemBase-mintNumber}.
      */
-    function mintNumber(uint256 tokenId) external view override returns(uint256) {
+    function mintNumber(uint256 tokenId) external view virtual override returns(uint256) {
         return _mintNumbers[tokenId];
     }
 
