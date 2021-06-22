@@ -24,7 +24,7 @@ abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721Redee
      uint16 private _redemptionMax;
      uint16 private _redemptionCount;
      uint256[] private _mintedTokens;
-     mapping(uint256 => uint256) private _mintNumbers;
+     mapping(uint256 => uint256) internal _mintNumbers;
 
     constructor(address creator, uint16 redemptionRate_, uint16 redemptionMax_) {
         require(ERC165Checker.supportsInterface(creator, type(IERC721CreatorCore).interfaceId) ||
@@ -40,6 +40,13 @@ abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721Redee
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override(RedeemBase, CreatorExtension, IERC165) returns (bool) {
         return interfaceId == type(IERC721RedeemBase).interfaceId || RedeemBase.supportsInterface(interfaceId) || CreatorExtension.supportsInterface(interfaceId);
+    }
+
+    /**
+     * @dev See {IERC721RedeemBase-redemptionMax}
+     */
+    function redemptionMax() external view virtual override returns(uint16) {
+        return _redemptionMax;
     }
 
     /**

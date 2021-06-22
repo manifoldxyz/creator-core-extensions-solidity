@@ -11,6 +11,11 @@ import "../IRedeemBase.sol";
  */
 interface IERC721RedeemBase is IRedeemBase {
     /**
+     * @dev Get the max number of redemptions
+     */
+    function redemptionMax() external view returns(uint16);
+
+    /**
      * @dev Get the redemption rate
      */
     function redemptionRate() external view returns(uint16);
