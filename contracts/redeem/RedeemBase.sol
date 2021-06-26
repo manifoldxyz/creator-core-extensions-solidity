@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import "manifoldxyz-libraries-solidity/contracts/access/AdminControl.sol";
+import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
 import "./IRedeemBase.sol";
 

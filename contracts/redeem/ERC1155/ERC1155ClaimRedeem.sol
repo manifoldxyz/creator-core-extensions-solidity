@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import "manifoldxyz-creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 
 import "./ERC1155RedeemBase.sol";
 import "./IERC1155ClaimRedeem.sol";

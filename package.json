@@ -1,5 +1,5 @@
 {
-  "name": "manifoldxyz-creator-core-extensions-solidity",
+  "name": "@manifoldxyz/creator-core-extensions-solidity",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -7,7 +7,7 @@
     "test": "test"
   },
   "dependencies": {
-    "manifoldxyz-creator-core-solidity": "git+ssh://git@github.com/manifoldxyz/creator-core-solidity.git",
+    "@manifoldxyz/creator-core-solidity": "^1.0.0",
     "@openzeppelin/contracts": "^4.0.0"
   },
   "devDependencies": {

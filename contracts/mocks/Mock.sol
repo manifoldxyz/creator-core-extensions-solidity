@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "manifoldxyz-creator-core-solidity/contracts/ERC721Creator.sol";
-import "manifoldxyz-creator-core-solidity/contracts/mocks/MockERC721.sol";
-import "manifoldxyz-creator-core-solidity/contracts/mocks/MockERC1155.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/mocks/MockERC721.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/mocks/MockERC1155.sol";
 
 contract MockTestERC721Creator is ERC721Creator {
      constructor (string memory _name, string memory _symbol) ERC721Creator(_name, _symbol) {}

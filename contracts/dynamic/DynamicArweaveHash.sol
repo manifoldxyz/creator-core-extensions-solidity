@@ -7,9 +7,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "manifoldxyz-creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/CreatorExtension.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 abstract contract DynamicArweaveHash is CreatorExtension, Ownable, ICreatorExtensionTokenURI {
 

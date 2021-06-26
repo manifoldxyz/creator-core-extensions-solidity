@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "manifoldxyz-libraries-solidity/contracts/access/IAdminControl.sol";
+import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 
 /**
  * @dev Base redemption interface

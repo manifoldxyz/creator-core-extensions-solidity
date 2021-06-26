@@ -8,10 +8,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "manifoldxyz-creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/CreatorExtension.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
+
 import "../libraries/ABDKMath64x64.sol";
 
 

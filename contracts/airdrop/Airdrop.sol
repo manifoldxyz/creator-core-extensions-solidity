@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "manifoldxyz-creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
-import "manifoldxyz-creator-core-solidity/contracts/extensions/CreatorExtensionBasic.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtensionBasic.sol";
 
 
 contract Airdrop is CreatorExtensionBasic {
