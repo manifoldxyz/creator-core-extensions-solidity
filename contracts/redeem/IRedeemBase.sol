@@ -11,6 +11,10 @@ import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
  */
 interface IRedeemBase is IAdminControl {
 
+    event UpdateApprovedContracts(address[] contracts, bool[] approved);
+    event UpdateApprovedTokens(address contract_, uint256[] tokenIds, bool[] approved);
+    event UpdateApprovedTokenRanges(address contract_, uint256[] minTokenIds, uint256[] maxTokenIds);
+
     /**
      * @dev Update approved contracts that can be used to redeem. Can only be called by contract owner/admin.
      */

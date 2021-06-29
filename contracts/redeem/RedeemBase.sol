@@ -45,6 +45,7 @@ abstract contract RedeemBase is AdminControl, IRedeemBase {
         for (uint i=0; i < contracts.length; i++) {
             _approvedContracts[contracts[i]] = approved[i];
         }
+        emit UpdateApprovedContracts(contracts, approved);
     }
     
     /**
@@ -60,6 +61,7 @@ abstract contract RedeemBase is AdminControl, IRedeemBase {
                 _approvedTokens[contract_].remove(tokenIds[i]);
             }
         }
+        emit UpdateApprovedTokens(contract_, tokenIds, approved);
     }
 
     /**
@@ -83,6 +85,7 @@ abstract contract RedeemBase is AdminControl, IRedeemBase {
                 _approvedTokenRange[contract_].push(range(minTokenIds[i], maxTokenIds[i]));
             }
         }
+        emit UpdateApprovedTokenRanges(contract_, minTokenIds, maxTokenIds);
     }
 
     /**
