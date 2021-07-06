@@ -37,7 +37,7 @@ abstract contract DynamicArweaveHash is CreatorExtension, Ownable, ICreatorExten
 
     function _getDescription() internal view virtual returns(string memory);
 
-    function _getImageHash() internal view virtual returns(string memory);
+    function _getImageHash(uint256 tokenId) internal view virtual returns(string memory);
 
     function setArweaveHashes(string[] memory _arweaveHashes) external virtual;
 }
