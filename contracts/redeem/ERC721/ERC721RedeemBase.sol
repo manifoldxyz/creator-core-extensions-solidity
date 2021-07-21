@@ -14,7 +14,7 @@ import "../RedeemBase.sol";
 import "./IERC721RedeemBase.sol";
 
 /**
- * @dev Burn NFT's to receive another lazy minted NFT
+ * @dev Redeem NFT base logic
  */
 abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721RedeemBase {
 
@@ -81,7 +81,7 @@ abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721Redee
     /**
      * @dev mint token that was redeemed for
      */
-    function _mintRedemption(address to) internal {
+    function _mintRedemption(address to) internal virtual {
         require(_redemptionCount < _redemptionMax, "Redeem: No redemptions remaining");
         _redemptionCount++;
         
