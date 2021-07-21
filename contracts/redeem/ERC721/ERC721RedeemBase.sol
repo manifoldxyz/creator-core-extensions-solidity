@@ -60,7 +60,7 @@ abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721Redee
     /**
      * @dev See {IERC721RedeemBase-redemptionRemaining}
      */
-    function redemptionRemaining() external view virtual override returns(uint16) {
+    function redemptionRemaining() public view virtual override returns(uint16) {
         return _redemptionMax-_redemptionCount;
     }
 
