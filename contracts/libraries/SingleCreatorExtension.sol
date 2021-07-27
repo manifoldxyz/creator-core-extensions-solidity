@@ -10,14 +10,14 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.so
 
 import "./LegacyInterfaces.sol";
 
+abstract contract SingleCreatorBase {
+    address internal _creator;
+}
 
 /**
  * @dev Extension that only uses a single creator contract instance
  */
-abstract contract ERC721SingleCreatorExtension {
-
-    // The creator mint contract
-    address internal _creator;
+abstract contract ERC721SingleCreatorExtension is SingleCreatorBase {
 
     constructor(address creator) {
         require(ERC165Checker.supportsInterface(creator, type(IERC721CreatorCore).interfaceId) ||
@@ -31,10 +31,7 @@ abstract contract ERC721SingleCreatorExtension {
 /**
  * @dev Extension that only uses a single creator contract instance
  */
-abstract contract ERC1155SingleCreatorExtension {
-
-    // The creator mint contract
-    address internal _creator;
+abstract contract ERC1155SingleCreatorExtension is SingleCreatorBase {
 
     constructor(address creator) {
         require(ERC165Checker.supportsInterface(creator, type(IERC1155CreatorCore).interfaceId) ||

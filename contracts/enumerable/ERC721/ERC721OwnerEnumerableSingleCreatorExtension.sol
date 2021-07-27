@@ -13,17 +13,16 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/ERC721Cre
 import "../../libraries/SingleCreatorExtension.sol";
 
 /**
- * Provide token enumeration functionality
+ * Provide token enumeration functionality (Base Class. Use if you are using multiple inheritance where other contracts
+ * already derive from either ERC721SingleCreatorExtension or ERC1155SingleCreatorExtension).
  *
  * IMPORTANT: You must call _activate in order for enumeration to work
  */
-abstract contract ERC721OwnerEnumerableSingleCreatorExtension is ERC721SingleCreatorExtension, ERC721CreatorExtensionApproveTransfer {
+abstract contract ERC721OwnerEnumerableSingleCreatorBase is SingleCreatorBase, ERC721CreatorExtensionApproveTransfer {
 
     mapping(address => uint256) private _ownerBalance;
     mapping(address => mapping(uint256 => uint256)) private _tokensByOwner;
     mapping(uint256 => uint256) private _tokensIndex;
-
-    constructor(address creator) ERC721SingleCreatorExtension(creator) {}    
 
     /**
      * @dev must call this to activate enumeration capability
@@ -87,3 +86,13 @@ abstract contract ERC721OwnerEnumerableSingleCreatorExtension is ERC721SingleCre
     }
 
 }
+
+/**
+ * Provide token enumeration functionality (Extension)
+ *
+ * IMPORTANT: You must call _activate in order for enumeration to work
+ */
+abstract contract ERC721OwnerEnumerableSingleCreatorExtension is ERC721OwnerEnumerableSingleCreatorBase, ERC721SingleCreatorExtension {
+    constructor(address creator) ERC721SingleCreatorExtension(creator) {}
+}
+
