@@ -81,7 +81,7 @@ abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721Redee
     /**
      * @dev mint token that was redeemed for
      */
-    function _mintRedemption(address to) internal virtual {
+    function _mintRedemption(address to) internal virtual returns (uint256) {
         require(_redemptionCount < _redemptionMax, "Redeem: No redemptions remaining");
         _redemptionCount++;
         
@@ -90,6 +90,7 @@ abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721Redee
 
         _mintedTokens.push(tokenId);
         _mintNumbers[tokenId] = _redemptionCount;
+        return tokenId;
     }
 
     /**
