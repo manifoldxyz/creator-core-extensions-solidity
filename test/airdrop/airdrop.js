@@ -1,7 +1,7 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockTestERC721Creator');
-const Airdrop = artifacts.require("Airdrop");
+const Airdrop = artifacts.require("ERC721Airdrop");
 
 contract('Airdrop', function ([creator, ...accounts]) {
     const name = 'Token';
@@ -19,13 +19,13 @@ contract('Airdrop', function ([creator, ...accounts]) {
         var extension;
         beforeEach(async function () {
             creator = await ERC721Creator.new(name, symbol, {from:owner});
-            extension = await Airdrop.new({from:owner});
+            extension = await Airdrop.new(creator.address, {from:owner});
             await creator.registerExtension(extension.address, "override", {from:owner})
         });
 
         it('access test', async function () {
-            await truffleAssert.reverts(extension.methods['airdrop(address,address[])'](creator.address, [anyone], {from:anyone}), "AdminControl: Must be owner or admin");
-            await truffleAssert.reverts(extension.methods['airdrop(address,address[],string[])'](creator.address, [anyone], [""], {from:anyone}), "AdminControl: Must be owner or admin");
+            await truffleAssert.reverts(extension.methods['airdrop(address[])']([anyone], {from:anyone}), "AdminControl: Must be owner or admin");
+            await truffleAssert.reverts(extension.methods['airdrop(address[],string[])']([anyone], [""], {from:anyone}), "AdminControl: Must be owner or admin");
         });
 
         it('batch mint test', async function () {
@@ -37,7 +37,7 @@ contract('Airdrop', function ([creator, ...accounts]) {
             }
             
             const creatorBatchTx = await creator.methods['mintBaseBatch(address,uint16)'](anyone, x, {from:owner});
-            const extensionTx = await extension.methods['airdrop(address,address[])'](creator.address, receivers, {from:owner});
+            const extensionTx = await extension.methods['airdrop(address[])'](receivers, {from:owner});
             var baseGas = 0;
             for (let i = 0; i < x; i++) {
                 const baseTx = await creator.methods['mintBase(address,string)'](anyone, "http://testdomain.com/testdata", {from:owner});

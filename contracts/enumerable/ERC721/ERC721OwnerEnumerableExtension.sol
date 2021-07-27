@@ -7,16 +7,26 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
+import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/ERC721CreatorExtensionApproveTransfer.sol";
 
 /**
  * Provide token enumeration functionality
+ *
+ * IMPORTANT: You must call _activate for each creator contract you want enumeration to work for
  */
 abstract contract ERC721OwnerEnumerableExtension is ERC721CreatorExtensionApproveTransfer {
 
     mapping (address => mapping(address => uint256)) private _creatorOwnerBalance;
     mapping (address => mapping(address => mapping(uint256 => uint256))) private _creatorTokensByOwner;
     mapping (address => mapping(uint256 => uint256)) private _creatorTokensIndex;
+
+    /**
+     * @dev must call this to activate enumeration capability
+     */
+    function _activate(address creator) internal {
+        IERC721CreatorCore(creator).setApproveTransferExtension(true);
+    }
 
     /**
      * @dev Get the token for an owner by index (for a given creator contract this extension mints to)

@@ -9,17 +9,15 @@ import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 
-import "../../libraries/LegacyInterfaces.sol";
+import "../../libraries/SingleCreatorExtension.sol";
+
 import "../RedeemBase.sol";
 import "./IERC721RedeemBase.sol";
 
 /**
  * @dev Redeem NFT base logic
  */
-abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721RedeemBase {
-
-    // The creator mint contract
-    address internal _creator;
+abstract contract ERC721RedeemBase is ERC721SingleCreatorExtension, RedeemBase, CreatorExtension, IERC721RedeemBase {
 
     uint16 internal immutable _redemptionRate;
     uint16 private _redemptionMax;
@@ -27,13 +25,12 @@ abstract contract ERC721RedeemBase is RedeemBase, CreatorExtension, IERC721Redee
     uint256[] private _mintedTokens;
     mapping(uint256 => uint256) internal _mintNumbers;
 
-    constructor(address creator, uint16 redemptionRate_, uint16 redemptionMax_) {
+    constructor(address creator, uint16 redemptionRate_, uint16 redemptionMax_) ERC721SingleCreatorExtension(creator) {
         require(ERC165Checker.supportsInterface(creator, type(IERC721CreatorCore).interfaceId) ||
                 ERC165Checker.supportsInterface(creator, LegacyInterfaces.IERC721CreatorCore_v1), 
                 "Redeem: Minting reward contract must implement IERC721CreatorCore");
         _redemptionRate = redemptionRate_;
         _redemptionMax = redemptionMax_;
-        _creator = creator;
     }     
 
     /**

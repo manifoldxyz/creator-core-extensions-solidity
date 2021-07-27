@@ -12,16 +12,13 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
 
-abstract contract DynamicArweaveHash is CreatorExtension, Ownable, ICreatorExtensionTokenURI, IERC721CreatorExtensionApproveTransfer {
+import "../libraries/SingleCreatorExtension.sol";
+
+abstract contract DynamicArweaveHash is ERC721SingleCreatorExtension, CreatorExtension, Ownable, ICreatorExtensionTokenURI, IERC721CreatorExtensionApproveTransfer {
 
     using Strings for uint256;
 
-    address private immutable _creator;
     string[] public arweaveHashes;
-
-    constructor(address creator) {
-        _creator = creator;
-    }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(CreatorExtension, IERC165) returns (bool) {
         return interfaceId == type(ICreatorExtensionTokenURI).interfaceId 

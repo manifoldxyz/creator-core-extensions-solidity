@@ -14,16 +14,15 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
 
 import "../libraries/ABDKMath64x64.sol";
+import "../libraries/SingleCreatorExtension.sol";
 
-
-contract DynamicSVG is CreatorExtension, Ownable, ICreatorExtensionTokenURI, IERC721CreatorExtensionApproveTransfer {
+contract DynamicSVG is ERC721SingleCreatorExtension, CreatorExtension, Ownable, ICreatorExtensionTokenURI, IERC721CreatorExtensionApproveTransfer {
 
     using Strings for uint256;
     using ABDKMath64x64 for int128;
 
     uint256 private _creationTimestamp;
     uint256 private _completionTimestamp;
-    address private immutable _creator;
 
     string constant private _RADIUS_TAG = '<RADIUS>';
     string constant private _HUE1_TAG = '<HUE1>';
@@ -35,7 +34,7 @@ contract DynamicSVG is CreatorExtension, Ownable, ICreatorExtensionTokenURI, IER
 
     string[] private _imageParts;
 
-    constructor(address creator) {
+    constructor(address creator) ERC721SingleCreatorExtension(creator) {
         _imageParts.push("data:image/svg+xml;utf8,");
         _imageParts.push("<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' id='fade' width='1000' height='1000' viewBox='-0.5 -0.5 1 1'>");
             _imageParts.push("<defs><linearGradient id='g' x1='0%' x2='0%' y1='1%' y2='100%'><stop offset='0%' stop-color='hsl(");

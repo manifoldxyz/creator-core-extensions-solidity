@@ -10,24 +10,15 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
+import "../../libraries/SingleCreatorExtension.sol";
+
 import "../RedeemBase.sol";
 import "./IERC1155RedeemBase.sol";
 
 /**
  * @dev Burn NFT's to receive another lazy minted NFT
  */
-abstract contract ERC1155RedeemBase is RedeemBase, IERC1155RedeemBase {
-
-     // The creator mint contract
-     address internal _creator;
-
-    constructor(address creator) {
-        require(ERC165Checker.supportsInterface(creator, type(IERC1155CreatorCore).interfaceId) ||
-                ERC165Checker.supportsInterface(creator, type(IERC1155CreatorCore).interfaceId ^ type(ICreatorCore).interfaceId), 
-                "Redeem: Minting reward contract must implement IERC1155CreatorCore");
-        _creator = creator;
-    }
-
+abstract contract ERC1155RedeemBase is ERC1155SingleCreatorExtension, RedeemBase, IERC1155RedeemBase {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
