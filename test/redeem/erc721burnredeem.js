@@ -153,6 +153,10 @@ contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
             assert.equal(await creator.balanceOf(another), 2);
             assert.equal(await redeem.redemptionRemaining(), 0);
             
+            await redeem.updateApprovedTokens(mock721.address, [tokenId7,tokenId8,tokenId9], [true,true,true], {from:owner});
+            await mock721.approve(redeem.address, tokenId7, {from:another});
+            await mock721.approve(redeem.address, tokenId8, {from:another});
+            await mock721.approve(redeem.address, tokenId9, {from:another});
             await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId7, tokenId8, tokenId9], {from:another}), "Redeem: No redemptions remaining");
 
         });
