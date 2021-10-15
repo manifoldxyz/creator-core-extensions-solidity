@@ -144,9 +144,7 @@ contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
             assert.equal(await redeem.redemptionRemaining(), redemptionMax-1);
             
             await redeem.updateApprovedTokens(mock721.address, [tokenId4,tokenId5,tokenId6], [true,true,true], {from:owner});
-            await mock721.approve(redeem.address, tokenId4, {from:another});
-            await mock721.approve(redeem.address, tokenId5, {from:another});
-            await mock721.approve(redeem.address, tokenId6, {from:another});
+            await mock721.setApprovalForAll(redeem.address, true, {from:another});
             await redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId4, tokenId5, tokenId6], {from:another});
             
             assert.equal(await mock721.balanceOf(another), 3);

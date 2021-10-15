@@ -60,7 +60,7 @@ contract ERC721BurnRedeem is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRedee
         require(contracts.length == _redemptionRate, "BurnRedeem: Incorrect number of NFTs being redeemed");
 
         // Attempt Burn
-        for (uint i=0; i<contracts.length; i++) {
+        for (uint i = 0; i < contracts.length; i++) {
             // Check that we can burn
             require(redeemable(contracts[i], tokenIds[i]), "BurnRedeem: Invalid NFT");
 
@@ -70,13 +70,14 @@ contract ERC721BurnRedeem is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRedee
                 revert("BurnRedeem: Bad token contract");
             }
 
-            try IERC721(contracts[i]).getApproved(tokenIds[i]) returns (address approvedAddress) {
-                require(approvedAddress == address(this), "BurnRedeem: Contract must be given approval to burn NFT");
-            } catch (bytes memory) {
-                revert("BurnRedeem: Bad token contract");
+            if (!IERC721(contracts[i]).isApprovedForAll(msg.sender, address(this))) {
+                try IERC721(contracts[i]).getApproved(tokenIds[i]) returns (address approvedAddress) {
+                    require(approvedAddress == address(this), "BurnRedeem: Contract must be given approval to burn NFT");
+                } catch (bytes memory) {
+                    revert("BurnRedeem: Bad token contract");
+                }
             }
             
-
             // Then burn
             try IERC721(contracts[i]).transferFrom(msg.sender, address(0xdEaD), tokenIds[i]) {
             } catch (bytes memory) {

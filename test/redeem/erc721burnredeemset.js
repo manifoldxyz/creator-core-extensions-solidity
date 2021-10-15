@@ -59,7 +59,7 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
             assert.equal(await mock721.balanceOf(redeem.address), 0);
         });
 
-        it('redeemable test', async function () {
+        it('core functionality test ERC721', async function () {
             var redemptionMax = 2;
             redeem = await ERC721BurnRedeemSet.new(creator.address, [[mock721.address, 1, 10],[mock721.address, 11, 20]], redemptionMax, {from:owner});
             await creator.registerExtension(redeem.address, "https://redeem", {from:owner})
@@ -102,16 +102,13 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
             assert.equal(await creator.balanceOf(another), 1);
             assert.equal(await redeem.redemptionRemaining(), redemptionMax-1);
             
-            await mock721.approve(redeem.address, tokenId2, {from:another});
-            await mock721.approve(redeem.address, tokenId4, {from:another});
+            await mock721.setApprovalForAll(redeem.address, true, {from:another});
             await redeem.redeemERC721([mock721.address, mock721.address], [tokenId2, tokenId4], {from:another});
             
             assert.equal(await mock721.balanceOf(another), 2);
             assert.equal(await creator.balanceOf(another), 2);
             assert.equal(await redeem.redemptionRemaining(), 0);
             
-            await mock721.approve(redeem.address, tokenId5, {from:another});
-            await mock721.approve(redeem.address, tokenId6, {from:another});
             await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address], [tokenId5, tokenId6], {from:another}), "Redeem: No redemptions remaining");
 
         });

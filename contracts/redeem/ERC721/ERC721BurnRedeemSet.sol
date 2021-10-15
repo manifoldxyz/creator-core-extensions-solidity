@@ -103,13 +103,14 @@ contract ERC721BurnRedeemSet is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRe
                 revert("BurnRedeem: Bad token contract");
             }
 
-            try IERC721(contracts[i]).getApproved(tokenIds[i]) returns (address approvedAddress) {
-                require(approvedAddress == address(this), "BurnRedeem: Contract must be given approval to burn NFT");
-            } catch (bytes memory) {
-                revert("BurnRedeem: Bad token contract");
+            if (!IERC721(contracts[i]).isApprovedForAll(msg.sender, address(this))) {
+                try IERC721(contracts[i]).getApproved(tokenIds[i]) returns (address approvedAddress) {
+                    require(approvedAddress == address(this), "BurnRedeem: Contract must be given approval to burn NFT");
+                } catch (bytes memory) {
+                    revert("BurnRedeem: Bad token contract");
+                }
             }
             
-
             // Burn
             try IERC721(contracts[i]).transferFrom(msg.sender, address(0xdEaD), tokenIds[i]) {
             } catch (bytes memory) {
@@ -130,7 +131,7 @@ contract ERC721BurnRedeemSet is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRe
         uint256,
         uint256,
         bytes calldata
-    ) external override returns(bytes4) {
+    ) external override pure returns(bytes4) {
         revert("BurnRedeem: Incomplete set");
     }
 
