@@ -22,6 +22,7 @@ abstract contract RedeemSetBase is AdminControl, IRedeemSetBase {
           RedemptionItem memory redemptionItem = redemptionSet[i];
           require(redemptionItem.minTokenId <= redemptionItem.maxTokenId, "Redeem: min must be less or equal to max");
           _redemptionSet.push(redemptionItem);
+          emit RedeemSetApprovedTokenRange(redemptionItem.tokenAddress, redemptionItem.minTokenId, redemptionItem.maxTokenId);
         }
     }
 

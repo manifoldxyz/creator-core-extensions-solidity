@@ -11,7 +11,7 @@ import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
  */
 interface IRedeemSetBase is IAdminControl {
 
-    event UpdateApprovedTokenRanges(address contract_, uint256[] minTokenIds, uint256[] maxTokenIds);
+    event RedeemSetApprovedTokenRange(address tokenAddress, uint256 minTokenId, uint256 maxTokenId);
     
     struct RedemptionItem {
         address tokenAddress;
