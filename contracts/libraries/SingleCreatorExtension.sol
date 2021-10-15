@@ -26,6 +26,10 @@ abstract contract ERC721SingleCreatorExtension is SingleCreatorBase {
         _creator = creator;
     }
 
+    function creatorContract() public view returns(address) {
+        return _creator;
+    }
+
 }
 
 /**
@@ -39,5 +43,10 @@ abstract contract ERC1155SingleCreatorExtension is SingleCreatorBase {
                 "Redeem: Minting reward contract must implement IERC1155CreatorCore");
         _creator = creator;
     }
+
+    function creatorContract() public view returns(address) {
+        return _creator;
+    }
+
 
 }

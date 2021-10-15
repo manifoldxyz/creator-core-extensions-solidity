@@ -33,9 +33,6 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
 
         it('access test', async function () {
             await truffleAssert.reverts(redeem.setERC721Recoverable(anyone, 1, anyone, {from:anyone}), "AdminControl: Must be owner or admin");
-            await truffleAssert.reverts(redeem.updateApprovedContracts([anyone], [true], {from:anyone}), "AdminControl: Must be owner or admin");
-            await truffleAssert.reverts(redeem.updateApprovedTokens(anyone, [1], [true], {from:anyone}), "AdminControl: Must be owner or admin");
-            await truffleAssert.reverts(redeem.updateApprovedTokenRanges(anyone, [1], [2], {from:anyone}), "AdminControl: Must be owner or admin");
         });
 
         it('ERC721 recovery test', async function () {
@@ -64,13 +61,7 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
             redeem = await ERC721BurnRedeemSet.new(creator.address, [[mock721.address, 1, 10],[mock721.address, 11, 20]], redemptionMax, {from:owner});
             await creator.registerExtension(redeem.address, "https://redeem", {from:owner})
 
-            assert.equal(await redeem.redemptionRate(), 2);
             assert.equal(await redeem.redemptionRemaining(), redemptionMax);
-
-            assert.equal(await redeem.redeemable(mock721.address, 1), true);
-            assert.equal(await redeem.redeemable(mock721.address, 20), true);
-            assert.equal(await redeem.redeemable(mock721.address, 30), false);
-
 
             var tokenId1 = 1;
             var tokenId2 = 2;
@@ -87,8 +78,8 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
 
             // Check failure cases
             await truffleAssert.reverts(redeem.redeemERC721([mock721.address], [tokenId1, tokenId2]), "BurnRedeem: Invalid parameters"); 
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address], [tokenId1]), "BurnRedeem: Incorrect number of NFTs being redeemed");
-            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3]), "BurnRedeem: Incorrect number of NFTs being redeemed");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address], [tokenId1]), "Incorrect number of NFTs being redeemed");
+            await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address, mock721.address], [tokenId1, tokenId2, tokenId3]), "Incorrect number of NFTs being redeemed");
             await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address], [tokenId1, tokenId2]), "BurnRedeem: Incomplete set");
             await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address], [tokenId1, tokenId3], {from:anyone}), "BurnRedeem: Caller must own NFTs");
             await truffleAssert.reverts(redeem.redeemERC721([mock721.address, mock721.address], [tokenId1, tokenId3], {from:another}), "BurnRedeem: Contract must be given approval to burn NFT");

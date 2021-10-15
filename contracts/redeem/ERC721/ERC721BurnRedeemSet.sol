@@ -12,30 +12,24 @@ import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 
-import "./ERC721RedeemBase.sol";
+import "./ERC721RedeemSetBase.sol";
 import "./IERC721BurnRedeemSet.sol";
 
 /**
  * @dev Burn NFT's to receive another lazy minted NFT
  */
-contract ERC721BurnRedeemSet is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRedeemSet, IERC1155Receiver {
+contract ERC721BurnRedeemSet is ReentrancyGuard, ERC721RedeemSetBase, IERC721BurnRedeemSet, IERC1155Receiver {
     using EnumerableSet for EnumerableSet.UintSet;
 
     mapping (address => mapping (uint256 => address)) private _recoverableERC721;
     RedemptionItem[] private _redemptionSet;
 
-    constructor(address creator, RedemptionItem[] memory redemptionSet, uint16 redemptionMax) ERC721RedeemBase(creator, uint16(redemptionSet.length), redemptionMax) {
-        for (uint i = 0; i < redemptionSet.length; i++) {
-            RedemptionItem memory redemptionItem = redemptionSet[i];
-            _approvedTokenRange[redemptionItem.tokenAddress].push(range(redemptionItem.minTokenId, redemptionItem.maxTokenId));
-            _redemptionSet.push(redemptionItem);
-        }
-    }
+    constructor(address creator, RedemptionItem[] memory redemptionSet, uint16 redemptionMax) ERC721RedeemSetBase(creator, redemptionSet, redemptionMax) {}
 
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721RedeemBase, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721RedeemSetBase, IERC165) returns (bool) {
         return interfaceId == type(IERC721BurnRedeemSet).interfaceId || interfaceId == type(IERC1155Receiver).interfaceId
             || super.supportsInterface(interfaceId);
     }
@@ -49,13 +43,6 @@ contract ERC721BurnRedeemSet is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRe
     }
 
     /**
-     * @dev See {IERC721BurnRedeemSet-getRedemptionSet}
-     */
-    function getRedemptionSet() external override view returns(RedemptionItem[] memory) {
-        return _redemptionSet;
-    }
-
-    /**
      * @dev See {IERC721BurnRedeemSet-recoverERC721}
      */
     function recoverERC721(address contract_, uint256 tokenId) external virtual override {
@@ -65,34 +52,10 @@ contract ERC721BurnRedeemSet is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRe
     }
 
     /**
-     * @dev Check to see if we have a complete redemption set
-     */
-    function _validateCompleteSet(address[] memory contracts, uint256[] memory tokenIds) private view returns (bool) {
-       require(_redemptionSet.length == tokenIds.length, "Incorrect number of NFTs being redeemed");
-       // Check complete set
-       bool[] memory completions = new bool[](_redemptionSet.length);
-       for (uint i = 0; i < contracts.length; i++) {
-           for (uint j = 0; j < _redemptionSet.length; j++) {
-               RedemptionItem memory redemptionItem = _redemptionSet[j];
-               if (contracts[i] == redemptionItem.tokenAddress && tokenIds[i] >= redemptionItem.minTokenId && tokenIds[i] <= redemptionItem.maxTokenId) {
-                   // Found redemption token
-                   completions[j] = true;
-                   break;
-               }
-           }
-       }
-       for (uint i = 0; i < completions.length; i++) {
-           if (!completions[i]) return false;
-       }
-       return true;
-    }
-
-    /**
      * @dev See {IERC721BurnRedeemSet-redeemERC721}
      */
     function redeemERC721(address[] calldata contracts, uint256[] calldata tokenIds) external virtual override nonReentrant {
         require(contracts.length == tokenIds.length, "BurnRedeem: Invalid parameters");
-        require(contracts.length == _redemptionRate, "BurnRedeem: Incorrect number of NFTs being redeemed");
         require(_validateCompleteSet(contracts, tokenIds), "BurnRedeem: Incomplete set");
 
         // Attempt Burn
