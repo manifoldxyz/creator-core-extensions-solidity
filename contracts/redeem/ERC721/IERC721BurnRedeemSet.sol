@@ -7,9 +7,15 @@ pragma solidity ^0.8.0;
 import "./IERC721RedeemBase.sol";
 
 /**
- * @dev Burn NFT's to receive another lazy minted NFT
+ * @dev Burn NFT's to receive another lazy minted NFT (Set)
  */
-interface IERC721BurnRedeem is IERC721RedeemBase {
+interface IERC721BurnRedeemSet is IERC721RedeemBase {
+
+    struct RedemptionItem {
+        address tokenAddress;
+        uint256 minTokenId;
+        uint256 maxTokenId;
+    }
 
     /**
      * @dev Enable recovery of a given token. Can only be called by contract owner/admin.
@@ -29,5 +35,10 @@ interface IERC721BurnRedeem is IERC721RedeemBase {
      * If the it cannot redeem the NFT, it will clear approvals
      */
     function redeemERC721(address[] calldata contracts, uint256[] calldata tokenIds) external;
+
+    /**
+     * @dev Get the attributes of the complete set needed for redemption
+     */
+    function getRedemptionSet() external view returns(RedemptionItem[] memory);
 
 }

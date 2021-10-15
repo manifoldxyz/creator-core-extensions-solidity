@@ -23,11 +23,11 @@ abstract contract RedeemBase is AdminControl, IRedeemBase {
      using EnumerableSet for EnumerableSet.UintSet;
 
      // approved contract tokens
-    mapping(address => bool) private _approvedContracts;
+    mapping(address => bool) internal _approvedContracts;
 
     // approved specific tokens
-    mapping(address => EnumerableSet.UintSet) private _approvedTokens;
-    mapping(address => range[]) private _approvedTokenRange;
+    mapping(address => EnumerableSet.UintSet) internal _approvedTokens;
+    mapping(address => range[]) internal _approvedTokenRange;
      
     /**
      * @dev See {IERC165-supportsInterface}.
@@ -69,21 +69,10 @@ abstract contract RedeemBase is AdminControl, IRedeemBase {
      */
     function updateApprovedTokenRanges(address contract_, uint256[] memory minTokenIds, uint256[] memory maxTokenIds) public virtual override adminRequired {
         require(minTokenIds.length == maxTokenIds.length, "Redeem: Invalid input parameters");
-        
-        uint existingRangesLength = _approvedTokenRange[contract_].length;
-        for (uint i=0; i < existingRangesLength; i++) {
-            _approvedTokenRange[contract_][i].min = 0;
-            _approvedTokenRange[contract_][i].max = 0;
-        }
-        
+        delete _approvedTokenRange[contract_];
         for (uint i=0; i < minTokenIds.length; i++) {
             require(minTokenIds[i] < maxTokenIds[i], "Redeem: min must be less than max");
-            if (i < existingRangesLength) {
-                _approvedTokenRange[contract_][i].min = minTokenIds[i];
-                _approvedTokenRange[contract_][i].max = maxTokenIds[i];
-            } else {
-                _approvedTokenRange[contract_].push(range(minTokenIds[i], maxTokenIds[i]));
-            }
+            _approvedTokenRange[contract_].push(range(minTokenIds[i], maxTokenIds[i]));
         }
         emit UpdateApprovedTokenRanges(contract_, minTokenIds, maxTokenIds);
     }

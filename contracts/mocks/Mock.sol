@@ -18,6 +18,7 @@ contract MockTestERC721Creator is ERC721Creator {
 
 contract MockTestERC721 is MockERC721 {
      constructor (string memory _name, string memory _symbol) MockERC721(_name, _symbol) {}
+     
 }
 
 contract MockTestERC1155 is MockERC1155 {
