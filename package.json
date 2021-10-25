@@ -1,14 +1,13 @@
 {
   "name": "@manifoldxyz/creator-core-extensions-solidity",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
   },
   "dependencies": {
-    "@manifoldxyz/creator-core-solidity": "^1.0.3",
-    "@openzeppelin/contracts": "^4.0.0"
+    "@manifoldxyz/creator-core-solidity": "^1.0.3"
   },
   "devDependencies": {
     "truffle-assertions": "^0.9.2"
