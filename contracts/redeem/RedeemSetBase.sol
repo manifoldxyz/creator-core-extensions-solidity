@@ -44,7 +44,7 @@ abstract contract RedeemSetBase is AdminControl, IRedeemSetBase {
     /**
      * @dev Check to see if we have a complete redemption set
      */
-    function _validateCompleteSet(address[] memory contracts, uint256[] memory tokenIds) internal view returns (bool) {
+    function _validateCompleteSet(address[] memory contracts, uint256[] memory tokenIds) internal view virtual returns (bool) {
        require(_redemptionSet.length == tokenIds.length, "Incorrect number of NFTs being redeemed");
        // Check complete set
        bool[] memory completions = new bool[](_redemptionSet.length);
