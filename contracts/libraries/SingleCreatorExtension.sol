@@ -22,7 +22,7 @@ abstract contract ERC721SingleCreatorExtension is SingleCreatorBase {
     constructor(address creator) {
         require(ERC165Checker.supportsInterface(creator, type(IERC721CreatorCore).interfaceId) ||
                 ERC165Checker.supportsInterface(creator, LegacyInterfaces.IERC721CreatorCore_v1), 
-                "Redeem: Minting reward contract must implement IERC721CreatorCore");
+                "Creator contract must implement IERC721CreatorCore");
         _creator = creator;
     }
 
@@ -40,7 +40,7 @@ abstract contract ERC1155SingleCreatorExtension is SingleCreatorBase {
     constructor(address creator) {
         require(ERC165Checker.supportsInterface(creator, type(IERC1155CreatorCore).interfaceId) ||
                 ERC165Checker.supportsInterface(creator, type(IERC1155CreatorCore).interfaceId ^ type(ICreatorCore).interfaceId), 
-                "Redeem: Minting reward contract must implement IERC1155CreatorCore");
+                "Creator contract must implement IERC1155CreatorCore");
         _creator = creator;
     }
 
