@@ -5,7 +5,7 @@
 **A library of base implementations and examples Apps for use with [Manifold Creator Core](https://github.com/manifoldxyz/creator-core-solidity).**
 
 This repo contains refrence implmentations and examples for apps that you can add to any Manifold Creator Core contract.  Examples include:
- * ERC721 Airdrop
+ * ERC721 Airdrop (with specified prefix)
  * ERC721 Editions
  * ERC721 Enumerable subcollection
  * Dynamic NFTs
@@ -34,8 +34,21 @@ See the [Manifold Creator Core repo](https://github.com/manifoldxyz/creator-core
 ### Customized Lightweight Proxies
 You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
 
+#### ERC721 Airdrops
+contracts/airdrops/ERC721AirdropTemplate.sol and referring to the following implementation addresses:
+
+**Rinkeby**
+```
+0x4574B2008AC2E03d7575E7D214A2fB2fC7cE8973
+```
+
+**Mainnet**
+```
+0x...
+```
+
 #### ERC721 Editions
-contracts/edition/ERC721EditionTemplate.sol and referring to the following Implementation addresses:
+contracts/edition/ERC721EditionTemplate.sol and referring to the following implementation addresses:
 
 **Rinkeby**
 ```
@@ -48,7 +61,7 @@ contracts/edition/ERC721EditionTemplate.sol and referring to the following Imple
 ```
 
 #### Nifty Gateway Open Editions
-contracts/edition/ERC721EditionTemplate.sol and referring to the following Implementation addresses:
+contracts/edition/ERC721EditionTemplate.sol and referring to the following implementation addresses:
 
 **Rinkeby**
 ```

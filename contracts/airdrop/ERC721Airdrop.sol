@@ -4,49 +4,30 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
-import "../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
+import "./ERC721AirdropBase.sol";
+import "./IERC721Airdrop.sol";
 
 /**
  * Airdrop ERC721 tokens to a set of addresses
  */
-contract ERC721Airdrop is ERC721SingleCreatorExtension, AdminControl {
+contract ERC721Airdrop is ERC721AirdropBase, AdminControl, IERC721Airdrop {
 
-    constructor(address creator) ERC721SingleCreatorExtension(creator) {}
-
-    function airdrop(address[] calldata to) external adminRequired {
-        for (uint i = 0; i < to.length; i++) {
-            IERC721CreatorCore(_creator).mintExtension(to[i]);
-        }
+    constructor(address creator, string memory prefix) {
+        _initialize(creator, prefix);
     }
 
-    function airdrop(address[] calldata to, string[] calldata uris) external adminRequired {
-        require(to.length == uris.length, "Invalid input");
-        for (uint i = 0; i < to.length; i++) {
-            IERC721CreatorCore(_creator).mintExtension(to[i], uris[i]);
-        }
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, ERC721AirdropBase) returns (bool) {
+        return interfaceId == type(IERC721Airdrop).interfaceId || AdminControl.supportsInterface(interfaceId) || ERC721AirdropBase.supportsInterface(interfaceId);
     }
 
-    function setBaseTokenURI(string calldata uri) external adminRequired {
-        IERC721CreatorCore(_creator).setBaseTokenURIExtension(uri);
+    function airdrop(address[] calldata recipients) external override adminRequired {
+        _airdrop(recipients);
     }
 
-    function setBaseTokenURI(string calldata uri, bool identical) external adminRequired {
-        IERC721CreatorCore(_creator).setBaseTokenURIExtension(uri, identical);
-    }
-
-    function setTokenURI(uint256 tokenId, string calldata uri) external adminRequired {
-        IERC721CreatorCore(_creator).setTokenURIExtension(tokenId, uri);
-    }
-
-    function setTokenURI(uint256[] calldata tokenIds, string[] calldata uris) external adminRequired {
-        IERC721CreatorCore(_creator).setTokenURIExtension(tokenIds, uris);
-    }
-
-    function setTokenURIPrefix(string calldata prefix) external adminRequired {
-        IERC721CreatorCore(_creator).setTokenURIPrefixExtension(prefix);
+    function setTokenURIPrefix(string calldata prefix) external override adminRequired {
+        _setTokenURIPrefix(prefix);
     }
     
 }
