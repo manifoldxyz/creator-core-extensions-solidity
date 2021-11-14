@@ -34,9 +34,9 @@ contract TimeToken is DynamicArweaveHash {
         _description = description;
     }
 
-    function mint(address to) public virtual override onlyOwner returns(uint256) {
+    function mint(address to) public virtual onlyOwner returns(uint256) {
         require(_tokenId == 0, "Already minted");
-        _tokenId = super.mint(to);
+        _tokenId = _mint(to);
         return _tokenId;
     }
 

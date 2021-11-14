@@ -7,8 +7,11 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
-import "../libraries/SingleCreatorExtension.sol";
+import "../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
 
+/**
+ * Airdrop ERC721 tokens to a set of addresses
+ */
 contract ERC721Airdrop is ERC721SingleCreatorExtension, AdminControl {
 
     constructor(address creator) ERC721SingleCreatorExtension(creator) {}

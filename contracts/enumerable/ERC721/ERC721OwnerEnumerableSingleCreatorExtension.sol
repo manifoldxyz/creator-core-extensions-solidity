@@ -10,7 +10,8 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/ERC721CreatorExtensionApproveTransfer.sol";
 
-import "../../libraries/SingleCreatorExtension.sol";
+import "../../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
+import "../../libraries/single-creator/ERC721/ERC721SingleCreatorExtensionBase.sol";
 
 /**
  * Provide token enumeration functionality (Base Class. Use if you are using multiple inheritance where other contracts
@@ -18,7 +19,7 @@ import "../../libraries/SingleCreatorExtension.sol";
  *
  * IMPORTANT: You must call _activate in order for enumeration to work
  */
-abstract contract ERC721OwnerEnumerableSingleCreatorBase is SingleCreatorBase, ERC721CreatorExtensionApproveTransfer {
+abstract contract ERC721OwnerEnumerableSingleCreatorBase is ERC721SingleCreatorExtensionBase, ERC721CreatorExtensionApproveTransfer {
 
     mapping(address => uint256) private _ownerBalance;
     mapping(address => mapping(uint256 => uint256)) private _tokensByOwner;

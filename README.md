@@ -6,6 +6,7 @@
 
 This repo contains refrence implmentations and examples for apps that you can add to any Manifold Creator Core contract.  Examples include:
  * ERC721 Airdrop
+ * ERC721 Editions
  * ERC721 Enumerable subcollection
  * Dynamic NFTs
  * Redemption mechanics (claim or burn and redeem)
@@ -29,6 +30,35 @@ registerExtension(address extension, string memory baseURI)
 baseURI can be blank if you are overriding the tokenURI functionality.
 
 See the [Manifold Creator Core repo](https://github.com/manifoldxyz/creator-core-solidity) for further info about Extension Applications.
+
+### Customized Lightweight Proxies
+You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
+
+#### ERC721 Editions
+contracts/edition/ERC721EditionTemplate.sol and referring to the following Implementation addresses:
+
+**Rinkeby**
+```
+0xDDD2a110177B2558fe95ecF35d1511Be8d80cc76
+```
+
+**Mainnet**
+```
+0x...
+```
+
+#### Nifty Gateway Open Editions
+contracts/edition/ERC721EditionTemplate.sol and referring to the following Implementation addresses:
+
+**Rinkeby**
+```
+0x9C301bD2DAAF5C84715bF53C9Fff08D86Ed9a6Ec
+```
+
+**Mainnet**
+```
+0x...
+```
 
 ## Running the package unit tests
 

@@ -14,9 +14,9 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
 
 import "../libraries/ABDKMath64x64.sol";
-import "../libraries/SingleCreatorExtension.sol";
+import "../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
 
-contract DynamicSVG is ERC721SingleCreatorExtension, CreatorExtension, Ownable, ICreatorExtensionTokenURI, IERC721CreatorExtensionApproveTransfer {
+contract DynamicSVGExample is ERC721SingleCreatorExtension, CreatorExtension, Ownable, ICreatorExtensionTokenURI, IERC721CreatorExtensionApproveTransfer {
 
     using Strings for uint256;
     using ABDKMath64x64 for int128;

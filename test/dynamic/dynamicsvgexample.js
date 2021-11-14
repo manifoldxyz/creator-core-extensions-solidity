@@ -1,9 +1,9 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockTestERC721Creator');
-const DynamicSVG = artifacts.require("DynamicSVG");
+const DynamicSVGExample = artifacts.require("DynamicSVGExample");
 
-contract('DynamicSVG', function ([creator, ...accounts]) {
+contract('DynamicSVGExample', function ([creator, ...accounts]) {
     const name = 'Token';
     const symbol = 'NFT';
     const minter = creator;
@@ -14,7 +14,7 @@ contract('DynamicSVG', function ([creator, ...accounts]) {
            anyone,
            ] = accounts;
 
-    describe('DynamicSVG', function() {
+    describe('DynamicSVGExample', function() {
         var creator;
         var extension;
         var mock721;
@@ -26,7 +26,7 @@ contract('DynamicSVG', function ([creator, ...accounts]) {
             console.log('deploying creator');
             creator = await ERC721Creator.new(name, symbol, {from:owner});
             console.log('creator deployed');
-            extension = await DynamicSVG.new(creator.address, {from:owner});
+            extension = await DynamicSVGExample.new(creator.address, {from:owner});
             await creator.registerExtension(extension.address, "override", {from:owner})
         });
 

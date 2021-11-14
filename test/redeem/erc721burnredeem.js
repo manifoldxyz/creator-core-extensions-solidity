@@ -180,9 +180,9 @@ contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
 
             await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "BurnRedeem: Invalid NFT"); 
             await redeem.updateApprovedTokens(mock1155.address, [tokenId1,tokenId2], [true,true], {from:owner});
-            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "BurnRedeem: Incorrect number of NFTs being redeemed"); 
+            await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 1], "0x0", {from:another}), "BurnRedeem: Incorrect number of NFTs being redeemed");
 
-            mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 2], "0x0", {from:another});
+            await mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId2], [1, 2], "0x0", {from:another});
             assert.equal(await creator.balanceOf(another), 2);
             assert.equal(await mock1155.balanceOf(another, tokenId1), 5);
             assert.equal(await mock1155.balanceOf(another, tokenId2), 4);

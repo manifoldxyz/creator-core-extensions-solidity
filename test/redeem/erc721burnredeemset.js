@@ -122,13 +122,13 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
             await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1], [3], "0x0", {from:another}), "BurnRedeem: Can only use one of each token"); 
             await truffleAssert.reverts(mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1,tokenId2], [1,1], "0x0", {from:another}), "BurnRedeem: Incomplete set");
 
-            mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId3], [1, 1], "0x0", {from:another});
+            await mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId3], [1, 1], "0x0", {from:another});
             assert.equal(await creator.balanceOf(another), 1);
             assert.equal(await mock1155.balanceOf(another, tokenId1), 8);
             assert.equal(await mock1155.balanceOf(another, tokenId2), 6);
             assert.equal(await mock1155.balanceOf(another, tokenId3), 5);
 
-            mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId3], [1, 1], "0x0", {from:another});
+            await mock1155.safeBatchTransferFrom(another, redeem.address, [tokenId1, tokenId3], [1, 1], "0x0", {from:another});
             assert.equal(await creator.balanceOf(another), 2);
             assert.equal(await mock1155.balanceOf(another, tokenId1), 7);
             assert.equal(await mock1155.balanceOf(another, tokenId2), 6);

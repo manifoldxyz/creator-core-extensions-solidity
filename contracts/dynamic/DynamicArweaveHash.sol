@@ -11,8 +11,11 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
-import "../libraries/SingleCreatorExtension.sol";
+import "../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
 
+/**
+ * Extension which allows for the creation of NFTs with dynamically changing image/animation metadata 
+ */
 abstract contract DynamicArweaveHash is ERC721SingleCreatorExtension, CreatorExtension, Ownable, ICreatorExtensionTokenURI {
 
     using Strings for uint256;
@@ -25,9 +28,6 @@ abstract contract DynamicArweaveHash is ERC721SingleCreatorExtension, CreatorExt
         || super.supportsInterface(interfaceId);
     }
 
-    function mint(address to) public virtual onlyOwner returns(uint256) {
-        return IERC721CreatorCore(_creator).mintExtension(to);
-    }
 
     function tokenURI(address, uint256 tokenId) external view virtual override returns (string memory) {
         string memory uri = string(abi.encodePacked('data:application/json;utf8,{"name":"', _getName(), '","description":"', _getDescription()));
@@ -39,6 +39,10 @@ abstract contract DynamicArweaveHash is ERC721SingleCreatorExtension, CreatorExt
         }
         uri = string(abi.encodePacked(uri, '"}'));
         return uri;
+    }
+
+    function _mint(address to) internal returns(uint256) {
+        return IERC721CreatorCore(_creator).mintExtension(to);
     }
 
     function _getName() internal view virtual returns(string memory);

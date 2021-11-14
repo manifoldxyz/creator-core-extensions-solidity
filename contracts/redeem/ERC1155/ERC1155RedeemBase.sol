@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
-import "../../libraries/SingleCreatorExtension.sol";
+import "../../libraries/single-creator/ERC1155/ERC1155SingleCreatorExtension.sol";
 
 import "../RedeemBase.sol";
 import "./IERC1155RedeemBase.sol";
