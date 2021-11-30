@@ -13,6 +13,7 @@ interface IERC721LazyMintWhitelist {
      * @dev premints gifted nfts
      */
     function premint(address[] memory to) external;
+    
 
     /**
      * @dev external mint function 
