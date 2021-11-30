@@ -13,9 +13,9 @@
     "truffle-assertions": "^0.9.2"
   },
   "scripts": {
-    "test": "npx truffle test",
+    "test": "npx truffle test test/lazywhitelist/lazywhitelist.js",
     "compile": "npx truffle compile --all",
-    "startLocal": "npx ganache-cli --deterministic --blockTime 10",
+    "startLocal": "npx ganache-cli --deterministic --blockTime 10 -l 800000000",
     "deployLocal": "npx truffle migrate --network development"
   },
   "repository": {
