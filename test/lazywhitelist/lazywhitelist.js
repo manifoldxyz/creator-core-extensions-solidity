@@ -33,36 +33,40 @@ contract('LazyWhitelist', function ([creator, ...accounts]) {
 
     it('access test', async function () {
       await truffleAssert.reverts(lazywhitelist.premint([anyone], {from:anyone}), "AdminControl: Must be owner or admin");
-
-      // await truffleAssert.reverts(airdrop.airdrop([anyone], {from:anyone}), "AdminControl: Must be owner or admin");
-      // await truffleAssert.reverts(airdrop.setTokenURIPrefix("", {from:anyone}), "AdminControl: Must be owner or admin");
-      // await truffleAssert.reverts(airdropTemplate.airdrop([anyone], {from:anyone}), "AdminControl: Must be owner or admin");
-      // await truffleAssert.reverts(airdropTemplate.setTokenURIPrefix("", {from:anyone}), "AdminControl: Must be owner or admin");
+      await truffleAssert.reverts(lazywhitelist.setTokenURIPrefix("", {from:anyone}), "AdminControl: Must be owner or admin");
+      await truffleAssert.reverts(lazywhitelist.setAllowList("0x000000000000000000000000000000000000000000000000000000000000abcd", {from:anyone}), "AdminControl: Must be owner or admin");
+      await truffleAssert.reverts(lazywhitelist.withdraw(anyone, 0, {from:anyone}), "AdminControl: Must be owner or admin");
     });
 
-    // it('batch mint test', async function () {
-    //   // Mint X things
-    //   const x = 100;
-    //   var receivers = [];
-    //   for (let i = 0; i < x; i++) {
-    //     receivers.push(anyone);
-    //   }
-        
-      
-    //   const creatorBatchTx = await creator.methods['mintBaseBatch(address,uint16)'](anyone, x, {from:owner});
-    //   const extensionTx = await airdrop.airdrop(receivers, {from:owner});
-    //   console.log(await creator.tokenURI(x+1));
-    //   var baseGas = 0;
-    //   for (let i = 0; i < x; i++) {
-    //     const baseTx = await creator.methods['mintBase(address,string)'](anyone, "http://testdomain.com/testdata", {from:owner});
-    //     baseGas += baseTx.receipt.gasUsed;
-    //   }
+    /**
+     * Should be able to premint their tokens. In the original case
+     * this was built for they wanted to premint 25 to self, 25 to another address
+     * and then 20 to self again
+     */
+    it('premint', async function () {
 
-    //   // 952 extra gas used per NFT for internal vs external mint.
-    //   console.log(x+" NFT's via simulated native batch - Gas Cost: "+(creatorBatchTx.receipt.gasUsed+952*x));
-    //   console.log(x+" NFT's via a batch extension - Gas Cost: "+extensionTx.receipt.gasUsed);
-    //   console.log(x+" NFT's via 1-by-1 base mint - Gas Cost: "+baseGas);
-    // });
+      // Mint 25 things
+      var receivers = [];
+      for (let i = 0; i < 25; i++) {
+        receivers.push(another);
+      }
+      
+      await lazywhitelist.premint(receivers, {from:owner}); 
+      
+      // Mint 25 more
+      var otherReceivers = [];
+      for (let i = 0; i < 25; i++) {
+        otherReceivers.push(another);
+      }
+      
+      await lazywhitelist.premint(otherReceivers, {from:owner}); 
+
+      let finalReceivers = []
+      for (let i = 0; i < 20; i++) {
+        finalReceivers.push(another);
+      }
+      await lazywhitelist.premint(finalReceivers, {from:owner}); 
+    });
 
     // it('template mint test', async function () {
     //   // Mint X things
