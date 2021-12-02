@@ -102,6 +102,9 @@ contract('LazyWhitelist', function ([creator, ...accounts]) {
 
       // Try to mint with too much money
       await truffleAssert.reverts(lazywhitelist.mint(1, proof, {from:accounts[0], value: 200000000000000000}), "Not enough ETH"); 
+    
+      // Withdraw some of the money
+      await lazywhitelist.withdraw(anyone, '100000000000000000', {from:owner});    
     });
 
   });
