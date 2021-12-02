@@ -7,7 +7,7 @@ const { keccak256, bufferToHex } = require('ethereumjs-util');
 class MerkleTree {
   constructor (elements) {
     // Filter empty strings and hash elements
-    this.elements = elements.filter(el => el).map(el => keccak256(new Buffer(el, 'hex')));
+    this.elements = elements.filter(el => el).map(el => keccak256(el));
 
     // Sort elements
     this.elements.sort(Buffer.compare);
@@ -101,7 +101,7 @@ class MerkleTree {
 
     // Convert element to 32 byte hash if it is not one already
     if (el.length !== 32 || !Buffer.isBuffer(el)) {
-      hash = keccak256(new Buffer(el, 'hex'));
+      hash = keccak256(el);
     } else {
       hash = el;
     }
