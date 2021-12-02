@@ -4,6 +4,7 @@ const ERC721Creator = artifacts.require('MockTestERC721Creator');
 const LazyWhitelist = artifacts.require("ERC721LazyMintWhitelist");
 const LazyWhitelistTemplate = artifacts.require("ERC721LazyMintWhitelistTemplate");
 const LazyWhitelistImplementation = artifacts.require("ERC721LazyMintWhitelistImplementation");
+const { MerkleTree } = require('../helpers/merkleTree.js');
 
 contract('LazyWhitelist', function ([creator, ...accounts]) {
   const name = 'Token';
@@ -31,56 +32,56 @@ contract('LazyWhitelist', function ([creator, ...accounts]) {
       lazywhitelistTemplate = await LazyWhitelist.at(lazywhitelistTemplate.address);
     });
 
-    it('access test', async function () {
-      await truffleAssert.reverts(lazywhitelist.premint([anyone], {from:anyone}), "AdminControl: Must be owner or admin");
-      await truffleAssert.reverts(lazywhitelist.setTokenURIPrefix("", {from:anyone}), "AdminControl: Must be owner or admin");
-      await truffleAssert.reverts(lazywhitelist.setAllowList("0x000000000000000000000000000000000000000000000000000000000000abcd", {from:anyone}), "AdminControl: Must be owner or admin");
-      await truffleAssert.reverts(lazywhitelist.withdraw(anyone, 0, {from:anyone}), "AdminControl: Must be owner or admin");
-    });
+    // it('access test', async function () {
+    //   await truffleAssert.reverts(lazywhitelist.premint([anyone], {from:anyone}), "AdminControl: Must be owner or admin");
+    //   await truffleAssert.reverts(lazywhitelist.setTokenURIPrefix("", {from:anyone}), "AdminControl: Must be owner or admin");
+    //   await truffleAssert.reverts(lazywhitelist.setAllowList("0x000000000000000000000000000000000000000000000000000000000000abcd", {from:anyone}), "AdminControl: Must be owner or admin");
+    //   await truffleAssert.reverts(lazywhitelist.withdraw(anyone, 0, {from:anyone}), "AdminControl: Must be owner or admin");
+    // });
 
-    /**
-     * Should be able to premint their tokens. In the original case
-     * this was built for they wanted to premint 25 to self, 25 to another address
-     * and then 20 to self again
-     */
-    it('premint', async function () {
+    // /**
+    //  * Should be able to premint their tokens. In the original case
+    //  * this was built for they wanted to premint 25 to self, 25 to another address
+    //  * and then 20 to self again
+    //  */
+    // it('premint', async function () {
 
-      // Mint 25 things
-      var receivers = [];
-      for (let i = 0; i < 25; i++) {
-        receivers.push(another);
-      }
-      
-      await lazywhitelist.premint(receivers, {from:owner}); 
-      
-      // Mint 25 more
-      var otherReceivers = [];
-      for (let i = 0; i < 25; i++) {
-        otherReceivers.push(another);
-      }
-      
-      await lazywhitelist.premint(otherReceivers, {from:owner}); 
-
-      let finalReceivers = []
-      for (let i = 0; i < 20; i++) {
-        finalReceivers.push(another);
-      }
-      await lazywhitelist.premint(finalReceivers, {from:owner}); 
-    });
-
-    // it('template mint test', async function () {
-    //   // Mint X things
-    //   const x = 5;
+    //   // Mint 25 things
     //   var receivers = [];
-    //   for (let i = 0; i < x; i++) {
-    //     receivers.push(anyone);
+    //   for (let i = 0; i < 25; i++) {
+    //     receivers.push(another);
     //   }
       
-    //   await creator.methods['mintBaseBatch(address,uint16)'](anyone, x, {from:owner});
-    //   await airdropTemplate.airdrop(receivers, {from:owner});
-    //   console.log(await creator.tokenURI(x+1));
-  
+    //   await lazywhitelist.premint(receivers, {from:owner}); 
+      
+    //   // Mint 25 more
+    //   var otherReceivers = [];
+    //   for (let i = 0; i < 25; i++) {
+    //     otherReceivers.push(another);
+    //   }
+      
+    //   await lazywhitelist.premint(otherReceivers, {from:owner}); 
+
+    //   let finalReceivers = []
+    //   for (let i = 0; i < 20; i++) {
+    //     finalReceivers.push(another);
+    //   }
+    //   await lazywhitelist.premint(finalReceivers, {from:owner}); 
     // });
+
+    it('mint', async function () {
+      
+      const elements = [accounts[0], accounts[1], accounts[2], accounts[3]];
+      const merkleTree = new MerkleTree(elements);
+
+      const root = merkleTree.getRoot();
+
+      const proof = merkleTree.getProof(elements[0]);
+
+      await lazywhitelist.setAllowList(root, {from:owner});
+
+      await lazywhitelist.mint(1, proof, {from:accounts[0], value: 100000000000000000}); 
+    });
 
   });
 
