@@ -70,6 +70,20 @@ contract('LazyWhitelist', function ([creator, ...accounts]) {
       await lazywhitelist.premint(finalReceivers, {from:owner}); 
     });
 
+    it('setTokenURIPrefix', async function () {
+      await lazywhitelist.setTokenURIPrefix("https://arweave.net/", {from:owner}); 
+
+      // Cannot get prefix for token that doesn't exist yet
+      await truffleAssert.reverts(lazywhitelist.tokenURI(creator.address, 1, {from:anyone}), "Invalid token");
+
+      // Mint 1
+      await lazywhitelist.premint([another], {from:owner}); 
+
+      const tokenuri = await lazywhitelist.tokenURI(creator.address, 1, {from:anyone})
+      
+      assert.equal(tokenuri, "https://arweave.net/1");
+    });
+
     it('mint', async function () {
       
       const elements = [accounts[0], accounts[1], accounts[2], accounts[3]];
