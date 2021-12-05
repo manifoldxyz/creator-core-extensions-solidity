@@ -1,13 +1,17 @@
 {
   "name": "@manifoldxyz/creator-core-extensions-solidity",
-  "version": "1.0.17",
+  "version": "1.0.19",
   "description": "",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
   },
+  "files": [
+    "contracts/**/*.sol",
+    "build/contracts/*.json"
+  ],
   "dependencies": {
-    "@manifoldxyz/creator-core-solidity": "^1.0.3"
+    "@manifoldxyz/creator-core-solidity": "^1.0.4"
   },
   "devDependencies": {
     "truffle-assertions": "^0.9.2"
