@@ -1,6 +1,6 @@
 {
   "name": "@manifoldxyz/creator-core-extensions-solidity",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "",
   "main": "truffle-config.js",
   "directories": {
