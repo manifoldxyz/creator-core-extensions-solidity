@@ -18,7 +18,7 @@ interface IERC721LazyMintWhitelist {
     /**
      * @dev external mint function 
      */
-    function mint(uint numberOfTokens, bytes32[] memory merkleProof) external payable;
+    function mint(bytes32[] memory merkleProof) external payable;
 
     /**
      * @dev sets the allowList

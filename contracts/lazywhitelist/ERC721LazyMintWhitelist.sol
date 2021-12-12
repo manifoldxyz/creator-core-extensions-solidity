@@ -26,8 +26,8 @@ contract ERC721LazyMintWhitelist is ERC721LazyMintWhitelistBase, AdminControl, I
         _premint(to);
     }
 
-    function mint(uint numberOfTokens, bytes32[] memory merkleProof) external override payable {
-        _mint(numberOfTokens, merkleProof);
+    function mint(bytes32[] memory merkleProof) external override payable {
+        _mint(merkleProof);
     }
 
     function setAllowList(bytes32 _merkleRoot) external override adminRequired {

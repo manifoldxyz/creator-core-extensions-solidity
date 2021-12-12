@@ -23,9 +23,10 @@ abstract contract ERC721LazyMintWhitelistBase is ERC721SingleCreatorExtensionBas
     using ABDKMath64x64 for uint;
 
     string private _tokenPrefix;
-    uint256 private _tokensMinted;
+    uint256 public _tokensMinted;
     mapping(uint256 => uint256) private _tokenEdition;
     uint private MINT_PRICE = 0.1 ether; // to be changed
+    uint private MAX_MINTS = 50; // to be changed
     bytes32 merkleRoot;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
@@ -52,22 +53,22 @@ abstract contract ERC721LazyMintWhitelistBase is ERC721SingleCreatorExtensionBas
      */
     function _premint(address[] memory to) internal {
         for (uint i = 0; i < to.length; i++) {
-            _tokenEdition[IERC721CreatorCore(_creator).mintExtension(msg.sender)] = _tokensMinted + i + 1;
+            _tokenEdition[IERC721CreatorCore(_creator).mintExtension(to[i])] = _tokensMinted + i + 1;
         }
         _tokensMinted += to.length;
+        MAX_MINTS += to.length; // Extend max mints when preminting
     }
     
     /**
      * @dev Mint token if you are on the whitelist
      */
-    function _mint(uint numberOfTokens, bytes32[] memory merkleProof) internal {
-        require(MINT_PRICE * numberOfTokens == msg.value, "Not enough ETH");
+    function _mint(bytes32[] memory merkleProof) internal {
+        require(_tokensMinted < MAX_MINTS, "Not enough mints left");
+        require(MINT_PRICE == msg.value, "Not enough ETH");
         require(onAllowList(msg.sender, merkleProof), "Not on allowlist");
 
-        for (uint i = 0; i < numberOfTokens; i++) {
-            _tokenEdition[IERC721CreatorCore(_creator).mintExtension(msg.sender)] = _tokensMinted + i + 1;
-        }
-        _tokensMinted += numberOfTokens;
+        _tokenEdition[IERC721CreatorCore(_creator).mintExtension(msg.sender)] = _tokensMinted + 1;
+        _tokensMinted += 1;
     }
 
     /**
