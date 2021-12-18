@@ -1,6 +1,6 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
-const ERC721Creator = artifacts.require('MockTestERC721Creator');
+const ERC721Creator = artifacts.require('MockERC721Creator');
 const ERC721EditionTemplate = artifacts.require("ERC721EditionTemplate");
 const NiftyGatewayERC721EditionImplementation = artifacts.require("NiftyGatewayERC721EditionImplementation");
 
