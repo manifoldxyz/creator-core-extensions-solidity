@@ -42,22 +42,24 @@ contract('Airdrop', function ([creator, ...accounts]) {
       // Mint X things
       const x = 100;
       var receivers = [];
+      var uris = [];
       for (let i = 0; i < x; i++) {
-        receivers.push(anyone);
-      }
+        receivers.push(anyone); 
+        uris.push('https://arweave.net/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/'+i);
+     }
         
       
-      const creatorBatchTx = await creator.methods['mintBaseBatch(address,uint16)'](anyone, x, {from:owner});
+      const creatorBatchTx = await creator.methods['mintBaseBatch(address,string[])'](anyone, uris, {from:owner});
       const extensionTx = await airdrop.airdrop(receivers, {from:owner});
       console.log(await creator.tokenURI(x+1));
       var baseGas = 0;
       for (let i = 0; i < x; i++) {
-        const baseTx = await creator.methods['mintBase(address,string)'](anyone, "http://testdomain.com/testdata", {from:owner});
+        const baseTx = await creator.methods['mintBase(address,string)'](anyone, "https://arweave.net/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/0", {from:owner});
         baseGas += baseTx.receipt.gasUsed;
       }
 
       // 952 extra gas used per NFT for internal vs external mint.
-      console.log(x+" NFT's via simulated native batch - Gas Cost: "+(creatorBatchTx.receipt.gasUsed+952*x));
+      console.log(x+" NFT's via simulated native batch - Gas Cost: "+(creatorBatchTx.receipt.gasUsed));
       console.log(x+" NFT's via a batch extension - Gas Cost: "+extensionTx.receipt.gasUsed);
       console.log(x+" NFT's via 1-by-1 base mint - Gas Cost: "+baseGas);
     });

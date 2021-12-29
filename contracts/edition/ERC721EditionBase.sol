@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 /// @author: manifold.xyz
 
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 import "../libraries/single-creator/ERC721/ERC721SingleCreatorExtensionBase.sol";
@@ -15,7 +16,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 /**
  * ERC721 Edition Base Implementation
  */
-abstract contract ERC721EditionBase is ERC721SingleCreatorExtensionBase, ICreatorExtensionTokenURI, ReentrancyGuard {
+abstract contract ERC721EditionBase is ERC721SingleCreatorExtensionBase, CreatorExtension, ICreatorExtensionTokenURI, ReentrancyGuard {
     using Strings for uint256;
 
     string constant internal _EDITION_TAG = '<EDITION>';
@@ -28,8 +29,8 @@ abstract contract ERC721EditionBase is ERC721SingleCreatorExtensionBase, ICreato
 
     mapping(uint256 => uint256) private _tokenEdition;
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
-        return interfaceId == type(ICreatorExtensionTokenURI).interfaceId;
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, CreatorExtension) returns (bool) {
+        return interfaceId == type(ICreatorExtensionTokenURI).interfaceId || CreatorExtension.supportsInterface(interfaceId);
     }
 
     /**
