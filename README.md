@@ -39,7 +39,7 @@ contracts/airdrops/ERC721AirdropTemplate.sol and referring to the following impl
 
 **Rinkeby**
 ```
-0x4574B2008AC2E03d7575E7D214A2fB2fC7cE8973
+0x016F322C990b299cE507EdDDB00487CD21c8f933
 ```
 
 **Mainnet**
@@ -52,7 +52,7 @@ contracts/edition/ERC721EditionTemplate.sol and referring to the following imple
 
 **Rinkeby**
 ```
-0xDDD2a110177B2558fe95ecF35d1511Be8d80cc76
+0x08727bBdcd8D1490935fdd02823E9fEffAd4277A
 ```
 
 **Mainnet**
@@ -65,7 +65,7 @@ contracts/edition/ERC721EditionTemplate.sol and referring to the following imple
 
 **Rinkeby**
 ```
-0x9C301bD2DAAF5C84715bF53C9Fff08D86Ed9a6Ec
+0x711B71E6AfAEFc5dFA33Fa475AB0158c3F819a47
 ```
 
 **Mainnet**
