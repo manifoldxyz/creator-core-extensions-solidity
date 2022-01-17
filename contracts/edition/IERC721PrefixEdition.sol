@@ -4,17 +4,16 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
+import "./IERC721Edition.sol";
+
 /**
- * ERC721 Airdrop interface
+ * ERC721 Prefix Edition interface
  */
-interface IERC721Airdrop {
-    /**
-     * @dev Airdrop nfts to recipients
-     */
-    function airdrop(address[] calldata recipients) external;
+interface IERC721PrefixEdition is IERC721Edition {
 
     /**
      * @dev Set the token uri prefix
      */
     function setTokenURIPrefix(string calldata prefix) external;
+
 }

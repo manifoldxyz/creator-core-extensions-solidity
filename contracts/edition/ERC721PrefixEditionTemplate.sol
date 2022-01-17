@@ -9,16 +9,16 @@ import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/StorageSlot.sol";
 
-contract ERC721AirdropTemplate is Proxy {
+contract ERC721PrefixEditionTemplate is Proxy {
     
-    constructor(address airdropImplementation, address creator, string memory prefix) {
+    constructor(address editionImplementation, address creator, uint256 maxSupply, string memory prefix) {
         assert(_IMPLEMENTATION_SLOT == bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1));
 
-        StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = airdropImplementation;
+        StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = editionImplementation;
 
         Address.functionDelegateCall(
-            airdropImplementation,
-            abi.encodeWithSignature("initialize(address,string)", creator, prefix)
+            editionImplementation,
+            abi.encodeWithSignature("initialize(address,uint256,string)", creator, maxSupply, prefix)
         );
     }
         

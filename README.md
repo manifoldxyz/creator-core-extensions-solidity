@@ -5,7 +5,6 @@
 **A library of base implementations and examples Apps for use with [Manifold Creator Core](https://github.com/manifoldxyz/creator-core-solidity).**
 
 This repo contains refrence implmentations and examples for apps that you can add to any Manifold Creator Core contract.  Examples include:
- * ERC721 Airdrop (with specified prefix)
  * ERC721 Editions
  * ERC721 Enumerable subcollection
  * Dynamic NFTs
@@ -34,38 +33,53 @@ See the [Manifold Creator Core repo](https://github.com/manifoldxyz/creator-core
 ### Customized Lightweight Proxies
 You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
 
-#### ERC721 Airdrops
-contracts/airdrops/ERC721AirdropTemplate.sol and referring to the following implementation addresses:
-
-**Rinkeby**
-```
-0x016F322C990b299cE507EdDDB00487CD21c8f933
-```
-
-**Mainnet**
-```
-0x...
-```
-
 #### ERC721 Editions
-contracts/edition/ERC721EditionTemplate.sol and referring to the following implementation addresses:
+There are two styles of editions: Prefix Editions and Numbered Editions.
+
+##### Prefix
+Prefix Editions assume that all the metadata URI will be prefixed with the same string, and the suffix for each metadata will be the edition number, starting from 1.
+e.g.
+  prefix = 'https://arweave.net/<HASH>'
+  The URI for the first item in the edition will be 'https://arweave.net/<HASH>/1', second will be 'https://arweave.net/<HASH>/2' and so forth.
+
+contracts/edition/ERC721PrefixEditionTemplate.sol and referring to the following implementation addresses:
 
 **Rinkeby**
 ```
-0x08727bBdcd8D1490935fdd02823E9fEffAd4277A
+0x
 ```
 
 **Mainnet**
 ```
 0x...
 ```
+
+##### Numbered
+Numbered editions assume that all metadata is unchanging except for the Edition number.  Numbered editions are instantiated by passing the metadata as a 'uriParts' array, which is recomposed to inject the edition number (and total edition count if desired).
+
+contracts/edition/ERC721NumberedEditionTemplate.sol and referring to the following implementation addresses:
+
+**Rinkeby**
+```
+0x
+```
+
+**Mainnet**
+```
+0x...
+```
+
+
+
 
 #### Nifty Gateway Open Editions
-contracts/edition/ERC721EditionTemplate.sol and referring to the following implementation addresses:
+Numbered editions which may be used for Nifty Gateway open edition sales.
+
+contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referring to the following implementation addresses:
 
 **Rinkeby**
 ```
-0x711B71E6AfAEFc5dFA33Fa475AB0158c3F819a47
+0x
 ```
 
 **Mainnet**
