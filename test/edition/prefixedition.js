@@ -80,18 +80,64 @@ contract('Edition', function ([creator, ...accounts]) {
       await truffleAssert.reverts(edition.tokenURI(creator.address, 16), "Invalid token");
     });
     
-    it('edition cost test', async function () {
+    it('edition cost test (10)', async function () {
+      // Mint 10 things
+      const largeEdition = await ERC721PrefixEdition.new(creator.address, 10, prefix, {from:owner});
+      await creator.registerExtension(largeEdition.address, "override", {from:owner})
+      
+      const x = 10;
+      var receivers = [];
+      var uris = []
+      for (let i = 0; i < x; i++) {
+        receivers.push(anyone);
+        uris.push('https://arweave.net/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX');
+      }
+      var tx = await largeEdition.methods["mint(address[])"](receivers, {from:owner});
+      console.log("Cost to mint 10 items: "+ tx.receipt.gasUsed);
+
+      // Mint 10 things using mintBaseBatch
+      tx = await creator.methods["mintBaseBatch(address,string[])"](owner, uris, {from:owner});
+      console.log("Cost to mint 10 items (mintBaseBatch): "+ tx.receipt.gasUsed);
+    });
+
+    it('edition cost test (20)', async function () {
+      // Mint 20 things
+      const largeEdition = await ERC721PrefixEdition.new(creator.address, 20, prefix, {from:owner});
+      await creator.registerExtension(largeEdition.address, "override", {from:owner})
+      
+      const x = 20;
+      var receivers = [];
+      var uris = []
+      for (let i = 0; i < x; i++) {
+        receivers.push(anyone);
+        uris.push('https://arweave.net/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX');
+      }
+      var tx = await largeEdition.methods["mint(address[])"](receivers, {from:owner});
+      console.log("Cost to mint 20 items: "+ tx.receipt.gasUsed);
+
+      // Mint 20 things using mintBaseBatch
+      tx = await creator.methods["mintBaseBatch(address,string[])"](owner, uris, {from:owner});
+      console.log("Cost to mint 20 items (mintBaseBatch): "+ tx.receipt.gasUsed);
+    });
+
+    it('edition cost test (100)', async function () {
       // Mint 100 things
       const largeEdition = await ERC721PrefixEdition.new(creator.address, 100, prefix, {from:owner});
       await creator.registerExtension(largeEdition.address, "override", {from:owner})
       
       const x = 100;
       var receivers = [];
+      var uris = []
       for (let i = 0; i < x; i++) {
         receivers.push(anyone);
+        uris.push('https://arweave.net/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX');
       }
       var tx = await largeEdition.methods["mint(address[])"](receivers, {from:owner});
       console.log("Cost to mint 100 items: "+ tx.receipt.gasUsed);
+
+      // Mint 100 things using mintBaseBatch
+      tx = await creator.methods["mintBaseBatch(address,string[])"](owner, uris, {from:owner});
+      console.log("Cost to mint 100 items (mintBaseBatch): "+ tx.receipt.gasUsed);
     });
 
   });
