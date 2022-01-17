@@ -5,7 +5,7 @@ const ERC721PrefixEdition = artifacts.require("ERC721PrefixEdition");
 const ERC721PrefixEditionTemplate = artifacts.require("ERC721PrefixEditionTemplate");
 const ERC721PrefixEditionImplementation = artifacts.require("ERC721PrefixEditionImplementation");
 
-contract('Edition', function ([creator, ...accounts]) {
+contract('Prefix Edition', function ([creator, ...accounts]) {
   const name = 'Token';
   const symbol = 'NFT';
   const minter = creator;
@@ -17,7 +17,7 @@ contract('Edition', function ([creator, ...accounts]) {
     another2,
     ] = accounts;
 
-  describe('Edition', function() {
+  describe('Prefix Edition', function() {
     var creator;
     var edition;
     var editionImplementation;

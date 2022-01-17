@@ -5,7 +5,7 @@ const ERC721NumberedEdition = artifacts.require("ERC721NumberedEdition");
 const ERC721NumberedEditionTemplate = artifacts.require("ERC721NumberedEditionTemplate");
 const ERC721NumberedEditionImplementation = artifacts.require("ERC721NumberedEditionImplementation");
 
-contract('Edition', function ([creator, ...accounts]) {
+contract('Numbered Edition', function ([creator, ...accounts]) {
   const name = 'Token';
   const symbol = 'NFT';
   const minter = creator;
@@ -17,7 +17,7 @@ contract('Edition', function ([creator, ...accounts]) {
     another2,
     ] = accounts;
 
-  describe('Edition', function() {
+  describe('Numbered Edition', function() {
     var creator;
     var edition;
     var editionImplementation;
