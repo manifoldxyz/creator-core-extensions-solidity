@@ -46,7 +46,7 @@ contracts/edition/ERC721PrefixEditionTemplate.sol and referring to the following
 
 **Rinkeby**
 ```
-0x
+0xc74f798ecceC5Bea30A1F1334865Ee270Bdd8fe0
 ```
 
 **Mainnet**
@@ -61,7 +61,7 @@ contracts/edition/ERC721NumberedEditionTemplate.sol and referring to the followi
 
 **Rinkeby**
 ```
-0x
+0x606BFB65999b4ea63240E93701D763bF40AF2CEA
 ```
 
 **Mainnet**
@@ -79,7 +79,7 @@ contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referr
 
 **Rinkeby**
 ```
-0x
+0x1Fda54f3f39cBe721F2c5f69419f43a20a9c48fC
 ```
 
 **Mainnet**
