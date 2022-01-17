@@ -112,7 +112,7 @@ contract('Manifold Edition', function ([creator, ...accounts]) {
 
       // Mint 20 things using mintBaseBatch
       tx = await creator1.methods["mintBaseBatch(address,string[])"](owner, uris, {from:another1});
-      console.log("Cost to mint 10 items (mintBaseBatch): "+ tx.receipt.gasUsed);
+      console.log("Cost to mint 20 items (mintBaseBatch): "+ tx.receipt.gasUsed);
     });
 
     it('edition cost test (100)', async function () {
@@ -132,7 +132,6 @@ contract('Manifold Edition', function ([creator, ...accounts]) {
       tx = await creator1.methods["mintBaseBatch(address,string[])"](owner, uris, {from:another1});
       console.log("Cost to mint 100 items (mintBaseBatch): "+ tx.receipt.gasUsed);
     });
-
 
   });
 
