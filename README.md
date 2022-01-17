@@ -55,7 +55,7 @@ contracts/edition/ERC721PrefixEditionTemplate.sol and referring to the following
 ```
 
 ##### Numbered
-Numbered editions assume that all metadata is unchanging except for the Edition number.  Numbered editions are instantiated by passing the metadata as a 'uriParts' array, which is recomposed to inject the edition number (and total edition count if desired).
+Numbered editions assume that all metadata is unchanging except for the Edition number.  Numbered editions are instantiated by passing the metadata as a 'uriParts' array, which is recomposed to inject the edition number (and total edition count if desired).  Good for open editions.
 
 contracts/edition/ERC721NumberedEditionTemplate.sol and referring to the following implementation addresses:
 
@@ -68,8 +68,6 @@ contracts/edition/ERC721NumberedEditionTemplate.sol and referring to the followi
 ```
 0x...
 ```
-
-
 
 
 #### Nifty Gateway Open Editions
