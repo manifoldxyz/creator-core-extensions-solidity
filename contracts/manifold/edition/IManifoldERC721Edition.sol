@@ -33,4 +33,9 @@ interface IManifoldERC721Edition {
      * @dev Total supply of editions
      */
     function totalSupply(address creator, uint256 series) external view returns(uint256);
+
+    /**
+     * @dev Max supply of editions
+     */
+    function maxSupply(address creator, uint256 series) external view returns(uint256);
 }

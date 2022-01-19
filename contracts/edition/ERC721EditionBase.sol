@@ -37,10 +37,10 @@ abstract contract ERC721EditionBase is ERC721SingleCreatorExtensionBase, Creator
     /**
      * @dev Initialize the edition contract
      */
-    function _initialize(address creator, uint256 maxSupply) internal {
+    function _initialize(address creator, uint256 maxSupply_) internal {
         require(_creator == address(0), "Already initialized");
         super._setCreator(creator);
-        _maxSupply = maxSupply;
+        _maxSupply = maxSupply_;
     }
 
     /**
@@ -108,6 +108,13 @@ abstract contract ERC721EditionBase is ERC721SingleCreatorExtensionBase, Creator
      */
     function totalSupply() external view override returns(uint256) {
         return _totalSupply;
+    }
+
+    /**
+     * @dev See {IERC721Edition-maxSupply}.
+     */
+    function maxSupply() external view override returns(uint256) {
+        return _maxSupply;
     }
 
 }

@@ -31,9 +31,9 @@ abstract contract ERC721PrefixEditionBase is ERC721EditionBase, IERC721PrefixEdi
     /**
      * @dev Initialize the Open Edition contract
      */
-    function _initialize(address creator, uint256 maxSupply, string memory prefix) internal {
+    function _initialize(address creator, uint256 maxSupply_, string memory prefix) internal {
         require(_creator == address(0), "Already initialized");
-        super._initialize(creator, maxSupply);
+        super._initialize(creator, maxSupply_);
         _tokenPrefix = prefix;
     }
 

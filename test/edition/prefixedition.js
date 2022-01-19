@@ -30,11 +30,14 @@ contract('Prefix Edition', function ([creator, ...accounts]) {
       maxSupply = 10;
       creator = await ERC721Creator.new(name, symbol, {from:owner});
       edition = await ERC721PrefixEdition.new(creator.address, maxSupply, prefix, {from:owner});
-      await creator.registerExtension(edition.address, "override", {from:owner})
+      await creator.registerExtension(edition.address, "override", {from:owner});
       editionImplementation = await ERC721PrefixEditionImplementation.new(creator.address, maxSupply, prefix);
       editionTemplate = await ERC721PrefixEditionTemplate.new(editionImplementation.address, creator.address, maxSupply, prefix, {from:owner});
-      await creator.registerExtension(editionTemplate.address, "override", {from:owner})
+      await creator.registerExtension(editionTemplate.address, "override", {from:owner});
       editionTemplate = await ERC721PrefixEdition.at(editionTemplate.address);
+
+      assert.equal(maxSupply, await edition.maxSupply());
+      assert.equal(maxSupply, await editionTemplate.maxSupply());
     });
 
     it('access test', async function () {

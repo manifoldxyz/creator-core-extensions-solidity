@@ -14,8 +14,8 @@ import "./ERC721NumberedEditionBase.sol";
  */
 contract ERC721NumberedEdition is ERC721NumberedEditionBase, AdminControl {
 
-    constructor(address creator, uint256 maxSupply, string[] memory uriParts) {
-        _initialize(creator, maxSupply, uriParts);
+    constructor(address creator, uint256 maxSupply_, string[] memory uriParts) {
+        _initialize(creator, maxSupply_, uriParts);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721NumberedEditionBase, AdminControl) returns (bool) {

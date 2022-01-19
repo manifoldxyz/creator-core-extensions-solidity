@@ -19,9 +19,9 @@ contract NiftyGatewayERC721NumberedEditionImplementation is ERC721NumberedEditio
     EnumerableSet.AddressSet private _minters;
     address private _niftyOmnibusWallet;
 
-    function initialize(address creator, uint256 maxSupply, string[] memory uriParts) public initializer {
+    function initialize(address creator, uint256 maxSupply_, string[] memory uriParts) public initializer {
         __Ownable_init();
-        _initialize(creator, maxSupply, uriParts);
+        _initialize(creator, maxSupply_, uriParts);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControlUpgradeable, ERC721NumberedEditionBase) returns (bool) {

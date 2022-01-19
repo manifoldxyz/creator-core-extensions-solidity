@@ -24,6 +24,7 @@ abstract contract ERC721NumberedEditionBase is ERC721EditionBase, IERC721Numbere
 
     string constant internal _EDITION_TAG = '<EDITION>';
     string constant internal _TOTAL_TAG = '<TOTAL>';    
+    string constant internal _MAX_TAG = '<MAX>'; 
     string[] private _uriParts;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721EditionBase) returns (bool) {
@@ -33,9 +34,9 @@ abstract contract ERC721NumberedEditionBase is ERC721EditionBase, IERC721Numbere
     /**
      * @dev Initialize the Open Edition contract
      */
-    function _initialize(address creator, uint256 maxSupply, string[] memory uriParts) internal {
+    function _initialize(address creator, uint256 maxSupply_, string[] memory uriParts) internal {
         require(_creator == address(0), "Already initialized");
-        super._initialize(creator, maxSupply);
+        super._initialize(creator, maxSupply_);
         _uriParts = uriParts;
     }
 
@@ -56,13 +57,15 @@ abstract contract ERC721NumberedEditionBase is ERC721EditionBase, IERC721Numbere
     function _generateURI(uint256 tokenIndex) private view returns(string memory) {
         bytes memory byteString;
         for (uint i = 0; i < _uriParts.length; i++) {
-        if (_checkTag(_uriParts[i], _EDITION_TAG)) {
-            byteString = abi.encodePacked(byteString, (tokenIndex+1).toString());
-        } else if (_checkTag(_uriParts[i], _TOTAL_TAG)) {
-            byteString = abi.encodePacked(byteString, _totalSupply.toString());
-        } else {
-            byteString = abi.encodePacked(byteString, _uriParts[i]);
-        }
+            if (_checkTag(_uriParts[i], _EDITION_TAG)) {
+                byteString = abi.encodePacked(byteString, (tokenIndex+1).toString());
+            } else if (_checkTag(_uriParts[i], _TOTAL_TAG)) {
+                byteString = abi.encodePacked(byteString, _totalSupply.toString());
+            } else if (_checkTag(_uriParts[i], _MAX_TAG)) {
+                byteString = abi.encodePacked(byteString, _maxSupply.toString());
+            } else {
+                byteString = abi.encodePacked(byteString, _uriParts[i]);
+            }
         }
         return string(byteString);
     }

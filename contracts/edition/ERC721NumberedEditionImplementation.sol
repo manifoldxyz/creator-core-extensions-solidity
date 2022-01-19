@@ -13,9 +13,9 @@ import "./ERC721NumberedEditionBase.sol";
  */
 contract ERC721NumberedEditionImplementation is ERC721NumberedEditionBase, AdminControlUpgradeable {
 
-    function initialize(address creator, uint256 maxSupply, string[] memory uriParts) public initializer {
+    function initialize(address creator, uint256 maxSupply_, string[] memory uriParts) public initializer {
         __Ownable_init();
-        _initialize(creator, maxSupply, uriParts);
+        _initialize(creator, maxSupply_, uriParts);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721NumberedEditionBase, AdminControlUpgradeable) returns (bool) {

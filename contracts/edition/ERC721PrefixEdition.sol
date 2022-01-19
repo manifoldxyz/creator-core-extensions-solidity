@@ -14,8 +14,8 @@ import "./ERC721PrefixEditionBase.sol";
  */
 contract ERC721PrefixEdition is ERC721PrefixEditionBase, AdminControl {
 
-    constructor(address creator, uint256 maxSupply, string memory prefix) {
-        _initialize(creator, maxSupply, prefix);
+    constructor(address creator, uint256 maxSupply_, string memory prefix) {
+        _initialize(creator, maxSupply_, prefix);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721PrefixEditionBase, AdminControl) returns (bool) {

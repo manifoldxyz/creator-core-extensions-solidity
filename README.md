@@ -39,7 +39,7 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 
 **Rinkeby**
 ```
-0x2b1584d1EE575701c4d5C107210DeCBDdeAf5262
+0x63919434e431171E812cFD04fEfba0d439FdE930
 ```
 
 **Mainnet**
@@ -63,7 +63,7 @@ contracts/edition/ERC721PrefixEditionTemplate.sol and referring to the following
 
 **Rinkeby**
 ```
-0xc74f798ecceC5Bea30A1F1334865Ee270Bdd8fe0
+0x3AD50422Ac43D4F0E30AAF73A0b07A907618C548
 ```
 
 **Mainnet**
@@ -78,7 +78,7 @@ contracts/edition/ERC721NumberedEditionTemplate.sol and referring to the followi
 
 **Rinkeby**
 ```
-0x606BFB65999b4ea63240E93701D763bF40AF2CEA
+0x211AAcd0b144F1e51b2633D38d8Ac2F864dE7042
 ```
 
 **Mainnet**
@@ -94,7 +94,7 @@ contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referr
 
 **Rinkeby**
 ```
-0x1Fda54f3f39cBe721F2c5f69419f43a20a9c48fC
+0xFB19a709486e758DfC340F9ad1AAd2bD604cf30d
 ```
 
 **Mainnet**

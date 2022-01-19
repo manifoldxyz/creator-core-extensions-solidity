@@ -40,11 +40,14 @@ contract('Numbered Edition', function ([creator, ...accounts]) {
       maxSupply = 10;
       creator = await ERC721Creator.new(name, symbol, {from:owner});
       edition = await ERC721NumberedEdition.new(creator.address, maxSupply, uriParts, {from:owner});
-      await creator.registerExtension(edition.address, "override", {from:owner})
+      await creator.registerExtension(edition.address, "override", {from:owner});
       editionImplementation = await ERC721NumberedEditionImplementation.new(creator.address, maxSupply, uriParts);
       editionTemplate = await ERC721NumberedEditionTemplate.new(editionImplementation.address, creator.address, maxSupply, {from:owner});
-      await creator.registerExtension(editionTemplate.address, "override", {from:owner})
+      await creator.registerExtension(editionTemplate.address, "override", {from:owner});
       editionTemplate = await ERC721NumberedEdition.at(editionTemplate.address);
+
+      assert.equal(maxSupply, await edition.maxSupply());
+      assert.equal(maxSupply, await editionTemplate.maxSupply());
     });
 
     it('access test', async function () {

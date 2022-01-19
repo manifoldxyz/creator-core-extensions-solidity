@@ -13,9 +13,9 @@ import "./ERC721PrefixEditionBase.sol";
  */
 contract ERC721PrefixEditionImplementation is ERC721PrefixEditionBase, AdminControlUpgradeable {
 
-    function initialize(address creator, uint256 maxSupply, string memory prefix) public initializer {
+    function initialize(address creator, uint256 maxSupply_, string memory prefix) public initializer {
         __Ownable_init();
-        _initialize(creator, maxSupply, prefix);
+        _initialize(creator, maxSupply_, prefix);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721PrefixEditionBase, AdminControlUpgradeable) returns (bool) {

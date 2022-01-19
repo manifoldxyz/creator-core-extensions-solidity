@@ -28,9 +28,9 @@ contract('Manifold Edition', function ([creator, ...accounts]) {
       
       edition = await ManifoldERC721Edition.new({from:owner});
       
-      await creator1.registerExtension(edition.address, "", {from:another1})
-      await creator2.registerExtension(edition.address, "", {from:another2})
-      await creator3.registerExtension(edition.address, "", {from:another3})
+      await creator1.registerExtension(edition.address, "", {from:another1});
+      await creator2.registerExtension(edition.address, "", {from:another2});
+      await creator3.registerExtension(edition.address, "", {from:another3});
     });
 
     it('access test', async function () {
@@ -55,9 +55,15 @@ contract('Manifold Edition', function ([creator, ...accounts]) {
 
     it('edition index test', async function () {
       await edition.createSeries(creator1.address, 10, 'http://creator1series1/', {from:another1})
-      await edition.createSeries(creator1.address, 10, 'http://creator1series2/', {from:another1})
-      await edition.createSeries(creator2.address, 10, 'http://creator1series2/', {from:another2})
-      await edition.createSeries(creator3.address, 10, 'http://creator1series2/', {from:another3})
+      await edition.createSeries(creator1.address, 20, 'http://creator1series2/', {from:another1})
+      await edition.createSeries(creator2.address, 200, 'http://creator1series2/', {from:another2})
+      await edition.createSeries(creator3.address, 300, 'http://creator1series2/', {from:another3})
+
+      assert.equal(10, await edition.maxSupply(creator1.address, 1));
+      assert.equal(20, await edition.maxSupply(creator1.address, 2));
+      assert.equal(200, await edition.maxSupply(creator2.address, 1));
+      assert.equal(300, await edition.maxSupply(creator3.address, 1));
+
       await edition.methods['mint(address,uint256,address,uint16)'](creator1.address, 1, another3, 2, {from:another1});
       // Mint some tokens in between
       await creator1.methods['mintBaseBatch(address,uint16)'](owner, 10, {from:another1});

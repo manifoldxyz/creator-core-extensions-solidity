@@ -23,4 +23,9 @@ interface IERC721Edition {
      * @dev Total supply of editions
      */
     function totalSupply() external view returns(uint256);
+
+    /**
+     * @dev Max supply of editions
+     */
+    function maxSupply() external view returns(uint256);
 }

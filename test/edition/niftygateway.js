@@ -41,8 +41,11 @@ contract('Nifty Gateway Edition', function ([creator, ...accounts]) {
       creator = await ERC721Creator.new(name, symbol, {from:owner});
       editionImplementation = await NiftyGatewayERC721NumberedEditionImplementation.new(creator.address, maxSupply, uriParts);
       editionTemplate = await ERC721NumberedEditionTemplate.new(editionImplementation.address, creator.address, maxSupply, {from:owner});
-      await creator.registerExtension(editionTemplate.address, "override", {from:owner})
+      await creator.registerExtension(editionTemplate.address, "override", {from:owner});
       editionTemplate = await NiftyGatewayERC721NumberedEditionImplementation.at(editionTemplate.address);
+
+      assert.equal(maxSupply, await edition.maxSupply());
+      assert.equal(maxSupply, await editionTemplate.maxSupply());
     });
 
     it('access test', async function () {
