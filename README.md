@@ -31,6 +31,22 @@ baseURI can be blank if you are overriding the tokenURI functionality.
 
 See the [Manifold Creator Core repo](https://github.com/manifoldxyz/creator-core-solidity) for further info about Extension Applications.
 
+### Platform Extensions
+These are extensions that can be installed by any Manifold Creator contract to give enhanced additional functionality.  There is a single deployed instance of these extensions, and every creator contract installs the same instance, and accesses the new functionality via that extension.
+
+#### Manifold ERC721 Edition
+Provides a more efficient way to batch mint NFTs to one or many addresses
+
+**Rinkeby**
+```
+0x2b1584d1EE575701c4d5C107210DeCBDdeAf5262
+```
+
+**Mainnet**
+```
+0x...
+```
+
 ### Customized Lightweight Proxies
 You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
 
