@@ -44,7 +44,6 @@ contract('Nifty Gateway Edition', function ([creator, ...accounts]) {
       await creator.registerExtension(editionTemplate.address, "override", {from:owner});
       editionTemplate = await NiftyGatewayERC721NumberedEditionImplementation.at(editionTemplate.address);
 
-      assert.equal(maxSupply, await edition.maxSupply());
       assert.equal(maxSupply, await editionTemplate.maxSupply());
     });
 
