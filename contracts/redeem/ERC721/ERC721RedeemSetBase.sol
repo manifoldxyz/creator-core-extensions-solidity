@@ -85,7 +85,7 @@ abstract contract ERC721RedeemSetBase is ERC721SingleCreatorExtension, RedeemSet
     /**
      * @dev override if you want to perform different mint functionality
      */
-    function _mint(address to, uint16) internal returns (uint256) {
+    function _mint(address to, uint16) internal virtual returns (uint256) {
         return IERC721CreatorCore(_creator).mintExtension(to);
     }
 
