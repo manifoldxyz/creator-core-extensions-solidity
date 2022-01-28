@@ -67,7 +67,15 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         uint256 series = _currentSeries[creator];
         _maxSupply[creator][series] = maxSupply_;
         _tokenPrefix[creator][series] = prefix;
+        emit SeriesCreated(msg.sender, creator, series, maxSupply_);
         return series;
+    }
+
+    /**
+     * @dev See {IManifoldERC721Edition-latestSeries}.
+     */
+    function latestSeries(address creator) external view override returns(uint256) {
+        return _currentSeries[creator];
     }
 
     /**

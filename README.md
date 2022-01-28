@@ -39,12 +39,12 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 
 **Rinkeby**
 ```
-0x63919434e431171E812cFD04fEfba0d439FdE930
+0x2F11D14dd78e3B65EF39B89f5317086E01FD48d5
 ```
 
 **Mainnet**
 ```
-0x091B5Ff4Ec84aEE78Cd586571f81DEA8548938d7
+0x...
 ```
 
 ### Customized Lightweight Proxies

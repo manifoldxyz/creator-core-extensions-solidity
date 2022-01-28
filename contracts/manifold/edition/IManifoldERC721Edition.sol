@@ -9,10 +9,17 @@ pragma solidity ^0.8.0;
  */
 interface IManifoldERC721Edition {
 
+    event SeriesCreated(address caller, address creator, uint256 series, uint256 maxSupply);
+
     /**
      * @dev Create a new series.  Returns the series id.
      */
     function createSeries(address creator, uint256 maxSupply, string calldata prefix) external returns(uint256);
+
+    /**
+     * @dev Get the latest series created.
+     */
+    function latestSeries(address creator) external view returns(uint256);
 
     /**
      * @dev Set the token uri prefix
