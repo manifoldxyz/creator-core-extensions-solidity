@@ -57,7 +57,7 @@ There are two styles of editions: Prefix Editions and Numbered Editions.
 Prefix Editions assume that all the metadata URI will be prefixed with the same string, and the suffix for each metadata will be the edition number, starting from 1.
 e.g.
   prefix = 'https://arweave.net/<HASH>'
-  The URI for the first item in the edition will be 'https://arweave.net/<HASH>/1', second will be 'https://arweave.net/<HASH>/2' and so forth.
+  The URI for the first item in the edition will be 'https://arweave.net/{HASH}/1', second will be 'https://arweave.net/{HASH}/2' and so forth.
 
 contracts/edition/ERC721PrefixEditionTemplate.sol and referring to the following implementation addresses:
 
