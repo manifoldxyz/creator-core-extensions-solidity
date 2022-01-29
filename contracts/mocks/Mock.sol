@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 /// @author: manifold.xyz
 
 import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 
 import "../enumerable/ERC721/ERC721OwnerEnumerableExtension.sol";
 import "../enumerable/ERC721/ERC721OwnerEnumerableSingleCreatorExtension.sol";
@@ -12,6 +13,10 @@ import "../redeem/ERC721/ERC721RedeemBase.sol";
 
 contract MockERC721Creator is ERC721Creator {
      constructor (string memory _name, string memory _symbol) ERC721Creator(_name, _symbol) {}
+}
+
+contract MockERC1155Creator is ERC1155Creator {
+     constructor () ERC1155Creator() {}
 }
 
 contract MockERC721OwnerEnumerableExtension is ERC721OwnerEnumerableExtension {
