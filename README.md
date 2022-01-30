@@ -29,7 +29,7 @@ registerExtension(address extension, string memory baseURI)
 
 baseURI can be blank if you are overriding the tokenURI functionality.
 
-See the [Manifold Creator Core repo](https://github.com/manifoldxyz/creator-core-solidity) for further info about Extension Applications.
+See the [developer documentation](https://docs.manifold.xyz/v/manifold-for-developers/manifold-creator-architecture/contracts/extensions) for further info about Extension Applications.
 
 ### Platform Extensions
 These are extensions that can be installed by any Manifold Creator contract to give enhanced additional functionality.  There is a single deployed instance of these extensions, and every creator contract installs the same instance, and accesses the new functionality via that extension.
