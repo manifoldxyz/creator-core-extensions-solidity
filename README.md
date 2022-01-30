@@ -44,7 +44,7 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 
 **Mainnet**
 ```
-0x...
+0x7a81de6b1bCBBD5371Cd11126314aad76Dc3D026
 ```
 
 ### Customized Lightweight Proxies
