@@ -83,6 +83,11 @@ contract('Manifold Edition', function ([creator, ...accounts]) {
 
       await truffleAssert.reverts(edition.tokenURI(creator1.address, 6), "Invalid token");
       await truffleAssert.reverts(edition.tokenURI(creator1.address, 19), "Invalid token");
+
+      // Prefix change test
+      await edition.setTokenURIPrefix(creator1.address, 1, 'http://creator1series1new/', {from:another1});
+      assert.equal('http://creator1series1new/3', await creator1.tokenURI(13));
+      assert.equal('http://creator1series1new/5', await creator1.tokenURI(15));
     });
 
     it('edition cost test (10)', async function () {

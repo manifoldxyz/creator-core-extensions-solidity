@@ -82,7 +82,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      * See {IManifoldERC721Edition-setTokenURIPrefix}.
      */
     function setTokenURIPrefix(address creator, uint256 series, string calldata prefix) external override creatorAdminRequired(creator) {
-        require(series > 0 && series >= _currentSeries[creator], "Invalid series");
+        require(series > 0 && series <= _currentSeries[creator], "Invalid series");
         _tokenPrefix[creator][series] = prefix;
     }
     
