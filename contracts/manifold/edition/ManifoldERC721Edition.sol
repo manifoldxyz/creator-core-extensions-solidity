@@ -113,8 +113,9 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         require(_totalSupply[creator][series]+recipients.length <= _maxSupply[creator][series], "Too many requested");
         
         uint256 startIndex = IERC721CreatorCore(creator).mintExtension(recipients[0]);
-        for (uint256 i = 1; i < recipients.length; i++) {
+        for (uint256 i = 1; i < recipients.length;) {
             IERC721CreatorCore(creator).mintExtension(recipients[i]);
+            unchecked{i++;}
         }
         _updateIndexRanges(creator, series, startIndex, recipients.length);
     }
