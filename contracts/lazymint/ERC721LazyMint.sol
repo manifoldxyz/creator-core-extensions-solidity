@@ -53,7 +53,7 @@ contract ERC721LazyMint is IERC165, IERC721LazyMint, ICreatorExtensionTokenURI, 
     listingCounts[creatorContractAddress] = newIndex + 1;
 
     // Create the listing
-    Listing memory newListing = Listing({
+    listings[creatorContractAddress][newIndex] = Listing({
       merkleRoot: merkleRoot,
       uri: uri,
       totalMax: totalMax,
@@ -61,7 +61,6 @@ contract ERC721LazyMint is IERC165, IERC721LazyMint, ICreatorExtensionTokenURI, 
       startDate: startDate,
       endDate: endDate
     });
-    listings[creatorContractAddress][newIndex] = newListing;
   }
 
   // Setters
