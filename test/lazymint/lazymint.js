@@ -14,7 +14,7 @@ contract('LazyMint', function ([...accounts]) {
       lazyMint = await ERC721LazyMint.new({from:owner});
       
       // Must register with empty prefix in order to set per-token uri's
-      await creator.registerExtension(lazyMint.address, "", {from:owner});
+      await creator.registerExtension(lazyMint.address, {from:owner});
 
       const merkleElements = [owner, owner2, anyone1, anyone2];
       merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
@@ -46,7 +46,7 @@ contract('LazyMint', function ([...accounts]) {
       truffleAssert.reverts(lazyMint.initializeListing(
         creator.address,
         merkleTree.getHexRoot(),
-        'https://',
+        'https://0',
         3,
         1,
         now,
@@ -57,7 +57,7 @@ contract('LazyMint', function ([...accounts]) {
       await lazyMint.initializeListing(
         creator.address,
         merkleTree.getHexRoot(),
-        'https://',
+        'https://1',
         3,
         1,
         now,
@@ -69,7 +69,7 @@ contract('LazyMint', function ([...accounts]) {
       await lazyMint.initializeListing(
         creator.address,
         "0x0",
-        'https://',
+        'https://2',
         0,
         0,
         0,
@@ -82,7 +82,7 @@ contract('LazyMint', function ([...accounts]) {
       assert.equal(count, 2);
       const listing = await lazyMint.getListing(creator.address, 0, {from:owner});
       assert.equal(listing.merkleRoot, merkleTree.getHexRoot());
-      assert.equal(listing.uri, 'https://');
+      assert.equal(listing.uri, 'https://1');
       assert.equal(listing.totalMax, 3);
       assert.equal(listing.walletMax, 1);
       assert.equal(listing.startDate, now);
@@ -111,7 +111,7 @@ contract('LazyMint', function ([...accounts]) {
       let balance2 = await creator.balanceOf(anyone2, {from:anyone3});
       assert.equal(1,balance2);
       let tokenURI = await creator.tokenURI(1);
-      assert.equal('https://', tokenURI);
+      assert.equal('https://1', tokenURI);
       let tokenOwner = await creator.ownerOf(1);
       assert.equal(anyone1, tokenOwner);
 

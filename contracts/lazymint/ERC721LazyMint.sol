@@ -6,11 +6,9 @@ pragma solidity ^0.8.0;
 
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
-
-import "../libraries/ABDKMath64x64.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import "./IERC721LazyMint.sol";
@@ -18,19 +16,15 @@ import "./IERC721LazyMint.sol";
 /**
  * Lazy mint with whitelist ERC721 tokens
  */
-contract ERC721LazyMint is IERC721LazyMint, ReentrancyGuard {
-  using Strings for uint256;
-  using ABDKMath64x64 for uint;
-
-  // mapping(address => Listing) public listings;
-  // mapping(address => mapping(address => uint256)) private listingTokenEditions;
+contract ERC721LazyMint is IERC721LazyMint, ICreatorExtensionTokenURI, ReentrancyGuard {
   mapping(address => uint) public listingCounts;
   mapping(address => mapping(uint => Listing)) public listings;
   mapping(address => mapping(uint => uint)) public mintsPerListing;
   mapping(address => mapping(uint => mapping(address => uint))) public mintsPerWallet;
+  mapping(address => mapping(uint => uint)) public tokenListings;
 
   function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
-    return interfaceId == type(IERC721LazyMint).interfaceId;
+    return interfaceId == type(IERC721LazyMint).interfaceId || interfaceId == type(ICreatorExtensionTokenURI).interfaceId;
   }
 
   modifier creatorAdminRequired(address creatorContractAddress) {
@@ -112,8 +106,7 @@ contract ERC721LazyMint is IERC721LazyMint, ReentrancyGuard {
       Listing memory listing = listings[creatorContractAddress][index];
       if (listing.merkleRoot != "") {
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
-        // require(MerkleProof.verify(merkleProof, listing.merkleRoot, leaf), "Could not verify merkle proof");
-        require(MerkleProof.verify(merkleProof, listing.merkleRoot, leaf), string(abi.encodePacked("Could not verify ", listing.merkleRoot)));
+        require(MerkleProof.verify(merkleProof, listing.merkleRoot, leaf), "Could not verify merkle proof");
       }
 
       // Check walletMax against minter's wallet
@@ -132,6 +125,13 @@ contract ERC721LazyMint is IERC721LazyMint, ReentrancyGuard {
 
       // Do mint
       IERC721CreatorCore creatorCoreContract = IERC721CreatorCore(creatorContractAddress);
-      creatorCoreContract.mintExtension(msg.sender, listing.uri);
+      uint newTokenId = creatorCoreContract.mintExtension(msg.sender, "");
+      tokenListings[creatorContractAddress][newTokenId] = index;
+  }
+
+  function tokenURI(address creatorContractAddress, uint tokenId) external view returns(string memory) {
+    uint listingIndex = tokenListings[creatorContractAddress][tokenId];
+    Listing memory listing = listings[creatorContractAddress][listingIndex];
+    return listing.uri;
   }
 }
