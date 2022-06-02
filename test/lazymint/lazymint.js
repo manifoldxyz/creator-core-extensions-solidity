@@ -46,7 +46,7 @@ contract('LazyMint', function ([...accounts]) {
       truffleAssert.reverts(lazyMint.initializeListing(
         creator.address,
         merkleTree.getHexRoot(),
-        'https://0',
+        'zero.com',
         3,
         1,
         now,
@@ -57,7 +57,7 @@ contract('LazyMint', function ([...accounts]) {
       await lazyMint.initializeListing(
         creator.address,
         merkleTree.getHexRoot(),
-        'https://1',
+        'one.com',
         3,
         1,
         now,
@@ -69,7 +69,7 @@ contract('LazyMint', function ([...accounts]) {
       await lazyMint.initializeListing(
         creator.address,
         "0x0",
-        'https://2',
+        'two.com',
         0,
         0,
         0,
@@ -82,7 +82,7 @@ contract('LazyMint', function ([...accounts]) {
       assert.equal(count, 2);
       const listing = await lazyMint.getListing(creator.address, 0, {from:owner});
       assert.equal(listing.merkleRoot, merkleTree.getHexRoot());
-      assert.equal(listing.uri, 'https://1');
+      assert.equal(listing.uri, 'one.com');
       assert.equal(listing.totalMax, 3);
       assert.equal(listing.walletMax, 1);
       assert.equal(listing.startDate, now);
@@ -111,11 +111,16 @@ contract('LazyMint', function ([...accounts]) {
       let balance2 = await creator.balanceOf(anyone2, {from:anyone3});
       assert.equal(1,balance2);
       let tokenURI = await creator.tokenURI(1);
-      assert.equal('https://1', tokenURI);
+      assert.equal('one.com', tokenURI);
       let tokenOwner = await creator.ownerOf(1);
       assert.equal(anyone1, tokenOwner);
 
+      // Additionally test that tokenURIs are dynamic
+
       // Test wallet and total maximums
+      await lazyMint.setURI(creator.address, 0, "three.com", {from:owner});
+      let newTokenURI = await creator.tokenURI(1);
+      assert.equal('three.com', newTokenURI);
 
       // Try to mint again with wallet limit of 1, should revert
       truffleAssert.reverts(lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1}));

@@ -69,7 +69,7 @@ contract ERC721LazyMint is IERC165, IERC721LazyMint, ICreatorExtensionTokenURI, 
     listing.merkleRoot = merkleRoot;
     listings[creatorContractAddress][index] = listing;
   }
-  function setUri(address creatorContractAddress, uint index, string calldata uri) external {
+  function setURI(address creatorContractAddress, uint index, string calldata uri) external {
     Listing memory listing = listings[creatorContractAddress][index];
     listing.uri = uri;
     listings[creatorContractAddress][index] = listing;
