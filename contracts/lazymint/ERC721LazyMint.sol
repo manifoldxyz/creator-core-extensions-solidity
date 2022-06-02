@@ -10,21 +10,25 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/interfaces/IERC165.sol";
+// import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "./IERC721LazyMint.sol";
 
 /**
  * Lazy mint with whitelist ERC721 tokens
  */
-contract ERC721LazyMint is IERC721LazyMint, ICreatorExtensionTokenURI, ReentrancyGuard {
+contract ERC721LazyMint is IERC165, IERC721LazyMint, ICreatorExtensionTokenURI, ReentrancyGuard {
   mapping(address => uint) public listingCounts;
   mapping(address => mapping(uint => Listing)) public listings;
   mapping(address => mapping(uint => uint)) public mintsPerListing;
   mapping(address => mapping(uint => mapping(address => uint))) public mintsPerWallet;
   mapping(address => mapping(uint => uint)) public tokenListings;
 
-  function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
-    return interfaceId == type(IERC721LazyMint).interfaceId || interfaceId == type(ICreatorExtensionTokenURI).interfaceId;
+  function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
+    return interfaceId == type(IERC721LazyMint).interfaceId ||
+      interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
+      interfaceId == type(IERC165).interfaceId;
   }
 
   modifier creatorAdminRequired(address creatorContractAddress) {
@@ -125,7 +129,7 @@ contract ERC721LazyMint is IERC721LazyMint, ICreatorExtensionTokenURI, Reentranc
 
       // Do mint
       IERC721CreatorCore creatorCoreContract = IERC721CreatorCore(creatorContractAddress);
-      uint newTokenId = creatorCoreContract.mintExtension(msg.sender, "");
+      uint newTokenId = creatorCoreContract.mintExtension(msg.sender);
       tokenListings[creatorContractAddress][newTokenId] = index;
   }
 
