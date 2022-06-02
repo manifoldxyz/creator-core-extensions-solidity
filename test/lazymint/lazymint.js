@@ -12,8 +12,9 @@ contract('LazyMint', function ([...accounts]) {
     beforeEach(async function () {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
       lazyMint = await ERC721LazyMint.new({from:owner});
-
-      await creator.registerExtension(lazyMint.address, "http://", {from:owner});
+      
+      // Must register with empty prefix in order to set per-token uri's
+      await creator.registerExtension(lazyMint.address, "", {from:owner});
 
       const merkleElements = [owner, owner2, anyone1, anyone2];
       merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
@@ -21,43 +22,90 @@ contract('LazyMint', function ([...accounts]) {
 
 
     it('access test', async function () {
-      await truffleAssert.reverts(lazyMint.initializeListing(creator.address, "0x1", "0x2", {from:anyone1})); // Must be admin
+      let now = Math.floor(Date.now() / 1000) - 30; // seconds since unix epoch
+      let later = now + 1000;
+
+      await truffleAssert.reverts(lazyMint.initializeListing(
+        creator.address,
+        "0x1",
+        "0x2",
+        10,
+        1,
+        now,
+        later,
+        {from:anyone1}
+      )); // Must be admin
     });
 
     it('basic test', async function() {
       // Test initializing a new listing
+      let now = Math.floor(Date.now() / 1000) - 30; // seconds since unix epoch
+      let later = now + 1000;
 
       // Should fail to initialize if non-admin wallet is used
-      truffleAssert.reverts(lazyMint.initializeListing(creator.address, merkleTree.getHexRoot(), 'https://', {from:owner2}));
+      truffleAssert.reverts(lazyMint.initializeListing(
+        creator.address,
+        merkleTree.getHexRoot(),
+        'https://',
+        3,
+        1,
+        now,
+        later,
+        {from:owner2}
+      ));
 
-      await lazyMint.initializeListing(creator.address, merkleTree.getHexRoot(), 'https://', {from:owner});
-      // Trying to initialize a second time should revert
-      truffleAssert.reverts(lazyMint.initializeListing(creator.address, merkleTree.getHexRoot(), 'https://', {from:owner}));
+      await lazyMint.initializeListing(
+        creator.address,
+        merkleTree.getHexRoot(),
+        'https://',
+        3,
+        1,
+        now,
+        later,
+        {from:owner}
+      );
+
+      // Initialize a second listing - with optional parameters disabled
+      await lazyMint.initializeListing(
+        creator.address,
+        "0x0",
+        'https://',
+        0,
+        0,
+        0,
+        0,
+        {from:owner}
+      );
     
       // Listing should have expected info
-      const listing = await lazyMint.getListing(creator.address, {from:owner});
+      const count = await lazyMint.getListingCount(creator.address, {from:owner});
+      assert.equal(count, 2);
+      const listing = await lazyMint.getListing(creator.address, 0, {from:owner});
       assert.equal(listing.merkleRoot, merkleTree.getHexRoot());
       assert.equal(listing.uri, 'https://');
-      assert.equal(listing.initialized, true);
+      assert.equal(listing.totalMax, 3);
+      assert.equal(listing.walletMax, 1);
+      assert.equal(listing.startDate, now);
+      assert.equal(listing.endDate, later);
 
       // Test minting
 
       // Mint a token to random wallet
       const merkleLeaf = keccak256(anyone1);
       const merkleProof = merkleTree.getHexProof(merkleLeaf);
-      await lazyMint.mint(creator.address, merkleProof, {from:anyone1});
+      await lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1});
 
       // Minting again to the same wallet should revert
-      truffleAssert.reverts(lazyMint.mint(creator.address, merkleProof, {from:anyone1}));
+      // truffleAssert.reverts(lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1}));
 
       // Minting with an invalid proof should revert
-      truffleAssert.reverts(lazyMint.mint(creator.address, merkleProof, {from:anyone2}));
+      truffleAssert.reverts(lazyMint.mint(creator.address, 0, merkleProof, {from:anyone2}));
 
       const merkleLeaf2 = keccak256(anyone2);
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
-      await lazyMint.mint(creator.address, merkleProof2, {from:anyone2});
+      await lazyMint.mint(creator.address, 0, merkleProof2, {from:anyone2});
 
-      // Now ensure that the creator contract state is what we expect
+      // Now ensure that the creator contract state is what we expect after mints
       let balance = await creator.balanceOf(anyone1, {from:anyone3});
       assert.equal(1,balance);
       let balance2 = await creator.balanceOf(anyone2, {from:anyone3});
@@ -66,6 +114,27 @@ contract('LazyMint', function ([...accounts]) {
       assert.equal('https://', tokenURI);
       let tokenOwner = await creator.ownerOf(1);
       assert.equal(anyone1, tokenOwner);
+
+      // Test wallet and total maximums
+
+      // Try to mint again with wallet limit of 1, should revert
+      truffleAssert.reverts(lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1}));
+      // Increase wallet max to 3
+      await lazyMint.setWalletMax(creator.address, 0, 3, {from:owner});
+      // Try to mint again, should succeed
+      await lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1});
+      // Try to mint again with total limit of 3, should revert
+      truffleAssert.reverts(lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1}));
+      // Increase total max to 4
+      await lazyMint.setTotalMax(creator.address, 0, 4, {from:owner});
+      // Try to mint again, should succeed
+      await lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1});
+
+      // Optional parameters - using listing 2
+      const garbageMerkleProof = merkleTree.getHexProof(keccak256(anyone3));
+      await lazyMint.mint(creator.address, 1, garbageMerkleProof, {from:anyone1});
+      await lazyMint.mint(creator.address, 1, garbageMerkleProof, {from:anyone1});
+      await lazyMint.mint(creator.address, 1, garbageMerkleProof, {from:anyone2});
     });
   });
 });
