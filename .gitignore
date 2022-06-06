@@ -13,3 +13,5 @@ build
 node_modules
 coverage
 coverage.json
+yarn.lock
+yarn.*
