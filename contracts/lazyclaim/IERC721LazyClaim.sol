@@ -29,5 +29,5 @@ interface IERC721LazyClaim {
     function getClaimCount(address creatorContractAddress) external view returns(uint);
     function getClaim(address creatorContractAddress, uint index) external view returns(Claim memory);
 
-    function mint(address creatorContractAddress, uint index, bytes32[] calldata merkleProof) external;
+    function mint(address creatorContractAddress, uint index, bytes32[] calldata merkleProof, uint minterValue) external;
 }

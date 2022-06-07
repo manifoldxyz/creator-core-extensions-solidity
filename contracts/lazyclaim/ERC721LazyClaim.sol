@@ -123,22 +123,28 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
   }
 
   // Public mint
-  function mint(address creatorContractAddress, uint index, bytes32[] calldata merkleProof) external {
+  function mint(address creatorContractAddress, uint index, bytes32[] calldata merkleProof, uint minterValue) external {
       // Verify merkle proof
       Claim memory claim = claims[creatorContractAddress][index];
       if (claim.merkleRoot != "") {
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, minterValue));
         require(MerkleProof.verify(merkleProof, claim.merkleRoot, leaf), "Could not verify merkle proof");
+
+        if (minterValue != 0) {
+          uint allocationMinted = mintsPerWallet[creatorContractAddress][index][msg.sender];
+          require(allocationMinted < minterValue, "Maximum tokens already minted for this wallet per allocation");
+        }
       }
 
       // Check walletMax against minter's wallet
       uint walletMinted = mintsPerWallet[creatorContractAddress][index][msg.sender];
       if (claim.walletMax != 0) require(walletMinted < claim.walletMax, "Maximum tokens already minted for this wallet");
-      mintsPerWallet[creatorContractAddress][index][msg.sender] = walletMinted + 1;
 
       // Check totalMax
       uint claimMinted = mintsPerClaim[creatorContractAddress][index];
       if (claim.totalMax != 0) require(claimMinted < claim.totalMax, "Maximum tokens already minted for this claim");
+
+      mintsPerWallet[creatorContractAddress][index][msg.sender] = walletMinted + 1;
       mintsPerClaim[creatorContractAddress][index] = claimMinted + 1;
 
       // Check timestamps

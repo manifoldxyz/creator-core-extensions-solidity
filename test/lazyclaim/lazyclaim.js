@@ -3,6 +3,7 @@ const ERC721LazyClaim = artifacts.require("ERC721LazyClaim");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
+const ethers = require('ethers');
 
 contract('LazyClaim', function ([...accounts]) {
   const [owner, owner2, creatorCore, marketplace, anyone1, anyone2, anyone3, anyone4, anyone5, anyone6, anyone7] = accounts;
@@ -16,7 +17,9 @@ contract('LazyClaim', function ([...accounts]) {
       // Must register with empty prefix in order to set per-token uri's
       await creator.registerExtension(lazyClaim.address, {from:owner});
 
-      const merkleElements = [owner, owner2, anyone1, anyone2];
+      const merkleElements = [owner, owner2, anyone1, anyone2].map(addr => {
+        return ethers.utils.solidityPack(['address', 'uint'], [addr, 0]);
+      });
       merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
     });
 
@@ -104,19 +107,19 @@ contract('LazyClaim', function ([...accounts]) {
       // Test minting
 
       // Mint a token to random wallet
-      const merkleLeaf = keccak256(anyone1);
+      const merkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint'], [anyone1, 0]));
       const merkleProof = merkleTree.getHexProof(merkleLeaf);
-      await lazyClaim.mint(creator.address, 0, merkleProof, {from:anyone1});
+      await lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1});
 
       // Minting again to the same wallet should revert
       // truffleAssert.reverts(lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1}));
 
       // Minting with an invalid proof should revert
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, {from:anyone2}));
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone2}));
 
-      const merkleLeaf2 = keccak256(anyone2);
+      const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint'], [anyone2, 0]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
-      await lazyClaim.mint(creator.address, 0, merkleProof2, {from:anyone2});
+      await lazyClaim.mint(creator.address, 0, merkleProof2, 0, {from:anyone2});
 
       // Now ensure that the creator contract state is what we expect after mints
       let balance = await creator.balanceOf(anyone1, {from:anyone3});
@@ -136,23 +139,24 @@ contract('LazyClaim', function ([...accounts]) {
       assert.equal('three.com', newTokenURI);
 
       // Try to mint again with wallet limit of 1, should revert
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, {from:anyone1}));
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1}));
       // Increase wallet max to 3
       await lazyClaim.setWalletMax(creator.address, 0, 3, {from:owner});
       // Try to mint again, should succeed
-      await lazyClaim.mint(creator.address, 0, merkleProof, {from:anyone1});
+      await lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1});
       // Try to mint again with total limit of 3, should revert
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, {from:anyone1}));
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1}));
       // Increase total max to 4
       await lazyClaim.setTotalMax(creator.address, 0, 4, {from:owner});
       // Try to mint again, should succeed
-      await lazyClaim.mint(creator.address, 0, merkleProof, {from:anyone1});
+      await lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1});
 
       // Optional parameters - using claim 2
-      const garbageMerkleProof = merkleTree.getHexProof(keccak256(anyone3));
-      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, {from:anyone1});
-      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, {from:anyone1});
-      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, {from:anyone2});
+      const garbageMerkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint'], [anyone3, 0]));
+      const garbageMerkleProof = merkleTree.getHexProof(garbageMerkleLeaf);
+      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone1});
+      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone1});
+      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone2});
     });
   });
 });
