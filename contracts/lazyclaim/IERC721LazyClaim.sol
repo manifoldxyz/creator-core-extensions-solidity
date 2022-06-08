@@ -8,7 +8,7 @@ pragma solidity ^0.8.0;
  * Lazy Claim interface
  */
 interface IERC721LazyClaim {
-    enum StorageProtocol { ARWEAVE, IPFS }
+    enum StorageProtocol { NONE, ARWEAVE, IPFS }
 
     struct Claim {
         uint32 total;
@@ -19,10 +19,10 @@ interface IERC721LazyClaim {
         StorageProtocol storageProtocol;
         bool identical;
         bytes32 merkleRoot;
-        string uri;
+        string location;
     }
-    function initializeClaim(address creatorContractAddress, bytes32 merkleRoot, string calldata uri, uint32 totalMax, uint32 walletMax, uint48 startDate, uint48 endDate, StorageProtocol storageProtocol, bool identical) external;
-    function overwriteClaim(address creatorContractAddress, uint index, bytes32 merkleRoot, string calldata uri, uint32 totalMax, uint32 walletMax, uint48 startDate, uint48 endDate, StorageProtocol storageProtocol, bool identical) external;
+    function initializeClaim(address creatorContractAddress, bytes32 merkleRoot, string calldata location, uint32 totalMax, uint32 walletMax, uint48 startDate, uint48 endDate, StorageProtocol storageProtocol, bool identical) external;
+    function overwriteClaim(address creatorContractAddress, uint index, bytes32 merkleRoot, string calldata location, uint32 totalMax, uint32 walletMax, uint48 startDate, uint48 endDate, StorageProtocol storageProtocol, bool identical) external;
 
     function getClaimCount(address creatorContractAddress) external view returns(uint);
     function getClaim(address creatorContractAddress, uint index) external view returns(Claim memory);
