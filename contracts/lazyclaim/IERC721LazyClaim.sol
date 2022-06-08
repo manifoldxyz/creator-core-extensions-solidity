@@ -21,7 +21,7 @@ interface IERC721LazyClaim {
         bytes32 merkleRoot;
         string location;
     }
-    function initializeClaim(address creatorContractAddress, bytes32 merkleRoot, string calldata location, uint32 totalMax, uint32 walletMax, uint48 startDate, uint48 endDate, StorageProtocol storageProtocol, bool identical) external;
+    function initializeClaim(address creatorContractAddress, bytes32 merkleRoot, string calldata location, uint32 totalMax, uint32 walletMax, uint48 startDate, uint48 endDate, StorageProtocol storageProtocol, bool identical) external returns(uint);
     function overwriteClaim(address creatorContractAddress, uint index, bytes32 merkleRoot, string calldata location, uint32 totalMax, uint32 walletMax, uint48 startDate, uint48 endDate, StorageProtocol storageProtocol, bool identical) external;
 
     function getClaimCount(address creatorContractAddress) external view returns(uint);

@@ -70,9 +70,10 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     uint48 endDate,
     StorageProtocol storageProtocol,
     bool identical
-  ) external creatorAdminRequired(creatorContractAddress) {
+  ) external creatorAdminRequired(creatorContractAddress) returns (uint) {
     // Sanity checks
     require(endDate == 0 || startDate < endDate, "Cannot have startDate greater than or equal to endDate");
+    require(totalMax < 10000, "Cannot have totalMax greater than 10000");
   
     // Get the index for the new claim
     uint newIndex = claimCounts[creatorContractAddress];
@@ -92,6 +93,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     });
 
     emit ClaimInitialized(creatorContractAddress, newIndex, msg.sender);
+    return newIndex;
   }
 
   // Update
