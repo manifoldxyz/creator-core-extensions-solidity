@@ -15,35 +15,37 @@ import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "./IERC721LazyClaim.sol";
 
 /**
- * Lazy claim with optional whitelist ERC721 tokens
+ * @title Lazy Claim
+ * @author manifold.xyz
+ * @notice Lazy claim with optional whitelist ERC721 tokens
  */
 contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI, ReentrancyGuard {
   string constant ARWEAVE_PREFIX = "https://arweave.net/";
-  string constant IPFS_PREFIX = "https://ipfs.io/ipfs/";
+  string constant IPFS_PREFIX = "ipfs://";
 
-  event ClaimInitialized(address indexed creatorContract, uint indexed index, address initializer);
-  event Mint(address indexed creatorContract, uint indexed index, uint indexed tokenId, address minter);
+  event ClaimInitialized(address indexed creatorContract, uint256 indexed claimIndex, address initializer);
+  event Mint(address indexed creatorContract, uint256 indexed claimIndex, uint256 tokenId, address claimer);
 
   struct IndexRange {
     uint256 start;
     uint256 count;
   }
 
-  // stores the size of the mapping in claims, since we can have multiple claims per creator contract
-  // { contractAddress => claimCount }
-  mapping(address => uint) public claimCounts;
+  /// stores the size of the mapping in claims, since we can have multiple claims per creator contract
+  /// { contractAddress => claimCount }
+  mapping(address => uint256) public claimCounts;
 
-  // stores the claim data structure, including params and total supply
-  // { contractAddress => { claimIndex => Claim } }
-  mapping(address => mapping(uint => Claim)) public claims;
+  /// stores the claim data structure, including params and total supply
+  /// { contractAddress => { claimIndex => Claim } }
+  mapping(address => mapping(uint256 => Claim)) public claims;
 
-  // stores the number of tokens minted per wallet per claim, in order to limit maximum
-  // { contractAddress => { claimIndex => { walletAddress => walletMints } } }
-  mapping(address => mapping(uint => mapping(address => uint32))) public mintsPerWallet;
+  /// stores the number of tokens minted per wallet per claim, in order to limit maximum
+  /// { contractAddress => { claimIndex => { walletAddress => walletMints } } }
+  mapping(address => mapping(uint256 => mapping(address => uint32))) public mintsPerWallet;
 
-  // stores which claim corresponds to which tokenId, used to generate token uris
-  // { contractAddress => { tokenId => indexRanges } }
-  mapping(address => mapping(uint => IndexRange[])) public tokenClaims;
+  /// stores which claim corresponds to which tokenId, used to generate token uris
+  /// { contractAddress => { tokenId => indexRanges } }
+  mapping(address => mapping(uint256 => IndexRange[])) public tokenClaims;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
     return interfaceId == type(IERC721LazyClaim).interfaceId ||
@@ -51,100 +53,133 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
       interfaceId == type(IERC165).interfaceId;
   }
 
-  // This extension is shared, not single-creator. So we must ensure
-  // that a claim's initializer is an admin on the creator contract
+  
+  /**
+   * @notice This extension is shared, not single-creator. So we must ensure
+   * that a claim's initializer is an admin on the creator contract
+   * @param creatorContractAddress the address of the creator contract to check the admin against
+   */
   modifier creatorAdminRequired(address creatorContractAddress) {
     AdminControl creatorCoreContract = AdminControl(creatorContractAddress);
     require(creatorCoreContract.isAdmin(msg.sender), "Wallet is not an administrator for contract");
     _;
   }
 
-  // Initialize
+  /*
+   * @notice initialize a new claim, emit initialize event, and return the newly created index
+   * @param creatorContractAddress the creator contract the claim will mint tokens for
+   * @param claimParameters the parameters which will affect the minting behavior of the claim
+   * @return the index of the newly created claim
+   */
   function initializeClaim(
     address creatorContractAddress,
-    bytes32 merkleRoot,
-    string calldata location,
-    uint32 totalMax,
-    uint32 walletMax,
-    uint48 startDate,
-    uint48 endDate,
-    StorageProtocol storageProtocol,
-    bool identical
-  ) external creatorAdminRequired(creatorContractAddress) returns (uint) {
+    ClaimParameters calldata claimParameters
+  ) external override creatorAdminRequired(creatorContractAddress) returns (uint256) {
     // Sanity checks
-    require(endDate == 0 || startDate < endDate, "Cannot have startDate greater than or equal to endDate");
-    require(totalMax < 10000, "Cannot have totalMax greater than 10000");
+    require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
+    require(claimParameters.totalMax < 10000, "Cannot have totalMax greater than 10000");
   
     // Get the index for the new claim
-    uint newIndex = claimCounts[creatorContractAddress];
-    claimCounts[creatorContractAddress] = newIndex + 1;
+    claimCounts[creatorContractAddress]++; // First claimIndex will be 1, not zero
+    uint256 newIndex = claimCounts[creatorContractAddress];
 
     // Create the claim
     claims[creatorContractAddress][newIndex] = Claim({
       total: 0,
-      totalMax: totalMax,
-      walletMax: walletMax,
-      startDate: startDate,
-      endDate: endDate,
-      storageProtocol: storageProtocol,
-      identical: identical,
-      merkleRoot: merkleRoot,
-      location: location
+      totalMax: claimParameters.totalMax,
+      walletMax: claimParameters.walletMax,
+      startDate: claimParameters.startDate,
+      endDate: claimParameters.endDate,
+      storageProtocol: claimParameters.storageProtocol,
+      identical: claimParameters.identical,
+      merkleRoot: claimParameters.merkleRoot,
+      location: claimParameters.location
     });
 
     emit ClaimInitialized(creatorContractAddress, newIndex, msg.sender);
     return newIndex;
   }
 
-  // Update
+  /**
+   * @notice update an existing claim at claimIndex
+   * @param creatorContractAddress the creator contract corresponding to the claim
+   * @param claimIndex the index of the claim in the list of creatorContractAddress' claims
+   * @param claimParameters the parameters which will affect the minting behavior of the claim
+   */
   function overwriteClaim(
     address creatorContractAddress,
-    uint index,
-    bytes32 merkleRoot,
-    string calldata location,
-    uint32 totalMax,
-    uint32 walletMax,
-    uint48 startDate,
-    uint48 endDate,
-    StorageProtocol storageProtocol,
-    bool identical
-  ) external creatorAdminRequired(creatorContractAddress) {
+    uint256 claimIndex,
+    ClaimParameters calldata claimParameters
+  ) external override creatorAdminRequired(creatorContractAddress) {
     // Sanity checks
-    require(claims[creatorContractAddress][index].totalMax == totalMax, "Cannot modify totalMax");
-    require(claims[creatorContractAddress][index].walletMax <= walletMax, "Cannot decrease walletMax");
-    require(endDate == 0 || startDate < endDate, "Cannot have startDate greater than or equal to endDate");
+    require(claims[creatorContractAddress][claimIndex].totalMax == claimParameters.totalMax, "Cannot modify totalMax");
+    require(claims[creatorContractAddress][claimIndex].walletMax <= claimParameters.walletMax, "Cannot decrease walletMax");
+    require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
 
     // Overwrite the existing claim
-    claims[creatorContractAddress][index] = Claim({
-      total: claims[creatorContractAddress][index].total,
-      totalMax: totalMax,
-      walletMax: walletMax,
-      startDate: startDate,
-      endDate: endDate,
-      storageProtocol: storageProtocol,
-      identical: identical,
-      merkleRoot: merkleRoot,
-      location: location
+    claims[creatorContractAddress][claimIndex] = Claim({
+      total: claims[creatorContractAddress][claimIndex].total,
+      totalMax: claimParameters.totalMax,
+      walletMax: claimParameters.walletMax,
+      startDate: claimParameters.startDate,
+      endDate: claimParameters.endDate,
+      storageProtocol: claimParameters.storageProtocol,
+      identical: claimParameters.identical,
+      merkleRoot: claimParameters.merkleRoot,
+      location: claimParameters.location
     });
   }
 
-  // Public getters
-  function getClaimCount(address creatorContractAddress) external view returns(uint) {
+  /**
+   * @notice get the number of claims initialized for a given creator contract
+   * @param creatorContractAddress the address of the creator contract
+   * @return the number of claims initialized for this creator contract
+   */
+  function getClaimCount(address creatorContractAddress) external override view returns(uint256) {
     return claimCounts[creatorContractAddress];
   }
-  function getClaim(address creatorContractAddress, uint index) external view returns(Claim memory) {
-    require(index < claimCounts[creatorContractAddress], "Claim does not exist");
-    return claims[creatorContractAddress][index];
-  }
-  function getWalletMinted(address creatorContractAddress, uint index) external view returns(uint32) {
-    require(index < claimCounts[creatorContractAddress], "Claim does not exist");
-    return mintsPerWallet[creatorContractAddress][index][msg.sender];
+
+  /**
+   * @notice get a claim corresponding to a creator contract and index
+   * @param creatorContractAddress the address of the creator contract
+   * @param claimIndex the index of the claim
+   * @return the claim object
+   */
+  function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory) {
+    require(claimIndex < claimCounts[creatorContractAddress], "Claim does not exist");
+    return claims[creatorContractAddress][claimIndex];
   }
 
-  // Internal: Update tokenClaim with a newly minted token.
-  // Increment the count of the current indexRange if this mint is consecutive, or start a new one if continuity was broken
-  function _updateIndexRanges(address creatorContractAddress, uint256 index, uint256 start) internal {
-    IndexRange[] storage indexRanges = tokenClaims[creatorContractAddress][index];
+  /**
+   * @notice get the number of tokens minted for the current wallet for a given claim
+   * @param creatorContractAddress the address of the creator contract for the claim
+   * @param claimIndex the index of the claim
+   * @return the number of tokens minted for the current wallet
+   */
+  function getWalletMinted(address creatorContractAddress, uint256 claimIndex) external override view returns(uint32) {
+    require(claimIndex < claimCounts[creatorContractAddress], "Claim does not exist");
+    return mintsPerWallet[creatorContractAddress][claimIndex][msg.sender];
+  }
+
+  /**
+   * @notice get the claim index corresponding to a creator contract and tokenId
+   * @param creatorContractAddress the address of the creator contract
+   * @param tokenId the token id
+   * @return the index of the claim
+   */
+  function getTokenClaim(address creatorContractAddress, uint256 tokenId) external override view returns(uint256) {
+    return _getTokenClaim(creatorContractAddress, tokenId);
+  }
+
+  /**
+   * @notice update tokenClaim with a newly minted token.
+   * increment the count of the current indexRange if this mint is consecutive, or start a new one if continuity was broken
+   * @param creatorContractAddress the creator contract address
+   * @param claimIndex the index of the claim
+   * @param start the token id marking the start of a new index range or the extension of an existing one
+   */
+  function _updateIndexRanges(address creatorContractAddress, uint256 claimIndex, uint256 start) internal {
+    IndexRange[] storage indexRanges = tokenClaims[creatorContractAddress][claimIndex];
     if (indexRanges.length == 0) {
       indexRanges.push(IndexRange(start, 1));
     } else {
@@ -157,13 +192,18 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     }
   }
 
-  // Internal: Get the claim corresponding to a token by searching through the indexRanges in tokenClaims
+  /**
+   * @notice get the claim corresponding to a token by searching through the indexRanges in tokenClaims
+   * @param creatorContractAddress the creator contract address
+   * @param tokenId the token id to search for in tokenClaims
+   * @return the claim index corresponding to this token
+   */
   function _getTokenClaim(address creatorContractAddress, uint256 tokenId) internal view returns(uint256) {
     require(claimCounts[creatorContractAddress] > 0, "No claims for creator contract");
-    for (uint index=1; index <= claimCounts[creatorContractAddress]; index++) {
+    for (uint256 index=1; index <= claimCounts[creatorContractAddress]; index++) {
       IndexRange[] memory indexRanges = tokenClaims[creatorContractAddress][index];
       uint256 offset;
-      for (uint i = 0; i < indexRanges.length; i++) {
+      for (uint256 i = 0; i < indexRanges.length; i++) {
         IndexRange memory currentIndex = indexRanges[i];
         if (tokenId < currentIndex.start) break;
         if (tokenId >= currentIndex.start && tokenId < currentIndex.start + currentIndex.count) {
@@ -176,25 +216,29 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
   }
 
 
-  // Public mint
-  function mint(address creatorContractAddress, uint index, bytes32[] calldata merkleProof, uint32 minterValue) external {
+
+  /**
+   * @notice allow a wallet to lazily claim a token according to parameters
+   * @param creatorContractAddress the creator contract address
+   * @param claimIndex the index of the claim for which we will mint
+   * @param merkleProof if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it
+   * @param minterValue the value portion which combines with msg.sender to form the merkle leaf corresponding to merkleProof
+   * @return the tokenId of the newly minted token
+   */
+  function mint(address creatorContractAddress, uint256 claimIndex, bytes32[] calldata merkleProof, uint32 minterValue) external override returns (uint256) {
       // Safely retrieve the claim
-      require(index < claimCounts[creatorContractAddress], "Claim does not exist");
-      Claim storage claim = claims[creatorContractAddress][index];
+      require(claimIndex < claimCounts[creatorContractAddress], "Claim does not exist");
+      Claim storage claim = claims[creatorContractAddress][claimIndex];
 
       // Check timestamps
-      if (claim.startDate != 0) require(claim.startDate < block.timestamp, "Transaction before start date");
-      if (claim.endDate != 0) require(claim.endDate >= block.timestamp, "Transaction after end date");
+      require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
+      require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
 
       // Check walletMax against minter's wallet
-      if (claim.walletMax != 0) {
-        require(mintsPerWallet[creatorContractAddress][index][msg.sender] < claim.walletMax, "Maximum tokens already minted for this wallet");
-      }
+      require(claim.walletMax == 0 || mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax, "Maximum tokens already minted for this wallet");
 
       // Check totalMax
-      if (claim.totalMax != 0) {
-        require(claim.total < claim.totalMax, "Maximum tokens already minted for this claim");
-      }
+      require(claim.totalMax == 0 || claim.total < claim.totalMax, "Maximum tokens already minted for this claim");
 
       // Verify merkle proof
       if (claim.merkleRoot != "") {
@@ -202,28 +246,33 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         require(MerkleProof.verify(merkleProof, claim.merkleRoot, leaf), "Could not verify merkle proof");
 
         // Check minterValue against minter's wallet
-        if (minterValue != 0) {
-          uint allocationMinted = mintsPerWallet[creatorContractAddress][index][msg.sender];
-          require(allocationMinted < minterValue, "Maximum tokens already minted for this wallet per allocation");
-        }
+        require(minterValue == 0 || mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < minterValue, "Maximum tokens already minted for this wallet per allocation");
       }
 
       // Do mint
-      uint newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(msg.sender);
+      uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(msg.sender);
 
       // Insert the new tokenId into tokenClaims for the current claim address & index
-      _updateIndexRanges(creatorContractAddress, index, newTokenId);
+      _updateIndexRanges(creatorContractAddress, claimIndex, newTokenId);
 
       // Increment the wallet mints & total mints - already checked for safety
-      unchecked{ mintsPerWallet[creatorContractAddress][index][msg.sender]++; }
+      unchecked{ mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]++; }
       unchecked{ claim.total++; }
-
-      emit Mint(creatorContractAddress, index, newTokenId, msg.sender);
+      
+      emit Mint(creatorContractAddress, claimIndex, newTokenId, msg.sender);
+      return newTokenId;
   }
 
-  function tokenURI(address creatorContractAddress, uint tokenId) external view returns(string memory) {
+  /**
+   * @notice construct the uri for the erc721 token metadata
+   * @param creatorContractAddress the creator contract address
+   * @param tokenId the token id to construct the uri for
+   * @return the uri constructed according to the params of the claim corresponding to tokenId
+   * @inheritdoc ICreatorExtensionTokenURI
+   */
+  function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory) {
     // First, find the claim corresponding to this token id
-    uint claimIndex = _getTokenClaim(creatorContractAddress, tokenId);
+    uint256 claimIndex = _getTokenClaim(creatorContractAddress, tokenId);
 
     // Depending on params, we may want to append a suffix to location
     string memory suffix = "";
