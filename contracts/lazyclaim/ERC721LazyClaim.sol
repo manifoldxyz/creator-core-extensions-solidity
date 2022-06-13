@@ -11,6 +11,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./IERC721LazyClaim.sol";
 
@@ -33,19 +34,19 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
 
   /// stores the size of the mapping in claims, since we can have multiple claims per creator contract
   /// { contractAddress => claimCount }
-  mapping(address => uint256) public claimCounts;
+  mapping(address => uint256) claimCounts;
 
   /// stores the claim data structure, including params and total supply
   /// { contractAddress => { claimIndex => Claim } }
-  mapping(address => mapping(uint256 => Claim)) public claims;
+  mapping(address => mapping(uint256 => Claim)) claims;
 
   /// stores the number of tokens minted per wallet per claim, in order to limit maximum
   /// { contractAddress => { claimIndex => { walletAddress => walletMints } } }
-  mapping(address => mapping(uint256 => mapping(address => uint32))) public mintsPerWallet;
+  mapping(address => mapping(uint256 => mapping(address => uint32))) mintsPerWallet;
 
   /// stores which claim corresponds to which tokenId, used to generate token uris
   /// { contractAddress => { tokenId => indexRanges } }
-  mapping(address => mapping(uint256 => IndexRange[])) public tokenClaims;
+  mapping(address => mapping(uint256 => IndexRange[])) tokenClaims;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
     return interfaceId == type(IERC721LazyClaim).interfaceId ||
@@ -76,11 +77,12 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     ClaimParameters calldata claimParameters
   ) external override creatorAdminRequired(creatorContractAddress) returns (uint256) {
     // Sanity checks
+    require(bytes(claimParameters.location).length != 0, "Cannot initialize with empty location");
     require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
     require(claimParameters.totalMax < 10000, "Cannot have totalMax greater than 10000");
   
     // Get the index for the new claim
-    claimCounts[creatorContractAddress]++; // First claimIndex will be 1, not zero
+    claimCounts[creatorContractAddress]++;
     uint256 newIndex = claimCounts[creatorContractAddress];
 
     // Create the claim
@@ -112,6 +114,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     ClaimParameters calldata claimParameters
   ) external override creatorAdminRequired(creatorContractAddress) {
     // Sanity checks
+    require(bytes(claims[creatorContractAddress][claimIndex].location).length != 0, "Cannot overwrite uninitialized claim");
     require(claims[creatorContractAddress][claimIndex].totalMax == claimParameters.totalMax, "Cannot modify totalMax");
     require(claims[creatorContractAddress][claimIndex].walletMax <= claimParameters.walletMax, "Cannot decrease walletMax");
     require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
@@ -146,7 +149,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
    * @return the claim object
    */
   function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory) {
-    require(claimIndex < claimCounts[creatorContractAddress], "Claim does not exist");
+    require(bytes(claims[creatorContractAddress][claimIndex].location).length != 0, "Claim not initialized");
     return claims[creatorContractAddress][claimIndex];
   }
 
@@ -156,9 +159,9 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
    * @param claimIndex the index of the claim
    * @return the number of tokens minted for the current wallet
    */
-  function getWalletMinted(address creatorContractAddress, uint256 claimIndex) external override view returns(uint32) {
-    require(claimIndex < claimCounts[creatorContractAddress], "Claim does not exist");
-    return mintsPerWallet[creatorContractAddress][claimIndex][msg.sender];
+  function getWalletMinted(address creatorContractAddress, uint256 claimIndex, address walletAddress) external override view returns(uint32) {
+    require(bytes(claims[creatorContractAddress][claimIndex].location).length != 0, "Claim not initialized");
+    return mintsPerWallet[creatorContractAddress][claimIndex][walletAddress];
   }
 
   /**
@@ -226,8 +229,9 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
    * @return the tokenId of the newly minted token
    */
   function mint(address creatorContractAddress, uint256 claimIndex, bytes32[] calldata merkleProof, uint32 minterValue) external override returns (uint256) {
+
       // Safely retrieve the claim
-      require(claimIndex < claimCounts[creatorContractAddress], "Claim does not exist");
+      require(bytes(claims[creatorContractAddress][claimIndex].location).length != 0, "Claim not initialized");
       Claim storage claim = claims[creatorContractAddress][claimIndex];
 
       // Check timestamps
@@ -277,7 +281,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     // Depending on params, we may want to append a suffix to location
     string memory suffix = "";
     if (!claims[creatorContractAddress][claimIndex].identical) {
-      suffix = string(abi.encodePacked("/", tokenId));
+      suffix = string(abi.encodePacked("/", Strings.toString(tokenId)));
 
       // IPFS blobs need .json at the end
       if (claims[creatorContractAddress][claimIndex].storageProtocol == StorageProtocol.IPFS) {

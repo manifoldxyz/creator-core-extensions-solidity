@@ -18,7 +18,7 @@ contract('LazyClaim', function ([...accounts]) {
       await creator.registerExtension(lazyClaim.address, {from:owner});
 
       const merkleElements = [owner, owner2, anyone1, anyone2].map(addr => {
-        return ethers.utils.solidityPack(['address', 'uint'], [addr, 0]);
+        return ethers.utils.solidityPack(['address', 'uint32'], [addr, 0]);
       });
       merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
     });
@@ -32,7 +32,7 @@ contract('LazyClaim', function ([...accounts]) {
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 10,
           walletMax: 1,
@@ -48,7 +48,7 @@ contract('LazyClaim', function ([...accounts]) {
       await lazyClaim.initializeClaim(
         creator.address,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 10,
           walletMax: 1,
@@ -69,7 +69,7 @@ contract('LazyClaim', function ([...accounts]) {
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 10001,
           walletMax: 1,
@@ -85,7 +85,7 @@ contract('LazyClaim', function ([...accounts]) {
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 10,
           walletMax: 1,
@@ -97,10 +97,10 @@ contract('LazyClaim', function ([...accounts]) {
         {from:owner}
       ));
 
-      const newClaimId = await lazyClaim.initializeClaim(
+      await lazyClaim.initializeClaim(
         creator.address,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 10,
           walletMax: 1,
@@ -113,11 +113,11 @@ contract('LazyClaim', function ([...accounts]) {
       );
 
       // Fails due to modifying totalMax
-      await truffleAssert.reverts(lazyClaim.initializeClaim(
+      await truffleAssert.reverts(lazyClaim.overwriteClaim(
         creator.address,
-        newClaimId,
+        1,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 11,
           walletMax: 1,
@@ -130,11 +130,11 @@ contract('LazyClaim', function ([...accounts]) {
       ));
 
       // Fails due to decreasing walletMax
-      await truffleAssert.reverts(lazyClaim.initializeClaim(
+      await truffleAssert.reverts(lazyClaim.overwriteClaim(
         creator.address,
-        newClaimId,
+        1,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 10,
           walletMax: 0,
@@ -147,11 +147,11 @@ contract('LazyClaim', function ([...accounts]) {
       ));
 
       // Fails due to endDate <= startDate
-      await truffleAssert.reverts(lazyClaim.initializeClaim(
+      await truffleAssert.reverts(lazyClaim.overwriteClaim(
         creator.address,
-        newClaimId,
+        1,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 10,
           walletMax: 1,
@@ -169,7 +169,7 @@ contract('LazyClaim', function ([...accounts]) {
       let later = now + 1000;
 
       const merkleElementsWithValues = [owner, owner2, anyone1, anyone2].map(addr => {
-        return ethers.utils.solidityPack(['address', 'uint'], [addr, 2]);
+        return ethers.utils.solidityPack(['address', 'uint32'], [addr, 2]);
       });
       merkleTreeWithValues = new MerkleTree(merkleElementsWithValues, keccak256, { hashLeaves: true, sortPairs: true });
 
@@ -179,7 +179,7 @@ contract('LazyClaim', function ([...accounts]) {
           merkleRoot: merkleTreeWithValues.getHexRoot(),
           location: "XXX",
           totalMax: 2,
-          walletMax: 1,
+          walletMax: 2,
           startDate: now,
           endDate: later,
           storageProtocol: 0,
@@ -189,13 +189,13 @@ contract('LazyClaim', function ([...accounts]) {
       );
 
       // Attempt to mint 2 tokens to a whitelisted address
-      const merkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint'], [anyone1, 0]));
-      const merkleProof = merkleTree.getHexProof(merkleLeaf);
-      await lazyClaim.mint(creator.address, 0, merkleProof, 2, {from:anyone1});
-      await lazyClaim.mint(creator.address, 0, merkleProof, 2, {from:anyone1});
+      const merkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 2]));
+      const merkleProof = merkleTreeWithValues.getHexProof(merkleLeaf);
+      await lazyClaim.mint(creator.address, 1, merkleProof, 2, {from:anyone1});
+      await lazyClaim.mint(creator.address, 1, merkleProof, 2, {from:anyone1});
 
       // Attempt to mint a 3rd, should revert
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, 2, {from:anyone1}));
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, merkleProof, 2, {from:anyone1}));
     });
 
     it('gas test', async function () {
@@ -205,10 +205,10 @@ contract('LazyClaim', function ([...accounts]) {
       const initializeTx = await lazyClaim.initializeClaim(
         creator.address,
         {
-          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
           totalMax: 11,
-          walletMax: 2,
+          walletMax: 3,
           startDate: now,
           endDate: later,
           storageProtocol: 0,
@@ -217,17 +217,27 @@ contract('LazyClaim', function ([...accounts]) {
         {from:owner}
       );
       console.log("Gas cost:\tinitialize:\t"+ initializeTx.receipt.gasUsed);
-      assert(initializeTx.receipt.gasUsed < 10000000, "Initialize gas too high");
+      // Giving all assertions a 10k gas buffer
+      assert(initializeTx.receipt.gasUsed < 108616, "Initialize gas too high");
 
-      const garbageMerkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint'], [anyone3, 0]));
+      // Mint 2 tokens using the extension
+      const garbageMerkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 0]));
       const garbageMerkleProof = merkleTree.getHexProof(garbageMerkleLeaf);
       const mintTx = await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone1});
       console.log("Gas cost:\tfirst mint:\t"+ mintTx.receipt.gasUsed);
-      assert(initializeTx.receipt.gasUsed < 10000000, "First mint gas too high");
+      assert(mintTx.receipt.gasUsed < 230588, "First mint gas too high");
 
       const mintTx2 = await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone1});
       console.log("Gas cost:\tsecond mint:\t"+ mintTx2.receipt.gasUsed);
-      assert(initializeTx.receipt.gasUsed < 10000000, "First mint gas too high");
+      assert(mintTx2.receipt.gasUsed < 133993, "Second mint gas too high");
+
+      // Mint a token using creator contract, to test breaking up extension's indexRange
+      await creator.mintBase(anyone1, { from: owner });
+
+      // Mint 1 token using the extension
+      const mintTx3 = await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone1});
+      console.log("Gas cost:\tthird mint:\t"+ mintTx3.receipt.gasUsed);
+      assert(mintTx3.receipt.gasUsed < 174070, "Third mint gas too high");
     });
 
     it('functionality test', async function() {
@@ -251,12 +261,12 @@ contract('LazyClaim', function ([...accounts]) {
         {from:owner2}
       ));
 
-      const initializeTx = await lazyClaim.initializeClaim(
+      await lazyClaim.initializeClaim(
         creator.address,
         {
           merkleRoot: merkleTree.getHexRoot(),
           location: "one.com",
-          totalMax: 2,
+          totalMax: 3,
           walletMax: 1,
           startDate: now,
           endDate: later,
@@ -266,19 +276,19 @@ contract('LazyClaim', function ([...accounts]) {
         {from:owner}
       );
 
-      // Overwrite the claim with one parameter changed
+      // Overwrite the claim with parameters changed
       await lazyClaim.overwriteClaim(
         creator.address,
-        0, // the index of the claim we want to edit
+        1, // the index of the claim we want to edit
         {
           merkleRoot: merkleTree.getHexRoot(),
           location: "one.com",
-          totalMax: 2,
+          totalMax: 3,
           walletMax: 1,
           startDate: now,
           endDate: later + 1,
           storageProtocol: 0,
-          identical: true
+          identical: false
         },
         {from:owner}
       );
@@ -287,7 +297,7 @@ contract('LazyClaim', function ([...accounts]) {
       await lazyClaim.initializeClaim(
         creator.address,
         {
-          merkleRoot: "0x0",
+          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
           location: "two.com",
           totalMax: 0,
           walletMax: 0,
@@ -302,20 +312,20 @@ contract('LazyClaim', function ([...accounts]) {
       // Claim should have expected info
       const count = await lazyClaim.getClaimCount(creator.address, {from:owner});
       assert.equal(count, 2);
-      const claim = await lazyClaim.getClaim(creator.address, 0, {from:owner});
+      const claim = await lazyClaim.getClaim(creator.address, 1, {from:owner});
       assert.equal(claim.merkleRoot, merkleTree.getHexRoot());
-      assert.equal(claim.uri, 'one.com');
+      assert.equal(claim.location, 'one.com');
       assert.equal(claim.totalMax, 3);
       assert.equal(claim.walletMax, 1);
       assert.equal(claim.startDate, now);
-      assert.equal(claim.endDate, later);
+      assert.equal(claim.endDate, later + 1);
 
       // Test minting
 
       // Mint a token to random wallet
-      const merkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint'], [anyone1, 0]));
+      const merkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
       const merkleProof = merkleTree.getHexProof(merkleLeaf);
-      const mintTx = await lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1});
+      const mintTx = await lazyClaim.mint(creator.address, 1, merkleProof, 0, {from:anyone1});
 
       console.log("Cost to mint: "+ mintTx.receipt.gasUsed);
       assert(mintTx.receipt.gasUsed < 10000000, "Mint gas too high");
@@ -324,11 +334,11 @@ contract('LazyClaim', function ([...accounts]) {
       // truffleAssert.reverts(lazyMint.mint(creator.address, 0, merkleProof, {from:anyone1}));
 
       // Minting with an invalid proof should revert
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone2}));
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, merkleProof, 0, {from:anyone2}));
 
-      const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint'], [anyone2, 0]));
+      const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
-      await lazyClaim.mint(creator.address, 0, merkleProof2, 0, {from:anyone2});
+      await lazyClaim.mint(creator.address, 1, merkleProof2, 0, {from:anyone2});
 
       // Now ensure that the creator contract state is what we expect after mints
       let balance = await creator.balanceOf(anyone1, {from:anyone3});
@@ -336,36 +346,59 @@ contract('LazyClaim', function ([...accounts]) {
       let balance2 = await creator.balanceOf(anyone2, {from:anyone3});
       assert.equal(1,balance2);
       let tokenURI = await creator.tokenURI(1);
-      assert.equal('one.com', tokenURI);
+      assert.equal('one.com/1', tokenURI);
       let tokenOwner = await creator.ownerOf(1);
       assert.equal(anyone1, tokenOwner);
 
       // Additionally test that tokenURIs are dynamic
+      await lazyClaim.overwriteClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "three.com",
+          totalMax: 3,
+          walletMax: 1,
+          startDate: now,
+          endDate: later + 1,
+          storageProtocol: 0,
+          identical: false
+        },
+        {from:owner}
+      );
 
-      // Test wallet and total maximums
-      await lazyClaim.setURI(creator.address, 0, "three.com", {from:owner});
       let newTokenURI = await creator.tokenURI(1);
-      assert.equal('three.com', newTokenURI);
+      assert.equal('three.com/1', newTokenURI);
 
       // Try to mint again with wallet limit of 1, should revert
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1}));
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, merkleProof, 0, {from:anyone1}));
       // Increase wallet max to 3
-      await lazyClaim.setWalletMax(creator.address, 0, 3, {from:owner});
+      await lazyClaim.overwriteClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "three.com",
+          totalMax: 3,
+          walletMax: 3,
+          startDate: now,
+          endDate: later + 1,
+          storageProtocol: 0,
+          identical: false
+        },
+        {from:owner}
+      );
       // Try to mint again, should succeed
-      await lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1});
-      // Try to mint again with total limit of 3, should revert
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1}));
-      // Increase total max to 4
-      await lazyClaim.setTotalMax(creator.address, 0, 4, {from:owner});
-      // Try to mint again, should succeed
-      await lazyClaim.mint(creator.address, 0, merkleProof, 0, {from:anyone1});
+      await lazyClaim.mint(creator.address, 1, merkleProof, 0, {from:anyone1});
+      // Try to mint again with total limit of 3, should revert due to totalMax = 3
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, merkleProof, 0, {from:anyone1}));
 
       // Optional parameters - using claim 2
-      const garbageMerkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint'], [anyone3, 0]));
+      const garbageMerkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 0]));
       const garbageMerkleProof = merkleTree.getHexProof(garbageMerkleLeaf);
-      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone1});
-      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone1});
-      await lazyClaim.mint(creator.address, 1, garbageMerkleProof, 0, {from:anyone2});
+      await lazyClaim.mint(creator.address, 2, garbageMerkleProof, 0, {from:anyone1});
+      await lazyClaim.mint(creator.address, 2, garbageMerkleProof, 0, {from:anyone1});
+      await lazyClaim.mint(creator.address, 2, garbageMerkleProof, 0, {from:anyone2});
     });
   });
 });
