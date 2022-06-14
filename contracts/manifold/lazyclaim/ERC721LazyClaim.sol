@@ -42,7 +42,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
 
     // stores the number of tokens minted per wallet per claim, in order to limit maximum
     // { contractAddress => { claimIndex => { walletAddress => walletMints } } }
-    mapping(address => mapping(uint256 => mapping(address => uint32))) mintsPerWallet;
+    mapping(address => mapping(uint256 => mapping(address => uint256))) mintsPerWallet;
 
     // stores which tokenId corresponds to which claimIndex, used to generate token uris
     // { contractAddress => { claimIndex => indexRanges } }
