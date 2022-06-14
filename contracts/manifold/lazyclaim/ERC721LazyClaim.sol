@@ -251,6 +251,9 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
                 uint256 mintCount = mintsPerWallet[creatorContractAddress][claimIndex][msg.sender];
                 // Check minterValue and walletMax against minter's wallet
                 require((claim.walletMax == 0 || mintCount < claim.walletMax) && mintCount < minterValue, "Maximum tokens already minted for this wallet per allocation");
+            } else {
+                // Check walletMax against minter's wallet
+                require(claim.walletMax == 0 || mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax, "Maximum tokens already minted for this wallet");
             }
         } else {
             // Check walletMax against minter's wallet
