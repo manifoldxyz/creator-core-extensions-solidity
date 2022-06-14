@@ -8,7 +8,7 @@ pragma solidity ^0.8.0;
  * Lazy Claim interface
  */
 interface IERC721LazyClaim {
-    enum StorageProtocol { NONE, ARWEAVE, IPFS }
+    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
 
     struct ClaimParameters {
         uint32 totalMax;
