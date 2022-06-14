@@ -218,7 +218,7 @@ contract('LazyClaim', function ([...accounts]) {
       );
       console.log("Gas cost:\tinitialize:\t"+ initializeTx.receipt.gasUsed);
       // Giving all assertions a 10k gas buffer
-      assert(initializeTx.receipt.gasUsed < 108616, "Initialize gas too high");
+      assert(initializeTx.receipt.gasUsed < 118616, "Initialize gas too high");
 
       // Mint 2 tokens using the extension
       const garbageMerkleLeaf = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 0]));

@@ -65,89 +65,6 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "",
-						"type": "address"
-					}
-				],
-				"name": "claimCounts",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "address",
-						"name": "",
-						"type": "address"
-					},
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"name": "claims",
-				"outputs": [
-					{
-						"internalType": "uint32",
-						"name": "total",
-						"type": "uint32"
-					},
-					{
-						"internalType": "uint32",
-						"name": "totalMax",
-						"type": "uint32"
-					},
-					{
-						"internalType": "uint32",
-						"name": "walletMax",
-						"type": "uint32"
-					},
-					{
-						"internalType": "uint48",
-						"name": "startDate",
-						"type": "uint48"
-					},
-					{
-						"internalType": "uint48",
-						"name": "endDate",
-						"type": "uint48"
-					},
-					{
-						"internalType": "enum IERC721LazyClaim.StorageProtocol",
-						"name": "storageProtocol",
-						"type": "uint8"
-					},
-					{
-						"internalType": "bool",
-						"name": "identical",
-						"type": "bool"
-					},
-					{
-						"internalType": "bytes32",
-						"name": "merkleRoot",
-						"type": "bytes32"
-					},
-					{
-						"internalType": "string",
-						"name": "location",
-						"type": "string"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "address",
 						"name": "creatorContractAddress",
 						"type": "address"
 					},
@@ -269,6 +186,11 @@
 						"internalType": "uint256",
 						"name": "claimIndex",
 						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "walletAddress",
+						"type": "address"
 					}
 				],
 				"name": "getWalletMinted",
@@ -386,35 +308,6 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "",
-						"type": "address"
-					},
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					},
-					{
-						"internalType": "address",
-						"name": "",
-						"type": "address"
-					}
-				],
-				"name": "mintsPerWallet",
-				"outputs": [
-					{
-						"internalType": "uint32",
-						"name": "",
-						"type": "uint32"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "address",
 						"name": "creatorContractAddress",
 						"type": "address"
 					},
@@ -499,40 +392,6 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "",
-						"type": "address"
-					},
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"name": "tokenClaims",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "start",
-						"type": "uint256"
-					},
-					{
-						"internalType": "uint256",
-						"name": "count",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "address",
 						"name": "creatorContractAddress",
 						"type": "address"
 					},
@@ -584,7 +443,7 @@
 						"_0": "the index of the claim"
 					}
 				},
-				"getWalletMinted(address,uint256)": {
+				"getWalletMinted(address,uint256,address)": {
 					"params": {
 						"claimIndex": "the index of the claim",
 						"creatorContractAddress": "the address of the creator contract for the claim"
@@ -630,12 +489,6 @@
 		"userdoc": {
 			"kind": "user",
 			"methods": {
-				"claimCounts(address)": {
-					"notice": "stores the size of the mapping in claims, since we can have multiple claims per creator contract { contractAddress => claimCount }"
-				},
-				"claims(address,uint256)": {
-					"notice": "stores the claim data structure, including params and total supply { contractAddress => { claimIndex => Claim } }"
-				},
 				"getClaim(address,uint256)": {
 					"notice": "get a claim corresponding to a creator contract and index"
 				},
@@ -645,20 +498,14 @@
 				"getTokenClaim(address,uint256)": {
 					"notice": "get the claim index corresponding to a creator contract and tokenId"
 				},
-				"getWalletMinted(address,uint256)": {
+				"getWalletMinted(address,uint256,address)": {
 					"notice": "get the number of tokens minted for the current wallet for a given claim"
 				},
 				"mint(address,uint256,bytes32[],uint32)": {
 					"notice": "allow a wallet to lazily claim a token according to parameters"
 				},
-				"mintsPerWallet(address,uint256,address)": {
-					"notice": "stores the number of tokens minted per wallet per claim, in order to limit maximum { contractAddress => { claimIndex => { walletAddress => walletMints } } }"
-				},
 				"overwriteClaim(address,uint256,(uint32,uint32,uint48,uint48,uint8,bool,bytes32,string))": {
 					"notice": "update an existing claim at claimIndex"
-				},
-				"tokenClaims(address,uint256,uint256)": {
-					"notice": "stores which claim corresponds to which tokenId, used to generate token uris { contractAddress => { tokenId => indexRanges } }"
 				},
 				"tokenURI(address,uint256)": {
 					"notice": "construct the uri for the erc721 token metadata"
@@ -670,7 +517,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"contracts/lazyclaim/ERC721LazyClaim.sol": "ERC721LazyClaim"
+			"contracts/manifold/lazyclaim/ERC721LazyClaim.sol": "ERC721LazyClaim"
 		},
 		"evmVersion": "istanbul",
 		"libraries": {},
@@ -756,6 +603,14 @@
 				"dweb:/ipfs/QmQVv7YeeKmaS11bg7YDTeeGDk6i7sV8LMMfohaLM4SiRu"
 			]
 		},
+		"@openzeppelin/contracts/utils/Strings.sol": {
+			"keccak256": "0x5fa25f305839292fab713256214f2868e0257d29826b14282bbd7f1e34f5af38",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://b3de4074848249e00e1336db857e3fa8f78b4fe11d4a887f71050c22023b2132",
+				"dweb:/ipfs/QmbL6k2zFGndQPNPG7vCDivtjKam3quJSrEbRuVsNo4hBw"
+			]
+		},
 		"@openzeppelin/contracts/utils/cryptography/MerkleProof.sol": {
 			"keccak256": "0x972240f593e01b2fae2e90c5b94260f4971f03076363a38a3f4fff105efbba8b",
 			"license": "MIT",
@@ -788,20 +643,20 @@
 				"dweb:/ipfs/QmZYRcvZqTiLcgGRx66RceXNwWqeUS5bDQGNo1gS3hhwec"
 			]
 		},
-		"contracts/lazyclaim/ERC721LazyClaim.sol": {
-			"keccak256": "0x78c823196438e3f24d733df2ac95f155127350eae3f9086a1ad04e541abb1429",
+		"contracts/manifold/lazyclaim/ERC721LazyClaim.sol": {
+			"keccak256": "0x5e5231a9f8cd19f5190b243128a32216eba66d31fef2a56f3343328d5e7d84e7",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://8f658d9f5d923cb98a440493e55810739750ab1c04041d5b9d148b686f40f969",
-				"dweb:/ipfs/QmW3pHJLnsqZXJMjc3vKhg2LH9xVprepw9YZBnjf3US6ct"
+				"bzz-raw://69c7f1ae54a104d4805e3c8860819ea338b7af4a69007aa2a4985cb8e0099e8d",
+				"dweb:/ipfs/QmSf8Tmgv1rN3z4EGLwxKgczZzRU2eyWsqbZLkN71o8KPs"
 			]
 		},
-		"contracts/lazyclaim/IERC721LazyClaim.sol": {
-			"keccak256": "0x717d6ebd55b7600606531f08500bd5cbf4bb5c832320a9d27a3efc8b111096b6",
+		"contracts/manifold/lazyclaim/IERC721LazyClaim.sol": {
+			"keccak256": "0x3980af9d25809fc828f7b9246c3a74f4596f45be0a8668d738e2ebb900a92acf",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://03f6a28855baa53cce3b7d69ead5b9bf7027c16a4c8b3a846c4ed933158b2053",
-				"dweb:/ipfs/QmeVrbF3aA1fVakgJWSsgkyZfQCQrVA9n6Rg1M1ECt5rm6"
+				"bzz-raw://28ba93c35b7d71c7bb186216e7536c9861119c6ff279b3662e56f0f6bbc657d2",
+				"dweb:/ipfs/QmPq9ArhAgGkvnAzG6w5ppPsvJWEJ8pyeN1edTFmaMmbKt"
 			]
 		}
 	},

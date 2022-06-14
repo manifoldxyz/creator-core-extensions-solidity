@@ -32,20 +32,20 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     uint256 count;
   }
 
-  /// stores the size of the mapping in claims, since we can have multiple claims per creator contract
-  /// { contractAddress => claimCount }
+  // stores the size of the mapping in claims, since we can have multiple claims per creator contract
+  // { contractAddress => claimCount }
   mapping(address => uint256) claimCounts;
 
-  /// stores the claim data structure, including params and total supply
-  /// { contractAddress => { claimIndex => Claim } }
+  // stores the claim data structure, including params and total supply
+  // { contractAddress => { claimIndex => Claim } }
   mapping(address => mapping(uint256 => Claim)) claims;
 
-  /// stores the number of tokens minted per wallet per claim, in order to limit maximum
-  /// { contractAddress => { claimIndex => { walletAddress => walletMints } } }
+  // stores the number of tokens minted per wallet per claim, in order to limit maximum
+  // { contractAddress => { claimIndex => { walletAddress => walletMints } } }
   mapping(address => mapping(uint256 => mapping(address => uint32))) mintsPerWallet;
 
-  /// stores which claim corresponds to which tokenId, used to generate token uris
-  /// { contractAddress => { tokenId => indexRanges } }
+  // stores which claim corresponds to which tokenId, used to generate token uris
+  // { contractAddress => { tokenId => indexRanges } }
   mapping(address => mapping(uint256 => IndexRange[])) tokenClaims;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
