@@ -83,7 +83,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     
         // Get the index for the new claim
         _claimCounts[creatorContractAddress]++;
-        uint256 newIndex = _claimCounts[creatorContractAddress];
+        uint224 newIndex = _claimCounts[creatorContractAddress];
 
         // Create the claim
         _claims[creatorContractAddress][newIndex] = Claim({

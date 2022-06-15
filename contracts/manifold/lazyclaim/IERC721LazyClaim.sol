@@ -33,7 +33,7 @@ interface IERC721LazyClaim {
         string location;
     }
 
-    event ClaimInitialized(address indexed creatorContract, uint256 indexed claimIndex, address initializer);
+    event ClaimInitialized(address indexed creatorContract, uint224 indexed claimIndex, address initializer);
     event Mint(address indexed creatorContract, uint256 indexed claimIndex, uint32 mintIndex, uint256 tokenId, uint32 mintOrder, address claimer);
 
     /**
