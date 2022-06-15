@@ -23,7 +23,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
 
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
-    uint256 private constant BITMASK = 0xFF;
+    uint256 private constant MINT_INDEX_BITMASK = 0xFF;
 
     // stores the number of claim instances made by a given creator contract
     // used to determine the next claimIndex for a creator contract
@@ -44,7 +44,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
 
     struct TokenClaim {
         uint224 claimIndex;
-        uint32 mintIndex;
+        uint32 mintOrder;
     }
     // stores which tokenId corresponds to which claimIndex, used to generate token uris
     // { contractAddress => { tokenId => TokenClaim } }
@@ -155,8 +155,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         if (claim.merkleRoot != "") {
             uint256 claimMintIndex = mintIndex >> 8;
             uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
-            uint256 claimMintBitmask = mintIndex & BITMASK;
-            uint256 mintBitmask = 1 << claimMintBitmask;
+            uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
             return mintBitmask & claimMintTracking != 0;
         } else {
             if (claim.walletMax != 0) {
@@ -189,8 +188,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
             // Check if mintIndex has been minted
             uint256 claimMintIndex = mintIndex >> 8;
             uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
-            uint256 claimMintBitmask = mintIndex & BITMASK;
-            uint256 mintBitmask = 1 << claimMintBitmask;
+            uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
             require(mintBitmask & claimMintTracking == 0, "Already minted");
             _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex] = claimMintTracking | mintBitmask;
         } else {
@@ -230,7 +228,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
 
         // Depending on params, we may want to append a suffix to location
         if (!claim.identical) {
-            uri = string(abi.encodePacked(uri, "/", uint256(tokenClaim.mintIndex).toString()));
+            uri = string(abi.encodePacked(uri, "/", uint256(tokenClaim.mintOrder).toString()));
         }
     }
 }
