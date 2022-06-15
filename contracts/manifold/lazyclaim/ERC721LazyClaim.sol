@@ -31,8 +31,8 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     // { contractAddress => claimCount }
     mapping(address => uint224) private _claimCounts;
 
-    // stores the claim data structure, including params and total supply
-    // { contractAddress => { claimIndex => Claim } }
+    // stores which Claim a given token represents
+    // { contractAddress => { tokenId => Claim } }
     mapping(address => mapping(uint256 => Claim)) private _claims;
 
     // stores the number of tokens minted per wallet per claim, in order to limit maximum
