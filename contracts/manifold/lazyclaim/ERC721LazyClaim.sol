@@ -62,7 +62,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     /**
      * @notice This extension is shared, not single-creator. So we must ensure
      * that a claim's initializer is an admin on the creator contract
-     * @param creatorContractAddress the address of the creator contract to check the admin against
+     * @param creatorContractAddress    the address of the creator contract to check the admin against
      */
     modifier creatorAdminRequired(address creatorContractAddress) {
         AdminControl creatorCoreContract = AdminControl(creatorContractAddress);
@@ -70,11 +70,8 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         _;
     }
 
-    /*
-     * @notice initialize a new claim, emit initialize event, and return the newly created index
-     * @param creatorContractAddress the creator contract the claim will mint tokens for
-     * @param claimParameters the parameters which will affect the minting behavior of the claim
-     * @return the index of the newly created claim
+    /**
+     * See {IERC721LazyClaim-initializeClaim}.
      */
     function initializeClaim(
         address creatorContractAddress,
@@ -108,10 +105,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     }
 
     /**
-     * @notice update an existing claim at claimIndex
-     * @param creatorContractAddress the creator contract corresponding to the claim
-     * @param claimIndex the index of the claim in the list of creatorContractAddress' _claims
-     * @param claimParameters the parameters which will affect the minting behavior of the claim
+     * See {IERC721LazyClaim-udpateClaim}.
      */
     function updateClaim(
         address creatorContractAddress,
@@ -140,19 +134,14 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     }
 
     /**
-     * @notice get the number of _claims initialized for a given creator contract
-     * @param creatorContractAddress the address of the creator contract
-     * @return the number of _claims initialized for this creator contract
+     * See {IERC721LazyClaim-getClaimCount}.
      */
     function getClaimCount(address creatorContractAddress) external override view returns(uint256) {
         return _claimCounts[creatorContractAddress];
     }
 
     /**
-     * @notice get a claim corresponding to a creator contract and index
-     * @param creatorContractAddress the address of the creator contract
-     * @param claimIndex the index of the claim
-     * @return the claim object
+     * See {IERC721LazyClaim-getClaim}.
      */
     function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory) {
         require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
@@ -160,11 +149,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     }
 
     /**
-     * @notice check if a person can mint
-     * @param creatorContractAddress the address of the creator contract for the claim
-     * @param claimIndex the index of the claim
-     * @param mintIndex  the mint index of the claim
-     * @return whether or not the claim was minted
+     * See {IERC721LazyClaim-canMint}.
      */
     function canMint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external override view returns(bool) {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
@@ -184,12 +169,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     }
 
     /**
-     * @notice allow a wallet to lazily claim a token according to parameters
-     * @param creatorContractAddress the creator contract address
-     * @param claimIndex the index of the claim for which we will mint
-     * @param mintIndex the mint index
-     * @param merkleProof if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it
-     * @return the tokenId of the newly minted token
+     * See {IERC721LazyClaim-mint}.
      */
     function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof) external override returns (uint256) {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
@@ -235,11 +215,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     }
 
     /**
-     * @notice construct the uri for the erc721 token metadata
-     * @param creatorContractAddress the creator contract address
-     * @param tokenId the token id to construct the uri for
-     * @return uri the uri constructed according to the params of the claim corresponding to tokenId
-     * @inheritdoc ICreatorExtensionTokenURI
+     * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
         TokenClaim memory tokenClaim = _tokenClaims[creatorContractAddress][tokenId];
