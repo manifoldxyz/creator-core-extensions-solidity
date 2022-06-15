@@ -119,7 +119,7 @@ npm install
 truffle compile
 
 ### Start development server
-ganache-cli
+ganache-cli -l 20000000
 
 ### Deploy migrations
 truffle migrate
