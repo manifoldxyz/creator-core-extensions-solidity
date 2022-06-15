@@ -34,7 +34,7 @@ interface IERC721LazyClaim {
     }
 
     event ClaimInitialized(address indexed creatorContract, uint256 indexed claimIndex, address initializer);
-    event Mint(address indexed creatorContract, uint256 indexed claimIndex, uint256 tokenId, address claimer);
+    event Mint(address indexed creatorContract, uint256 indexed claimIndex, uint32 mintIndex, uint256 tokenId, uint32 mintOrder, address claimer);
 
     /**
      * @notice initialize a new claim, emit initialize event, and return the newly created index
@@ -68,13 +68,24 @@ interface IERC721LazyClaim {
     function getClaim(address creatorContractAddress, uint256 claimIndex) external view returns(Claim memory);
 
     /**
-     * @notice check if a person can mint
+     * @notice check if a mint index has been consumed or not (only for merkle claims)
+     *
      * @param creatorContractAddress    the address of the creator contract for the claim
      * @param claimIndex                the index of the claim
-     * @param mintIndex                 the mint index of the claim (only needed for merkle claims)
-     * @return                          whether or not the claim was minted
+     * @param mintIndex                 the mint index of the claim
+     * @return                          whether or not the mint index was consumed
      */
-    function canMint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external view returns(bool);
+    function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external view returns(bool);
+
+    /**
+     * @notice get mints made for a wallet (only for non-merkle claims with walletMax)
+     *
+     * @param minter                    the address of the minting address
+     * @param creatorContractAddress    the address of the creator contract for the claim
+     * @param claimIndex                the index of the claim
+     * @return                          how many mints the minter has made
+     */
+    function getTotalMints(address minter, address creatorContractAddress, uint256 claimIndex) external view returns(uint32);
 
     /**
      * @notice allow a wallet to lazily claim a token according to parameters

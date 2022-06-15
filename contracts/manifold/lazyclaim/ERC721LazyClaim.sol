@@ -147,22 +147,26 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     }
 
     /**
-     * See {IERC721LazyClaim-canMint}.
+     * See {IERC721LazyClaim-checkMintIndex}.
      */
-    function canMint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external override view returns(bool) {
+    function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external override view returns(bool) {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
-        if (claim.merkleRoot != "") {
-            uint256 claimMintIndex = mintIndex >> 8;
-            uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
-            uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
-            return mintBitmask & claimMintTracking != 0;
-        } else {
-            if (claim.walletMax != 0) {
-                return _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax;
-            }
-            return true;
-        }
+        require(claim.merkleRoot != "", "Can only check merkle claims");
+        uint256 claimMintIndex = mintIndex >> 8;
+        uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
+        uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
+        return mintBitmask & claimMintTracking != 0;
+    }
+
+    /**
+     * See {IERC721LazyClaim-getTotalMints}.
+     */
+    function getTotalMints(address minter, address creatorContractAddress, uint256 claimIndex) external override view returns(uint32) {
+        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
+        require(claim.walletMax != 0, "Can only retrieve for non-merkle claims with walletMax");
+        return  uint32(_mintsPerWallet[creatorContractAddress][claimIndex][minter]);
     }
 
     /**
@@ -206,7 +210,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         // Insert the new tokenId into _tokenClaims for the current claim address & index
         _tokenClaims[creatorContractAddress][newTokenId] = TokenClaim(uint224(claimIndex), claim.total);
 
-        emit Mint(creatorContractAddress, claimIndex, newTokenId, msg.sender);
+        emit Mint(creatorContractAddress, claimIndex, mintIndex, newTokenId, claim.total, msg.sender);
         return newTokenId;
     }
 
