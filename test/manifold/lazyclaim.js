@@ -76,22 +76,6 @@ contract('LazyClaim', function ([...accounts]) {
         {from:owner}
       ), "Cannot initialize with invalid storage protocol");
 
-      // Fails due to over 10k totalMax
-      await truffleAssert.reverts(lazyClaim.initializeClaim(
-        creator.address,
-        {
-          merkleRoot: ethers.utils.formatBytes32String(""),
-          location: "XXX",
-          totalMax: 10001,
-          walletMax: 1,
-          startDate: now,
-          endDate: later,
-          storageProtocol: 1,
-          identical: true
-        },
-        {from:owner}
-      ), "Cannot have totalMax greater than 10000");
-
       // Fails due to endDate <= startDate
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
