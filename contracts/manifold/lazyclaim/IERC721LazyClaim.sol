@@ -34,7 +34,7 @@ interface IERC721LazyClaim {
     }
 
     event ClaimInitialized(address indexed creatorContract, uint224 indexed claimIndex, address initializer);
-    event Mint(address indexed creatorContract, uint256 indexed claimIndex, uint32 mintIndex, uint256 tokenId, uint32 mintOrder, address claimer);
+    event ClaimMint(address indexed creatorContract, uint256 indexed claimIndex);
 
     /**
      * @notice initialize a new claim, emit initialize event, and return the newly created index

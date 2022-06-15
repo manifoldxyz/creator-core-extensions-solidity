@@ -210,7 +210,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         // Insert the new tokenId into _tokenClaims for the current claim address & index
         _tokenClaims[creatorContractAddress][newTokenId] = TokenClaim(uint224(claimIndex), claim.total);
 
-        emit Mint(creatorContractAddress, claimIndex, mintIndex, newTokenId, claim.total, msg.sender);
+        emit ClaimMint(creatorContractAddress, claimIndex);
         return newTokenId;
     }
 
