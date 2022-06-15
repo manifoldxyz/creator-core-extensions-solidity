@@ -218,9 +218,8 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
      * See {IERC721LazyClaim-mintBatch}.
      */
     function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs) external override {
-        require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
-
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
@@ -229,11 +228,12 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
 
         // Check totalMax
-        require(claim.totalMax == 0 || claim.total+mintCount <= claim.totalMax, "Maximum tokens already minted for this claim");
+        require(claim.totalMax == 0 || claim.total+mintCount <= claim.totalMax, "Too many requested for this claim");
         
         unchecked{ claim.total += mintCount; }
 
         if (claim.merkleRoot != "") {
+            require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
             for (uint i = 0; i < mintCount; ) {
                 uint32 mintIndex = mintIndices[i];
@@ -245,7 +245,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         } else {
             // Non-merkle mint
             if (claim.walletMax != 0) {
-                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]+mintCount <= claim.walletMax, "Maximum tokens already minted for this wallet");
+                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]+mintCount <= claim.walletMax, "Too many requested for this wallet");
                 unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] += mintCount; }
             }
             

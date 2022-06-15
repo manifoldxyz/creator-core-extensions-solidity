@@ -335,8 +335,7 @@ contract('LazyClaim', function ([...accounts]) {
       const mintTx = await lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], {from:anyone2});
       console.log("Gas cost:\tBatch mint 2:\t"+ mintTx.receipt.gasUsed);
 
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], {from:anyone3}), "Maximum tokens already minted for this claim");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [4], [merkleProof5], {from:anyone3}), "Maximum tokens already minted for this claim");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], {from:anyone3}), "Too many requested for this claim");
 
       await lazyClaim.updateClaim(
         creator.address,
@@ -353,7 +352,7 @@ contract('LazyClaim', function ([...accounts]) {
         },
         {from:owner}
       )
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], {from:anyone3}), "Maximum tokens already minted for this claim");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], {from:anyone3}), "Too many requested for this claim");
 
       await lazyClaim.updateClaim(
         creator.address,
@@ -383,6 +382,33 @@ contract('LazyClaim', function ([...accounts]) {
       assert.equal(2,balance2);
       let balance3 = await creator.balanceOf(anyone3);
       assert.equal(2,balance3);
+    });
+
+    it('non-merkle mint test - batch', async function () {
+      let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let later = now + 1000;
+
+      await lazyClaim.initializeClaim(
+        creator.address,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 3,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true
+        },
+        {from:owner}
+      );
+
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], {from:anyone1}), "Too many requested for this wallet");
+      await lazyClaim.mintBatch(creator.address, 1, 3, [], [], {from:anyone1});
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [], [], {from:anyone1}), "Too many requested for this wallet");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 3, [], [], {from:anyone2}), "Too many requested for this claim");
+      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], {from:anyone2});
+
     });
 
     it('gas test - no merkle tree', async function () {
