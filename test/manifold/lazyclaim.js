@@ -280,6 +280,111 @@ contract('LazyClaim', function ([...accounts]) {
       await lazyClaim.mint(creator.address, 1, 3, merkleProof4, {from:anyone3});
     });
 
+    it('merkle mint test - batch', async function () {
+      let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let later = now + 1000;
+
+      const merkleElements = [];
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 2]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 3]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 4]));
+      merkleTreeWithValues = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
+
+      await lazyClaim.initializeClaim(
+        creator.address,
+        {
+          merkleRoot: merkleTreeWithValues.getHexRoot(),
+          location: "XXX",
+          totalMax: 3,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true
+        },
+        {from:owner}
+      );
+
+      const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
+      const merkleProof1 = merkleTreeWithValues.getHexProof(merkleLeaf1);
+
+      // Merkle validation failure
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [0], [merkleProof1], {from:anyone1}), "Invalid input");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0, 0], [merkleProof1], {from:anyone1}), "Invalid input");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1, merkleProof1], {from:anyone1}), "Invalid input");
+
+      await lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], {from:anyone1});
+      // Cannot mint with same mintIndex again
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, {from:anyone1}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], {from:anyone1}), "Already minted");
+
+      const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
+      const merkleProof2 = merkleTreeWithValues.getHexProof(merkleLeaf2);
+      const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 2]));
+      const merkleProof3 = merkleTreeWithValues.getHexProof(merkleLeaf3);
+      const merkleLeaf4 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 3]));
+      const merkleProof4 = merkleTreeWithValues.getHexProof(merkleLeaf4);
+      const merkleLeaf5 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 4]));
+      const merkleProof5 = merkleTreeWithValues.getHexProof(merkleLeaf5);
+
+      // Cannot steal someone else's merkleproof
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,3], [merkleProof2,merkleProof4], {from:anyone2}), "Could not verify merkle proof");
+
+      const mintTx = await lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], {from:anyone2});
+      console.log("Gas cost:\tBatch mint 2:\t"+ mintTx.receipt.gasUsed);
+
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], {from:anyone3}), "Maximum tokens already minted for this claim");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [4], [merkleProof5], {from:anyone3}), "Maximum tokens already minted for this claim");
+
+      await lazyClaim.updateClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTreeWithValues.getHexRoot(),
+          location: "XXX",
+          totalMax: 4,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true
+        },
+        {from:owner}
+      )
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], {from:anyone3}), "Maximum tokens already minted for this claim");
+
+      await lazyClaim.updateClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTreeWithValues.getHexRoot(),
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true
+        },
+        {from:owner}
+      )
+      // Cannot mint with same mintIndex again
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, {from:anyone2}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, {from:anyone2}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], {from:anyone2}), "Already minted");
+      
+      await lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], {from:anyone3});
+
+      let balance1 = await creator.balanceOf(anyone1);
+      assert.equal(1,balance1);
+      let balance2 = await creator.balanceOf(anyone2);
+      assert.equal(2,balance2);
+      let balance3 = await creator.balanceOf(anyone3);
+      assert.equal(2,balance3);
+    });
+
     it('gas test - no merkle tree', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let later = now + 1000;

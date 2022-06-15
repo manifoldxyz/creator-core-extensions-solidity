@@ -181,7 +181,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     /**
      * See {IERC721LazyClaim-mint}.
      */
-    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof) external override returns (uint256) {
+    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof) external override {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
@@ -195,15 +195,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
 
         if (claim.merkleRoot != "") {
             // Merkle mint
-            bytes32 leaf = keccak256(abi.encodePacked(msg.sender, mintIndex));
-            require(MerkleProof.verify(merkleProof, claim.merkleRoot, leaf), "Could not verify merkle proof");
-
-            // Check if mintIndex has been minted
-            uint256 claimMintIndex = mintIndex >> 8;
-            uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
-            uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
-            require(mintBitmask & claimMintTracking == 0, "Already minted");
-            _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex] = claimMintTracking | mintBitmask;
+            _checkMerkleAndUpdate(claim, creatorContractAddress, claimIndex, mintIndex, merkleProof);
         } else {
             // Non-merkle mint
             if (claim.walletMax != 0) {
@@ -220,7 +212,67 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         _tokenClaims[creatorContractAddress][newTokenId] = TokenClaim(uint224(claimIndex), claim.total);
 
         emit ClaimMint(creatorContractAddress, claimIndex);
-        return newTokenId;
+    }
+
+    /**
+     * See {IERC721LazyClaim-mintBatch}.
+     */
+    function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs) external override {
+        require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
+
+        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        // Safely retrieve the claim
+        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
+
+        // Check timestamps
+        require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
+        require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
+
+        // Check totalMax
+        require(claim.totalMax == 0 || claim.total+mintCount <= claim.totalMax, "Maximum tokens already minted for this claim");
+        
+        unchecked{ claim.total += mintCount; }
+
+        if (claim.merkleRoot != "") {
+            // Merkle mint
+            for (uint i = 0; i < mintCount; ) {
+                uint32 mintIndex = mintIndices[i];
+                bytes32[] memory merkleProof = merkleProofs[i];
+                
+                _checkMerkleAndUpdate(claim, creatorContractAddress, claimIndex, mintIndex, merkleProof);
+                unchecked { i++; }
+            }
+        } else {
+            // Non-merkle mint
+            if (claim.walletMax != 0) {
+                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]+mintCount <= claim.walletMax, "Maximum tokens already minted for this wallet");
+                unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] += mintCount; }
+            }
+            
+        }
+        uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(msg.sender, mintCount);
+        for (uint i = 0; i < mintCount; ) {
+            _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(claimIndex), claim.total);
+            unchecked { i++; }
+        }
+
+        emit ClaimMintBatch(creatorContractAddress, claimIndex, mintCount);
+    }
+
+    /**
+     * Helper to check merkle proof and whether or not the mintIndex was consumed. Also updates the consumed counts
+     */
+    function _checkMerkleAndUpdate(Claim storage claim, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] memory merkleProof) private {
+        // Merkle mint
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, mintIndex));
+        require(MerkleProof.verify(merkleProof, claim.merkleRoot, leaf), "Could not verify merkle proof");
+
+        // Check if mintIndex has been minted
+        uint256 claimMintIndex = mintIndex >> 8;
+        uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
+        uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
+        require(mintBitmask & claimMintTracking == 0, "Already minted");
+        _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex] = claimMintTracking | mintBitmask;
     }
 
     /**
