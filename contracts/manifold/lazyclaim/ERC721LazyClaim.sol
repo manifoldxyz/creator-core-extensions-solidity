@@ -112,7 +112,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         // Sanity checks
         require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
-        require(_claims[creatorContractAddress][claimIndex].totalMax == claimParameters.totalMax, "Cannot modify totalMax");
+        require(_claims[creatorContractAddress][claimIndex].totalMax == 0 ||  _claims[creatorContractAddress][claimIndex].totalMax <= claimParameters.totalMax, "Cannot decrease totalMax");
         require(_claims[creatorContractAddress][claimIndex].walletMax == 0 || _claims[creatorContractAddress][claimIndex].walletMax <= claimParameters.walletMax, "Cannot decrease walletMax");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
 

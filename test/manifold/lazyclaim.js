@@ -169,7 +169,7 @@ contract('LazyClaim', function ([...accounts]) {
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
-          totalMax: 11,
+          totalMax: 9,
           walletMax: 1,
           startDate: now,
           endDate: later,
@@ -177,7 +177,7 @@ contract('LazyClaim', function ([...accounts]) {
           identical: true
         },
         {from:owner}
-      ), "Cannot modify totalMax");
+      ), "Cannot decrease totalMax");
 
       // Fails due to decreasing walletMax
       await truffleAssert.reverts(lazyClaim.updateClaim(
@@ -261,6 +261,23 @@ contract('LazyClaim', function ([...accounts]) {
       const merkleLeaf4 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 3]));
       const merkleProof4 = merkleTreeWithValues.getHexProof(merkleLeaf4);
       await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 3, merkleProof4, {from:anyone3}), "Maximum tokens already minted for this claim");
+
+      await lazyClaim.updateClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTreeWithValues.getHexRoot(),
+          location: "XXX",
+          totalMax: 4,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true
+        },
+        {from:owner}
+      )
+      await lazyClaim.mint(creator.address, 1, 3, merkleProof4, {from:anyone3});
     });
 
     it('gas test - no merkle tree', async function () {
