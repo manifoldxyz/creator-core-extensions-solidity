@@ -41,7 +41,7 @@ interface IERC721LazyClaim {
 
     function getClaimCount(address creatorContractAddress) external view returns(uint256);
     function getClaim(address creatorContractAddress, uint256 claimIndex) external view returns(Claim memory);
-    function getWalletMinted(address creatorContractAddress, uint256 claimIndex, address walletAddress) external view returns(uint32);
+    function canMint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external view returns(bool);
 
-    function mint(address creatorContractAddress, uint256 claimIndex, bytes32[] calldata merkleProof, uint32 minterValue) external returns(uint256);
+    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof) external returns(uint256);
 }

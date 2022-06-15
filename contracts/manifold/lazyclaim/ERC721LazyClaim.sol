@@ -25,19 +25,24 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
 
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
+    uint256 private constant BITMASK = 0xFF;
 
     // stores the number of claim instances made by a given creator contract
     // used to determine the next claimIndex for a creator contract
     // { contractAddress => claimCount }
     mapping(address => uint224) private _claimCounts;
 
-    // stores which Claim a given token represents
+    // stores mapping from tokenId to the claim it represents
     // { contractAddress => { tokenId => Claim } }
     mapping(address => mapping(uint256 => Claim)) private _claims;
 
-    // stores the number of tokens minted per wallet per claim, in order to limit maximum
+    // ONLY USED FOR NON-MERKLE MINTS: stores the number of tokens minted per wallet per claim, in order to limit maximum
     // { contractAddress => { claimIndex => { walletAddress => walletMints } } }
     mapping(address => mapping(uint256 => mapping(address => uint256))) private _mintsPerWallet;
+
+    // ONLY USED FOR MERKLE MINTS: stores mapping from claim to indices minted
+    // { contractAddress => {claimIndex => { claimIndexOffset => index } } }
+    mapping(address => mapping(uint256 => mapping(uint256 => uint256))) private _claimMintIndices;
 
     struct TokenClaim {
         uint224 claimIndex;
@@ -78,6 +83,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         // Sanity checks
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot initialize with invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
+        require(claimParameters.merkleRoot == "" || claimParameters.walletMax == 0, "Cannot provide both mintsPerWallet and merkleRoot");
         require(claimParameters.totalMax < 10000, "Cannot have totalMax greater than 10000");
     
         // Get the index for the new claim
@@ -116,7 +122,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
         require(_claims[creatorContractAddress][claimIndex].totalMax == claimParameters.totalMax, "Cannot modify totalMax");
-        require(_claims[creatorContractAddress][claimIndex].walletMax <= claimParameters.walletMax, "Cannot decrease walletMax");
+        require(_claims[creatorContractAddress][claimIndex].walletMax == 0 || _claims[creatorContractAddress][claimIndex].walletMax <= claimParameters.walletMax, "Cannot decrease walletMax");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
 
         // Overwrite the existing claim
@@ -154,25 +160,38 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     }
 
     /**
-     * @notice get the number of tokens minted for the current wallet for a given claim
+     * @notice check if a person can mint
      * @param creatorContractAddress the address of the creator contract for the claim
      * @param claimIndex the index of the claim
-     * @return the number of tokens minted for the current wallet
+     * @param mintIndex  the mint index of the claim
+     * @return whether or not the claim was minted
      */
-    function getWalletMinted(address creatorContractAddress, uint256 claimIndex, address walletAddress) external override view returns(uint32) {
-        require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
-        return uint32(_mintsPerWallet[creatorContractAddress][claimIndex][walletAddress]);
+    function canMint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external override view returns(bool) {
+        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
+        if (claim.merkleRoot != "") {
+            uint256 claimMintIndex = mintIndex >> 8;
+            uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
+            uint256 claimMintBitmask = mintIndex & BITMASK;
+            uint256 mintBitmask = 1 << claimMintBitmask;
+            return mintBitmask & claimMintTracking != 0;
+        } else {
+            if (claim.walletMax != 0) {
+                return _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax;
+            }
+            return true;
+        }
     }
 
     /**
      * @notice allow a wallet to lazily claim a token according to parameters
      * @param creatorContractAddress the creator contract address
      * @param claimIndex the index of the claim for which we will mint
+     * @param mintIndex the mint index
      * @param merkleProof if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it
-     * @param minterValue the value portion which combines with msg.sender to form the merkle leaf corresponding to merkleProof
      * @return the tokenId of the newly minted token
      */
-    function mint(address creatorContractAddress, uint256 claimIndex, bytes32[] calldata merkleProof, uint32 minterValue) external override returns (uint256) {
+    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof) external override returns (uint256) {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
@@ -184,24 +203,25 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         // Check totalMax
         require(claim.totalMax == 0 || claim.total < claim.totalMax, "Maximum tokens already minted for this claim");
 
-        // Check claim level per wallet max
-        if (claim.walletMax != 0) {
-            require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax, "Maximum tokens already minted for this wallet");
-        }
-
-        // Check merkle proof
         if (claim.merkleRoot != "") {
-            bytes32 leaf = keccak256(abi.encodePacked(msg.sender, minterValue));
+            // Merkle mint
+            bytes32 leaf = keccak256(abi.encodePacked(msg.sender, mintIndex));
             require(MerkleProof.verify(merkleProof, claim.merkleRoot, leaf), "Could not verify merkle proof");
-            if (minterValue != 0) {
-                // Check minter max value
-                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < minterValue, "Maximum tokens already minted for this wallet per allocation");
+
+            // Check if mintIndex has been minted
+            uint256 claimMintIndex = mintIndex >> 8;
+            uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
+            uint256 claimMintBitmask = mintIndex & BITMASK;
+            uint256 mintBitmask = 1 << claimMintBitmask;
+            require(mintBitmask & claimMintTracking == 0, "Already minted");
+            _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex] = claimMintTracking | mintBitmask;
+        } else {
+            // Non-merkle mint
+            if (claim.walletMax != 0) {
+                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax, "Maximum tokens already minted for this wallet");
+                unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]++; }
             }
         }
-
-        // Increment the wallet mints & total mints - already checked for safety
-        // Has to happen beforehand to avoid re-entrancy attacks
-        unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]++; }
         unchecked{ claim.total++; }
 
         // Do mint
