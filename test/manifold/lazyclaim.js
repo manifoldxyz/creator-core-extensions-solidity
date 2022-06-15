@@ -363,12 +363,12 @@ contract('LazyClaim', function ([...accounts]) {
         creator.address,
         {
           merkleRoot: merkleTree.getHexRoot(),
-          location: "one.com",
+          location: "arweaveHash1",
           totalMax: 3,
           walletMax: 1,
           startDate: now,
           endDate: later,
-          storageProtocol: 1,
+          storageProtocol: 2,
           identical: true
         },
         {from:owner}
@@ -380,13 +380,13 @@ contract('LazyClaim', function ([...accounts]) {
         1, // the index of the claim we want to edit
         {
           merkleRoot: merkleTree.getHexRoot(),
-          location: "one.com",
+          location: "arweaveHash1",
           totalMax: 3,
           walletMax: 1,
           startDate: now,
           endDate: later + 1,
-          storageProtocol: 1,
-          identical: false
+          storageProtocol: 2,
+          identical: true
         },
         {from:owner}
       );
@@ -396,12 +396,12 @@ contract('LazyClaim', function ([...accounts]) {
         creator.address,
         {
           merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
-          location: "two.com",
+          location: "arweaveHash2",
           totalMax: 0,
           walletMax: 0,
           startDate: 0,
           endDate: 0,
-          storageProtocol: 1,
+          storageProtocol: 2,
           identical: true
         },
         {from:owner}
@@ -412,7 +412,7 @@ contract('LazyClaim', function ([...accounts]) {
       assert.equal(count, 2);
       const claim = await lazyClaim.getClaim(creator.address, 1, {from:owner});
       assert.equal(claim.merkleRoot, merkleTree.getHexRoot());
-      assert.equal(claim.location, 'one.com');
+      assert.equal(claim.location, 'arweaveHash1');
       assert.equal(claim.totalMax, 3);
       assert.equal(claim.walletMax, 1);
       assert.equal(claim.startDate, now);
@@ -436,7 +436,7 @@ contract('LazyClaim', function ([...accounts]) {
       let balance2 = await creator.balanceOf(anyone2, {from:anyone3});
       assert.equal(1,balance2);
       let tokenURI = await creator.tokenURI(1);
-      assert.equal('one.com/1', tokenURI);
+      assert.equal('https://arweave.net/arweaveHash1', tokenURI);
       let tokenOwner = await creator.ownerOf(1);
       assert.equal(anyone1, tokenOwner);
 
@@ -446,7 +446,7 @@ contract('LazyClaim', function ([...accounts]) {
         1,
         {
           merkleRoot: merkleTree.getHexRoot(),
-          location: "three.com",
+          location: "test.com",
           totalMax: 3,
           walletMax: 1,
           startDate: now,
@@ -458,7 +458,7 @@ contract('LazyClaim', function ([...accounts]) {
       );
 
       let newTokenURI = await creator.tokenURI(1);
-      assert.equal('three.com/1', newTokenURI);
+      assert.equal('test.com/1', newTokenURI);
 
       // Try to mint again with wallet limit of 1, should revert
       truffleAssert.reverts(lazyClaim.mint(creator.address, 1, merkleProof, 0, {from:anyone1}), "Maximum tokens already minted for this wallet");
@@ -468,7 +468,7 @@ contract('LazyClaim', function ([...accounts]) {
         1,
         {
           merkleRoot: merkleTree.getHexRoot(),
-          location: "three.com",
+          location: "test.com",
           totalMax: 3,
           walletMax: 3,
           startDate: now,
@@ -478,6 +478,7 @@ contract('LazyClaim', function ([...accounts]) {
         },
         {from:owner}
       );
+
       // Try to mint again, should succeed
       await lazyClaim.mint(creator.address, 1, merkleProof, 0, {from:anyone1});
       // Try to mint again with total limit of 3, should revert due to totalMax = 3

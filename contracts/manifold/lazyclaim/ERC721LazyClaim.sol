@@ -23,8 +23,8 @@ import "./IERC721LazyClaim.sol";
 contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI, ReentrancyGuard {
     using Strings for uint256;
 
-    string constant ARWEAVE_PREFIX = "https://arweave.net/";
-    string constant IPFS_PREFIX = "ipfs://";
+    string private constant ARWEAVE_PREFIX = "https://arweave.net/";
+    string private constant IPFS_PREFIX = "ipfs://";
 
     // stores the number of claim instances made by a given creator contract
     // used to determine the next claimIndex for a creator contract
@@ -76,7 +76,6 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         ClaimParameters calldata claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) returns (uint224) {
         // Sanity checks
-        require(bytes(claimParameters.location).length != 0, "Cannot initialize with empty location");
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot initialize with invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
         require(claimParameters.totalMax < 10000, "Cannot have totalMax greater than 10000");
@@ -219,34 +218,25 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
      * @notice construct the uri for the erc721 token metadata
      * @param creatorContractAddress the creator contract address
      * @param tokenId the token id to construct the uri for
-     * @return the uri constructed according to the params of the claim corresponding to tokenId
+     * @return uri the uri constructed according to the params of the claim corresponding to tokenId
      * @inheritdoc ICreatorExtensionTokenURI
      */
-    function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory) {
+    function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
         TokenClaim memory tokenClaim = _tokenClaims[creatorContractAddress][tokenId];
         require(tokenClaim.claimIndex > 0, "Token does not exist");
         Claim memory claim = _claims[creatorContractAddress][tokenClaim.claimIndex];
 
-        // Depending on params, we may want to append a suffix to location
-        string memory suffix = "";
-        if (!claim.identical) {
-            suffix = string(abi.encodePacked("/", uint256(tokenClaim.mintIndex).toString()));
-
-            // IPFS blobs need .json at the end
-            if (claim.storageProtocol == StorageProtocol.IPFS) {
-                suffix = string(abi.encodePacked(suffix, ".json"));
-            }
-        }
-
-        // Likewise, may have a prefix for different protocols
         string memory prefix = "";
-        if (claim.storageProtocol == StorageProtocol.IPFS) {
-            prefix = IPFS_PREFIX;
-        } else if (claim.storageProtocol == StorageProtocol.ARWEAVE) {
+        if (claim.storageProtocol == StorageProtocol.ARWEAVE) {
             prefix = ARWEAVE_PREFIX;
+        } else if (claim.storageProtocol == StorageProtocol.IPFS) {
+            prefix = IPFS_PREFIX;
         }
+        uri = string(abi.encodePacked(prefix, claim.location));
 
-        // Return the fully-affixed uri
-        return string(abi.encodePacked(prefix, claim.location, suffix));
+        // Depending on params, we may want to append a suffix to location
+        if (!claim.identical) {
+            uri = string(abi.encodePacked(uri, "/", uint256(tokenClaim.mintIndex).toString()));
+        }
     }
 }
