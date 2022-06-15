@@ -148,7 +148,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     /**
      * See {IERC721LazyClaim-checkMintIndex}.
      */
-    function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external override view returns(bool) {
+    function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) public override view returns(bool) {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claim.merkleRoot != "", "Can only check merkle claims");
@@ -156,6 +156,16 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
         uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
         return mintBitmask & claimMintTracking != 0;
+    }
+
+    /**
+     * See {IERC721LazyClaim-checkMintIndices}.
+     */
+    function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
+        minted = new bool[](mintIndices.length);
+        for (uint i = 0; i < mintIndices.length; i++) {
+            minted[i] = checkMintIndex(creatorContractAddress, claimIndex, mintIndices[i]);
+        }
     }
 
     /**

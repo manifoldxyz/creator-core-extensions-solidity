@@ -78,6 +78,16 @@ interface IERC721LazyClaim {
     function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external view returns(bool);
 
     /**
+     * @notice check if multiple mint indices has been consumed or not (only for merkle claims)
+     *
+     * @param creatorContractAddress    the address of the creator contract for the claim
+     * @param claimIndex                the index of the claim
+     * @param mintIndices               the mint index of the claim
+     * @return                          whether or not the mint index was consumed
+     */
+    function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external view returns(bool[] memory);
+
+    /**
      * @notice get mints made for a wallet (only for non-merkle claims with walletMax)
      *
      * @param minter                    the address of the minting address
