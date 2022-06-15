@@ -33,15 +33,15 @@ interface IERC721LazyClaim {
         string location;
     }
 
-    event ClaimInitialized(address indexed creatorContract, uint224 indexed claimIndex, address initializer);
-    event Mint(address indexed creatorContract, uint224 indexed claimIndex, uint256 tokenId, address claimer);
+    event ClaimInitialized(address indexed creatorContract, uint256 indexed claimIndex, address initializer);
+    event Mint(address indexed creatorContract, uint256 indexed claimIndex, uint256 tokenId, address claimer);
 
-    function initializeClaim(address creatorContractAddress, ClaimParameters calldata claimParameters) external returns(uint224);
-    function updateClaim(address creatorContractAddress, uint224 claimIndex, ClaimParameters calldata claimParameters) external;
+    function initializeClaim(address creatorContractAddress, ClaimParameters calldata claimParameters) external returns(uint256);
+    function updateClaim(address creatorContractAddress, uint256 claimIndex, ClaimParameters calldata claimParameters) external;
 
     function getClaimCount(address creatorContractAddress) external view returns(uint256);
-    function getClaim(address creatorContractAddress, uint224 claimIndex) external view returns(Claim memory);
-    function getWalletMinted(address creatorContractAddress, uint224 claimIndex, address walletAddress) external view returns(uint32);
+    function getClaim(address creatorContractAddress, uint256 claimIndex) external view returns(Claim memory);
+    function getWalletMinted(address creatorContractAddress, uint256 claimIndex, address walletAddress) external view returns(uint32);
 
-    function mint(address creatorContractAddress, uint224 claimIndex, bytes32[] calldata merkleProof, uint32 minterValue) external returns(uint256);
+    function mint(address creatorContractAddress, uint256 claimIndex, bytes32[] calldata merkleProof, uint32 minterValue) external returns(uint256);
 }

@@ -33,11 +33,11 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
 
     // stores the claim data structure, including params and total supply
     // { contractAddress => { claimIndex => Claim } }
-    mapping(address => mapping(uint224 => Claim)) private _claims;
+    mapping(address => mapping(uint256 => Claim)) private _claims;
 
     // stores the number of tokens minted per wallet per claim, in order to limit maximum
     // { contractAddress => { claimIndex => { walletAddress => walletMints } } }
-    mapping(address => mapping(uint224 => mapping(address => uint256))) private _mintsPerWallet;
+    mapping(address => mapping(uint256 => mapping(address => uint256))) private _mintsPerWallet;
 
     struct TokenClaim {
         uint224 claimIndex;
@@ -74,7 +74,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     function initializeClaim(
         address creatorContractAddress,
         ClaimParameters calldata claimParameters
-    ) external override creatorAdminRequired(creatorContractAddress) returns (uint224) {
+    ) external override creatorAdminRequired(creatorContractAddress) returns (uint256) {
         // Sanity checks
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot initialize with invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
@@ -82,7 +82,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
     
         // Get the index for the new claim
         _claimCounts[creatorContractAddress]++;
-        uint224 newIndex = _claimCounts[creatorContractAddress];
+        uint256 newIndex = _claimCounts[creatorContractAddress];
 
         // Create the claim
         _claims[creatorContractAddress][newIndex] = Claim({
@@ -109,7 +109,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
      */
     function updateClaim(
         address creatorContractAddress,
-        uint224 claimIndex,
+        uint256 claimIndex,
         ClaimParameters calldata claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
         // Sanity checks
@@ -148,7 +148,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
      * @param claimIndex the index of the claim
      * @return the claim object
      */
-    function getClaim(address creatorContractAddress, uint224 claimIndex) external override view returns(Claim memory) {
+    function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory) {
         require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         return _claims[creatorContractAddress][claimIndex];
     }
@@ -159,7 +159,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
      * @param claimIndex the index of the claim
      * @return the number of tokens minted for the current wallet
      */
-    function getWalletMinted(address creatorContractAddress, uint224 claimIndex, address walletAddress) external override view returns(uint32) {
+    function getWalletMinted(address creatorContractAddress, uint256 claimIndex, address walletAddress) external override view returns(uint32) {
         require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         return uint32(_mintsPerWallet[creatorContractAddress][claimIndex][walletAddress]);
     }
@@ -172,7 +172,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
      * @param minterValue the value portion which combines with msg.sender to form the merkle leaf corresponding to merkleProof
      * @return the tokenId of the newly minted token
      */
-    function mint(address creatorContractAddress, uint224 claimIndex, bytes32[] calldata merkleProof, uint32 minterValue) external override returns (uint256) {
+    function mint(address creatorContractAddress, uint256 claimIndex, bytes32[] calldata merkleProof, uint32 minterValue) external override returns (uint256) {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
@@ -208,7 +208,7 @@ contract ERC721LazyClaim is IERC165, IERC721LazyClaim, ICreatorExtensionTokenURI
         uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(msg.sender);
 
         // Insert the new tokenId into _tokenClaims for the current claim address & index
-        _tokenClaims[creatorContractAddress][newTokenId] = TokenClaim(claimIndex, claim.total);
+        _tokenClaims[creatorContractAddress][newTokenId] = TokenClaim(uint224(claimIndex), claim.total);
 
         emit Mint(creatorContractAddress, claimIndex, newTokenId, msg.sender);
         return newTokenId;
