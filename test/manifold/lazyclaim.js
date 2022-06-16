@@ -235,7 +235,7 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
+          identical: false
         },
         {from:owner}
       );
@@ -273,7 +273,7 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
+          identical: false
         },
         {from:owner}
       )
@@ -302,7 +302,7 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
+          identical: false
         },
         {from:owner}
       );
@@ -335,6 +335,9 @@ contract('LazyClaim', function ([...accounts]) {
       const mintTx = await lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], {from:anyone2});
       console.log("Gas cost:\tBatch mint 2:\t"+ mintTx.receipt.gasUsed);
 
+      // base mint something in between
+      await creator.mintBase(anyone5, {from: owner});
+
       await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], {from:anyone3}), "Too many requested for this claim");
 
       await lazyClaim.updateClaim(
@@ -365,7 +368,7 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
+          identical: false
         },
         {from:owner}
       )
@@ -382,6 +385,13 @@ contract('LazyClaim', function ([...accounts]) {
       assert.equal(2,balance2);
       let balance3 = await creator.balanceOf(anyone3);
       assert.equal(2,balance3);
+
+      // Check URI's
+      assert.equal(await creator.tokenURI(1), 'XXX/1');
+      assert.equal(await creator.tokenURI(2), 'XXX/2');
+      assert.equal(await creator.tokenURI(3), 'XXX/3');
+      assert.equal(await creator.tokenURI(5), 'XXX/4');
+      assert.equal(await creator.tokenURI(6), 'XXX/5');
     });
 
     it('non-merkle mint test - batch', async function () {
