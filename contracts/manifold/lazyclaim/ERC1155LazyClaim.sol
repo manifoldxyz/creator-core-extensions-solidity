@@ -45,6 +45,9 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
     // { contractAddress => { claimIndex => { tokenId } }
     mapping(address => mapping(uint256 => uint256)) private _claimTokenIds;
 
+    // { contractAddress => { tokenId => { claimIndex } }
+    mapping(address => mapping(uint256 => uint256)) private _tokenIdClaims;
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
         return interfaceId == type(IERC1155LazyClaim).interfaceId ||
             interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
@@ -99,10 +102,11 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
         string[] memory uris = new string[](1);
         uris[0] = "";
 
-        // Mint new token on base contract, save which token that is for given claim.
+        // Mint new token on base contract, save which claim is for that given token
         uint[] memory tokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, amount, uris);
-        _claimTokenIds[creatorContractAddress][newIndex] = tokenIds[0];
-        
+        _claimTokenIds[creatorContractAddress][tokenIds[0]] = newIndex;
+        _tokenIdClaims[creatorContractAddress][newIndex] = tokenIds[0];
+
         emit ClaimInitialized(creatorContractAddress, newIndex, msg.sender);
         return newIndex;
     }
@@ -180,7 +184,7 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claim.walletMax != 0, "Can only retrieve for non-merkle claims with walletMax");
-        return  uint32(_mintsPerWallet[creatorContractAddress][claimIndex][minter]);
+        return uint32(_mintsPerWallet[creatorContractAddress][claimIndex][minter]);
     }
 
     /**
@@ -292,7 +296,7 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
      * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-        uint224 tokenClaim = uint224(_claimTokenIds[creatorContractAddress][tokenId]);
+        uint224 tokenClaim = uint224(_tokenIdClaims[creatorContractAddress][tokenId]);
         require(tokenClaim > 0, "Token does not exist");
         Claim memory claim = _claims[creatorContractAddress][tokenClaim];
 
