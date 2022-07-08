@@ -1,7 +1,7 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
-const ERC721LazyClaim = artifacts.require("ERC721LazyClaim");
-const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
+const ERC1155LazyClaim = artifacts.require("ERC1155LazyClaim");
+const ERC1155Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC1155Creator');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
@@ -11,8 +11,8 @@ contract('LazyClaim', function ([...accounts]) {
   describe('LazyClaim', function () {
     let creator, lazyClaim;
     beforeEach(async function () {
-      creator = await ERC721Creator.new("Test", "TEST", {from:owner});
-      lazyClaim = await ERC721LazyClaim.new({from:owner});
+      creator = await ERC1155Creator.new({from:owner});
+      lazyClaim = await ERC1155LazyClaim.new({from:owner});
       
       // Must register with empty prefix in order to set per-token uri's
       await creator.registerExtension(lazyClaim.address, {from:owner});
@@ -34,7 +34,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:anyone1}
       ), "Wallet is not an administrator for contract");
@@ -50,7 +49,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       );
@@ -71,7 +69,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 0,
-          identical: true
         },
         {from:owner}
       ), "Cannot initialize with invalid storage protocol");
@@ -87,7 +84,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: now,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -103,7 +99,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       ), "Cannot provide both mintsPerWallet and merkleRoot");
@@ -120,7 +115,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       ), "Claim not initialized");
@@ -140,7 +134,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       );
@@ -157,7 +150,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 0,
-          identical: true
         },
         {from:owner}
       ), "Cannot set invalid storage protocol");
@@ -174,7 +166,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       ), "Cannot decrease totalMax");
@@ -191,7 +182,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       ), "Cannot decrease walletMax");
@@ -208,7 +198,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: now,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -235,10 +224,12 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: false
         },
         {from:owner}
       );
+
+      const balanceOfCreator = await creator.balanceOf(owner, 1)
+      assert.equal(balanceOfCreator, 1);
 
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
       const merkleProof1 = merkleTreeWithValues.getHexProof(merkleLeaf1);
@@ -273,7 +264,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: false
         },
         {from:owner}
       )
@@ -302,7 +292,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: false
         },
         {from:owner}
       );
@@ -336,7 +325,7 @@ contract('LazyClaim', function ([...accounts]) {
       console.log("Gas cost:\tBatch mint 2:\t"+ mintTx.receipt.gasUsed);
 
       // base mint something in between
-      await creator.mintBase(anyone5, {from: owner});
+      await creator.mintBaseNew([anyone5], [1], [""], {from: owner});
 
       await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], {from:anyone3}), "Too many requested for this claim");
 
@@ -351,7 +340,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       )
@@ -368,7 +356,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: false
         },
         {from:owner}
       )
@@ -379,19 +366,15 @@ contract('LazyClaim', function ([...accounts]) {
       
       await lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], {from:anyone3});
 
-      let balance1 = await creator.balanceOf(anyone1);
+      let balance1 = await creator.balanceOf(anyone1, 1);
       assert.equal(1,balance1);
-      let balance2 = await creator.balanceOf(anyone2);
+      let balance2 = await creator.balanceOf(anyone2, 1);
       assert.equal(2,balance2);
-      let balance3 = await creator.balanceOf(anyone3);
+      let balance3 = await creator.balanceOf(anyone3, 1);
       assert.equal(2,balance3);
 
       // Check URI's
-      assert.equal(await creator.tokenURI(1), 'XXX/1');
-      assert.equal(await creator.tokenURI(2), 'XXX/2');
-      assert.equal(await creator.tokenURI(3), 'XXX/3');
-      assert.equal(await creator.tokenURI(5), 'XXX/4');
-      assert.equal(await creator.tokenURI(6), 'XXX/5');
+      assert.equal(await creator.uri(1), 'XXX');
     });
 
     it('non-merkle mint test - batch', async function () {
@@ -408,7 +391,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       );
@@ -435,14 +417,13 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       );
       console.log("Gas cost:\tinitialize:\t"+ initializeTx.receipt.gasUsed);
 
       // Mint a token using creator contract, to test breaking up extension's indexRange
-      await creator.mintBase(anyone1, { from: owner });
+      await creator.mintBaseNew([anyone1], [1], [""], { from: owner });
 
       // Mint 2 tokens using the extension
       const mintTx = await lazyClaim.mint(creator.address, 1, 0, [], {from:anyone2});
@@ -452,7 +433,7 @@ contract('LazyClaim', function ([...accounts]) {
       console.log("Gas cost:\tsecond mint:\t"+ mintTx2.receipt.gasUsed);
 
       // Mint a token using creator contract, to test breaking up extension's indexRange
-      await creator.mintBase(anyone4, { from: owner });
+      await creator.mintBaseNew([anyone4], [1], [""], { from: owner });
 
       // Mint 1 token using the extension
       const mintTx3 = await lazyClaim.mint(creator.address, 1, 0, [], {from:anyone5});
@@ -480,14 +461,13 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true
         },
         {from:owner}
       );
       console.log("Gas cost:\tinitialize:\t"+ initializeTx.receipt.gasUsed);
 
       // Mint a token using creator contract, to test breaking up extension's indexRange
-      await creator.mintBase(anyone1, { from: owner });
+      await creator.mintBaseNew([anyone1], [1], [""],{ from: owner });
 
       // Mint 2 tokens using the extension
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
@@ -501,7 +481,7 @@ contract('LazyClaim', function ([...accounts]) {
       console.log("Gas cost:\tsecond mint:\t"+ mintTx2.receipt.gasUsed);
 
       // Mint a token using creator contract, to test breaking up extension's indexRange
-      await creator.mintBase(anyone4, { from: owner });
+      await creator.mintBaseNew([anyone4], [1], [""], { from: owner });
 
       // Mint 1 token using the extension
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone5, 2]));
@@ -530,26 +510,23 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: false
         },
         {from:owner}
       );
       // Mint a token using creator contract, to test breaking up extension's indexRange
-      await creator.mintBase(anyone1, { from: owner });
+      await creator.mintBaseNew([anyone1], [1], [""], { from: owner });
 
       // Mint 2 tokens using the extension
       await lazyClaim.mint(creator.address, 1, 0, [], {from:anyone2});
       await lazyClaim.mint(creator.address, 1, 0, [], {from:anyone3});
 
       // Mint a token using creator contract, to test breaking up extension's indexRange
-      await creator.mintBase(anyone4, { from: owner });
+      await creator.mintBaseNew([anyone4], [1], [""], { from: owner });
 
       // Mint 1 token using the extension
       await lazyClaim.mint(creator.address, 1, 0, [], {from:anyone5});
 
-      assert.equal('XXX/1', await creator.tokenURI(2));
-      assert.equal('XXX/2', await creator.tokenURI(3));
-      assert.equal('XXX/3', await creator.tokenURI(5));
+      assert.equal('XXX', await creator.uri(1));
     });
 
     it('functionality test', async function() {
@@ -575,7 +552,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: start,
           endDate: end,
           storageProtocol: 1,
-          identical: true
         },
         {from:anotherOwner}
       ), "Wallet is not an administrator for contract");
@@ -595,7 +571,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: start,
           endDate: end,
           storageProtocol: 2,
-          identical: true
         },
         {from:owner}
       );
@@ -612,7 +587,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: start,
           endDate: end + 1,
           storageProtocol: 2,
-          identical: true
         },
         {from:owner}
       );
@@ -628,7 +602,6 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: 0,
           endDate: 0,
           storageProtocol: 2,
-          identical: true
         },
         {from:owner}
       );
@@ -655,14 +628,12 @@ contract('LazyClaim', function ([...accounts]) {
       await lazyClaim.mint(creator.address, 1, 1, merkleProof2, {from:anyone2});
 
       // Now ensure that the creator contract state is what we expect after mints
-      let balance = await creator.balanceOf(anyone1);
+      let balance = await creator.balanceOf(anyone1, 1);
       assert.equal(1,balance);
-      let balance2 = await creator.balanceOf(anyone2);
+      let balance2 = await creator.balanceOf(anyone2, 1);
       assert.equal(1,balance2);
-      let tokenURI = await creator.tokenURI(1);
+      let tokenURI = await creator.uri(1);
       assert.equal('https://arweave.net/arweaveHash1', tokenURI);
-      let tokenOwner = await creator.ownerOf(1);
-      assert.equal(anyone1, tokenOwner);
 
       // Additionally test that tokenURIs are dynamic
       await lazyClaim.updateClaim(
@@ -676,13 +647,12 @@ contract('LazyClaim', function ([...accounts]) {
           startDate: start,
           endDate: end + 1,
           storageProtocol: 1,
-          identical: false
         },
         {from:owner}
       );
 
-      let newTokenURI = await creator.tokenURI(1);
-      assert.equal('test.com/1', newTokenURI);
+      let newTokenURI = await creator.uri(1);
+      assert.equal('test.com', newTokenURI);
 
       // Optional parameters - using claim 2
       await lazyClaim.mint(creator.address, 2, 0, [], {from:anyone1});
