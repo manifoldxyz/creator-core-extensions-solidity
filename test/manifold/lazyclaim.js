@@ -694,7 +694,7 @@ contract('LazyClaim', function ([...accounts]) {
       // Reverts due to end of mint period
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 2]));
       const merkleProof3 = merkleTree.getHexProof(merkleLeaf3);
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleLeaf3, {from:anyone3}), "Transaction after end date");
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, {from:anyone3}), "Transaction after end date");
     });
   });
 });
