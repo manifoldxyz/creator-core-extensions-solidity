@@ -18,7 +18,6 @@ interface IERC1155LazyClaim {
         StorageProtocol storageProtocol;
         bytes32 merkleRoot;
         string location;
-        uint tokenId;
     }
 
     struct Claim {
