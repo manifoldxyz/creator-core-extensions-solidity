@@ -18,6 +18,7 @@ interface IERC1155LazyClaim {
         StorageProtocol storageProtocol;
         bytes32 merkleRoot;
         string location;
+        uint tokenId;
     }
 
     struct Claim {
@@ -29,6 +30,7 @@ interface IERC1155LazyClaim {
         StorageProtocol storageProtocol;
         bytes32 merkleRoot;
         string location;
+        uint tokenId;
     }
 
     event ClaimInitialized(address indexed creatorContract, uint224 indexed claimIndex, address initializer);

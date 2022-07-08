@@ -42,7 +42,7 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
     // { contractAddress => { claimIndex => { claimIndexOffset => index } } }
     mapping(address => mapping(uint256 => mapping(uint256 => uint256))) private _claimMintIndices;
 
-    // { contractAddress => { claimIndex => { tokenId } }
+    // { contractAddress => { tokenId => { claimIndex } }
     mapping(address => mapping(uint256 => uint256)) private _claimTokenIds;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
@@ -79,18 +79,6 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
         _claimCounts[creatorContractAddress]++;
         uint224 newIndex = _claimCounts[creatorContractAddress];
 
-        // Create the claim
-        _claims[creatorContractAddress][newIndex] = Claim({
-            total: 0,
-            totalMax: claimParameters.totalMax,
-            walletMax: claimParameters.walletMax,
-            startDate: claimParameters.startDate,
-            endDate: claimParameters.endDate,
-            storageProtocol: claimParameters.storageProtocol,
-            merkleRoot: claimParameters.merkleRoot,
-            location: claimParameters.location
-        });
-
         // Mint one copy of token to self
         address[] memory minterAddress = new address[](1);
         minterAddress[0] = msg.sender;
@@ -101,7 +89,20 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
 
         // Mint new token on base contract, save which token that is for given claim.
         uint[] memory tokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, amount, uris);
-        _claimTokenIds[creatorContractAddress][newIndex] = tokenIds[0];
+        _claimTokenIds[creatorContractAddress][tokenIds[0]] = newIndex;
+
+         // Create the claim
+        _claims[creatorContractAddress][newIndex] = Claim({
+            total: 0,
+            totalMax: claimParameters.totalMax,
+            walletMax: claimParameters.walletMax,
+            startDate: claimParameters.startDate,
+            endDate: claimParameters.endDate,
+            storageProtocol: claimParameters.storageProtocol,
+            merkleRoot: claimParameters.merkleRoot,
+            location: claimParameters.location,
+            tokenId: tokenIds[0]
+        });
         
         emit ClaimInitialized(creatorContractAddress, newIndex, msg.sender);
         return newIndex;
@@ -131,7 +132,8 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
             endDate: claimParameters.endDate,
             storageProtocol: claimParameters.storageProtocol,
             merkleRoot: claimParameters.merkleRoot,
-            location: claimParameters.location
+            location: claimParameters.location,
+            tokenId: _claims[creatorContractAddress][claimIndex].tokenId
         });
     }
 
@@ -215,7 +217,7 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
         uint[] memory amount = new uint[](1);
         amount[0] = 1; // Default 1 for `mint` function.
         uint[] memory tokenIds = new uint[](1);
-        tokenIds[0] = _claimTokenIds[creatorContractAddress][claimIndex];
+        tokenIds[0] = claim.tokenId;
 
         // Do mint
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, tokenIds, amount);
@@ -264,7 +266,7 @@ contract ERC1155LazyClaim is IERC165, IERC1155LazyClaim, ICreatorExtensionTokenU
         uint[] memory amount = new uint[](1);
         amount[0] = mintCount;
         uint[] memory tokenIds = new uint[](1);
-        tokenIds[0] = _claimTokenIds[creatorContractAddress][claimIndex];
+        tokenIds[0] = claim.tokenId;
 
         // Do mint
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, tokenIds, amount);
