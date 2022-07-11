@@ -50,9 +50,19 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 #### Manifold Lazy Claim
 There are ERC721 and ERC1155 Lazy Claim extension.
 
+**ERC721 Rinkeby**
+```
+0x3e625b7521fa1ec922bd561b766d80e05316d035
+```
+
 **ERC721 Mainnet**
 ```
 0xb08Aa31Cc2B8C0582bE42D38Bb643292e0A4b9EB
+```
+
+**ERC1155 Rinkeby**
+```
+0x30185652e86b922110a28F952E977D6EBbb83d2D
 ```
 
 **ERC1155 Mainnet**
