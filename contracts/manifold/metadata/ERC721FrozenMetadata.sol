@@ -10,12 +10,12 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-import "./IERC721ImmutableMetadata.sol";
+import "./IERC721FrozenMetadata.sol";
 
 /**
- * Manifold ERC721 Immutable Metadata Implementation
+ * Manifold ERC721 Frozen Metadata Implementation
  */
-contract ERC721ImmutableMetadata is IERC165, IERC721ImmutableMetadata, ReentrancyGuard {
+contract ERC721FrozenMetadata is IERC165, IERC721FrozenMetadata, ReentrancyGuard {
     /**
      * @dev Only allows approved admins to call the specified function
      */
@@ -25,7 +25,7 @@ contract ERC721ImmutableMetadata is IERC165, IERC721ImmutableMetadata, Reentranc
     }
     
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
-        return interfaceId == type(IERC721ImmutableMetadata).interfaceId;
+        return interfaceId == type(IERC721FrozenMetadata).interfaceId;
     }
     
     /**
