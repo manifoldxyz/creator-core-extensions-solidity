@@ -48,7 +48,7 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 ```
 
 #### Manifold Lazy Claim
-There are ERC721 and ERC1155 Lazy Claim extension.
+These are ERC721 and ERC1155 Lazy Claim extensions.
 
 **ERC721 Rinkeby**
 ```
@@ -69,6 +69,20 @@ There are ERC721 and ERC1155 Lazy Claim extension.
 ```
 0xca71c5270EFf44Eb6D813A92c0ba12577bDDf208
 ```
+
+#### Manifold Frozen Metadata
+These are ERC721 Frozen Metadata extensions.
+
+**ERC721 Rinkeby**
+```
+0x1F4B810bf5A9C12cF32ff664144B58e02a6Cb82E
+```
+
+**ERC721 Mainnet**
+```
+0x5bEf5e3274e0574502F618b1d3152a06e9e45AEd
+```
+
 
 ### Customized Lightweight Proxies
 You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
