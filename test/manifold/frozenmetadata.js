@@ -1,9 +1,9 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockERC721Creator');
-const ERC721ImmutableMetadata = artifacts.require("ERC721ImmutableMetadata");
+const ERC721FrozenMetadata = artifacts.require("ERC721FrozenMetadata");
 
-contract('Manifold Immutable Metadata', function ([creator, ...accounts]) {
+contract('Manifold Frozen Metadata', function ([creator, ...accounts]) {
   const name = 'Token';
   const symbol = 'NFT';
   const minter = creator;
@@ -15,14 +15,14 @@ contract('Manifold Immutable Metadata', function ([creator, ...accounts]) {
     anyone,
     ] = accounts;
 
-  describe('Manifold Immutable Metadata', function() {
+  describe('Manifold Frozen Metadata', function() {
     var creator1;
     var extension;
 
     beforeEach(async function () {
       creator1 = await ERC721Creator.new('c1', 'c1', {from:another1});
       
-      extension = await ERC721ImmutableMetadata.new({from:owner});
+      extension = await ERC721FrozenMetadata.new({from:owner});
       
       await creator1.registerExtension(extension.address, "", {from:another1});
     });

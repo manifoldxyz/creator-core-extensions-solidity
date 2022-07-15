@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 /// @author: manifold.xyz
 
 /**
- * Manifold ERC721 Immutable Metadata interface
+ * Manifold ERC721 Frozen Metadata interface
  */
-interface IERC721ImmutableMetadata {
+interface IERC721FrozenMetadata {
 
     /**
      * @dev Mints a new token. Returns the tokenId
