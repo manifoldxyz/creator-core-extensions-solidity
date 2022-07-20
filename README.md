@@ -4,7 +4,7 @@
 
 **A library of base implementations and examples Apps for use with [Manifold Creator Core](https://github.com/manifoldxyz/creator-core-solidity).**
 
-This repo contains refrence implmentations and examples for apps that you can add to any Manifold Creator Core contract.  Examples include:
+This repo contains reference implementations and examples for apps that you can add to any Manifold Creator Core contract.  Examples include:
  * Platform level extensions (for examples, see contracts/manifold, which are singular extensions that can be installed by every contract to enable new functionality)
  * ERC721 Editions
  * ERC721 Enumerable subcollection
