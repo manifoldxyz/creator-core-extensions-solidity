@@ -43,7 +43,7 @@ abstract contract ERC721RedeemBase is ERC721SingleCreatorExtension, RedeemBase, 
     /**
      * @dev See {IERC721RedeemBase-redemptionMax}
      */
-    function redemptionMax() external view virtual override returns(uint16) {
+    function redemptionMax() public view virtual override returns(uint16) {
         return _redemptionMax;
     }
 
@@ -58,7 +58,7 @@ abstract contract ERC721RedeemBase is ERC721SingleCreatorExtension, RedeemBase, 
      * @dev See {IERC721RedeemBase-redemptionRemaining}
      */
     function redemptionRemaining() public view virtual override returns(uint16) {
-        return _redemptionMax-_redemptionCount;
+        return redemptionMax() - _redemptionCount;
     }
 
     /**
@@ -79,7 +79,7 @@ abstract contract ERC721RedeemBase is ERC721SingleCreatorExtension, RedeemBase, 
      * @dev mint token that was redeemed for
      */
     function _mintRedemption(address to) internal virtual returns (uint256) {
-        require(_redemptionCount < _redemptionMax, "Redeem: No redemptions remaining");
+        require(_redemptionCount < redemptionMax(), "Redeem: No redemptions remaining");
         _redemptionCount++;
         
         // Mint token
