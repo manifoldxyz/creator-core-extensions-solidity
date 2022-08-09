@@ -101,7 +101,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             merkleRoot: claimParameters.merkleRoot,
             location: claimParameters.location,
             tokenId: tokenIds[0],
-            cost: claimParameters.cost
+            cost: claimParameters.cost,
+            paymentReceiver: claimParameters.paymentReceiver
         });
         
         emit ClaimInitialized(creatorContractAddress, newIndex, msg.sender);
@@ -134,7 +135,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             merkleRoot: claimParameters.merkleRoot,
             location: claimParameters.location,
             tokenId: _claims[creatorContractAddress][claimIndex].tokenId,
-            cost: claimParameters.cost
+            cost: claimParameters.cost,
+            paymentReceiver: claimParameters.paymentReceiver
         });
     }
 
@@ -226,6 +228,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         // Do mint
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, tokenIds, amount);
+        payable(claim.paymentReceiver).transfer(msg.value);
 
         emit ClaimMint(creatorContractAddress, _claimTokenIds[creatorContractAddress][claimIndex]);
     }
@@ -278,6 +281,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         // Do mint
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, tokenIds, amount);
+        payable(claim.paymentReceiver).transfer(msg.value);
 
         emit ClaimMintBatch(creatorContractAddress, claimIndex, mintCount);
     }

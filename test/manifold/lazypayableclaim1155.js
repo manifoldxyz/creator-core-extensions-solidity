@@ -34,7 +34,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:anyone1}
       ), "Wallet is not an administrator for contract");
@@ -50,7 +51,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -71,7 +73,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 0,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       ), "Cannot initialize with invalid storage protocol");
@@ -87,7 +90,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: now,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -103,7 +107,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       ), "Cannot provide both mintsPerWallet and merkleRoot");
@@ -120,7 +125,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       ), "Claim not initialized");
@@ -140,7 +146,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -157,7 +164,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 0,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       ), "Cannot set invalid storage protocol");
@@ -174,7 +182,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       ), "Cannot decrease totalMax");
@@ -191,7 +200,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       ), "Cannot decrease walletMax");
@@ -208,7 +218,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: now,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -235,7 +246,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -276,7 +288,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       )
@@ -305,7 +318,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -354,7 +368,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       )
@@ -371,7 +386,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       )
@@ -407,7 +423,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -434,13 +451,43 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
 
       await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], {from:anyone1, value: ethers.BigNumber.from('3')}), "Must pay more.");
       await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], {from:anyone1}), "Must pay more.");
+    });
+
+    it('non-merkle mint test - check balance', async function () {
+      let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let later = now + 1000;
+
+      await lazyClaim.initializeClaim(
+        creator.address,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 3,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+        },
+        {from:owner}
+      );
+
+      const beforeBalance =  await web3.eth.getBalance(owner)
+
+      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], {from:anyone1, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mint(creator.address, 1, 0, [], {from:anyone1, value: ethers.BigNumber.from('1')});
+
+      const afterBalance = await web3.eth.getBalance(owner)
+      assert.equal(ethers.BigNumber.from(2).toNumber(), (ethers.BigNumber.from(afterBalance).sub(ethers.BigNumber.from(beforeBalance)).toNumber()));
     });
 
     it('gas test - no merkle tree', async function () {
@@ -457,7 +504,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -502,7 +550,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -552,7 +601,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -595,7 +645,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: start,
           endDate: end,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:anotherOwner}
       ), "Wallet is not an administrator for contract");
@@ -615,7 +666,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: start,
           endDate: end,
           storageProtocol: 2,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -632,7 +684,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: start,
           endDate: end + 1,
           storageProtocol: 2,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -648,7 +701,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: 0,
           endDate: 0,
           storageProtocol: 2,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
@@ -694,7 +748,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
           startDate: start,
           endDate: end + 1,
           storageProtocol: 1,
-          cost: ethers.BigNumber.from('1')
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
         },
         {from:owner}
       );
