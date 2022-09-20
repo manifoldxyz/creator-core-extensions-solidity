@@ -18,8 +18,7 @@ interface IERC1155BurnRedeem {
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
-        StorageProtocol storageProtocol;
-        string location;
+        string uri;
     }
 
     struct BurnRedeem {
@@ -32,8 +31,7 @@ interface IERC1155BurnRedeem {
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
-        StorageProtocol storageProtocol;
-        string location;
+        string uri;
     }
 
     event BurnRedeemInitialized(address indexed creatorContract, uint224 indexed burnRedeemIndex, address initializer);

@@ -63,7 +63,6 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
     ) external override creatorAdminRequired(creatorContractAddress) returns (uint256) {
         // Sanity checks
         require(ERC165Checker.supportsInterface(burnRedeemParameters.burnableTokenAddress, type(IERC1155CreatorCore).interfaceId), "burnableTokenAddress must be a ERC1155Creator contract");
-        require(burnRedeemParameters.storageProtocol != StorageProtocol.INVALID, "Cannot initialize with invalid storage protocol");
         require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "Cannot have startDate greater than or equal to endDate");
     
         // Get the index for the new burn redeem
@@ -93,8 +92,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
             totalSupply: burnRedeemParameters.totalSupply,
             startDate: burnRedeemParameters.startDate,
             endDate: burnRedeemParameters.endDate,
-            storageProtocol: burnRedeemParameters.storageProtocol,
-            location: burnRedeemParameters.location
+            uri: burnRedeemParameters.uri
         });
         
         emit BurnRedeemInitialized(creatorContractAddress, newIndex, msg.sender);
@@ -111,8 +109,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
     ) external override creatorAdminRequired(creatorContractAddress) {
         // Sanity checks
         require(ERC165Checker.supportsInterface(burnRedeemParameters.burnableTokenAddress, type(IERC1155).interfaceId), "burnableTokenAddress must support ERC1155 interface");
-        require(_burnRedeems[creatorContractAddress][index].storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
-        require(burnRedeemParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
+        require(_burnRedeems[creatorContractAddress][index].burnableTokenAddress != address(0), "Burn redeem not initialized");
         require(_burnRedeems[creatorContractAddress][index].totalSupply == 0 ||  _burnRedeems[creatorContractAddress][index].totalSupply <= burnRedeemParameters.totalSupply, "Cannot decrease totalSupply");
         require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "Cannot have startDate greater than or equal to endDate");
 
@@ -127,8 +124,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
             totalSupply: burnRedeemParameters.totalSupply,
             startDate: burnRedeemParameters.startDate,
             endDate: burnRedeemParameters.endDate,
-            storageProtocol: burnRedeemParameters.storageProtocol,
-            location: burnRedeemParameters.location
+            uri: burnRedeemParameters.uri
         });
     }
 
@@ -143,7 +139,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      * See {IERC1155BurnRedeem-getBurnRedeem}.
      */
     function getBurnRedeem(address creatorContractAddress, uint256 index) external override view returns(BurnRedeem memory) {
-        require(_burnRedeems[creatorContractAddress][index].storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
+        require(_burnRedeems[creatorContractAddress][index].burnableTokenAddress != address(0), "Burn redeem not initialized");
         return _burnRedeems[creatorContractAddress][index];
     }
 
@@ -153,16 +149,17 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
     function mint(address creatorContractAddress, uint256 index, uint32 amount) external override {
         BurnRedeem storage burnRedeem = _burnRedeems[creatorContractAddress][index];
         // Safely retrieve the burn redeem
-        require(burnRedeem.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
+        require(burnRedeem.burnableTokenAddress != address(0), "Burn redeem not initialized");
 
         // Check timestamps
         require(burnRedeem.startDate == 0 || burnRedeem.startDate < block.timestamp, "Transaction before start date");
         require(burnRedeem.endDate == 0 || burnRedeem.endDate >= block.timestamp, "Transaction after end date");
 
-        // Check totalMax
-        require(burnRedeem.totalSupply == 0 || burnRedeem.redeemedCount < burnRedeem.totalSupply, "Maximum tokens already minted for this burn redeem");
-
         uint256 amountToBurn = burnRedeem.burnAmount * amount;
+        uint256 amountToRedeem = burnRedeem.redeemAmount * amount;
+
+        // Check totalSupply
+        require(burnRedeem.totalSupply == 0 || burnRedeem.redeemedCount + amountToRedeem <= burnRedeem.totalSupply, "Maximum tokens already minted for this burn redeem");
 
         // Do burn
         uint256[] memory burnTokenIds = new uint256[](1);
@@ -202,13 +199,6 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         uint224 tokenBurnRedeem = uint224(_redeemTokenIds[creatorContractAddress][tokenId]);
         require(tokenBurnRedeem > 0, "Token does not exist");
         BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][tokenBurnRedeem];
-
-        string memory prefix = "";
-        if (burnRedeem.storageProtocol == StorageProtocol.ARWEAVE) {
-            prefix = ARWEAVE_PREFIX;
-        } else if (burnRedeem.storageProtocol == StorageProtocol.IPFS) {
-            prefix = IPFS_PREFIX;
-        }
-        uri = string(abi.encodePacked(prefix, burnRedeem.location));
+        uri = burnRedeem.uri;
     }
 }

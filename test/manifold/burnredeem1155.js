@@ -35,8 +35,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:anyone1}
       ), "Wallet is not an administrator for contract");
@@ -52,8 +51,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       ));
@@ -62,23 +60,6 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
     it('initializeBurnRedeem input sanitization test', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp; // seconds since unix epoch
       let later = now + 1000;
-
-      // Fails due to invalid storage protocol
-      await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
-        creator.address,
-        {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
-          burnAmount: 1,
-          redeemAmount: 1,
-          totalSupply: 10,
-          startDate: now,
-          endDate: later,
-          storageProtocol: 0,
-          location: "XXX",
-        },
-        {from:owner}
-      ), "Cannot initialize with invalid storage protocol");
 
       // Fails due to non 1155 address
       const mock721 = await MockERC721.new('Test', 'TEST', {from:owner});
@@ -92,8 +73,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       ), "burnableTokenAddress must be a ERC1155Creator contract");
@@ -109,8 +89,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: now,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -127,8 +106,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       ), "Burn redeem not initialized");
@@ -148,30 +126,11 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       );
-
-      // Fails due to invalid storage protocol
-      await truffleAssert.reverts(burnRedeem.updateBurnRedeem(
-        creator.address,
-        1,
-        {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
-          burnAmount: 1,
-          redeemAmount: 1,
-          totalSupply: 10,
-          startDate: now,
-          endDate: later,
-          storageProtocol: 0,
-          location: "XXX",
-        },
-        {from:owner}
-      ), "Cannot set invalid storage protocol");
-
+      
       // Fails due to modifying totalSupply
       await truffleAssert.reverts(burnRedeem.updateBurnRedeem(
         creator.address,
@@ -184,8 +143,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 9,
           startDate: now,
           endDate: later,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       ), "Cannot decrease totalSupply");
@@ -202,8 +160,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: now,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -223,26 +180,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       );
 
       assert.equal('XXX', await creator.uri(1));
     });
-
-    // // Mint a token using creator contract, to test breaking up extension's indexRange
-      // await creator.mintBaseNew([anyone1], [1], [""], { from: owner });
-
-      // // Mint burnable token
-      // await burnable1155.mintBaseNew([anyone1], [1], [""], { from: owner });
-
-      // // Approve extension
-      // await burnable1155.setApprovalForAll(burnRedeem.address, true, { from: anyone1 });
-      
-      // // Burn redeem using the extension
-      // await burnRedeem.mint(creator.address, 1, 1, {from:anyone1});
 
     it('functionality test', async function() {
 
@@ -261,8 +205,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:anotherOwner}
       ), "Wallet is not an administrator for contract");
@@ -280,8 +223,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end,
-          storageProtocol: 1,
-          location: "XXX",
+          uri: "XXX",
         },
         {from:owner}
       );
@@ -298,8 +240,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end + 1,
-          storageProtocol: 2,
-          location: "arweaveHash1",
+          uri: "https://arweave.net/arweaveHash1",
         },
         {from:owner}
       );
@@ -315,15 +256,14 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 0,
           startDate: 0,
           endDate: 0,
-          storageProtocol: 2,
-          location: "arweaveHash1",
+          uri: "https://arweave.net/arweaveHash1",
         },
         {from:owner}
       );
     
       // Burn redeem should have expected info
       const initializedBurnRedeem = await burnRedeem.getBurnRedeem(creator.address, 1, {from:owner});
-      assert.equal(initializedBurnRedeem.location, 'arweaveHash1');
+      assert.equal(initializedBurnRedeem.uri, 'https://arweave.net/arweaveHash1');
       assert.equal(initializedBurnRedeem.totalSupply, 3);
       assert.equal(initializedBurnRedeem.startDate, start);
       assert.equal(initializedBurnRedeem.endDate, end + 1);
@@ -361,8 +301,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end + 1,
-          storageProtocol: 1,
-          location: "test.com",
+          uri: "test.com",
         },
         {from:owner}
       );
