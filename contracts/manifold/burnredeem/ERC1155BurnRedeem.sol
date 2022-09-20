@@ -22,9 +22,6 @@ import "./IERC1155BurnRedeem.sol";
 contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionTokenURI, ReentrancyGuard {
     using Strings for uint256;
 
-    string private constant ARWEAVE_PREFIX = "https://arweave.net/";
-    string private constant IPFS_PREFIX = "ipfs://";
-
     // stores the number of burn redeem instances made by a given creator contract
     // used to determine the next burnRedeemIndex for a creator contract
     // { creatorContractAddress => burnRedeemCount }
