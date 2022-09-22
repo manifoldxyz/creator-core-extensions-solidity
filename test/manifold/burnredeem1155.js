@@ -193,6 +193,10 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp+100; // seconds since unix epoch
       let end = start + 300;
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint224", "uint32"], [creator.address, 1, 1]);
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
 
       // Should fail to initialize if non-admin wallet is used
       truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
@@ -211,7 +215,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       ), "Wallet is not an administrator for contract");
 
       // Should fail before initialization
-      await truffleAssert.reverts(burnRedeem.mint(creator.address, 1, 0, {from:anyone1}), "Burn redeem not initialized");
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Token not eligible");
 
       await burnRedeem.initializeBurnRedeem(
         creator.address,
@@ -268,19 +272,11 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       assert.equal(initializedBurnRedeem.startDate, start);
       assert.equal(initializedBurnRedeem.endDate, end + 1);
 
-      // Test minting
-
-      // Mint burnable tokens
-      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
-
-      // Approve extension
-      await burnable1155.setApprovalForAll(burnRedeem.address, true, { from: anyone1 });
-
       // Burn/redeem
-      await truffleAssert.reverts(burnRedeem.mint(creator.address, 1, 0, {from:anyone1}), "Transaction before start date");
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Transaction before start date");
       await helper.advanceTimeAndBlock(start+1-(await web3.eth.getBlock('latest')).timestamp+1);
       // index 1
-      await burnRedeem.mint(creator.address, 1, 1, {from:anyone1});
+      await burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1});
 
 
       // Now ensure that the creator contract state is what we expect after mints
@@ -312,7 +308,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // end period
       await helper.advanceTimeAndBlock(end+2-(await web3.eth.getBlock('latest')).timestamp+1);
       // Reverts due to end of mint period
-      truffleAssert.reverts(burnRedeem.mint(creator.address, 1, 1, {from:anyone1}), "Transaction after end date");
+      truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Transaction after end date");
     });
   });
 });

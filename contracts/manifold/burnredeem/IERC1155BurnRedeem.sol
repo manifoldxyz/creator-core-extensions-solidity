@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+
 /**
  * Burn Redeem interface
  */
-interface IERC1155BurnRedeem {
-    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
-
+interface IERC1155BurnRedeem is IERC1155Receiver {
     struct BurnRedeemParameters {
         address burnableTokenAddress;
         uint256 burnableTokenId;
@@ -32,6 +32,12 @@ interface IERC1155BurnRedeem {
         uint48 startDate;
         uint48 endDate;
         string uri;
+    }
+
+    struct BurnRedeemCallData {
+        address creatorContractAddress;
+        uint256 index;
+        uint256 amount;
     }
 
     event BurnRedeemInitialized(address indexed creatorContract, uint224 indexed burnRedeemIndex, address initializer);
@@ -67,14 +73,6 @@ interface IERC1155BurnRedeem {
      * @return                          the burn redeem object
      */
     function getBurnRedeem(address creatorContractAddress, uint256 index) external view returns(BurnRedeem memory);
-
-    /**
-     * @notice allow a wallet to burn and redeem a token according to parameters
-     * @param creatorContractAddress    the creator contract address
-     * @param index                     the index of the burn redeem for which we will mint
-     * @param amount                    the number of burn redeems
-     */
-    function mint(address creatorContractAddress, uint256 index, uint32 amount) external;
 
     /**
      * @notice check if an wallet can participate in the provided burn redeem
