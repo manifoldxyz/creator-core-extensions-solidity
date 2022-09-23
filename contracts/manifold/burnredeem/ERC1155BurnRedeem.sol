@@ -188,6 +188,13 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         return this.onERC1155BatchReceived.selector;
     }
 
+    /**
+     * @notice ERC1155 token transfer callback
+     * @param from      Burn/redeemer address
+     * @param id        the token id of the burnable token
+     * @param value     the number of tokens to burn
+     * @param data      bytes corresponding to the targeted burn redeem action(s), formatted [address creatorContractAddress, uint256 index, uint256 amount, ...]
+     */
     function _onERC1155Received(
         address from,
         uint256 id,
@@ -242,7 +249,15 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         amounts[0] = value;
         IERC1155CreatorCore(msg.sender).burn(address(this), tokenIds, amounts);
     }
-
+    
+    /**
+     * @notice ERC1155 batch token transfer callback
+     * @param from      Burn/redeemer address
+     * @param ids       a list of the token ids of the burnable token
+     * @param values    a list of the number of tokens to burn for each id
+     * @param data      bytes corresponding to the targeted burn redeem action(s), formatted [address creatorContractAddress, uint256 index, uint256 amount, ...]
+     *                  note: the data parameter must be in the same order as the ids and values parameters
+     */
     function _onERC1155BatchReceived(
         address from,
         uint256[] calldata ids,
