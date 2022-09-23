@@ -193,7 +193,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp+100; // seconds since unix epoch
       let end = start + 300;
-      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint224", "uint32"], [creator.address, 1, 1]);
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 1, 1]);
 
       // Mint burnable tokens
       await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
@@ -308,7 +308,163 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // end period
       await helper.advanceTimeAndBlock(end+2-(await web3.eth.getBlock('latest')).timestamp+1);
       // Reverts due to end of mint period
-      truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Transaction after end date");
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Transaction after end date");
+    });
+
+    it('onERC1155Received test', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 1, 1]);
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        {
+          burnableTokenAddress: burnable1155.address,
+          burnableTokenId: 2,
+          burnAmount: 1,
+          redeemAmount: 1,
+          totalSupply: 3,
+          startDate: start,
+          endDate: end,
+          uri: "XXX",
+        },
+        {from:owner}
+      );
+
+      // Reverts due to wrong token id
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Token not eligible");
+
+      await burnRedeem.updateBurnRedeem(
+        creator.address,
+        1,
+        {
+          burnableTokenAddress: burnable1155.address,
+          burnableTokenId: 1,
+          burnAmount: 1,
+          redeemAmount: 1,
+          totalSupply: 3,
+          startDate: start,
+          endDate: end,
+          uri: "XXX",
+        },
+        {from:owner}
+      );
+
+      // Passes with right token id
+      await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}));
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        {
+          burnableTokenAddress: burnable1155.address,
+          burnableTokenId: 1,
+          burnAmount: 2,
+          redeemAmount: 4,
+          totalSupply: 10,
+          startDate: start,
+          endDate: end,
+          uri: "XXX",
+        },
+        {from:owner}
+      );
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 2, 1]);
+
+      // Reverts due to invalid amount
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Invalid value sent");
+
+      // Multiple burns in one transaction
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "address", "uint256", "uint256"], [creator.address, 1, 2, creator.address, 2, 1]);
+
+      // Reverts due to invalid amount
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 8, burnRedeemData, {from:anyone1}), "Invalid value sent");
+
+      // Passes with proper amount
+      await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}));
+
+      // Now ensure that the creator contract state is what we expect after mints
+      let balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(3,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(4,balance);
+
+      // Reverts due to total supply reached
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 1, 1]);
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Maximum tokens already minted for this burn redeem");
+    });
+
+    it('onERC1155BatchReceived test', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        {
+          burnableTokenAddress: burnable1155.address,
+          burnableTokenId: 1,
+          burnAmount: 1,
+          redeemAmount: 1,
+          totalSupply: 10,
+          startDate: start,
+          endDate: end,
+          uri: "XXX",
+        },
+        {from:owner}
+      );
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        {
+          burnableTokenAddress: burnable1155.address,
+          burnableTokenId: 2,
+          burnAmount: 2,
+          redeemAmount: 3,
+          totalSupply: 10,
+          startDate: start,
+          endDate: end,
+          uri: "XXX",
+        },
+        {from:owner}
+      );
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        {
+          burnableTokenAddress: burnable1155.address,
+          burnableTokenId: 3,
+          burnAmount: 3,
+          redeemAmount: 2,
+          totalSupply: 10,
+          startDate: start,
+          endDate: end,
+          uri: "XXX",
+        },
+        {from:owner}
+      );
+
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "address", "uint256", "uint256", "address", "uint256", "uint256"], [creator.address, 1, 1, creator.address, 2, 1, creator.address, 3, 1]);
+
+      // Reverts on ids/data mismatch
+      await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [3,2,1], [3,2,1], burnRedeemData, {from:anyone1}), "Invalid values");
+
+      // Reverts on invalid amount
+      await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,3], [1,2,4], burnRedeemData, {from:anyone1}), "Invalid values");
+
+      // Reverts on invalid token
+      await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,2], [1,2,3], burnRedeemData, {from:anyone1}), "Token not eligible");
+
+      await truffleAssert.passes(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,3], [1,2,3], burnRedeemData, {from:anyone1}));
     });
   });
 });

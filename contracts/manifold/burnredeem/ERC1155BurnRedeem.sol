@@ -198,7 +198,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         require(data.length % 96 == 0, "Invalid data");
         uint256 amountRequired = 0;
 
-        // Do redeem
+         // Iterate over calldata
         for (uint i = 0; i * 96 < data.length; i++) {
             // Read calldata
             BurnRedeemCallData memory current;
@@ -249,8 +249,6 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         uint256[] calldata values,
         bytes calldata data
     ) private {
-        require(ids.length == 1 && ids.length == values.length, "Invalid input");
-
         // Check calldata is valid
         require(data.length % 96 == 0, "Invalid data");
 
@@ -259,6 +257,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
         uint256 remainingValue = values[0];
 
+        // Iterate over calldata
         for (uint i = 0; i * 96 < data.length; i++) {
             // Read calldata
             BurnRedeemCallData memory current;
@@ -305,6 +304,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
             emit BurnRedeemMint(current.creatorContractAddress, redeemTokenIds[0], redeemAmounts[0]);
         }
+        require(remainingValue == 0, "Invalid values");
 
         // Do burn
         IERC1155CreatorCore(msg.sender).burn(address(this), ids, values);
