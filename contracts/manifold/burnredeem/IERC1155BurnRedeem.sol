@@ -11,8 +11,8 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
  */
 interface IERC1155BurnRedeem is IERC1155Receiver {
     struct BurnRedeemParameters {
-        address burnableTokenAddress;
-        uint256 burnableTokenId;
+        address burnTokenAddress;
+        uint256 burnTokenId;
         uint32 burnAmount;
         uint32 redeemAmount;
         uint32 totalSupply;
@@ -22,10 +22,10 @@ interface IERC1155BurnRedeem is IERC1155Receiver {
     }
 
     struct BurnRedeem {
-        address burnableTokenAddress;
-        uint256 burnableTokenId;
+        address burnTokenAddress;
+        uint256 burnTokenId;
         uint32 burnAmount;
-        uint256 redeemableTokenId;
+        uint256 redeemTokenId;
         uint32 redeemAmount;
         uint32 redeemedCount;
         uint32 totalSupply;
