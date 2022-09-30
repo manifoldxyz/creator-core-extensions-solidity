@@ -193,7 +193,11 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp+100; // seconds since unix epoch
       let end = start + 300;
-      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 1, 1]);
+
+      let burnRedeemData = ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint256", "uint256"],
+        [creator.address, 1, 1]
+      );
 
       // Mint burnable tokens
       await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
