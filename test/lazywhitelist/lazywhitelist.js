@@ -1,6 +1,6 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
-const ERC721Creator = artifacts.require('MockTestERC721Creator');
+const ERC721Creator = artifacts.require('MockERC721Creator');
 const LazyWhitelist = artifacts.require("ERC721LazyMintWhitelist");
 const LazyWhitelistTemplate = artifacts.require("ERC721LazyMintWhitelistTemplate");
 const LazyWhitelistImplementation = artifacts.require("ERC721LazyMintWhitelistImplementation");
