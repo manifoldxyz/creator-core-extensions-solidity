@@ -28,8 +28,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -44,8 +44,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await truffleAssert.passes(await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -66,8 +66,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: mock721.address,
-          burnableTokenId: 1,
+          burnTokenAddress: mock721.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -76,14 +76,14 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           uri: "XXX",
         },
         {from:owner}
-      ), "burnableTokenAddress must be a ERC1155Creator contract");
+      ), "burnTokenAddress must be a ERC1155Creator contract");
 
       // Fails due to endDate <= startDate
       await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -99,8 +99,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         creator.address,
         1,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -119,8 +119,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -136,8 +136,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         creator.address,
         1,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 9,
@@ -153,8 +153,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         creator.address,
         1,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -173,8 +173,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -202,8 +202,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 3,
@@ -220,8 +220,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 3,
@@ -237,8 +237,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         creator.address,
         1, // the index of the burn redeem we want to edit
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 3,
@@ -253,8 +253,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 0,
@@ -290,8 +290,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         creator.address,
         1,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 3,
@@ -321,11 +321,19 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Mint burnable tokens
       await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
 
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(0,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(0,balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(20,balance);
+      
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 2,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 2,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 3,
@@ -343,8 +351,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         creator.address,
         1,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 3,
@@ -361,8 +369,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 2,
           redeemAmount: 4,
           totalSupply: 10,
@@ -388,11 +396,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Passes with proper amount
       await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}));
 
-      // Now ensure that the creator contract state is what we expect after mints
-      let balance = await creator.balanceOf(anyone1, 1);
+      // Now ensure that the creator contract state and burnable contract state is what we expect after mints
+      balance = await creator.balanceOf(anyone1, 1);
       assert.equal(3,balance);
       balance = await creator.balanceOf(anyone1, 2);
       assert.equal(4,balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(15,balance);
 
       // Reverts due to total supply reached
       burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 1, 1]);
@@ -410,11 +420,25 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
       await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
 
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(0,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(0,balance);
+      balance = await creator.balanceOf(anyone1, 3);
+      assert.equal(0,balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(20,balance);
+      balance = await burnable1155.balanceOf(anyone1, 2);
+      assert.equal(20,balance);
+      balance = await burnable1155.balanceOf(anyone1, 3);
+      assert.equal(20,balance);
+
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 1,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
           totalSupply: 10,
@@ -427,8 +451,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 2,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 2,
           burnAmount: 2,
           redeemAmount: 3,
           totalSupply: 10,
@@ -441,8 +465,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         {
-          burnableTokenAddress: burnable1155.address,
-          burnableTokenId: 3,
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 3,
           burnAmount: 3,
           redeemAmount: 2,
           totalSupply: 10,
@@ -465,6 +489,20 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,2], [1,2,3], burnRedeemData, {from:anyone1}), "Token not eligible");
 
       await truffleAssert.passes(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,3], [1,2,3], burnRedeemData, {from:anyone1}));
+
+      // Now ensure that the creator contract state and burnable contract state is what we expect after mints
+      balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(1,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(3,balance);
+      balance = await creator.balanceOf(anyone1, 3);
+      assert.equal(2,balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(19,balance);
+      balance = await burnable1155.balanceOf(anyone1, 2);
+      assert.equal(18,balance);
+      balance = await burnable1155.balanceOf(anyone1, 3);
+      assert.equal(17,balance);
     });
   });
 });
