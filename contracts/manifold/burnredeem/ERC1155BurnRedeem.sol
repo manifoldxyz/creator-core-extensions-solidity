@@ -20,8 +20,6 @@ import "./IERC1155BurnRedeem.sol";
  * @notice Burn Redeem shared extension for Manifold Studio.
  */
 contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionTokenURI, ReentrancyGuard {
-    using Strings for uint256;
-
     // stores the number of burn redeem instances made by a given creator contract
     // used to determine the next burnRedeemIndex for a creator contract
     // { creatorContractAddress => burnRedeemCount }
