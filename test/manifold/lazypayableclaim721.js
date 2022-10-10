@@ -2,6 +2,7 @@ const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721LazyPayableClaim = artifacts.require("ERC721LazyPayableClaim");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
+const DelegationRegistry = artifacts.require('DelegationRegistry');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
@@ -12,7 +13,8 @@ contract('LazyPayableClaim721', function ([...accounts]) {
     let creator, lazyClaim;
     beforeEach(async function () {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
-      lazyClaim = await ERC721LazyPayableClaim.new({from:owner});
+      delegationRegistry = await DelegationRegistry.new();
+      lazyClaim = await ERC721LazyPayableClaim.new(delegationRegistry.address, {from:owner});
       
       // Must register with empty prefix in order to set per-token uri's
       await creator.registerExtension(lazyClaim.address, {from:owner});
@@ -1189,6 +1191,53 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       assert.equal(await creator.tokenURI(9), 'XXX');
 
       truffleAssert.reverts(creator.tokenURI(10));
+    });
+
+    it('delegate minting test', async function () {
+      const merkleElements = [];
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone4, 1]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone6, 2]));
+      merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
+
+      let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let later = now + 1000;
+
+      const initializeTx = await lazyClaim.initializeClaim(
+        creator.address,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "XXX",
+          totalMax: 0,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+        },
+        {from:owner}
+      );
+
+      // Set delegations
+      await delegationRegistry.delegateForAll(anyone1, true, { from: anyone2 });
+      await delegationRegistry.delegateForContract(anyone3, lazyClaim.address, true, { from: anyone4 });
+
+      // Mint with wallet-level delegate
+      const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
+      const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
+      const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone1, value: ethers.BigNumber.from('1')});
+
+      // Mint with contract-level delegate
+      const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone4, 1]));
+      const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
+      const mintTx2 = await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone4, {from:anyone3, value: ethers.BigNumber.from('1')});
+
+      // Fail to mint when no delegate is set
+      const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone6, 2]));
+      const merkleProof3 = merkleTree.getHexProof(merkleLeaf2);
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone6, {from:anyone5, value: ethers.BigNumber.from('1')}), 'Invalid delegate');
     });
   });
 });
