@@ -126,7 +126,7 @@ interface IERC721LazyPayableClaim {
      * @param creatorContractAddress    the creator contract the claim will mint tokens for
      * @param claimIndex                the index of the claim in the list of creatorContractAddress' _claims
      * @param recipients                addresses to airdrop to
-     * @param recipients                number of tokens to airdrop to each address in addresses
+     * @param amounts                   number of tokens to airdrop to each address in addresses
      */
     function airdrop(address creatorContractAddress, uint256 claimIndex, address[] calldata recipients, uint16[] calldata amounts) external;
 }

@@ -36,7 +36,7 @@
     "test-server": "ganache-cli -a 50 -q -d",
     "debug-server": "ganache-cli -a 50 -v -d",
     "deployLocal": "truffle migrate --network development",
-    "startLocal": "npx ganache-cli --deterministic --blockTime 10 -l 800000000",
+    "startLocal": "npx ganache-cli --deterministic -l 800000000",
     "coverage": "truffle run coverage",
     "lint": "solhint contracts/**/*.sol"
   },

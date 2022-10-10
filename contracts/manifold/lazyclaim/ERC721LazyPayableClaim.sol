@@ -25,7 +25,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
     uint256 private constant MINT_INDEX_BITMASK = 0xFF;
-    address public constant DELEGATION_REGISTRY = 0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A;
+    address public DELEGATION_REGISTRY = 0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A;
 
     // stores the number of claim instances made by a given creator contract
     // used to determine the next claimIndex for a creator contract
@@ -58,6 +58,9 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             interfaceId == type(IERC165).interfaceId;
     }
 
+    constructor(address delegationRegistry) {
+        if (delegationRegistry != address(0)) DELEGATION_REGISTRY = delegationRegistry;
+    }
     
     /**
      * @notice This extension is shared, not single-creator. So we must ensure
