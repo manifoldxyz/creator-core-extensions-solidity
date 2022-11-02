@@ -109,7 +109,7 @@ interface IERC721LazyPayableClaim {
      * @param mintIndex                 the mint index (only needed for merkle claims)
      * @param merkleProof               if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
      */
-    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof) external payable;
+    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable;
 
     /**
      * @notice allow a wallet to lazily claim a token according to parameters
@@ -119,5 +119,14 @@ interface IERC721LazyPayableClaim {
      * @param mintIndices               the mint index (only needed for merkle claims)
      * @param merkleProofs              if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
      */
-    function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs) external payable;
+    function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable;
+
+    /**
+     * @notice allow admin to airdrop arbitrary tokens 
+     * @param creatorContractAddress    the creator contract the claim will mint tokens for
+     * @param claimIndex                the index of the claim in the list of creatorContractAddress' _claims
+     * @param recipients                addresses to airdrop to
+     * @param amounts                   number of tokens to airdrop to each address in addresses
+     */
+    function airdrop(address creatorContractAddress, uint256 claimIndex, address[] calldata recipients, uint16[] calldata amounts) external;
 }
