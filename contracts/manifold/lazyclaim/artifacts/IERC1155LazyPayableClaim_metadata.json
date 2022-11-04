@@ -1,0 +1,663 @@
+{
+	"compiler": {
+		"version": "0.8.7+commit.e28d00a7"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "creatorContract",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "uint224",
+						"name": "claimIndex",
+						"type": "uint224"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "initializer",
+						"type": "address"
+					}
+				],
+				"name": "ClaimInitialized",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "creatorContract",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "ClaimMint",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "creatorContract",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint16",
+						"name": "mintCount",
+						"type": "uint16"
+					}
+				],
+				"name": "ClaimMintBatch",
+				"type": "event"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address[]",
+						"name": "recipients",
+						"type": "address[]"
+					},
+					{
+						"internalType": "uint16[]",
+						"name": "amounts",
+						"type": "uint16[]"
+					}
+				],
+				"name": "airdrop",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint32",
+						"name": "mintIndex",
+						"type": "uint32"
+					}
+				],
+				"name": "checkMintIndex",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint32[]",
+						"name": "mintIndices",
+						"type": "uint32[]"
+					}
+				],
+				"name": "checkMintIndices",
+				"outputs": [
+					{
+						"internalType": "bool[]",
+						"name": "",
+						"type": "bool[]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "getClaim",
+				"outputs": [
+					{
+						"components": [
+							{
+								"internalType": "uint32",
+								"name": "total",
+								"type": "uint32"
+							},
+							{
+								"internalType": "uint32",
+								"name": "totalMax",
+								"type": "uint32"
+							},
+							{
+								"internalType": "uint32",
+								"name": "walletMax",
+								"type": "uint32"
+							},
+							{
+								"internalType": "uint48",
+								"name": "startDate",
+								"type": "uint48"
+							},
+							{
+								"internalType": "uint48",
+								"name": "endDate",
+								"type": "uint48"
+							},
+							{
+								"internalType": "enum IERC1155LazyPayableClaim.StorageProtocol",
+								"name": "storageProtocol",
+								"type": "uint8"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "merkleRoot",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "string",
+								"name": "location",
+								"type": "string"
+							},
+							{
+								"internalType": "uint256",
+								"name": "tokenId",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "cost",
+								"type": "uint256"
+							},
+							{
+								"internalType": "address",
+								"name": "paymentReceiver",
+								"type": "address"
+							}
+						],
+						"internalType": "struct IERC1155LazyPayableClaim.Claim",
+						"name": "",
+						"type": "tuple"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					}
+				],
+				"name": "getClaimCount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "minter",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "getTotalMints",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"components": [
+							{
+								"internalType": "uint32",
+								"name": "totalMax",
+								"type": "uint32"
+							},
+							{
+								"internalType": "uint32",
+								"name": "walletMax",
+								"type": "uint32"
+							},
+							{
+								"internalType": "uint48",
+								"name": "startDate",
+								"type": "uint48"
+							},
+							{
+								"internalType": "uint48",
+								"name": "endDate",
+								"type": "uint48"
+							},
+							{
+								"internalType": "enum IERC1155LazyPayableClaim.StorageProtocol",
+								"name": "storageProtocol",
+								"type": "uint8"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "merkleRoot",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "string",
+								"name": "location",
+								"type": "string"
+							},
+							{
+								"internalType": "uint256",
+								"name": "cost",
+								"type": "uint256"
+							},
+							{
+								"internalType": "address",
+								"name": "paymentReceiver",
+								"type": "address"
+							}
+						],
+						"internalType": "struct IERC1155LazyPayableClaim.ClaimParameters",
+						"name": "claimParameters",
+						"type": "tuple"
+					}
+				],
+				"name": "initializeClaim",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint32",
+						"name": "mintIndex",
+						"type": "uint32"
+					},
+					{
+						"internalType": "bytes32[]",
+						"name": "merkleProof",
+						"type": "bytes32[]"
+					},
+					{
+						"internalType": "address",
+						"name": "mintFor",
+						"type": "address"
+					}
+				],
+				"name": "mint",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint16",
+						"name": "mintCount",
+						"type": "uint16"
+					},
+					{
+						"internalType": "uint32[]",
+						"name": "mintIndices",
+						"type": "uint32[]"
+					},
+					{
+						"internalType": "bytes32[][]",
+						"name": "merkleProofs",
+						"type": "bytes32[][]"
+					},
+					{
+						"internalType": "address",
+						"name": "mintFor",
+						"type": "address"
+					}
+				],
+				"name": "mintBatch",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "creatorContractAddress",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "claimIndex",
+						"type": "uint256"
+					},
+					{
+						"components": [
+							{
+								"internalType": "uint32",
+								"name": "totalMax",
+								"type": "uint32"
+							},
+							{
+								"internalType": "uint32",
+								"name": "walletMax",
+								"type": "uint32"
+							},
+							{
+								"internalType": "uint48",
+								"name": "startDate",
+								"type": "uint48"
+							},
+							{
+								"internalType": "uint48",
+								"name": "endDate",
+								"type": "uint48"
+							},
+							{
+								"internalType": "enum IERC1155LazyPayableClaim.StorageProtocol",
+								"name": "storageProtocol",
+								"type": "uint8"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "merkleRoot",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "string",
+								"name": "location",
+								"type": "string"
+							},
+							{
+								"internalType": "uint256",
+								"name": "cost",
+								"type": "uint256"
+							},
+							{
+								"internalType": "address",
+								"name": "paymentReceiver",
+								"type": "address"
+							}
+						],
+						"internalType": "struct IERC1155LazyPayableClaim.ClaimParameters",
+						"name": "claimParameters",
+						"type": "tuple"
+					}
+				],
+				"name": "updateClaim",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"airdrop(address,uint256,address[],uint16[])": {
+					"params": {
+						"amounts": "number of tokens to airdrop to each address in addresses",
+						"claimIndex": "the index of the claim in the list of creatorContractAddress' _claims",
+						"creatorContractAddress": "the creator contract the claim will mint tokens for",
+						"recipients": "addresses to airdrop to"
+					}
+				},
+				"checkMintIndex(address,uint256,uint32)": {
+					"params": {
+						"claimIndex": "the index of the claim",
+						"creatorContractAddress": "the address of the creator contract for the claim",
+						"mintIndex": "the mint index of the claim"
+					},
+					"returns": {
+						"_0": "whether or not the mint index was consumed"
+					}
+				},
+				"checkMintIndices(address,uint256,uint32[])": {
+					"params": {
+						"claimIndex": "the index of the claim",
+						"creatorContractAddress": "the address of the creator contract for the claim",
+						"mintIndices": "the mint index of the claim"
+					},
+					"returns": {
+						"_0": "whether or not the mint index was consumed"
+					}
+				},
+				"getClaim(address,uint256)": {
+					"params": {
+						"claimIndex": "the index of the claim",
+						"creatorContractAddress": "the address of the creator contract"
+					},
+					"returns": {
+						"_0": "the claim object"
+					}
+				},
+				"getClaimCount(address)": {
+					"params": {
+						"creatorContractAddress": "the address of the creator contract"
+					},
+					"returns": {
+						"_0": "the number of _claims initialized for this creator contract"
+					}
+				},
+				"getTotalMints(address,address,uint256)": {
+					"params": {
+						"claimIndex": "the index of the claim",
+						"creatorContractAddress": "the address of the creator contract for the claim",
+						"minter": "the address of the minting address"
+					},
+					"returns": {
+						"_0": "how many mints the minter has made"
+					}
+				},
+				"initializeClaim(address,(uint32,uint32,uint48,uint48,uint8,bytes32,string,uint256,address))": {
+					"params": {
+						"claimParameters": "the parameters which will affect the minting behavior of the claim",
+						"creatorContractAddress": "the creator contract the claim will mint tokens for"
+					},
+					"returns": {
+						"_0": "the index of the newly created claim"
+					}
+				},
+				"mint(address,uint256,uint32,bytes32[],address)": {
+					"params": {
+						"claimIndex": "the index of the claim for which we will mint",
+						"creatorContractAddress": "the creator contract address",
+						"merkleProof": "if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)",
+						"mintIndex": "the mint index (only needed for merkle claims)"
+					}
+				},
+				"mintBatch(address,uint256,uint16,uint32[],bytes32[][],address)": {
+					"params": {
+						"claimIndex": "the index of the claim for which we will mint",
+						"creatorContractAddress": "the creator contract address",
+						"merkleProofs": "if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)",
+						"mintCount": "the number of claims to mint",
+						"mintIndices": "the mint index (only needed for merkle claims)"
+					}
+				},
+				"updateClaim(address,uint256,(uint32,uint32,uint48,uint48,uint8,bytes32,string,uint256,address))": {
+					"params": {
+						"claimIndex": "the index of the claim in the list of creatorContractAddress' _claims",
+						"claimParameters": "the parameters which will affect the minting behavior of the claim",
+						"creatorContractAddress": "the creator contract corresponding to the claim"
+					}
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {
+				"airdrop(address,uint256,address[],uint16[])": {
+					"notice": "allow admin to airdrop arbitrary tokens "
+				},
+				"checkMintIndex(address,uint256,uint32)": {
+					"notice": "check if a mint index has been consumed or not (only for merkle claims)"
+				},
+				"checkMintIndices(address,uint256,uint32[])": {
+					"notice": "check if multiple mint indices has been consumed or not (only for merkle claims)"
+				},
+				"getClaim(address,uint256)": {
+					"notice": "get a claim corresponding to a creator contract and index"
+				},
+				"getClaimCount(address)": {
+					"notice": "get the number of _claims initialized for a given creator contract"
+				},
+				"getTotalMints(address,address,uint256)": {
+					"notice": "get mints made for a wallet (only for non-merkle claims with walletMax)"
+				},
+				"initializeClaim(address,(uint32,uint32,uint48,uint48,uint8,bytes32,string,uint256,address))": {
+					"notice": "initialize a new claim, emit initialize event, and return the newly created index"
+				},
+				"mint(address,uint256,uint32,bytes32[],address)": {
+					"notice": "allow a wallet to lazily claim a token according to parameters"
+				},
+				"mintBatch(address,uint256,uint16,uint32[],bytes32[][],address)": {
+					"notice": "allow a wallet to lazily claim a token according to parameters"
+				},
+				"updateClaim(address,uint256,(uint32,uint32,uint48,uint48,uint8,bytes32,string,uint256,address))": {
+					"notice": "update an existing claim at claimIndex"
+				}
+			},
+			"notice": "Lazy Claim interface",
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/manifold/lazyclaim/IERC1155LazyPayableClaim.sol": "IERC1155LazyPayableClaim"
+		},
+		"evmVersion": "london",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/manifold/lazyclaim/IERC1155LazyPayableClaim.sol": {
+			"keccak256": "0x7c8ff45010cb3b2a87eccecbf09b1153b04f9c01c3979f48c368a18ab6979dbb",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://e191d3ce4d121999f83adfe90af5d5ea78461a63b11be60cc1c75f7383dbbc96",
+				"dweb:/ipfs/QmaVSPwf3avEnXVwwt2LUxd97mLxoPmVbvpvxWNTSEg32M"
+			]
+		}
+	},
+	"version": 1
+}

@@ -1239,5 +1239,19 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       const merkleProof3 = merkleTree.getHexProof(merkleLeaf2);
       truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone6, {from:anyone5, value: ethers.BigNumber.from('1')}), 'Invalid delegate');
     });
+
+    it('delegate registry address test', async function () {
+      lazyClaim = await ERC721LazyPayableClaim.new('0x0000000000000000000000000000000000000000', {from:owner});
+      
+      const onChainRegistryAddress = await lazyClaim.delegationRegistry();
+      assert.equal('0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', onChainRegistryAddress);
+    });
+
+    it.only('allow recipient to be a contract', async function () {
+      lazyClaim = await ERC721LazyPayableClaim.new('0x0000000000000000000000000000000000000000', {from:owner});
+      
+      const onChainRegistryAddress = await lazyClaim.delegationRegistry();
+      assert.equal('0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', onChainRegistryAddress);
+    });
   });
 });
