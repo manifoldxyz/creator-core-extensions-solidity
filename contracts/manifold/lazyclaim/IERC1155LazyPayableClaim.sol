@@ -18,8 +18,8 @@ interface IERC1155LazyPayableClaim {
         StorageProtocol storageProtocol;
         bytes32 merkleRoot;
         string location;
-        uint cost;
-        address paymentReceiver;
+        uint256 cost;
+        address payable paymentReceiver;
     }
 
     struct Claim {
@@ -31,9 +31,9 @@ interface IERC1155LazyPayableClaim {
         StorageProtocol storageProtocol;
         bytes32 merkleRoot;
         string location;
-        uint tokenId;
-        uint cost;
-        address paymentReceiver;
+        uint256[] tokenId;
+        uint256 cost;
+        address payable paymentReceiver;
     }
 
     event ClaimInitialized(address indexed creatorContract, uint256 indexed claimIndex, address initializer);
@@ -129,5 +129,5 @@ interface IERC1155LazyPayableClaim {
      * @param recipients                addresses to airdrop to
      * @param amounts                   number of tokens to airdrop to each address in addresses
      */
-    function airdrop(address creatorContractAddress, uint256 claimIndex, address[] calldata recipients, uint16[] calldata amounts) external;
+    function airdrop(address creatorContractAddress, uint256 claimIndex, address[] calldata recipients, uint256[] calldata amounts) external;
 }

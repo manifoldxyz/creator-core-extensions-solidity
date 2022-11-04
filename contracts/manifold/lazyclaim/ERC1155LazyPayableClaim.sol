@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
-import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
+import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -26,8 +26,16 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
     uint256 private constant MINT_INDEX_BITMASK = 0xFF;
-    address public delegationRegistry = 0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A;
-    uint256 private constant MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    // solhint-disable-next-line
+    address public immutable DELEGATION_REGISTRY;
+    uint32 private constant MAX_UINT_32 = 0xffffffff;
+    uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    // solhint-disable-next-line
+    uint256[] private MAX_TOKEN_ID;
+    // solhint-disable-next-line
+    uint256[] private SINGLE_MINT_AMOUNT;
+    // solhint-disable-next-line
+    string[] private BLANK_URI;
 
     // stores mapping from tokenId to the claim it represents
     // { contractAddress => { tokenId => Claim } }
@@ -50,8 +58,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             interfaceId == type(IERC165).interfaceId;
     }
 
-    constructor(address newDelegationRegistry) {
-        if (newDelegationRegistry != address(0)) delegationRegistry = newDelegationRegistry;
+    constructor(address delegationRegistry) {
+        DELEGATION_REGISTRY = delegationRegistry;
+        MAX_TOKEN_ID = [MAX_UINT_256];
+        BLANK_URI = [""];
+        SINGLE_MINT_AMOUNT = [1];
     }
 
     /**
@@ -60,8 +71,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
      * @param creatorContractAddress    the address of the creator contract to check the admin against
      */
     modifier creatorAdminRequired(address creatorContractAddress) {
-        AdminControl creatorCoreContract = AdminControl(creatorContractAddress);
-        require(creatorCoreContract.isAdmin(msg.sender), "Wallet is not an administrator for contract");
+        require(IAdminControl(creatorContractAddress).isAdmin(msg.sender), "Wallet is not an administrator for contract");
         _;
     }
 
@@ -81,18 +91,6 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
         require(claimParameters.merkleRoot == "" || claimParameters.walletMax == 0, "Cannot provide both mintsPerWallet and merkleRoot");
 
-        // // Mint one copy of token to self
-        // address[] memory minterAddress = new address[](1);
-        // minterAddress[0] = msg.sender;
-        // uint[] memory amount = new uint[](1);
-        // amount[0] = 1;
-        // string[] memory uris = new string[](1);
-        // uris[0] = "";
-
-        // // Mint new token on base contract, save which token that is for given claim.
-        // uint[] memory tokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, amount, uris);
-        // _claimTokenIds[creatorContractAddress][tokenIds[0]] = claimIndex;
-
          // Create the claim
         _claims[creatorContractAddress][claimIndex] = Claim({
             total: 0,
@@ -103,7 +101,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             storageProtocol: claimParameters.storageProtocol,
             merkleRoot: claimParameters.merkleRoot,
             location: claimParameters.location,
-            tokenId: MAX_INT,
+            tokenId: MAX_TOKEN_ID,
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver
         });
@@ -123,9 +121,12 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
+
+        Claim memory currentClaim = _claims[creatorContractAddress][claimIndex];
+
         // Overwrite the existing claim
         _claims[creatorContractAddress][claimIndex] = Claim({
-            total: _claims[creatorContractAddress][claimIndex].total,
+            total: currentClaim.total,
             totalMax: claimParameters.totalMax,
             walletMax: claimParameters.walletMax,
             startDate: claimParameters.startDate,
@@ -133,7 +134,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             storageProtocol: claimParameters.storageProtocol,
             merkleRoot: claimParameters.merkleRoot,
             location: claimParameters.location,
-            tokenId: _claims[creatorContractAddress][claimIndex].tokenId,
+            tokenId: currentClaim.tokenId,
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver
         });
@@ -147,39 +148,28 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         StorageProtocol storageProtocol,
         string calldata location
     ) external override creatorAdminRequired(creatorContractAddress)  {
-        Claim memory claim = _claims[creatorContractAddress][claimIndex];
-        require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
+        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
 
-        // Overwrite the existing claim
-        _claims[creatorContractAddress][claimIndex] = Claim({
-            total: claim.total,
-            totalMax: claim.totalMax,
-            walletMax: claim.walletMax,
-            startDate: claim.startDate,
-            endDate: claim.endDate,
-            storageProtocol: storageProtocol,
-            merkleRoot: claim.merkleRoot,
-            location: location,
-            tokenId: claim.tokenId,
-            cost: claim.cost,
-            paymentReceiver: claim.paymentReceiver
-        });
+        claim.storageProtocol = storageProtocol;
+        claim.location = location;
     }
 
     /**
      * See {IERC1155LazyClaim-getClaim}.
      */
     function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory) {
-        require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
-        return _claims[creatorContractAddress][claimIndex];
+        Claim memory claim = _claims[creatorContractAddress][claimIndex];
+        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
+        return claim;
     }
 
     /**
      * See {IERC1155LazyClaim-checkMintIndex}.
      */
     function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) public override view returns(bool) {
-        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        Claim memory claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claim.merkleRoot != "", "Can only check merkle claims");
         uint256 claimMintIndex = mintIndex >> 8;
@@ -193,8 +183,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
      */
     function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
         minted = new bool[](mintIndices.length);
-        for (uint i = 0; i < mintIndices.length; i++) {
+        for (uint256 i = mintIndices.length; i > 0 ;) {
             minted[i] = checkMintIndex(creatorContractAddress, claimIndex, mintIndices[i]);
+            unchecked{ i--; }
         }
     }
 
@@ -211,7 +202,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {IERC1155LazyClaim-mint}.
      */
-    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
+    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override nonReentrant {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         
         // Safely retrieve the claim
@@ -241,26 +232,20 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         address[] memory minterAddress = new address[](1);
         minterAddress[0] = msg.sender;
-        uint[] memory amount = new uint[](1);
-        amount[0] = 1; // Default 1 for `mint` function.
 
         // Do mint
-        if (claim.tokenId == MAX_INT) {
+        if (claim.tokenId[0] == MAX_UINT_256) {
             // Hasn't been created yet, use mintExtensionNew
-            string[] memory uris = new string[](1);
-            uris[0] = "";
-            uint[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, amount, uris);
+            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, SINGLE_MINT_AMOUNT, BLANK_URI);
             _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
-            claim.tokenId = newTokenIds[0];
+            claim.tokenId = newTokenIds;
         } else {
-            uint[] memory tokenIds = new uint[](1);
-            tokenIds[0] = claim.tokenId;
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, tokenIds, amount);
+            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, claim.tokenId, SINGLE_MINT_AMOUNT);
         }
 
         // Transfer proceeds to receiver
         // solhint-disable-next-line
-        (bool sent, ) = payable(claim.paymentReceiver).call{value: msg.value}("");
+        (bool sent, ) = claim.paymentReceiver.call{value: msg.value}("");
         require(sent, "Failed to transfer to receiver");
 
         emit ClaimMint(creatorContractAddress, _claimTokenIds[creatorContractAddress][claimIndex]);
@@ -269,7 +254,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {IERC1155LazyClaim-mintBatch}.
      */
-    function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
+    function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override nonReentrant {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         
         // Safely retrieve the claim
@@ -288,12 +273,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         if (claim.merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
-            for (uint i = 0; i < mintCount; ) {
+            for (uint256 i = mintCount; i > 0; ) {
                 uint32 mintIndex = mintIndices[i];
                 bytes32[] memory merkleProof = merkleProofs[i];
-                
                 _checkMerkleAndUpdate(claim, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
-                unchecked { i++; }
+                unchecked { i--; }
             }
         } else {
             // Non-merkle mint
@@ -301,27 +285,22 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
                 require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]+mintCount <= claim.walletMax, "Too many requested for this wallet");
                 unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] += mintCount; }
             }
-            
         }
         unchecked{ claim.total += mintCount; }
 
         address[] memory minterAddress = new address[](1);
         minterAddress[0] = msg.sender;
-        uint[] memory amount = new uint[](1);
+        uint256[] memory amount = new uint256[](1);
         amount[0] = mintCount;
 
         // Do mint
-        if (claim.tokenId == MAX_INT) {
+        if (claim.tokenId[0] == MAX_UINT_256) {
             // Hasn't been created yet, use mintExtensionNew
-            string[] memory uris = new string[](1);
-            uris[0] = "";
-            uint[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, amount, uris);
+            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, amount, BLANK_URI);
             _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
-            claim.tokenId = newTokenIds[0];
+            claim.tokenId = newTokenIds;
         } else {
-            uint[] memory tokenIds = new uint[](1);
-            tokenIds[0] = claim.tokenId;
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, tokenIds, amount);
+            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, claim.tokenId, amount);
         }
         // solhint-disable-next-line
         (bool sent, ) = payable(claim.paymentReceiver).call{value: msg.value}("");
@@ -334,37 +313,28 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
      * See {IERC1155LazyPayableClaim-airdrop}.
      */
     function airdrop(address creatorContractAddress, uint256 claimIndex, address[] calldata recipients,
-            uint16[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {
+        uint256[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {
         require(recipients.length == amounts.length, "Unequal number of recipients and amounts provided");
 
         // Fetch the claim
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
 
-        for (uint256 i = 0; i < recipients.length;) {
-            // Prepare params for airdrop
-            address[] memory airdropAddress = new address[](1);
-            airdropAddress[0] = recipients[i];
-            uint[] memory amount = new uint[](1);
-            amount[0] = amounts[i];
+        uint256 totalAmount;
+        for (uint256 i = amounts.length; i > 0;) {
+            totalAmount += amounts[i];
+            unchecked{ i--; }
+        }
+        require(totalAmount <= MAX_UINT_32, "Too many requested");
+        claim.total += uint32(totalAmount);
 
-            // Airdrop the tokens
-            if (claim.tokenId == MAX_INT) {
-                // Hasn't been created yet, use mintExtensionNew
-                string[] memory uris = new string[](1);
-                uris[0] = "";
-                uint[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(airdropAddress, amount, uris);
-                _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
-                claim.tokenId = newTokenIds[0];
-            } else {
-                uint[] memory tokenIds = new uint[](1);
-                tokenIds[0] = claim.tokenId;
-                IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(airdropAddress, tokenIds, amount);
-            }
-
-            // Increment claim.total
-            unchecked{ claim.total += uint32(amounts[i]); }
-
-            unchecked{i++;}
+        // Airdrop the tokens
+        if (claim.tokenId[0] == MAX_UINT_256) {
+            // Hasn't been created yet, use mintExtensionNew
+            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(recipients, amounts, BLANK_URI);
+            _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
+            claim.tokenId = newTokenIds;
+        } else {
+            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, claim.tokenId, amounts);
         }
     }
 
@@ -378,7 +348,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             leaf = keccak256(abi.encodePacked(msg.sender, mintIndex));
         } else {
             // Direct verification failed, try delegate verification
-            IDelegationRegistry dr = IDelegationRegistry(delegationRegistry);
+            IDelegationRegistry dr = IDelegationRegistry(DELEGATION_REGISTRY);
             require(dr.checkDelegateForContract(msg.sender, mintFor, address(this)), "Invalid delegate");
             leaf = keccak256(abi.encodePacked(mintFor, mintIndex));
         }
