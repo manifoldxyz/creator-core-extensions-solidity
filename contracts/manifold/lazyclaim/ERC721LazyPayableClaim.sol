@@ -25,7 +25,10 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
     uint256 private constant MINT_INDEX_BITMASK = 0xFF;
-    address public delegationRegistry = 0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A;
+    // solhint-disable-next-line
+    address public immutable DELEGATION_REGISTRY;
+    uint32 private constant MAX_UINT_32 = 0xffffffff;
+    uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     // stores mapping from tokenId to the claim it represents
     // { contractAddress => { tokenId => Claim } }
@@ -53,10 +56,10 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             interfaceId == type(IERC165).interfaceId;
     }
 
-    constructor(address newDelegationRegistry) {
-        if (newDelegationRegistry != address(0)) delegationRegistry = newDelegationRegistry;
+    constructor(address delegationRegistry) {
+        DELEGATION_REGISTRY = delegationRegistry;
     }
-    
+
     /**
      * @notice This extension is shared, not single-creator. So we must ensure
      * that a claim's initializer is an admin on the creator contract
@@ -186,7 +189,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
      */
     function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
         minted = new bool[](mintIndices.length);
-        for (uint i = 0; i < mintIndices.length; i++) {
+        for (uint256 i = 0; i < mintIndices.length; i++) {
             minted[i] = checkMintIndex(creatorContractAddress, claimIndex, mintIndices[i]);
         }
     }
@@ -236,9 +239,8 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
 
         // Insert the new tokenId into _tokenClaims for the current claim address & index
         _tokenClaims[creatorContractAddress][newTokenId] = TokenClaim(uint224(claimIndex), claim.total);
-        require(payable(claim.paymentReceiver).send(msg.value), "Failed to send proceeds");
         // solhint-disable-next-line
-        (bool sent, ) = payable(claim.paymentReceiver).call{value: msg.value}("");
+        (bool sent, ) = claim.paymentReceiver.call{value: msg.value}("");
         require(sent, "Failed to transfer to receiver");
 
         emit ClaimMint(creatorContractAddress, claimIndex);
@@ -269,7 +271,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         if (claim.merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
-            for (uint i = 0; i < mintCount; ) {
+            for (uint256 i = 0; i < mintCount; ) {
                 uint32 mintIndex = mintIndices[i];
                 bytes32[] memory merkleProof = merkleProofs[i];
                 
@@ -285,12 +287,12 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             
         }
         uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(msg.sender, mintCount);
-        for (uint i = 0; i < mintCount; ) {
+        for (uint256 i = 0; i < mintCount; ) {
             _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(claimIndex), uint32(newMintIndex+i));
             unchecked { i++; }
         }
         // solhint-disable-next-line
-        (bool sent, ) = payable(claim.paymentReceiver).call{value: msg.value}("");
+        (bool sent, ) = claim.paymentReceiver.call{value: msg.value}("");
         require(sent, "Failed to transfer to receiver");
 
         emit ClaimMintBatch(creatorContractAddress, claimIndex, mintCount);
@@ -312,7 +314,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(recipients[i], amounts[i]);
             
             // Register the tokenClaims, so that tokenURI will work for airdropped tokens
-            for (uint j = 0; j < newTokenIds.length;) {
+            for (uint256 j = 0; j < newTokenIds.length;) {
                 _tokenClaims[creatorContractAddress][newTokenIds[j]] = TokenClaim(uint224(claimIndex), uint32(newMintIndex+j));
                 unchecked { j++; }
             }
@@ -335,7 +337,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             leaf = keccak256(abi.encodePacked(msg.sender, mintIndex));
         } else {
             // Direct verification failed, try delegate verification
-            IDelegationRegistry dr = IDelegationRegistry(delegationRegistry);
+            IDelegationRegistry dr = IDelegationRegistry(DELEGATION_REGISTRY);
             require(dr.checkDelegateForContract(msg.sender, mintFor, address(this)), "Invalid delegate");
             leaf = keccak256(abi.encodePacked(mintFor, mintIndex));
         }

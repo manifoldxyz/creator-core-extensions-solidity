@@ -20,7 +20,7 @@ interface IERC721LazyPayableClaim {
         bytes32 merkleRoot;
         string location;
         uint cost;
-        address paymentReceiver;
+        address payable paymentReceiver;
     }
 
     struct Claim {
@@ -34,7 +34,7 @@ interface IERC721LazyPayableClaim {
         bytes32 merkleRoot;
         string location;
         uint cost;
-        address paymentReceiver;
+        address payable paymentReceiver;
     }
 
     event ClaimInitialized(address indexed creatorContract, uint256 indexed claimIndex, address initializer);

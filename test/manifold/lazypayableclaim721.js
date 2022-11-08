@@ -3,6 +3,7 @@ const truffleAssert = require('truffle-assertions');
 const ERC721LazyPayableClaim = artifacts.require("ERC721LazyPayableClaim");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
 const DelegationRegistry = artifacts.require('DelegationRegistry');
+const MockETHReceiver = artifacts.require('MockETHReceiver');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
@@ -28,6 +29,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Must be admin
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -46,6 +48,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Succeeds because admin
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -69,6 +72,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Fails due to invalid storage protocol
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -87,6 +91,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Fails due to endDate <= startDate
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -105,6 +110,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Fails due to merkle root being set with walletMax
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String("0x0"),
           location: "XXX",
@@ -146,6 +152,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -213,6 +220,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTreeWithValues.getHexRoot(),
           location: "XXX",
@@ -283,6 +291,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTreeWithValues.getHexRoot(),
           location: "XXX",
@@ -354,6 +363,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTreeWithValues.getHexRoot(),
           location: "XXX",
@@ -474,6 +484,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTreeWithValues.getHexRoot(),
           location: "XXX",
@@ -586,6 +597,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -615,6 +627,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -663,6 +676,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -722,6 +736,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -781,6 +796,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -843,6 +859,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       const initializeTx = await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -890,6 +907,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       const initializeTx = await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTree.getHexRoot(),
           location: "XXX",
@@ -942,6 +960,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: ethers.utils.formatBytes32String(""),
           location: "XXX",
@@ -989,6 +1008,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Should fail to initialize if non-admin wallet is used
       truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTree.getHexRoot(),
           location: "zero.com",
@@ -1011,6 +1031,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTree.getHexRoot(),
           location: "arweaveHash1",
@@ -1048,6 +1069,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Initialize a second claim - with optional parameters disabled
       await lazyClaim.initializeClaim(
         creator.address,
+        2,
         {
           merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
           location: "arweaveHash2",
@@ -1142,6 +1164,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       const initializeTx = await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTree.getHexRoot(),
           location: "XXX",
@@ -1205,6 +1228,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       const initializeTx = await lazyClaim.initializeClaim(
         creator.address,
+        1,
         {
           merkleRoot: merkleTree.getHexRoot(),
           location: "XXX",
@@ -1241,17 +1265,41 @@ contract('LazyPayableClaim721', function ([...accounts]) {
     });
 
     it('delegate registry address test', async function () {
-      lazyClaim = await ERC721LazyPayableClaim.new('0x0000000000000000000000000000000000000000', {from:owner});
+      lazyClaim = await ERC721LazyPayableClaim.new('0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', {from:owner});
       
-      const onChainRegistryAddress = await lazyClaim.delegationRegistry();
+      const onChainRegistryAddress = await lazyClaim.DELEGATION_REGISTRY();
       assert.equal('0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', onChainRegistryAddress);
     });
 
-    it.only('allow recipient to be a contract', async function () {
-      lazyClaim = await ERC721LazyPayableClaim.new('0x0000000000000000000000000000000000000000', {from:owner});
-      
-      const onChainRegistryAddress = await lazyClaim.delegationRegistry();
-      assert.equal('0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', onChainRegistryAddress);
+    it('allow recipient to be a contract', async function () {
+      // Construct a contract receiver
+      const mockETHReceiver = await MockETHReceiver.new({ from: owner });
+
+      let now = (await web3.eth.getBlock('latest')).timestamp-30;
+      let later = now + 1000;
+
+      // Initialize the claim with the contract as its receiver
+      await lazyClaim.initializeClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 3,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+        },
+        {from:owner}
+      );
+
+      // Perform a mint on the claim
+      const mintTx = await lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('3')});
+      console.log("Gas cost:\tmint w/ contract receiver:\t"+ mintTx.receipt.gasUsed);
     });
   });
 });
