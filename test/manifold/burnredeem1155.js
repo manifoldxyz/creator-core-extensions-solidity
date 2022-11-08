@@ -27,6 +27,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Must be admin
       await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -35,7 +36,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:anyone1}
       ), "Wallet is not an administrator for contract");
@@ -43,6 +45,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Succeeds because admin
       await truffleAssert.passes(await burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -51,7 +54,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       ));
@@ -65,6 +69,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       const mock721 = await MockERC721.new('Test', 'TEST', {from:owner});
       await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: mock721.address,
           burnTokenId: 1,
@@ -73,7 +78,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       ), "burnTokenAddress must be a ERC1155Creator contract");
@@ -81,6 +87,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Fails due to endDate <= startDate
       await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -89,7 +96,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: now,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -106,7 +114,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       ), "Burn redeem not initialized");
@@ -118,6 +127,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -126,7 +136,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
@@ -143,7 +154,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 9,
           startDate: now,
           endDate: later,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       ), "Cannot decrease totalSupply");
@@ -160,7 +172,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: now,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -172,6 +185,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -180,7 +194,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: now,
           endDate: later,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
@@ -193,11 +208,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp+100; // seconds since unix epoch
       let end = start + 300;
-
-      let burnRedeemData = ethers.utils.defaultAbiCoder.encode(
-        ["address", "uint256", "uint256"],
-        [creator.address, 1, 1]
-      );
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1]);
 
       // Mint burnable tokens
       await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
@@ -205,6 +216,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Should fail to initialize if non-admin wallet is used
       truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -213,7 +225,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:anotherOwner}
       ), "Wallet is not an administrator for contract");
@@ -223,6 +236,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -231,7 +245,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
@@ -248,7 +263,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end + 1,
-          uri: "https://arweave.net/arweaveHash1",
+          storageProtocol: 2,
+          location: "arweaveHash1",
         },
         {from:owner}
       );
@@ -256,6 +272,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Initialize a second claim - with optional parameters disabled
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        2,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -264,14 +281,16 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 0,
           startDate: 0,
           endDate: 0,
-          uri: "https://arweave.net/arweaveHash1",
+          storageProtocol: 2,
+          location: "arweaveHash1",
         },
         {from:owner}
       );
     
       // Burn redeem should have expected info
       const initializedBurnRedeem = await burnRedeem.getBurnRedeem(creator.address, 1, {from:owner});
-      assert.equal(initializedBurnRedeem.uri, 'https://arweave.net/arweaveHash1');
+      assert.equal(initializedBurnRedeem.storageProtocol, 2);
+      assert.equal(initializedBurnRedeem.location, "arweaveHash1");
       assert.equal(initializedBurnRedeem.totalSupply, 3);
       assert.equal(initializedBurnRedeem.startDate, start);
       assert.equal(initializedBurnRedeem.endDate, end + 1);
@@ -301,7 +320,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end + 1,
-          uri: "test.com",
+          storageProtocol: 1,
+          location: "test.com",
         },
         {from:owner}
       );
@@ -320,7 +340,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
-      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 1, 1]);
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1]);
 
       // Mint burnable tokens
       await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
@@ -335,6 +355,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 2,
@@ -343,7 +364,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
@@ -362,7 +384,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 3,
           startDate: start,
           endDate: end,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
@@ -372,6 +395,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        2,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -380,19 +404,20 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: start,
           endDate: end,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
 
-      burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 2, 1]);
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 2, 1]);
 
       // Reverts due to invalid amount
       await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Invalid value sent");
 
       // Multiple burns in one transaction
 
-      burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "address", "uint256", "uint256"], [creator.address, 1, 2, creator.address, 2, 1]);
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 2, creator.address, 2, 1]);
 
       // Reverts due to invalid amount
       await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 8, burnRedeemData, {from:anyone1}), "Invalid value sent");
@@ -409,7 +434,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       assert.equal(15,balance);
 
       // Reverts due to total supply reached
-      burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256"], [creator.address, 1, 1]);
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1]);
       await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Maximum tokens already minted for this burn redeem");
     });
 
@@ -440,6 +465,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        1,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
@@ -448,12 +474,14 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: start,
           endDate: end,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        2,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 2,
@@ -462,12 +490,14 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: start,
           endDate: end,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
       await burnRedeem.initializeBurnRedeem(
         creator.address,
+        3,
         {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 3,
@@ -476,12 +506,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           totalSupply: 10,
           startDate: start,
           endDate: end,
-          uri: "XXX",
+          storageProtocol: 1,
+          location: "XXX",
         },
         {from:owner}
       );
 
-      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "address", "uint256", "uint256", "address", "uint256", "uint256"], [creator.address, 1, 1, creator.address, 2, 1, creator.address, 3, 1]);
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1, creator.address, 2, 1, creator.address, 3, 1]);
 
       // Reverts on ids/data mismatch
       await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [3,2,1], [3,2,1], burnRedeemData, {from:anyone1}), "Invalid values");

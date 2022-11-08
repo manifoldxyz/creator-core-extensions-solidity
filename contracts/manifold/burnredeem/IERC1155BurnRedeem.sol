@@ -10,6 +10,8 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
  * Burn Redeem interface
  */
 interface IERC1155BurnRedeem is IERC1155Receiver {
+    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
+
     struct BurnRedeemParameters {
         address burnTokenAddress;
         uint256 burnTokenId;
@@ -18,7 +20,8 @@ interface IERC1155BurnRedeem is IERC1155Receiver {
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
-        string uri;
+        StorageProtocol storageProtocol;
+        string location;
     }
 
     struct BurnRedeem {
@@ -31,7 +34,8 @@ interface IERC1155BurnRedeem is IERC1155Receiver {
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
-        string uri;
+        StorageProtocol storageProtocol;
+        string location;
     }
 
     struct BurnRedeemCallData {
@@ -40,31 +44,24 @@ interface IERC1155BurnRedeem is IERC1155Receiver {
         uint256 amount;
     }
 
-    event BurnRedeemInitialized(address indexed creatorContract, uint224 indexed burnRedeemIndex, address initializer);
+    event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed burnRedeemIndex, address initializer);
     event BurnRedeemMint(address indexed creatorContract, uint256 indexed burnRedeemIndex, uint256 amountMinted);
 
     /**
      * @notice initialize a new burn redeem, emit initialize event, and return the newly created index
      * @param creatorContractAddress    the creator contract the burn will mint redeem tokens for
+     * @param burnRedeemIndex           the index of the burnRedeem in the mapping of creatorContractAddress' _burnRedeems
      * @param burnRedeemParameters      the parameters which will affect the minting behavior of the burn redeem
-     * @return                          the index of the newly created burn redeem
      */
-    function initializeBurnRedeem(address creatorContractAddress, BurnRedeemParameters calldata burnRedeemParameters) external returns(uint256);
+    function initializeBurnRedeem(address creatorContractAddress, uint256 burnRedeemIndex, BurnRedeemParameters calldata burnRedeemParameters) external;
 
     /**
      * @notice update an existing burn redeem at index
      * @param creatorContractAddress    the creator contract corresponding to the burn redeem
-     * @param index                     the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
+     * @param burnRedeemIndex           the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
      * @param burnRedeemParameters      the parameters which will affect the minting behavior of the burn redeem
      */
-    function updateBurnRedeem(address creatorContractAddress, uint256 index, BurnRedeemParameters calldata burnRedeemParameters) external;
-
-    /**
-     * @notice get the number of _burnRedeems initialized for a given creator contract
-     * @param creatorContractAddress    the address of the creator contract
-     * @return                          the number of _burnReedems initialized for this creator contract
-     */
-    function getBurnRedeemCount(address creatorContractAddress) external view returns(uint256);
+    function updateBurnRedeem(address creatorContractAddress, uint256 burnRedeemIndex, BurnRedeemParameters calldata burnRedeemParameters) external;
 
     /**
      * @notice get a burn redeem corresponding to a creator contract and index
