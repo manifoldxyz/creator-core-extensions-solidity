@@ -268,7 +268,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         uint256 remainingValue = values[0];
 
         // Iterate over calldata
-        for (uint i = 0; i * 96 < data.length-32; i++) {
+        for (uint i = 0; i * 96 < data.length - 32; i++) {
             // Read calldata
             BurnRedeemCallData memory current;
             (current.creatorContractAddress, current.index, current.amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint256));
