@@ -20,7 +20,7 @@ interface IERC721LazyPayableClaim {
         bytes32 merkleRoot;
         string location;
         uint cost;
-        address paymentReceiver;
+        address payable paymentReceiver;
     }
 
     struct Claim {
@@ -34,20 +34,20 @@ interface IERC721LazyPayableClaim {
         bytes32 merkleRoot;
         string location;
         uint cost;
-        address paymentReceiver;
+        address payable paymentReceiver;
     }
 
-    event ClaimInitialized(address indexed creatorContract, uint224 indexed claimIndex, address initializer);
+    event ClaimInitialized(address indexed creatorContract, uint256 indexed claimIndex, address initializer);
     event ClaimMint(address indexed creatorContract, uint256 indexed claimIndex);
     event ClaimMintBatch(address indexed creatorContract, uint256 indexed claimIndex, uint16 mintCount);
 
     /**
      * @notice initialize a new claim, emit initialize event, and return the newly created index
      * @param creatorContractAddress    the creator contract the claim will mint tokens for
+     * @param claimIndex                the index of the claim in the list of creatorContractAddress' _claims
      * @param claimParameters           the parameters which will affect the minting behavior of the claim
-     * @return                          the index of the newly created claim
      */
-    function initializeClaim(address creatorContractAddress, ClaimParameters calldata claimParameters) external returns(uint256);
+    function initializeClaim(address creatorContractAddress, uint256 claimIndex, ClaimParameters calldata claimParameters) external;
 
     /**
      * @notice update an existing claim at claimIndex
@@ -57,12 +57,15 @@ interface IERC721LazyPayableClaim {
      */
     function updateClaim(address creatorContractAddress, uint256 claimIndex, ClaimParameters calldata claimParameters) external;
 
-/**
-     * @notice get the number of _claims initialized for a given creator contract
-     * @param creatorContractAddress    the address of the creator contract
-     * @return                          the number of _claims initialized for this creator contract
+    /**
+     * @notice update tokenURI parameters for an existing claim at claimIndex
+     * @param creatorContractAddress    the creator contract corresponding to the claim
+     * @param claimIndex                the index of the claim in the list of creatorContractAddress' _claims
+     * @param storageProtocol           the new storage protocol
+     * @param identical                 the new value of identical
+     * @param location                  the new location
      */
-    function getClaimCount(address creatorContractAddress) external view returns(uint256);
+    function updateTokenURIParams(address creatorContractAddress, uint256 claimIndex, StorageProtocol storageProtocol, bool identical, string calldata location) external;
 
     /**
      * @notice get a claim corresponding to a creator contract and index
