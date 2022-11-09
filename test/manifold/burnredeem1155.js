@@ -40,7 +40,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           location: "XXX",
         },
         {from:anyone1}
-      ), "Wallet is not an administrator for contract");
+      ), "Wallet is not an admin");
 
       // Succeeds because admin
       await truffleAssert.passes(await burnRedeem.initializeBurnRedeem(
@@ -82,7 +82,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           location: "XXX",
         },
         {from:owner}
-      ), "burnTokenAddress must be a ERC1155Creator contract");
+      ), "burnToken must be ERC1155Creator");
 
       // Fails due to endDate <= startDate
       await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
@@ -100,7 +100,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           location: "XXX",
         },
         {from:owner}
-      ), "Cannot have startDate greater than or equal to endDate");
+      ), "startDate after endDate");
 
       // Cannot update non-existant burn redeem
       await truffleAssert.reverts(burnRedeem.updateBurnRedeem(
@@ -176,7 +176,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           location: "XXX",
         },
         {from:owner}
-      ), "Cannot have startDate greater than or equal to endDate");
+      ), "startDate after endDate");
     });
 
     it('tokenURI test', async function () {
@@ -199,6 +199,12 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         },
         {from:owner}
       );
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
+
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1]);
+      await burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1});
 
       assert.equal('XXX', await creator.uri(1));
     });
@@ -229,7 +235,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           location: "XXX",
         },
         {from:anotherOwner}
-      ), "Wallet is not an administrator for contract");
+      ), "Wallet is not an admin");
 
       // Should fail before initialization
       await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Token not eligible");
@@ -342,7 +348,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       let end = start + 300;
       let burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1]);
 
-      // Mint burnable tokens
+      // Mint 20 burnable tokens
       await burnable1155.mintBaseNew([anyone1], [20], [""], { from: owner });
 
       // Ensure that the creator contract state is what we expect before mints
@@ -361,7 +367,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           burnTokenId: 2,
           burnAmount: 1,
           redeemAmount: 1,
-          totalSupply: 3,
+          totalSupply: 5,
           startDate: start,
           endDate: end,
           storageProtocol: 1,
@@ -381,7 +387,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           burnTokenId: 1,
           burnAmount: 1,
           redeemAmount: 1,
-          totalSupply: 3,
+          totalSupply: 5,
           startDate: start,
           endDate: end,
           storageProtocol: 1,
@@ -393,6 +399,10 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Passes with right token id
       await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}));
 
+      // Ensure tokens are burned
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(19,balance);
+
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         2,
@@ -401,7 +411,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           burnTokenId: 1,
           burnAmount: 2,
           redeemAmount: 4,
-          totalSupply: 10,
+          totalSupply:  12,
           startDate: start,
           endDate: end,
           storageProtocol: 1,
@@ -419,23 +429,27 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
       burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 2, creator.address, 2, 1]);
 
-      // Reverts due to invalid amount
-      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 8, burnRedeemData, {from:anyone1}), "Invalid value sent");
+      // Passes with too high of an amount
+      await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 8, burnRedeemData, {from:anyone1}));
+
+      // Ensure excess tokens are returned
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(15,balance);
 
       // Passes with proper amount
       await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}));
 
       // Now ensure that the creator contract state and burnable contract state is what we expect after mints
       balance = await creator.balanceOf(anyone1, 1);
-      assert.equal(3,balance);
+      assert.equal(5,balance);
       balance = await creator.balanceOf(anyone1, 2);
-      assert.equal(4,balance);
+      assert.equal(8,balance);
       balance = await burnable1155.balanceOf(anyone1, 1);
-      assert.equal(15,balance);
+      assert.equal(11,balance);
 
       // Reverts due to total supply reached
       burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1]);
-      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Maximum tokens already minted for this burn redeem");
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "None available");
     });
 
     it('onERC1155BatchReceived test', async function() {
@@ -487,7 +501,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           burnTokenId: 2,
           burnAmount: 2,
           redeemAmount: 3,
-          totalSupply: 10,
+          totalSupply: 9,
           startDate: start,
           endDate: end,
           storageProtocol: 1,
@@ -515,10 +529,17 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       let burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1, creator.address, 2, 1, creator.address, 3, 1]);
 
       // Reverts on ids/data mismatch
-      await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [3,2,1], [3,2,1], burnRedeemData, {from:anyone1}), "Invalid values");
+      await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [3,2,1], [3,2,1], burnRedeemData, {from:anyone1}), "Token not eligible");
 
-      // Reverts on invalid amount
-      await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,3], [1,2,4], burnRedeemData, {from:anyone1}), "Invalid values");
+      // Reverts on too little amount
+      await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,3], [1,1,1], burnRedeemData, {from:anyone1}));
+
+      // Passes on too large amount
+      await truffleAssert.passes(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,3], [1,2,4], burnRedeemData, {from:anyone1}));
+
+      // Ensure excess tokens are returned
+      balance = await burnable1155.balanceOf(anyone1, 3);
+      assert.equal(17,balance);
 
       // Reverts on invalid token
       await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2,2], [1,2,3], burnRedeemData, {from:anyone1}), "Token not eligible");
@@ -527,17 +548,261 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
       // Now ensure that the creator contract state and burnable contract state is what we expect after mints
       balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(2,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(6,balance);
+      balance = await creator.balanceOf(anyone1, 3);
+      assert.equal(4,balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(18,balance);
+      balance = await burnable1155.balanceOf(anyone1, 2);
+      assert.equal(16,balance);
+      balance = await burnable1155.balanceOf(anyone1, 3);
+      assert.equal(14,balance);
+    });
+
+    it('onERC1155Received edge cases test', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+
+      // Mint 50 burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [50], [""], { from: owner });
+
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(0,balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(50,balance);
+      
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
+          burnAmount: 2,
+          redeemAmount: 1,
+          totalSupply: 5,
+          startDate: start,
+          endDate: end,
+          storageProtocol: 1,
+          location: "XXX",
+        },
+        {from:owner}
+      );
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        2,
+        {
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
+          burnAmount: 2,
+          redeemAmount: 1,
+          totalSupply: 5,
+          startDate: start,
+          endDate: end,
+          storageProtocol: 1,
+          location: "XXX",
+        },
+        {from:owner}
+      );
+
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1, creator.address, 2, 1]);
+
+      // -- Edge case 1 --
+      // Reverts due to less than valid amount
+
+      await truffleAssert.reverts(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 3, burnRedeemData, {from:anyone1}), "Invalid value sent");
+
+      // -- Edge case 2 --
+      // Passes when one or more burn redeems are sold out
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 2, 5]);
+      // Redeem rest of index 2
+      await burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 10, burnRedeemData, {from:anyone1})
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(40,balance);
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1, creator.address, 2, 1]);
+
+      // Passes even though 2 is sold out
+      await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}));
+
+      // Ensure tokens from sold out burn redeem are returned and correct tokens are minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(38,balance);
+      balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(5,balance);
+      balance = await creator.balanceOf(anyone1, 2);
       assert.equal(1,balance);
+
+      // -- Edge case 3 --
+      // Passes when more than required is sent
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1]);
+      await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 10, burnRedeemData, {from:anyone1}));
+
+      // Ensure excess tokens are returned and correct tokens are minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(36,balance);
+      balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(5,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(2,balance);
+
+      // -- Edge case 4 --
+      // Passes when more than total supply is requested
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 5]);
+      await truffleAssert.passes(burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 10, burnRedeemData, {from:anyone1}));
+
+      // Ensure excess tokens are returned and correct tokens are minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(30,balance);
+      balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(5,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(5,balance);
+    });
+
+    it('onERC1155BatchReceived edge case test', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [50], [""], { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [50], [""], { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [50], [""], { from: owner });
+
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(0,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(0,balance);
+      balance = await creator.balanceOf(anyone1, 3);
+      assert.equal(0,balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(50,balance);
+      balance = await burnable1155.balanceOf(anyone1, 2);
+      assert.equal(50,balance);
+      balance = await burnable1155.balanceOf(anyone1, 3);
+      assert.equal(50,balance);
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 1,
+          burnAmount: 1,
+          redeemAmount: 1,
+          totalSupply: 10,
+          startDate: start,
+          endDate: end,
+          storageProtocol: 1,
+          location: "XXX",
+        },
+        {from:owner}
+      );
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        2,
+        {
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 2,
+          burnAmount: 2,
+          redeemAmount: 3,
+          totalSupply: 9,
+          startDate: start,
+          endDate: end,
+          storageProtocol: 1,
+          location: "XXX",
+        },
+        {from:owner}
+      );
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        3,
+        {
+          burnTokenAddress: burnable1155.address,
+          burnTokenId: 3,
+          burnAmount: 3,
+          redeemAmount: 2,
+          totalSupply: 10,
+          startDate: start,
+          endDate: end,
+          storageProtocol: 1,
+          location: "XXX",
+        },
+        {from:owner}
+      );
+
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1, creator.address, 2, 1]);
+
+      // -- Edge case 1 --
+      // Reverts due to less than valid amount
+
+      await truffleAssert.reverts(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2], [1,1], burnRedeemData, {from:anyone1}));
+
+      // -- Edge case 2 --
+      // Passes when one or more burn redeems are sold out
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 10]);
+      // Redeem rest of index 1
+      await burnable1155.safeTransferFrom(anyone1, burnRedeem.address, 1, 10, burnRedeemData, {from:anyone1})
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(40,balance);
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 1, 1, creator.address, 2, 1]);
+
+      // Passes even though 1 is sold out
+      await truffleAssert.passes(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [1,2], [1,2], burnRedeemData, {from:anyone1}));
+
+      // Ensure tokens from sold out burn redeem are returned and correct tokens are minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(40,balance);
+      balance = await burnable1155.balanceOf(anyone1, 2);
+      assert.equal(48,balance);
+      balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(10,balance);
       balance = await creator.balanceOf(anyone1, 2);
       assert.equal(3,balance);
+
+      // -- Edge case 3 --
+      // Passes when more than required is sent
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 2, 1, creator.address, 3, 1]);
+      await truffleAssert.passes(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [2,3], [4,3], burnRedeemData, {from:anyone1}));
+
+      // Ensure excess tokens are returned and correct tokens are minted
+      balance = await burnable1155.balanceOf(anyone1, 2);
+      assert.equal(46,balance);
+      balance = await burnable1155.balanceOf(anyone1, 3);
+      assert.equal(47,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(6,balance);
       balance = await creator.balanceOf(anyone1, 3);
       assert.equal(2,balance);
-      balance = await burnable1155.balanceOf(anyone1, 1);
-      assert.equal(19,balance);
+
+      // -- Edge case 4 --
+      // Passes when more than total supply is requested
+
+      burnRedeemData = web3.eth.abi.encodeParameters(["address", "address", "uint256", "uint256", "address", "uint256", "uint256"], [anyone1, creator.address, 2, 5, creator.address, 3, 1]);
+      await truffleAssert.passes(burnable1155.safeBatchTransferFrom(anyone1, burnRedeem.address, [2,3], [10,3], burnRedeemData, {from:anyone1}));
+
+      // Ensure excess tokens are returned and correct tokens are minted
       balance = await burnable1155.balanceOf(anyone1, 2);
-      assert.equal(18,balance);
+      assert.equal(44,balance);
       balance = await burnable1155.balanceOf(anyone1, 3);
-      assert.equal(17,balance);
+      assert.equal(44,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(9,balance);
+      balance = await creator.balanceOf(anyone1, 3);
+      assert.equal(4,balance);
     });
   });
 });
