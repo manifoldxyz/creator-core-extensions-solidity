@@ -150,10 +150,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {IERC1155LazyClaim-getClaim}.
      */
-    function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory) {
-        Claim memory claim = _claims[creatorContractAddress][claimIndex];
+    function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory claim) {
+        claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
-        return claim;
     }
 
     /**
