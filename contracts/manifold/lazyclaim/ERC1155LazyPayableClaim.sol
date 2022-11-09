@@ -183,9 +183,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
      */
     function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
         minted = new bool[](mintIndices.length);
-        for (uint256 i = 0; i < mintIndices.length ;) {
+        for (uint256 i = mintIndices.length; i > 0;) {
             minted[i] = checkMintIndex(creatorContractAddress, claimIndex, mintIndices[i]);
-            unchecked{ i++; }
+            unchecked{ i--; }
         }
     }
 
@@ -273,11 +273,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         if (claim.merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
-            for (uint256 i = 0; i < mintCount; ) {
+            for (uint256 i = mintCount; i > 0; ) {
                 uint32 mintIndex = mintIndices[i];
                 bytes32[] memory merkleProof = merkleProofs[i];
                 _checkMerkleAndUpdate(claim, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
-                unchecked { i++; }
+                unchecked { i--; }
             }
         } else {
             // Non-merkle mint
@@ -320,10 +320,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
 
         uint256 totalAmount;
-        for (uint256 i = 0; i < amounts.length;) {
+        for (uint256 i = amounts.length; i > 0;) {
             totalAmount += amounts[i];
-            unchecked{ i++; }
-            // revert("AAA"); // Note: This reverts, but if I don't revert it will give an index panic. Need to end loop when i becomes zero
+            unchecked{ i--; }
         }
         require(totalAmount <= MAX_UINT_32, "Too many requested");
         claim.total += uint32(totalAmount);
