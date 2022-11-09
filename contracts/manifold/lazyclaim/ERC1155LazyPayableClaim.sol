@@ -184,7 +184,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
         uint256 mintIndicesLength = mintIndices.length;
         minted = new bool[](mintIndicesLength);
-        for (uint256 i = 0; i > mintIndicesLength;) {
+        for (uint256 i = 0; i < mintIndicesLength;) {
             minted[i] = checkMintIndex(creatorContractAddress, claimIndex, mintIndices[i]);
             unchecked{ ++i; }
         }
