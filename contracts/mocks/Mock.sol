@@ -40,3 +40,12 @@ contract MockERC721RedeemEnumerable is ERC721OwnerEnumerableSingleCreatorBase, E
         return ERC721RedeemBase.supportsInterface(interfaceId) || ERC721CreatorExtensionApproveTransfer.supportsInterface(interfaceId);
     }
 }
+
+contract MockETHReceiver {
+    fallback() external payable {
+        // Transfer caps gas at 2300. This function needs to consume more gas than that.
+        for (uint j = 0; j < 2300;) {
+            unchecked{ j++; }
+        }
+    }
+}
