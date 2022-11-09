@@ -30,12 +30,6 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     address public immutable DELEGATION_REGISTRY;
     uint32 private constant MAX_UINT_32 = 0xffffffff;
     uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-    // solhint-disable-next-line
-    uint256[] private MAX_TOKEN_ID;
-    // solhint-disable-next-line
-    uint256[] private SINGLE_MINT_AMOUNT;
-    // solhint-disable-next-line
-    string[] private BLANK_URI;
 
     // stores mapping from tokenId to the claim it represents
     // { contractAddress => { tokenId => Claim } }
@@ -60,9 +54,6 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
     constructor(address delegationRegistry) {
         DELEGATION_REGISTRY = delegationRegistry;
-        MAX_TOKEN_ID = [MAX_UINT_256];
-        BLANK_URI = [""];
-        SINGLE_MINT_AMOUNT = [1];
     }
 
     /**
@@ -101,7 +92,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             storageProtocol: claimParameters.storageProtocol,
             merkleRoot: claimParameters.merkleRoot,
             location: claimParameters.location,
-            tokenId: MAX_TOKEN_ID,
+            tokenId: MAX_UINT_256,
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver
         });
@@ -159,10 +150,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {IERC1155LazyClaim-getClaim}.
      */
-    function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory) {
-        Claim memory claim = _claims[creatorContractAddress][claimIndex];
+    function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory claim) {
+        claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
-        return claim;
     }
 
     /**
@@ -182,10 +172,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
      * See {IERC1155LazyClaim-checkMintIndices}.
      */
     function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
-        minted = new bool[](mintIndices.length);
-        for (uint256 i = 0; i < mintIndices.length ;) {
+        uint256 mintIndicesLength = mintIndices.length;
+        minted = new bool[](mintIndicesLength);
+        for (uint256 i = 0; i < mintIndicesLength;) {
             minted[i] = checkMintIndex(creatorContractAddress, claimIndex, mintIndices[i]);
-            unchecked{ i++; }
+            unchecked{ ++i; }
         }
     }
 
@@ -230,18 +221,12 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         }
         unchecked{ claim.total++; }
 
-        address[] memory minterAddress = new address[](1);
-        minterAddress[0] = msg.sender;
-
         // Do mint
-        if (claim.tokenId[0] == MAX_UINT_256) {
-            // Hasn't been created yet, use mintExtensionNew
-            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, SINGLE_MINT_AMOUNT, BLANK_URI);
-            _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
-            claim.tokenId = newTokenIds;
-        } else {
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, claim.tokenId, SINGLE_MINT_AMOUNT);
-        }
+        address[] memory recipients = new address[](1);
+        recipients[0] = msg.sender;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1;
+        _mintClaim(creatorContractAddress, claimIndex, claim, recipients, amounts);
 
         // Transfer proceeds to receiver
         // solhint-disable-next-line
@@ -277,7 +262,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
                 uint32 mintIndex = mintIndices[i];
                 bytes32[] memory merkleProof = merkleProofs[i];
                 _checkMerkleAndUpdate(claim, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
-                unchecked { i++; }
+                unchecked { ++i; }
             }
         } else {
             // Non-merkle mint
@@ -288,20 +273,12 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         }
         unchecked{ claim.total += mintCount; }
 
-        address[] memory minterAddress = new address[](1);
-        minterAddress[0] = msg.sender;
-        uint256[] memory amount = new uint256[](1);
-        amount[0] = mintCount;
-
         // Do mint
-        if (claim.tokenId[0] == MAX_UINT_256) {
-            // Hasn't been created yet, use mintExtensionNew
-            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, amount, BLANK_URI);
-            _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
-            claim.tokenId = newTokenIds;
-        } else {
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, claim.tokenId, amount);
-        }
+        address[] memory recipients = new address[](1);
+        recipients[0] = msg.sender;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = mintCount;
+        _mintClaim(creatorContractAddress, claimIndex, claim, recipients, amounts);
         // solhint-disable-next-line
         (bool sent, ) = claim.paymentReceiver.call{value: msg.value}("");
         require(sent, "Failed to transfer to receiver");
@@ -322,20 +299,29 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         uint256 totalAmount;
         for (uint256 i = 0; i < amounts.length;) {
             totalAmount += amounts[i];
-            unchecked{ i++; }
-            // revert("AAA"); // Note: This reverts, but if I don't revert it will give an index panic. Need to end loop when i becomes zero
+            unchecked{ ++i; }
         }
         require(totalAmount <= MAX_UINT_32, "Too many requested");
         claim.total += uint32(totalAmount);
 
         // Airdrop the tokens
-        if (claim.tokenId[0] == MAX_UINT_256) {
+        _mintClaim(creatorContractAddress, claimIndex, claim, recipients, amounts);
+    }
+
+    /**
+     * Mint a claim
+     */
+    function _mintClaim(address creatorContractAddress, uint256 claimIndex, Claim storage claim, address[] memory recipients, uint256[] memory amounts) private {
+        if (claim.tokenId == MAX_UINT_256) {
             // Hasn't been created yet, use mintExtensionNew
-            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(recipients, amounts, BLANK_URI);
+            string [] memory uris = new string[](1);
+            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(recipients, amounts, uris);
             _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
-            claim.tokenId = newTokenIds;
+            claim.tokenId = newTokenIds[0];
         } else {
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, claim.tokenId, amounts);
+            uint256[] memory tokenIds = new uint256[](1);
+            tokenIds[0] = claim.tokenId;
+            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, tokenIds, amounts);
         }
     }
 
