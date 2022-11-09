@@ -39,7 +39,7 @@ interface IERC1155BurnRedeem is IERC1155Receiver {
     }
 
     event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed index, address initializer);
-    event BurnRedeemMint(address indexed creatorContract, uint256 indexed index, uint256 amountMinted);
+    event BurnRedeemMint(address indexed creatorContract, uint256 indexed tokenId, uint256 amount, address burnTokenAddress, uint256 burnTokenId);
 
     /**
      * @notice initialize a new burn redeem, emit initialize event, and return the newly created index

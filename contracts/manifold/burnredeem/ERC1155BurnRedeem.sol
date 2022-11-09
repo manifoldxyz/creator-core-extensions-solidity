@@ -211,17 +211,17 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
             (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
 
             (BurnRedeem storage burnRedeem, uint256 burnAmount, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, id, amount);
-            // Check if received token is eligible
-            amountRequired += burnAmount;
 
             // Do mint if needed
             if (amountToRedeem > 0) {
+                amountRequired += burnAmount;
                 redemptionAmount[0] = amountToRedeem;
                 _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
-                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0], amountToRedeem);
+                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0],amountToRedeem, msg.sender, id);
             }
         }
         require(amountRequired <= value, "Invalid value sent");
+        require(amountRequired > 0, "None available");
 
         // Do burn
         if (amountRequired > 0) {
@@ -264,27 +264,40 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         uint256[] memory consumedValues = new uint256[](redemptionCount);
         uint256[] memory remainingValues = new uint256[](redemptionCount);
 
+        // Track if tokens were redeemed
+        bool tokensRedeemed = false;
+        bool excessValues = false;
+
         // Iterate over calldata
         for (uint256 i = 0; i < redemptionCount; i++) {
             // Read calldata
             (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
 
             (BurnRedeem storage burnRedeem, uint256 burnAmount, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, ids[i], amount);
-            consumedValues[i] = burnAmount;
-            remainingValues[i] = values[i] - burnAmount;
 
-            // Store values for mint
-            redemptionAmount[0] = amountToRedeem;
             // Do mint if needed
             if (amountToRedeem > 0) {
+                // Store consumed and excess values
+                consumedValues[i] = burnAmount;
+                if (burnAmount != values[i]) {
+                    remainingValues[i] = values[i] - burnAmount;
+                    excessValues = true;
+                }
+                // Store values for mint
+                redemptionAmount[0] = amountToRedeem;
+                tokensRedeemed = true;
                 _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
-                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0], amountToRedeem);
+                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0], amountToRedeem, msg.sender, ids[i]);
             }
         }
 
-        for (uint256 i = 0; i < redemptionCount; i++) {
-            if (remainingValues[i] > 0) {
-                IERC1155(msg.sender).safeTransferFrom(address(this), from, ids[i], remainingValues[i], "");
+        require(tokensRedeemed, "None available");
+
+        if (excessValues) {
+            for (uint256 i = 0; i < redemptionCount; i++) {
+                if (remainingValues[i] > 0) {
+                    IERC1155(msg.sender).safeTransferFrom(address(this), from, ids[i], remainingValues[i], "");
+                }
             }
         }
 
@@ -292,6 +305,9 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         IERC1155CreatorCore(msg.sender).burn(address(this), ids, consumedValues);
     }
 
+    /**
+     * Mint a redemption
+     */
     function _mintRedeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeem, address[] memory minterAddress, uint256[] memory redeemAmounts) private {
         if (burnRedeem.redeemTokenId[0] == MAX_UINT_256) {
             // No token minted yet, mint new token
