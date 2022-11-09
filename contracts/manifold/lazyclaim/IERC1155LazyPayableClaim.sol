@@ -31,7 +31,7 @@ interface IERC1155LazyPayableClaim {
         StorageProtocol storageProtocol;
         bytes32 merkleRoot;
         string location;
-        uint256[] tokenId;
+        uint256 tokenId;
         uint256 cost;
         address payable paymentReceiver;
     }
