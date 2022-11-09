@@ -206,7 +206,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
          // Iterate over calldata and validate
         uint256 amountRequired = 0;
-        for (uint256 i = 0; i < redemptionCount; i++) {
+        for (uint256 i = 0; i < redemptionCount;) {
             // Read calldata
             (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
 
@@ -219,6 +219,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
                 _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
                 emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0],amountToRedeem, msg.sender, id);
             }
+            unchecked { ++i; }
         }
         require(amountRequired <= value, "Invalid value sent");
         require(amountRequired > 0, "None available");
@@ -269,7 +270,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         bool excessValues = false;
 
         // Iterate over calldata
-        for (uint256 i = 0; i < redemptionCount; i++) {
+        for (uint256 i = 0; i < redemptionCount;) {
             // Read calldata
             (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
 
@@ -289,6 +290,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
                 _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
                 emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0], amountToRedeem, msg.sender, ids[i]);
             }
+            unchecked { ++i; }
         }
 
         require(tokensRedeemed, "None available");
