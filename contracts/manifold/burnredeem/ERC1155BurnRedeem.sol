@@ -3,8 +3,8 @@
 pragma solidity ^0.8.0;
 
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
-import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
+import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -19,11 +19,14 @@ import "./IERC1155BurnRedeem.sol";
  * @author manifold.xyz
  * @notice Burn Redeem shared extension for Manifold Studio.
  */
-contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionTokenURI, ReentrancyGuard {
+contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionTokenURI {
     using Strings for uint256;
 
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
+    uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    uint256[] private MAX_TOKEN_ID;
+    string[] private EMPTY_URI;
 
     // stores mapping from tokenId to the burn redeem it represents
     // { creatorContractAddress => { tokenId => BurnRedeem } }
@@ -31,6 +34,10 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
     // { contractAddress => { tokenId => { redeemIndex } }
     mapping(address => mapping(uint256 => uint256)) private _redeemTokenIds;
+
+    constructor() {
+        MAX_TOKEN_ID = [MAX_UINT_256];
+    }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
         return interfaceId == type(IERC1155BurnRedeem).interfaceId ||
@@ -55,44 +62,32 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      */
     function initializeBurnRedeem(
         address creatorContractAddress,
-        uint256 burnRedeemIndex,
+        uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        // Revert if burnRedeem at burnRedeemIndex already exists
-        require(_burnRedeems[creatorContractAddress][burnRedeemIndex].burnTokenAddress == address(0), "Burn redeem already initialized");
+        // Revert if burnRedeem at index already exists
+        require(_burnRedeems[creatorContractAddress][index].burnTokenAddress == address(0), "Burn redeem already initialized");
 
         // Sanity checks
         require(ERC165Checker.supportsInterface(burnRedeemParameters.burnTokenAddress, type(IERC1155CreatorCore).interfaceId), "burnTokenAddress must be a ERC1155Creator contract");
         require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "Cannot have startDate greater than or equal to endDate");
 
-        // Mint one copy of token to self
-        address[] memory minterAddress = new address[](1);
-        minterAddress[0] = msg.sender;
-        uint[] memory amount = new uint[](1);
-        amount[0] = 1;
-        string[] memory uris = new string[](1);
-        uris[0] = "";
-
-        // Mint new token on base contract, save which token that is for given burn redeem.
-        uint[] memory tokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, amount, uris);
-        _redeemTokenIds[creatorContractAddress][tokenIds[0]] = burnRedeemIndex;
-
          // Create the burn redeem
-        _burnRedeems[creatorContractAddress][burnRedeemIndex] = BurnRedeem({
-            burnTokenAddress: burnRedeemParameters.burnTokenAddress,
+        _burnRedeems[creatorContractAddress][index] = BurnRedeem({
+            redeemTokenId: MAX_TOKEN_ID,
             burnTokenId: burnRedeemParameters.burnTokenId,
+            burnTokenAddress: burnRedeemParameters.burnTokenAddress,
+            startDate: burnRedeemParameters.startDate,
+            endDate: burnRedeemParameters.endDate,
             burnAmount: burnRedeemParameters.burnAmount,
-            redeemTokenId: tokenIds[0],
             redeemAmount: burnRedeemParameters.redeemAmount,
             redeemedCount: 0,
             totalSupply: burnRedeemParameters.totalSupply,
-            startDate: burnRedeemParameters.startDate,
-            endDate: burnRedeemParameters.endDate,
             storageProtocol: burnRedeemParameters.storageProtocol,
             location: burnRedeemParameters.location
         });
         
-        emit BurnRedeemInitialized(creatorContractAddress, burnRedeemIndex, msg.sender);
+        emit BurnRedeemInitialized(creatorContractAddress, index, msg.sender);
     }
 
     /**
@@ -100,26 +95,27 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      */
     function updateBurnRedeem(
         address creatorContractAddress,
-        uint256 burnRedeemIndex,
+        uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
+        BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][index];
         // Sanity checks
         require(ERC165Checker.supportsInterface(burnRedeemParameters.burnTokenAddress, type(IERC1155).interfaceId), "burnTokenAddress must support ERC1155 interface");
-        require(_burnRedeems[creatorContractAddress][burnRedeemIndex].burnTokenAddress != address(0), "Burn redeem not initialized");
-        require(_burnRedeems[creatorContractAddress][burnRedeemIndex].totalSupply == 0 ||  _burnRedeems[creatorContractAddress][burnRedeemIndex].totalSupply <= burnRedeemParameters.totalSupply, "Cannot decrease totalSupply");
+        require(burnRedeem.burnTokenAddress != address(0), "Burn redeem not initialized");
+        require(burnRedeem.totalSupply == 0 ||  burnRedeem.totalSupply <= burnRedeemParameters.totalSupply, "Cannot decrease totalSupply");
         require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "Cannot have startDate greater than or equal to endDate");
 
         // Overwrite the existing burnRedeem
-        _burnRedeems[creatorContractAddress][burnRedeemIndex] = BurnRedeem({
-            burnTokenAddress: burnRedeemParameters.burnTokenAddress,
+        _burnRedeems[creatorContractAddress][index] = BurnRedeem({
+            redeemTokenId:burnRedeem.redeemTokenId,
             burnTokenId: burnRedeemParameters.burnTokenId,
-            burnAmount: burnRedeemParameters.burnAmount,
-            redeemTokenId: _burnRedeems[creatorContractAddress][burnRedeemIndex].redeemTokenId,
-            redeemAmount: burnRedeemParameters.redeemAmount,
-            redeemedCount: _burnRedeems[creatorContractAddress][burnRedeemIndex].redeemedCount,
-            totalSupply: burnRedeemParameters.totalSupply,
+            burnTokenAddress: burnRedeemParameters.burnTokenAddress,
             startDate: burnRedeemParameters.startDate,
             endDate: burnRedeemParameters.endDate,
+            burnAmount: burnRedeemParameters.burnAmount,
+            redeemAmount: burnRedeemParameters.redeemAmount,
+            redeemedCount: burnRedeem.redeemedCount,
+            totalSupply: burnRedeemParameters.totalSupply,
             storageProtocol: burnRedeemParameters.storageProtocol,
             location: burnRedeemParameters.location
         });
@@ -146,7 +142,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-        uint224 tokenBurnRedeem = uint224(_redeemTokenIds[creatorContractAddress][tokenId]);
+        uint256 tokenBurnRedeem = _redeemTokenIds[creatorContractAddress][tokenId];
         require(tokenBurnRedeem > 0, "Token does not exist");
         BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][tokenBurnRedeem];
 
@@ -164,12 +160,12 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      */
     function onERC1155Received(
         address,
-        address,
+        address from,
         uint256 id,
         uint256 value,
         bytes calldata data
-    ) external override nonReentrant returns(bytes4) {
-        _onERC1155Received(id, value, data);
+    ) external override returns(bytes4) {
+        _onERC1155Received(from, id, value, data);
         return this.onERC1155Received.selector;
     }
 
@@ -178,75 +174,70 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      */
     function onERC1155BatchReceived(
         address,
-        address,
+        address from,
         uint256[] calldata ids,
         uint256[] calldata values,
         bytes calldata data
-    ) external override nonReentrant returns(bytes4) {
-        _onERC1155BatchReceived(ids, values, data);
+    ) external override returns(bytes4) {
+        _onERC1155BatchReceived(from, ids, values, data);
         return this.onERC1155BatchReceived.selector;
     }
 
     /**
      * @notice ERC1155 token transfer callback
+     * @param from      the person sending the tokens
      * @param id        the token id of the burn token
      * @param value     the number of tokens to burn
      * @param data      bytes corresponding to the targeted burn redeem action(s), formatted [address mintTo (does not repeat), address creatorContractAddress, uint256 index, uint256 amount, ...]
      */
     function _onERC1155Received(
+        address from,
         uint256 id,
         uint256 value,
         bytes calldata data
     ) private {
         // Check calldata is valid
         require(data.length % 96 == 32, "Invalid data");
+        uint256 redemptionCount = (data.length - 32)/96;
+
+        address[] memory minterAddress = new address[](1);
+        minterAddress[0] = abi.decode(data[0:32], (address));
+        uint256[] memory redemptionAmount = new uint256[](1);
+
+         // Iterate over calldata and validate
         uint256 amountRequired = 0;
-
-         // Iterate over calldata
-        for (uint i = 0; i * 96 < data.length - 32; i++) {
+        for (uint256 i = 0; i < redemptionCount; i++) {
             // Read calldata
-            BurnRedeemCallData memory current;
-            (current.creatorContractAddress, current.index, current.amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint256));
+            (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
 
-            BurnRedeem storage burnRedeem = _burnRedeems[current.creatorContractAddress][current.index];
-
-            require(burnRedeem.startDate == 0 || burnRedeem.startDate < block.timestamp, "Transaction before start date");
-            require(burnRedeem.endDate == 0 || burnRedeem.endDate >= block.timestamp, "Transaction after end date");
-
-            uint256 amountToRedeem = burnRedeem.redeemAmount * current.amount;
-
-            require(burnRedeem.totalSupply == 0 || burnRedeem.redeemedCount + amountToRedeem <= burnRedeem.totalSupply, "Maximum tokens already minted for this burn redeem");
-
+            (BurnRedeem storage burnRedeem, uint256 burnAmount, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, id, amount);
             // Check if received token is eligible
-            require(burnRedeem.burnTokenAddress == msg.sender && burnRedeem.burnTokenId == id, "Token not eligible");
+            amountRequired += burnAmount;
 
-            amountRequired += burnRedeem.burnAmount * current.amount;
-
-            address[] memory minterAddress = new address[](1);
-            minterAddress[0] = abi.decode(data[0:32], (address));
-            uint256[] memory redeemAmounts = new uint[](1);
-            redeemAmounts[0] = amountToRedeem;
-            uint256[] memory redeemTokenIds = new uint[](1);
-            redeemTokenIds[0] = burnRedeem.redeemTokenId;
-
-            unchecked{ burnRedeem.redeemedCount += uint32(amountToRedeem); }
-
-            // Do mint
-            IERC1155CreatorCore(current.creatorContractAddress).mintExtensionExisting(minterAddress, redeemTokenIds, redeemAmounts);
-
-            emit BurnRedeemMint(current.creatorContractAddress, redeemTokenIds[0], redeemAmounts[0]);
+            // Do mint if needed
+            if (amountToRedeem > 0) {
+                redemptionAmount[0] = amountToRedeem;
+                _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
+                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0], amountToRedeem);
+            }
         }
-
-        require(amountRequired == value, "Invalid value sent");
+        require(amountRequired <= value, "Invalid value sent");
 
         // Do burn
-        uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = id;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = value;
-        IERC1155CreatorCore(msg.sender).burn(address(this), tokenIds, amounts);
+        if (amountRequired > 0) {
+            uint256[] memory tokenIds = new uint256[](1);
+            tokenIds[0] = id;
+            uint256[] memory amounts = new uint256[](1);
+            amounts[0] = amountRequired;
+            IERC1155CreatorCore(msg.sender).burn(address(this), tokenIds, amounts);
+        }
+
+        // Return remaining tokens
+        if (amountRequired < value) {
+            IERC1155(msg.sender).safeTransferFrom(address(this), from, id, value-amountRequired, "");
+        }
     }
-    
+
     /**
      * @notice ERC1155 batch token transfer callbackx
      * @param ids       a list of the token ids of the burn token
@@ -255,68 +246,79 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      *                  note: the data parameter must be in the same order as the ids and values parameters
      */
     function _onERC1155BatchReceived(
+        address from,
         uint256[] calldata ids,
         uint256[] calldata values,
         bytes calldata data
     ) private {
         // Check calldata is valid
         require(data.length % 96 == 32, "Invalid data");
+        uint256 redemptionCount = (data.length - 32)/96;
+        require(redemptionCount == ids.length, "Invalid data");
 
-        // Used to iterate over ids and values
-        uint256 currentIndex = 0;
+        address[] memory minterAddress = new address[](1);
+        minterAddress[0] = abi.decode(data[0:32], (address));
+        uint256[] memory redemptionAmount = new uint256[](1);
 
-        uint256 remainingValue = values[0];
+        // Track excess values
+        uint256[] memory consumedValues = new uint256[](redemptionCount);
+        uint256[] memory remainingValues = new uint256[](redemptionCount);
 
         // Iterate over calldata
-        for (uint i = 0; i * 96 < data.length - 32; i++) {
+        for (uint256 i = 0; i < redemptionCount; i++) {
             // Read calldata
-            BurnRedeemCallData memory current;
-            (current.creatorContractAddress, current.index, current.amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint256));
+            (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
 
-            BurnRedeem storage burnRedeem = _burnRedeems[current.creatorContractAddress][current.index];
+            (BurnRedeem storage burnRedeem, uint256 burnAmount, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, ids[i], amount);
+            consumedValues[i] = burnAmount;
+            remainingValues[i] = values[i] - burnAmount;
 
-            require(burnRedeem.startDate == 0 || burnRedeem.startDate < block.timestamp, "Transaction before start date");
-            require(burnRedeem.endDate == 0 || burnRedeem.endDate >= block.timestamp, "Transaction after end date");
-
-            uint256 amountRequired = burnRedeem.burnAmount * current.amount;
-            uint256 amountToRedeem = burnRedeem.redeemAmount * current.amount;
-
-            if (ids[currentIndex] != burnRedeem.burnTokenId) {
-                require(remainingValue == 0, "Invalid values");
-                unchecked{
-                    currentIndex++;
-                    remainingValue = values[currentIndex];
-                }
+            // Store values for mint
+            redemptionAmount[0] = amountToRedeem;
+            // Do mint if needed
+            if (amountToRedeem > 0) {
+                _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
+                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0], amountToRedeem);
             }
-
-            require(burnRedeem.totalSupply == 0 || burnRedeem.redeemedCount + amountToRedeem <= burnRedeem.totalSupply, "Maximum tokens already minted for this burn redeem");
-
-            // Check if the token has been received
-            require(
-                burnRedeem.burnTokenAddress == msg.sender &&
-                ids[currentIndex] == burnRedeem.burnTokenId &&
-                remainingValue - amountRequired < remainingValue,
-                "Token not eligible");
-
-            remainingValue = remainingValue - amountRequired;
-
-            address[] memory minterAddress = new address[](1);
-            minterAddress[0] = abi.decode(data[0:32], (address));
-            uint256[] memory redeemAmounts = new uint[](1);
-            redeemAmounts[0] = amountToRedeem;
-            uint256[] memory redeemTokenIds = new uint[](1);
-            redeemTokenIds[0] = burnRedeem.redeemTokenId;
-
-            unchecked{ burnRedeem.redeemedCount += uint32(amountToRedeem); }
-
-            // Do mint
-            IERC1155CreatorCore(current.creatorContractAddress).mintExtensionExisting(minterAddress, redeemTokenIds, redeemAmounts);
-
-            emit BurnRedeemMint(current.creatorContractAddress, redeemTokenIds[0], redeemAmounts[0]);
         }
-        require(remainingValue == 0, "Invalid values");
+
+        for (uint256 i = 0; i < redemptionCount; i++) {
+            if (remainingValues[i] > 0) {
+                IERC1155(msg.sender).safeTransferFrom(address(this), from, ids[i], remainingValues[i], "");
+            }
+        }
 
         // Do burn
-        IERC1155CreatorCore(msg.sender).burn(address(this), ids, values);
+        IERC1155CreatorCore(msg.sender).burn(address(this), ids, consumedValues);
+    }
+
+    function _mintRedeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeem, address[] memory minterAddress, uint256[] memory redeemAmounts) private {
+        if (burnRedeem.redeemTokenId[0] == MAX_UINT_256) {
+            // No token minted yet, mint new token
+            burnRedeem.redeemTokenId = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, redeemAmounts, EMPTY_URI);
+            _redeemTokenIds[creatorContractAddress][burnRedeem.redeemTokenId[0]] = index;
+        } else {
+            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, burnRedeem.redeemTokenId, redeemAmounts);
+        }
+    }
+
+    /**
+     * Returns active burn redeem, amount to burn and amount of redemptions that can occur
+     */
+    function _retrieveActiveBurnRedeem(address creatorContractAddress, uint256 index, uint256 burnTokenId, uint256 amount) private returns(BurnRedeem storage burnRedeem, uint256 burnAmount, uint256 amountToRedeem) {
+        burnRedeem = _burnRedeems[creatorContractAddress][index];
+        require(burnRedeem.startDate == 0 || burnRedeem.startDate < block.timestamp, "Transaction before start date");
+        require(burnRedeem.endDate == 0 || burnRedeem.endDate >= block.timestamp, "Transaction after end date");
+        require(burnRedeem.burnTokenAddress == msg.sender && burnRedeem.burnTokenId == burnTokenId, "Token not eligible");
+        if (burnRedeem.totalSupply > 0 && burnRedeem.redeemedCount < burnRedeem.totalSupply) {
+            amountToRedeem = burnRedeem.redeemAmount * amount;
+            burnAmount = burnRedeem.burnAmount * amount;
+            // Too many requested, consume the remaining
+            if (burnRedeem.redeemedCount + amountToRedeem > burnRedeem.totalSupply) {
+                amountToRedeem = burnRedeem.totalSupply - burnRedeem.redeemedCount;
+                burnAmount = amountToRedeem/burnRedeem.burnAmount;
+            }
+            unchecked{ burnRedeem.redeemedCount += uint32(amountToRedeem); }
+        }
     }
 }

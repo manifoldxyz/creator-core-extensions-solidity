@@ -13,55 +13,49 @@ interface IERC1155BurnRedeem is IERC1155Receiver {
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
 
     struct BurnRedeemParameters {
-        address burnTokenAddress;
         uint256 burnTokenId;
+        address burnTokenAddress;
+        uint48 startDate;
+        uint48 endDate;
         uint32 burnAmount;
         uint32 redeemAmount;
         uint32 totalSupply;
-        uint48 startDate;
-        uint48 endDate;
         StorageProtocol storageProtocol;
         string location;
     }
 
     struct BurnRedeem {
-        address burnTokenAddress;
+        uint256[] redeemTokenId;
         uint256 burnTokenId;
+        address burnTokenAddress;
+        uint48 startDate;
+        uint48 endDate;
         uint32 burnAmount;
-        uint256 redeemTokenId;
         uint32 redeemAmount;
         uint32 redeemedCount;
         uint32 totalSupply;
-        uint48 startDate;
-        uint48 endDate;
         StorageProtocol storageProtocol;
         string location;
     }
 
-    struct BurnRedeemCallData {
-        address creatorContractAddress;
-        uint256 index;
-        uint256 amount;
-    }
-
-    event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed burnRedeemIndex, address initializer);
-    event BurnRedeemMint(address indexed creatorContract, uint256 indexed burnRedeemIndex, uint256 amountMinted);
+    event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed index, address initializer);
+    event BurnRedeemMint(address indexed creatorContract, uint256 indexed index, uint256 amountMinted);
 
     /**
      * @notice initialize a new burn redeem, emit initialize event, and return the newly created index
      * @param creatorContractAddress    the creator contract the burn will mint redeem tokens for
-     * @param burnRedeemIndex           the index of the burnRedeem in the mapping of creatorContractAddress' _burnRedeems
+     * @param index                     the index of the burnRedeem in the mapping of creatorContractAddress' _burnRedeems
      * @param burnRedeemParameters      the parameters which will affect the minting behavior of the burn redeem
      */
-    function initializeBurnRedeem(address creatorContractAddress, uint256 burnRedeemIndex, BurnRedeemParameters calldata burnRedeemParameters) external;
+    function initializeBurnRedeem(address creatorContractAddress, uint256 index, BurnRedeemParameters calldata burnRedeemParameters) external;
 
     /**
      * @notice update an existing burn redeem at index
      * @param creatorContractAddress    the creator contract corresponding to the burn redeem
-     * @param burnRedeemIndex           the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
+     * @param index                     the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
      * @param burnRedeemParameters      the parameters which will affect the minting behavior of the burn redeem
      */
-    function updateBurnRedeem(address creatorContractAddress, uint256 burnRedeemIndex, BurnRedeemParameters calldata burnRedeemParameters) external;
+    function updateBurnRedeem(address creatorContractAddress, uint256 index, BurnRedeemParameters calldata burnRedeemParameters) external;
 
     /**
      * @notice get a burn redeem corresponding to a creator contract and index
