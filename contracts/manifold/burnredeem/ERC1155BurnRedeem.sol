@@ -25,8 +25,6 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
     uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-    uint256[] private MAX_TOKEN_ID;
-    string[] private EMPTY_URI;
 
     // stores mapping from tokenId to the burn redeem it represents
     // { creatorContractAddress => { tokenId => BurnRedeem } }
@@ -34,10 +32,6 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
     // { contractAddress => { tokenId => { redeemIndex } }
     mapping(address => mapping(uint256 => uint256)) private _redeemTokenIds;
-
-    constructor() {
-        MAX_TOKEN_ID = [MAX_UINT_256];
-    }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
         return interfaceId == type(IERC1155BurnRedeem).interfaceId ||
@@ -74,7 +68,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
          // Create the burn redeem
         _burnRedeems[creatorContractAddress][index] = BurnRedeem({
-            redeemTokenId: MAX_TOKEN_ID,
+            redeemTokenId: MAX_UINT_256,
             burnTokenId: burnRedeemParameters.burnTokenId,
             burnTokenAddress: burnRedeemParameters.burnTokenAddress,
             startDate: burnRedeemParameters.startDate,
@@ -217,7 +211,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
                 amountRequired += burnAmount;
                 redemptionAmount[0] = amountToRedeem;
                 _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
-                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0],amountToRedeem, msg.sender, id);
+                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId,amountToRedeem, msg.sender, id);
             }
             unchecked { ++i; }
         }
@@ -288,7 +282,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
                 redemptionAmount[0] = amountToRedeem;
                 tokensRedeemed = true;
                 _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
-                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId[0], amountToRedeem, msg.sender, ids[i]);
+                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId, amountToRedeem, msg.sender, ids[i]);
             }
             unchecked { ++i; }
         }
@@ -311,12 +305,16 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      * Mint a redemption
      */
     function _mintRedeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeem, address[] memory minterAddress, uint256[] memory redeemAmounts) private {
-        if (burnRedeem.redeemTokenId[0] == MAX_UINT_256) {
+        if (burnRedeem.redeemTokenId == MAX_UINT_256) {
             // No token minted yet, mint new token
-            burnRedeem.redeemTokenId = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, redeemAmounts, EMPTY_URI);
-            _redeemTokenIds[creatorContractAddress][burnRedeem.redeemTokenId[0]] = index;
+            string [] memory uris = new string[](1);
+            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, redeemAmounts, uris);
+            burnRedeem.redeemTokenId = newTokenIds[0];
+            _redeemTokenIds[creatorContractAddress][newTokenIds[0]] = index;
         } else {
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, burnRedeem.redeemTokenId, redeemAmounts);
+            uint256[] memory tokenIds = new uint256[](1);
+            tokenIds[0] = burnRedeem.redeemTokenId;
+            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, tokenIds, redeemAmounts);
         }
     }
 

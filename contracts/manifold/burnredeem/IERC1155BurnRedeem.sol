@@ -25,7 +25,7 @@ interface IERC1155BurnRedeem is IERC1155Receiver {
     }
 
     struct BurnRedeem {
-        uint256[] redeemTokenId;
+        uint256 redeemTokenId;
         uint256 burnTokenId;
         address burnTokenAddress;
         uint48 startDate;
