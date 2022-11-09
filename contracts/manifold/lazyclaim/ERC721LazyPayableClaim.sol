@@ -188,10 +188,11 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
      * See {IERC721LazyClaim-checkMintIndices}.
      */
     function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
+        uint256 mintIndicesLength = mintIndices.length;
         minted = new bool[](mintIndices.length);
-        for (uint256 i = mintIndices.length; i > 0;) {
+        for (uint256 i = 0; i < mintIndicesLength;) {
             minted[i] = checkMintIndex(creatorContractAddress, claimIndex, mintIndices[i]);
-            unchecked{ i--; }
+            unchecked{ ++i; }
         }
     }
 
@@ -272,12 +273,12 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         if (claim.merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
-            for (uint256 i = mintCount; i > 0; ) {
+            for (uint256 i = 0; i < mintCount;) {
                 uint32 mintIndex = mintIndices[i];
                 bytes32[] memory merkleProof = merkleProofs[i];
                 
                 _checkMerkleAndUpdate(claim, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
-                unchecked { i--; }
+                unchecked { ++i; }
             }
         } else {
             // Non-merkle mint
@@ -288,9 +289,9 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             
         }
         uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(msg.sender, mintCount);
-        for (uint256 i = mintCount; i > 0; ) {
+        for (uint256 i = 0; i < mintCount;) {
             _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(claimIndex), uint32(newMintIndex+i));
-            unchecked { i--; }
+            unchecked { ++i; }
         }
         // solhint-disable-next-line
         (bool sent, ) = claim.paymentReceiver.call{value: msg.value}("");
@@ -310,21 +311,21 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         uint256 newMintIndex = claim.total+1;
 
-        for (uint256 i = recipients.length; i > 0;) {
+        for (uint256 i = 0; i < recipients.length;) {
             // Airdrop the tokens
             uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(recipients[i], amounts[i]);
             
             // Register the tokenClaims, so that tokenURI will work for airdropped tokens
-            for (uint256 j = newTokenIds.length; j > 0;) {
+            for (uint256 j = 0; j < newTokenIds.length;) {
                 _tokenClaims[creatorContractAddress][newTokenIds[j]] = TokenClaim(uint224(claimIndex), uint32(newMintIndex+j));
-                unchecked { j--; }
+                unchecked { ++j; }
             }
 
             // Increment claim.total and newMintIndex for the next airdrop
             unchecked{ claim.total += uint32(newTokenIds.length); }
             unchecked{ newMintIndex += newTokenIds.length; }
 
-            unchecked{ i--; }
+            unchecked{ ++i; }
         }
     }
 
