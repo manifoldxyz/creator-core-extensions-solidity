@@ -346,11 +346,12 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         require(burnRedeem.endDate == 0 || burnRedeem.endDate >= block.timestamp, "Transaction after end date");
         require(burnRedeem.burnTokenAddress == msg.sender && burnRedeem.burnTokenId == burnTokenId, "Token not eligible");
 
-        if (burnRedeem.totalSupply > 0 && burnRedeem.redeemedCount < burnRedeem.totalSupply) {
+        if (burnRedeem.totalSupply == 0 || burnRedeem.redeemedCount < burnRedeem.totalSupply) {
             amountToRedeem = burnRedeem.redeemAmount * amount;
             amountToBurn = burnRedeem.burnAmount * amount;
+
             // Too many requested, consume the remaining
-            if (burnRedeem.redeemedCount + amountToRedeem > burnRedeem.totalSupply) {
+            if (burnRedeem.totalSupply > 0 && burnRedeem.redeemedCount + amountToRedeem > burnRedeem.totalSupply) {
                 amountToRedeem = burnRedeem.totalSupply - burnRedeem.redeemedCount;
                 amountToBurn = amountToRedeem / burnRedeem.redeemAmount * burnRedeem.burnAmount;
             }
