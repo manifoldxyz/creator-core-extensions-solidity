@@ -50,24 +50,24 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 #### Manifold Lazy Claim
 These are ERC721 and ERC1155 Lazy Claim extensions.
 
-**ERC721 Rinkeby**
+**ERC721 Goerli**
 ```
-0x3e625b7521fa1ec922bd561b766d80e05316d035
+0xC3Ba6907a64d63A28E5BE8bFF9c6c1EaD7Ce7EA7
 ```
 
 **ERC721 Mainnet**
 ```
-0xb08Aa31Cc2B8C0582bE42D38Bb643292e0A4b9EB
+0xa46f952645D4DeEc07A7Cd98D1Ec9EC888d4b61E
 ```
 
-**ERC1155 Rinkeby**
+**ERC1155 Goerli**
 ```
-0x30185652e86b922110a28F952E977D6EBbb83d2D
+0xa402f5e27b5da8D6593f6bEDE97BE5820529D64a
 ```
 
 **ERC1155 Mainnet**
 ```
-0xca71c5270EFf44Eb6D813A92c0ba12577bDDf208
+0x44e94034AFcE2Dd3CD5Eb62528f239686Fc8f162
 ```
 
 #### Manifold Frozen Metadata
