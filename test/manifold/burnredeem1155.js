@@ -142,7 +142,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {from:owner}
       );
       
-      // Fails due to modifying totalSupply
+      // Fails due to non multiple of totalSupply
       await truffleAssert.reverts(burnRedeem.updateBurnRedeem(
         creator.address,
         1,
@@ -150,7 +150,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           burnTokenAddress: burnable1155.address,
           burnTokenId: 1,
           burnAmount: 1,
-          redeemAmount: 1,
+          redeemAmount: 2,
           totalSupply: 9,
           startDate: now,
           endDate: later,
@@ -158,7 +158,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           location: "XXX",
         },
         {from:owner}
-      ), "Cannot decrease totalSupply");
+      ), "Remainder left from totalSupply");
 
       // Fails due to endDate <= startDate
       await truffleAssert.reverts(burnRedeem.updateBurnRedeem(

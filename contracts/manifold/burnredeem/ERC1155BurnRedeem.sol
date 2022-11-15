@@ -98,7 +98,6 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         // Sanity checks
         require(ERC165Checker.supportsInterface(burnRedeemParameters.burnTokenAddress, type(IERC1155CreatorCore).interfaceId), "burnToken must be ERC1155Creator");
         require(burnRedeem.burnTokenAddress != address(0), "Burn redeem not initialized");
-        require(burnRedeem.totalSupply == 0 ||  burnRedeem.totalSupply <= burnRedeemParameters.totalSupply, "Cannot decrease totalSupply");
         require(burnRedeemParameters.totalSupply == 0 || burnRedeemParameters.totalSupply % burnRedeemParameters.redeemAmount == 0, "Remainder left from totalSupply");
         require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
 
