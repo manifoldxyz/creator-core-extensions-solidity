@@ -37,9 +37,9 @@ These are extensions that can be installed by any Manifold Creator contract to g
 #### Manifold ERC721 Edition
 Provides a more efficient way to batch mint NFTs to one or many addresses
 
-**Rinkeby**
+**Goerli**
 ```
-0x53963B7C101c844Ec2A9D63B40e1dc93e5ba4A35
+0x9cac159ec266E76ed7377b801f3b5d2cC7bcf40d
 ```
 
 **Mainnet**
