@@ -8,7 +8,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@openzeppelin/contracts/interfaces/IERC165.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./IERC721LazyPayableClaim.sol";

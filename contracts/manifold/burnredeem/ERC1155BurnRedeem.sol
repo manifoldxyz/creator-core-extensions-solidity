@@ -44,10 +44,10 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.so
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
-import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import "./IERC1155BurnRedeem.sol";
