@@ -55,7 +55,7 @@ import "./IERC1155BurnRedeem.sol";
 /**
  * @title Burn Redeem
  * @author manifold.xyz
- * @notice Burn Redeem shared extension for Manifold Studio.
+ * @notice Burn Redeem shared extension for Manifold Creator contracts.
  */
 contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionTokenURI {
     using Strings for uint256;
