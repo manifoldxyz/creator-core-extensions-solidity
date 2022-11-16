@@ -11,7 +11,7 @@
     "build/contracts/*.json"
   ],
   "dependencies": {
-    "@manifoldxyz/creator-core-solidity": "^1.0.4"
+    "@manifoldxyz/creator-core-solidity": "^1.0.5"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
