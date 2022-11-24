@@ -32,6 +32,7 @@ contract ERC1155OperatorFilter is ERC1155CreatorExtensionApproveTransfer, Operat
 
     function mintNew(address creator, address[] calldata to, uint256[] calldata amounts, string[] calldata uris)
         external
+        nonReentrant
         creatorAdminRequired(creator)
         returns (uint256[] memory)
     {
