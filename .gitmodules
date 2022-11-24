@@ -1,3 +1,0 @@
-[submodule "contracts/operatorfilter/operator-filter-registry"]
-	path = contracts/operatorfilter/operator-filter-registry
-	url = git@github.com:ProjectOpenSea/operator-filter-registry.git
