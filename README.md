@@ -98,9 +98,9 @@ e.g.
 
 contracts/edition/ERC721PrefixEditionTemplate.sol and referring to the following implementation addresses:
 
-**Rinkeby**
+**Goerli**
 ```
-0x3AD50422Ac43D4F0E30AAF73A0b07A907618C548
+0x...
 ```
 
 **Mainnet**
@@ -113,9 +113,9 @@ Numbered editions assume that all metadata is unchanging except for the Edition 
 
 contracts/edition/ERC721NumberedEditionTemplate.sol and referring to the following implementation addresses:
 
-**Rinkeby**
+**Goerli**
 ```
-0x211AAcd0b144F1e51b2633D38d8Ac2F864dE7042
+0x...
 ```
 
 **Mainnet**
@@ -129,9 +129,9 @@ Numbered editions which may be used for Nifty Gateway open edition sales.
 
 contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referring to the following implementation addresses:
 
-**Rinkeby**
+**Goerli**
 ```
-0xFB19a709486e758DfC340F9ad1AAd2bD604cf30d
+0x...
 ```
 
 **Mainnet**
