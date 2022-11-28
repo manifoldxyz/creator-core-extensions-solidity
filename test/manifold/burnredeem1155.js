@@ -634,9 +634,9 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       balance = await burnable1155.balanceOf(anyone1, 1);
       assert.equal(38,balance);
       balance = await creator.balanceOf(anyone1, 1);
-      assert.equal(5,balance);
-      balance = await creator.balanceOf(anyone1, 2);
       assert.equal(1,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(5,balance);
 
       // -- Edge case 3 --
       // Passes when more than required is sent
@@ -648,9 +648,9 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       balance = await burnable1155.balanceOf(anyone1, 1);
       assert.equal(36,balance);
       balance = await creator.balanceOf(anyone1, 1);
-      assert.equal(5,balance);
-      balance = await creator.balanceOf(anyone1, 2);
       assert.equal(2,balance);
+      balance = await creator.balanceOf(anyone1, 2);
+      assert.equal(5,balance);
 
       // -- Edge case 4 --
       // Passes when more than total supply is requested
