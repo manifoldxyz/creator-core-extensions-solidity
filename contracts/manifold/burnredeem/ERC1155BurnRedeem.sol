@@ -257,7 +257,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
             if (amountToRedeem > 0) {
                 amountRequired += amountToBurn;
                 redemptionAmount[0] = amountToRedeem;
-                _mintRedeem(creatorContractAddress, index, burnRedeem, mintToAddress, redemptionAmount);
+                _mintRedeem(creatorContractAddress, burnRedeem, mintToAddress, redemptionAmount);
                 emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId, amountToRedeem, msg.sender, id);
             }
             unchecked { ++i; }
@@ -332,7 +332,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
                 redemptionAmount[0] = amountToRedeem;
                 tokensRedeemed = true;
 
-                _mintRedeem(creatorContractAddress, index, burnRedeem, mintToAddress, redemptionAmount);
+                _mintRedeem(creatorContractAddress, burnRedeem, mintToAddress, redemptionAmount);
                 emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId, amountToRedeem, msg.sender, ids[i]);
             } else {
                 // Store excess values
@@ -360,7 +360,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
     /**
      * Mint a redemption
      */
-    function _mintRedeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeem, address[] memory mintToAddress, uint256[] memory redeemAmounts) private {
+    function _mintRedeem(address creatorContractAddress, BurnRedeem storage burnRedeem, address[] memory mintToAddress, uint256[] memory redeemAmounts) private {
         // Mint exisiting token
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = burnRedeem.redeemTokenId;
