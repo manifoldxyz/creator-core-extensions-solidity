@@ -242,24 +242,14 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         // Single value arrays used for mint calls
         address[] memory mintToAddress = new address[](1);
         mintToAddress[0] = abi.decode(data[0:32], (address));
-        uint256[] memory redemptionAmount = new uint256[](1);
 
         uint256 amountRequired = 0;
 
         // Iterate over redemptions in calldata and mint redeem tokens for each
         for (uint256 i = 0; i < redemptionCount;) {
-            // Read calldata
-            (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
-
-            (BurnRedeem storage burnRedeem, uint256 amountToBurn, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, id, amount);
-
-            // Do mint if needed
-            if (amountToRedeem > 0) {
-                amountRequired += amountToBurn;
-                redemptionAmount[0] = amountToRedeem;
-                _mintRedeem(creatorContractAddress, burnRedeem, mintToAddress, redemptionAmount);
-                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId, amountToRedeem, msg.sender, id);
-            }
+            // Perform mint
+            (uint256 burnedAmount, ) = _performRedeem(mintToAddress, id, data, i);
+            amountRequired += burnedAmount;
             unchecked { ++i; }
         }
 
@@ -302,7 +292,6 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         // Single value arrays used for mint calls
         address[] memory mintToAddress = new address[](1);
         mintToAddress[0] = abi.decode(data[0:32], (address));
-        uint256[] memory redemptionAmount = new uint256[](1);
 
         // Track excess values
         uint256[] memory burnedValues = new uint256[](redemptionCount);
@@ -314,30 +303,25 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
         // Iterate over redemptions in calldata and mint redeem tokens for each
         for (uint256 i = 0; i < redemptionCount;) {
-            // Read calldata
-            (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
-
-            (BurnRedeem storage burnRedeem, uint256 amountToBurn, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, ids[i], amount);
-
-            // Do mint if needed
-            if (amountToRedeem > 0) {
+            uint256 id = ids[i];
+            uint256 value = values[i];
+            // Perform mint
+            (uint256 burnedAmount, uint256 redeemedAmount) = _performRedeem(mintToAddress, id, data, i);
+            if (burnedAmount > 0) {
+                burnedValues[i] = burnedAmount;
                 // Store burned and excess values
-                burnedValues[i] = amountToBurn;
-                if (amountToBurn != values[i]) {
-                    remainingValues[i] = values[i] - amountToBurn;
+                if (burnedAmount != value) {
+                    remainingValues[i] = value - burnedAmount;
                     excessValues = true;
                 }
 
-                // Store values for mint
-                redemptionAmount[0] = amountToRedeem;
-                tokensRedeemed = true;
-
-                _mintRedeem(creatorContractAddress, burnRedeem, mintToAddress, redemptionAmount);
-                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId, amountToRedeem, msg.sender, ids[i]);
             } else {
-                // Store excess values
-                remainingValues[i] = values[i];
+                 // Store excess values
+                remainingValues[i] = value;
                 excessValues = true;
+            }
+            if (redeemedAmount > 0) {
+                tokensRedeemed = true;
             }
             unchecked { ++i; }
         }
@@ -346,11 +330,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
         // Return remaining tokens
         if (excessValues) {
-            for (uint256 i = 0; i < redemptionCount; i++) {
-                if (remainingValues[i] > 0) {
-                    IERC1155(msg.sender).safeTransferFrom(address(this), from, ids[i], remainingValues[i], "");
-                }
-            }
+            _returnTokens(from, ids, remainingValues);
         }
 
         // Do burn
@@ -358,13 +338,47 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
     }
 
     /**
-     * Mint a redemption
+     * Helper to return excess tokens
      */
-    function _mintRedeem(address creatorContractAddress, BurnRedeem storage burnRedeem, address[] memory mintToAddress, uint256[] memory redeemAmounts) private {
-        // Mint exisiting token
+    function _returnTokens(address recipient, uint256[] calldata tokenIds, uint256[] memory values) private {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            uint256 value = values[i];
+            if (value > 0) {
+                IERC1155(msg.sender).safeTransferFrom(address(this), recipient, tokenId, value, "");
+            }
+        }
+    }
+
+    /**
+     * Helper to perform the redemption
+     */
+    function _performRedeem(address[] memory mintToAddress, uint256 burnTokenId, bytes calldata data, uint256 i) private returns(uint256 burnedAmount, uint256 redeemedAmount) {
+        (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
+        (BurnRedeem storage burnRedeem, uint256 amountToBurn, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, burnTokenId, amount);
+
+        // Do mint if needed
+        if (amountToRedeem > 0) {
+            burnedAmount = amountToBurn;
+            redeemedAmount = amountToRedeem;
+            // Mint redemption
+            _mintRedeem(mintToAddress, burnTokenId, creatorContractAddress, burnRedeem.redeemTokenId, amountToRedeem);
+        }
+    }
+
+
+    /**
+     * Helper to mint the redeemed token
+     */
+    function _mintRedeem(address[] memory mintToAddress, uint256 burnTokenId, address creatorContractAddress, uint256 tokenId, uint256 value) private {
         uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = burnRedeem.redeemTokenId;
-        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(mintToAddress, tokenIds, redeemAmounts);
+        tokenIds[0] = tokenId;
+        uint256[] memory values = new uint256[](1);
+        values[0] = value;
+        
+        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(mintToAddress, tokenIds, values);
+        emit BurnRedeemMint(creatorContractAddress, tokenId, value, msg.sender, burnTokenId);
+
     }
 
     /**

@@ -41,6 +41,7 @@ module.exports = {
         port: 8545,            // Standard Ethereum port (default: none)
         network_id: "*",       // Any network (default: none)
         networkCheckTimeout: 500000,
+        gas: 8500000,
     },
     // Useful for testing. The `development` name is special - truffle uses it by default
     // if it's defined here and no other network is specified at the command line.
@@ -92,10 +93,9 @@ module.exports = {
       version: "0.8.17",      // Fetch exact version from solc-bin (default: truffle's version)
         // docker: true,    // Use "0.5.1" you've installed locally with docker (default: false)
       settings: {         // See the solidity docs for advice about optimization and evmVersion
-        viaIR: true,
         optimizer: {
           enabled: true,
-          runs: 150,
+          runs: 100,
         },
       }
     }
