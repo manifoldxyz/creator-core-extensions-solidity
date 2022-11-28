@@ -29,7 +29,6 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     // solhint-disable-next-line
     address public immutable DELEGATION_REGISTRY;
     uint32 private constant MAX_UINT_32 = 0xffffffff;
-    uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     // stores mapping from tokenId to the claim it represents
     // { contractAddress => { tokenId => Claim } }
@@ -82,6 +81,12 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
         require(claimParameters.merkleRoot == "" || claimParameters.walletMax == 0, "Cannot provide both mintsPerWallet and merkleRoot");
 
+        address[] memory receivers = new address[](1);
+        receivers[0] = msg.sender;
+        string[] memory uris = new string[](1);
+        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
+
          // Create the claim
         _claims[creatorContractAddress][claimIndex] = Claim({
             total: 0,
@@ -92,7 +97,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             storageProtocol: claimParameters.storageProtocol,
             merkleRoot: claimParameters.merkleRoot,
             location: claimParameters.location,
-            tokenId: MAX_UINT_256,
+            tokenId: newTokenIds[0],
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver
         });
@@ -226,7 +231,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         recipients[0] = msg.sender;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1;
-        _mintClaim(creatorContractAddress, claimIndex, claim, recipients, amounts);
+        _mintClaim(creatorContractAddress, claim, recipients, amounts);
 
         // Transfer proceeds to receiver
         // solhint-disable-next-line
@@ -278,7 +283,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         recipients[0] = msg.sender;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = mintCount;
-        _mintClaim(creatorContractAddress, claimIndex, claim, recipients, amounts);
+        _mintClaim(creatorContractAddress, claim, recipients, amounts);
         // solhint-disable-next-line
         (bool sent, ) = claim.paymentReceiver.call{value: msg.value}("");
         require(sent, "Failed to transfer to receiver");
@@ -305,24 +310,16 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         claim.total += uint32(totalAmount);
 
         // Airdrop the tokens
-        _mintClaim(creatorContractAddress, claimIndex, claim, recipients, amounts);
+        _mintClaim(creatorContractAddress, claim, recipients, amounts);
     }
 
     /**
      * Mint a claim
      */
-    function _mintClaim(address creatorContractAddress, uint256 claimIndex, Claim storage claim, address[] memory recipients, uint256[] memory amounts) private {
-        if (claim.tokenId == MAX_UINT_256) {
-            // Hasn't been created yet, use mintExtensionNew
-            string [] memory uris = new string[](1);
-            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(recipients, amounts, uris);
-            _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
-            claim.tokenId = newTokenIds[0];
-        } else {
-            uint256[] memory tokenIds = new uint256[](1);
-            tokenIds[0] = claim.tokenId;
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, tokenIds, amounts);
-        }
+    function _mintClaim(address creatorContractAddress, Claim storage claim, address[] memory recipients, uint256[] memory amounts) private {
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = claim.tokenId;
+        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, tokenIds, amounts);
     }
 
     /**

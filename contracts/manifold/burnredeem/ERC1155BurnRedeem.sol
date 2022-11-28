@@ -62,7 +62,6 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
-    uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     // stores mapping from tokenId to the burn redeem it represents
     // { creatorContractAddress => { tokenId => BurnRedeem } }
@@ -105,9 +104,14 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
         require(burnRedeemParameters.totalSupply == 0 || burnRedeemParameters.totalSupply % burnRedeemParameters.redeemAmount == 0, "Remainder left from totalSupply");
 
+        address[] memory receivers = new address[](1);
+        receivers[0] = msg.sender;
+        string[] memory uris = new string[](1);
+        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
          // Create the burn redeem
         _burnRedeems[creatorContractAddress][index] = BurnRedeem({
-            redeemTokenId: MAX_UINT_256,
+            redeemTokenId: newTokenIds[0],
             burnTokenId: burnRedeemParameters.burnTokenId,
             burnTokenAddress: burnRedeemParameters.burnTokenAddress,
             startDate: burnRedeemParameters.startDate,
@@ -119,7 +123,8 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
             storageProtocol: burnRedeemParameters.storageProtocol,
             location: burnRedeemParameters.location
         });
-        
+        _redeemTokenIds[creatorContractAddress][newTokenIds[0]] = index;
+
         emit BurnRedeemInitialized(creatorContractAddress, index, msg.sender);
     }
 
@@ -356,20 +361,10 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      * Mint a redemption
      */
     function _mintRedeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeem, address[] memory mintToAddress, uint256[] memory redeemAmounts) private {
-        if (burnRedeem.redeemTokenId == MAX_UINT_256) {
-            // No token minted yet, mint new token
-            string [] memory uris = new string[](1);
-            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(mintToAddress, redeemAmounts, uris);
-
-            burnRedeem.redeemTokenId = newTokenIds[0];
-            _redeemTokenIds[creatorContractAddress][newTokenIds[0]] = index;
-
-        } else {
-            // Mint exisiting token
-            uint256[] memory tokenIds = new uint256[](1);
-            tokenIds[0] = burnRedeem.redeemTokenId;
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(mintToAddress, tokenIds, redeemAmounts);
-        }
+        // Mint exisiting token
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = burnRedeem.redeemTokenId;
+        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(mintToAddress, tokenIds, redeemAmounts);
     }
 
     /**
