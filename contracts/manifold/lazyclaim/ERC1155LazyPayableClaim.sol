@@ -101,6 +101,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver
         });
+        _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
         
         emit ClaimInitialized(creatorContractAddress, claimIndex, msg.sender);
     }

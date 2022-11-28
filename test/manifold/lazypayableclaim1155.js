@@ -601,7 +601,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       await lazyClaim.mint(creator.address, 1, 0, [], anyone5, {from:anyone5, value: ethers.BigNumber.from('1')});
 
       // Check the uri of one of the lazily minted tokens
-      assert.equal('XXX', await creator.uri(2));
+      assert.equal('XXX', await creator.uri(1));
     });
 
     it('functionality test', async function() {
