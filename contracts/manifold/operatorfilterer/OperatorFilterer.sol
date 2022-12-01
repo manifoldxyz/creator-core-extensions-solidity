@@ -24,7 +24,8 @@ contract OperatorFilterer is IERC165 {
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override (IERC165) returns (bool) {
         return interfaceId == type(IERC721CreatorExtensionApproveTransfer).interfaceId
-            || interfaceId == type(IERC1155CreatorExtensionApproveTransfer).interfaceId;
+            || interfaceId == type(IERC1155CreatorExtensionApproveTransfer).interfaceId
+            || interfaceId == type(IERC165).interfaceId;
     }
 
     /**
