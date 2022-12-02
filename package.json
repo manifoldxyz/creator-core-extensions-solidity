@@ -11,7 +11,6 @@
     "build/contracts/*.json"
   ],
   "dependencies": {
-    "@manifoldxyz/creator-core-solidity": "^2.0.0"
     "@manifoldxyz/creator-core-solidity": "^2.0.2"
   },
   "devDependencies": {
