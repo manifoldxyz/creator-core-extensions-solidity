@@ -125,6 +125,21 @@ contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referr
 0x...
 ```
 
+#### OperatorFilterer
+Shared extension to support OpenSea's Operator Filter Registry
+
+contracts/manifold/operatorfiltere/OperatorFilterer.sol and referring to the following implementation addresses:
+
+**Goerli**
+```
+0x2Ab32e40cC3a1Cc7E7B04E067007807e6975a165
+```
+
+**Mainnet**
+```
+0x...
+```
+
 ## Running the package unit tests
 
 Visit the [github repo](https://github.com/manifoldxyz/creator-core-extensions-solidity) and clone the repo.  It uses the truffle framework and ganache-cli.
