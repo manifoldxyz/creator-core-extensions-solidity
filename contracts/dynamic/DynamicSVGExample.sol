@@ -176,7 +176,7 @@ contract DynamicSVGExample is ERC721SingleCreatorExtension, CreatorExtension, Ow
         IERC721CreatorCore(creator).setApproveTransferExtension(enabled);
     }
 
-    function approveTransfer(address, address, uint256) public override returns (bool) {
+    function approveTransfer(address, address, address, uint256) public override returns (bool) {
         require(msg.sender == _creator, "Invalid requester");
         _creationTimestamp = block.timestamp;
         _completionTimestamp = block.timestamp+31536000;        

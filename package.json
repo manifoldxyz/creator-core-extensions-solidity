@@ -12,6 +12,7 @@
   ],
   "dependencies": {
     "@manifoldxyz/creator-core-solidity": "^2.0.0"
+    "@manifoldxyz/creator-core-solidity": "^2.0.2"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
