@@ -14,7 +14,10 @@ import "./Soulbound.sol";
 /**
  * @title Soulbound token
  * @author manifold.xyz
- * @notice Souldbound shared extension for Manifold Creator contracts.
+ * @notice Soulbound shared extension for Manifold Creator contracts.
+ *         Default - Tokens are soulbound but burnable
+ *         Tokens are burnable if they are burnable at the contract level OR the token level
+ *         Tokens are soulbound if they are soulbound at the contract level OR the token level
  */
 contract ERC1155Soulbound is Soulbound, IERC165, IERC1155CreatorExtensionApproveTransfer {
 
