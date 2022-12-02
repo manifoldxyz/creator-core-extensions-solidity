@@ -70,6 +70,22 @@ These are ERC721 and ERC1155 Lazy Claim extensions.
 0x44e94034AFcE2Dd3CD5Eb62528f239686Fc8f162
 ```
 
+#### OperatorFilterer
+Shared extension to support OpenSea's Operator Filter Registry
+
+contracts/manifold/operatorfiltere/OperatorFilterer.sol and referring to the following implementation addresses:
+
+**Goerli**
+```
+0x2Ab32e40cC3a1Cc7E7B04E067007807e6975a165.   # Subscribed to OpenSea's registry
+```
+
+**Mainnet**
+```
+0x...
+```
+
+
 ### Customized Lightweight Proxies
 You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
 
@@ -125,20 +141,6 @@ contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referr
 0x...
 ```
 
-#### OperatorFilterer
-Shared extension to support OpenSea's Operator Filter Registry
-
-contracts/manifold/operatorfiltere/OperatorFilterer.sol and referring to the following implementation addresses:
-
-**Goerli**
-```
-0x2Ab32e40cC3a1Cc7E7B04E067007807e6975a165
-```
-
-**Mainnet**
-```
-0x...
-```
 
 ## Running the package unit tests
 
