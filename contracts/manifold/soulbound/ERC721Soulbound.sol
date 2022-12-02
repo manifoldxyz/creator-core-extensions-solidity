@@ -9,15 +9,19 @@ import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
+import "./Soulbound.sol";
+
 /**
  * @title Soulbound token
  * @author manifold.xyz
  * @notice Souldbound shared extension for Manifold Creator contracts.
+ *         Default - Tokens are soulbound but burnable
+ *         Tokens are burnable if they are burnable at the contract level OR the token level
+ *         Tokens are soulbound if they are soulbound at the contract level OR the token level
  */
-contract ERC721Soulbound is IERC165, IERC721CreatorExtensionApproveTransfer {
+contract ERC721Soulbound is Soulbound, IERC165, IERC721CreatorExtensionApproveTransfer {
 
     bytes4 private constant IERC721CreatorExtensionApproveTransfer_v1 = 0x99cdaa22;
-    mapping(address => mapping(uint256 => bool)) private _nonSoulbound;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
         return interfaceId == type(IERC721CreatorExtensionApproveTransfer).interfaceId ||
@@ -26,57 +30,43 @@ contract ERC721Soulbound is IERC165, IERC721CreatorExtensionApproveTransfer {
     }
 
     /**
-     * @notice This extension is shared, not single-creator. So we must ensure
-     * that a burn redeems's initializer is an admin on the creator contract
-     * @param creatorContractAddress    the address of the creator contract to check the admin against
-     */
-    modifier creatorAdminRequired(address creatorContractAddress) {
-        require(IAdminControl(creatorContractAddress).isAdmin(msg.sender), "Wallet is not an admin");
-        _;
-    }
-
-    /**
      * @dev Set whether or not the creator will check the extension for approval of token transfer
      */
     function setApproveTransfer(address creatorContractAddress, bool enabled) external creatorAdminRequired(creatorContractAddress) {
-        require(ERC165Checker.supportsInterface(creatorContractAddress, type(IERC721CreatorCore).interfaceId), "creator must implement IERC721CreatorCore");
+        require(ERC165Checker.supportsInterface(creatorContractAddress, type(IERC721CreatorCore).interfaceId), "Invalid address");
         IERC721CreatorCore(creatorContractAddress).setApproveTransferExtension(enabled);
     }
 
     /**
      * @dev Called by creator contract to approve a transfer
      */
-    function approveTransfer(address, address from, address, uint256 tokenId) external view returns (bool) {
-        return _approveTransfer(from, tokenId);
+    function approveTransfer(address, address from, address to, uint256 tokenId) external view returns (bool) {
+        return _approveTransfer(from, to, tokenId);
     }
 
     /**
      * @dev Called by creator contract to approve a transfer (v1)
      */
-    function approveTransfer(address from, address, uint256 tokenId) external view returns (bool) {
-        return _approveTransfer(from, tokenId);
+    function approveTransfer(address from, address to, uint256 tokenId) external view returns (bool) {
+        return _approveTransfer(from, to, tokenId);
     }
 
-    function _approveTransfer(address from, uint256 tokenId) private view returns (bool) {
+    /**
+     * @dev Determine whether or not a transfer of the given token is approved
+     */
+    function _approveTransfer(address from, address to, uint256 tokenId) private view returns (bool) {
         if (from == address(0)) return true;
-        return _nonSoulbound[msg.sender][tokenId];
+        if (to == address(0)) return !(_tokenNonBurnable[msg.sender][tokenId] || _contractNonBurnable[msg.sender]);
+        return _tokenNonSoulbound[msg.sender][tokenId] || _contractNonSoulbound[msg.sender];
     }
 
-    /**
-     * @dev Set whether or not a token is soulbound
-     */
-    function setSoulbound(address creatorContractAddress, uint256 tokenId, bool soulbound) external creatorAdminRequired(creatorContractAddress) {
-        _nonSoulbound[creatorContractAddress][tokenId] = !soulbound;
-    }
 
     /**
-     * @dev Set whether or not a set of tokens are soulbound
+     * @dev Set whether or not all tokens of a contract are soulbound/burnable
      */
-    function setSoulbound(address creatorContractAddress, uint256[] memory tokenIds, bool soulbound) external creatorAdminRequired(creatorContractAddress) {
-        for (uint i; i < tokenIds.length;) {
-            _nonSoulbound[creatorContractAddress][tokenIds[i]] = !soulbound;
-            unchecked { ++i; }
-        }
+    function configureContract(address creatorContractAddress, bool soulbound, bool burnable, string memory tokenURIPrefix) external creatorAdminRequired(creatorContractAddress) {
+        IERC721CreatorCore(creatorContractAddress).setTokenURIPrefixExtension(tokenURIPrefix);
+        _configureContract(creatorContractAddress, soulbound, burnable);
     }
 
     /**
