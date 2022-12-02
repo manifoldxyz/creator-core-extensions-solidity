@@ -45,8 +45,8 @@ contract('OperatorFilterer', function ([...accounts]) {
     })
 
     it('should return registry and subscription', async () => {
-      assert.equal(registry.address, await ext.getOperatorFiltererRegistry());
-      assert.equal('0x000000000000000000000000000000000000dEaD', await ext.getSubscription());
+      assert.equal(registry.address, await ext.OPERATOR_FILTER_REGISTRY());
+      assert.equal('0x000000000000000000000000000000000000dEaD', await ext.SUBSCRIPTION());
     });
   });
 

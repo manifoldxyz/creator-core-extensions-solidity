@@ -9,14 +9,14 @@ import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 contract OperatorFilterer is IERC165 {
     error OperatorNotAllowed(address operator);
 
-    IOperatorFilterRegistry private _operatorFiltererRegistry;
-    address private _subscription;
+    address public immutable OPERATOR_FILTER_REGISTRY;
+    address public immutable SUBSCRIPTION;
 
-    constructor(address operatorFiltererRegistry, address subscription) {
-        _operatorFiltererRegistry = IOperatorFilterRegistry(operatorFiltererRegistry);
-        _subscription = subscription;
+    constructor(address operatorFilterRegistry, address subscription) {
+        OPERATOR_FILTER_REGISTRY = operatorFilterRegistry;
+        SUBSCRIPTION = subscription;
 
-        _operatorFiltererRegistry.registerAndSubscribe(address(this), _subscription);
+        IOperatorFilterRegistry(OPERATOR_FILTER_REGISTRY).registerAndSubscribe(address(this), SUBSCRIPTION);
     }
 
     /**
@@ -51,19 +51,11 @@ contract OperatorFilterer is IERC165 {
      */
     function isOperatorAllowed(address operator, address from) internal view returns (bool) {
         if (from != operator) {
-            if (!_operatorFiltererRegistry.isOperatorAllowed(address(this), operator)) {
+            if (!IOperatorFilterRegistry(OPERATOR_FILTER_REGISTRY).isOperatorAllowed(address(this), operator)) {
                 revert OperatorNotAllowed(operator);
             }
         }
 
         return true;
-    }
-
-    function getOperatorFiltererRegistry() external view returns (IOperatorFilterRegistry) {
-        return _operatorFiltererRegistry;
-    }
-
-    function getSubscription() external view returns (address) {
-        return _subscription;
     }
 }
