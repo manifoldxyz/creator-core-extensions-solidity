@@ -49,3 +49,25 @@ contract MockETHReceiver {
         }
     }
 }
+
+contract MockRegistry {
+    address[] public _failOperators;
+
+    function setBlockedOperators(address[] memory failOperators) public {
+        for (uint i = 0; i < failOperators.length; i++) {
+            _failOperators.push(failOperators[i]);
+        }
+    }
+
+    function isOperatorAllowed(address, address operator) external view returns (bool) {
+        for (uint i = 0; i < _failOperators.length; i++) {
+            if (_failOperators[i] == operator) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function registerAndSubscribe(address registrant, address subscription) external {}
+}
