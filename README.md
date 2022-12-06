@@ -77,12 +77,12 @@ contracts/manifold/operatorfiltere/OperatorFilterer.sol and referring to the fol
 
 **Goerli**
 ```
-0x2Ab32e40cC3a1Cc7E7B04E067007807e6975a165.   # Subscribed to OpenSea's registry
+0x851b63Bf5f575eA68A84baa5Ff9174172E4d7838   # Subscribed to OpenSea's registry
 ```
 
 **Mainnet**
 ```
-0x...
+0x1de06d2875453a272628bbb957077d18eb4a84cd.  # Subscribed to OpenSea's registry
 ```
 
 
