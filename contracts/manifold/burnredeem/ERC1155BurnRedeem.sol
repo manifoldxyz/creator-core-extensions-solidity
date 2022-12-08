@@ -42,7 +42,7 @@ pragma solidity ^0.8.0;
 
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
-import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
+import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -83,8 +83,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      * @param creatorContractAddress    the address of the creator contract to check the admin against
      */
     modifier creatorAdminRequired(address creatorContractAddress) {
-        AdminControl creatorCoreContract = AdminControl(creatorContractAddress);
-        require(creatorCoreContract.isAdmin(msg.sender), "Wallet is not an admin");
+        require(IAdminControl(creatorContractAddress).isAdmin(msg.sender), "Wallet is not an admin");
         _;
     }
 
