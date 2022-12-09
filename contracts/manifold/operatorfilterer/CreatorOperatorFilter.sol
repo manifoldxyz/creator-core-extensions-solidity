@@ -59,13 +59,13 @@ contract CreatorOperatorFilterer is IERC165 {
 
         for (uint i; i < operators.length; ++i) {
             address operator = operators[i];
-            bool blocked = blocked[i];
-            if (blocked) {
+            bool blockedValue = blocked[i];
+            if (blockedValue) {
                 _creatorBlockedOperators[creator].add(operator);
             } else {
                 _creatorBlockedOperators[creator].remove(operator);
             }
-            emit OperatorUpdated(creator, operator, blocked);
+            emit OperatorUpdated(creator, operator, blockedValue);
         }
     }
 
@@ -78,13 +78,13 @@ contract CreatorOperatorFilterer is IERC165 {
         
         for (uint i; i < hashes.length; ++i) {
             bytes32 hash_ = hashes[i];
-            bool blocked = blocked[i];
-            if (blocked) {
+            bool blockedValue = blocked[i];
+            if (blockedValue) {
                 _creatorFilteredCodeHashes[creator].add(hash_);
             } else {
                 _creatorFilteredCodeHashes[creator].remove(hash_);
             }
-            emit CodeHashUpdated(creator, hash_, blocked);
+            emit CodeHashUpdated(creator, hash_, blockedValue);
         }
     }
 

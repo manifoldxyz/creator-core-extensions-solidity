@@ -16,6 +16,27 @@ contract('CreatorOperatorFilterer', function ([...accounts]) {
       await creator.setApproveTransfer(ext.address);
     });
 
+    it('access test', async function () {
+      // Must be admin
+      await truffleAssert.reverts(ext.configureBlockedOperators(
+        creator.address,
+        [],[],
+        {from:anyone1}
+      ), "Wallet is not an admin");
+
+      await truffleAssert.reverts(ext.configureBlockedOperatorHashes(
+        creator.address,
+        [],[],
+        {from:anyone1}
+      ), "Wallet is not an admin");
+
+      await truffleAssert.reverts(ext.configureBlockedOperatorsAndHashes(
+        creator.address,
+        [],[],[],[],
+        {from:anyone1}
+      ), "Wallet is not an admin");
+    });
+
     it('should allow operators not on filtered list', async () => {
       await creator.mintBase(owner, { from: owner });
       await creator.setApprovalForAll(operator, true, { from: owner });
