@@ -13,8 +13,8 @@ contract CreatorOperatorFilterer is IERC165 {
     error OperatorNotAllowed(address operator);
     error CodeHashFiltered(address account, bytes32 codeHash);
 
-    mapping(address => EnumerableSet.AddressSet) private creatorBlockedOperators;
-    mapping(address => EnumerableSet.Bytes32Set) private creatorFilteredCodeHashes;
+    mapping(address => EnumerableSet.AddressSet) private _creatorBlockedOperators;
+    mapping(address => EnumerableSet.Bytes32Set) private _creatorFilteredCodeHashes;
 
     modifier creatorAdminRequired(address creatorContractAddress) {
         require(IAdminControl(creatorContractAddress).isAdmin(msg.sender), "Wallet is not an admin");
@@ -22,7 +22,7 @@ contract CreatorOperatorFilterer is IERC165 {
     }
 
     function getBlockedOperators(address creator) external view returns (address[] memory result) {
-        EnumerableSet.AddressSet storage set = creatorBlockedOperators[creator];
+        EnumerableSet.AddressSet storage set = _creatorBlockedOperators[creator];
         result = new address[](set.length());
         for (uint i; i < set.length(); i++) {
             result[i] = set.at(i);
@@ -30,7 +30,7 @@ contract CreatorOperatorFilterer is IERC165 {
     }
 
     function getBlockedOperatorHashes(address creator) external view returns (bytes32[] memory result) {
-        EnumerableSet.Bytes32Set storage set = creatorFilteredCodeHashes[creator];
+        EnumerableSet.Bytes32Set storage set = _creatorFilteredCodeHashes[creator];
         result = new bytes32[](set.length());
         for (uint i; i < set.length(); i++) {
             result[i] = set.at(i);
@@ -42,9 +42,9 @@ contract CreatorOperatorFilterer is IERC165 {
 
         for (uint i; i < newOperators.length; i++) {
             if (blocked[i]) {
-                creatorBlockedOperators[creator].add(newOperators[i]);
+                _creatorBlockedOperators[creator].add(newOperators[i]);
             } else {
-                creatorBlockedOperators[creator].remove(newOperators[i]);
+                _creatorBlockedOperators[creator].remove(newOperators[i]);
             }
         }
     }
@@ -54,9 +54,9 @@ contract CreatorOperatorFilterer is IERC165 {
         
         for (uint i; i < hashes.length; i++) {
             if (blocked[i]) {
-                creatorFilteredCodeHashes[creator].add(hashes[i]);
+                _creatorFilteredCodeHashes[creator].add(hashes[i]);
             } else {
-                creatorFilteredCodeHashes[creator].remove(hashes[i]);
+                _creatorFilteredCodeHashes[creator].remove(hashes[i]);
             }
         }
     }
@@ -98,13 +98,13 @@ contract CreatorOperatorFilterer is IERC165 {
      */
     function isOperatorAllowed(address operator, address from) internal view returns (bool) {
         if (from != operator) {
-            if (creatorBlockedOperators[msg.sender].contains(operator)) {
+            if (_creatorBlockedOperators[msg.sender].contains(operator)) {
                 revert OperatorNotAllowed(operator);
             }
 
             if (operator.code.length > 0) {
                 bytes32 codeHash = operator.codehash;
-                if (creatorFilteredCodeHashes[msg.sender].contains(codeHash)) {
+                if (_creatorFilteredCodeHashes[msg.sender].contains(codeHash)) {
                     revert CodeHashFiltered(operator, codeHash);
                 }
             }
