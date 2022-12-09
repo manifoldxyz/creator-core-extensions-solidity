@@ -82,9 +82,21 @@ contracts/manifold/operatorfiltere/OperatorFilterer.sol and referring to the fol
 
 **Mainnet**
 ```
-0x1de06d2875453a272628bbb957077d18eb4a84cd.  # Subscribed to OpenSea's registry
+0x1dE06D2875453a272628BbB957077d18eb4A84CD  # Subscribed to OpenSea's registry
 ```
 
+#### CreatorOperatorFilterer
+Shared extension to support Creator Controlled operator filters
+
+**Goerli**
+```
+0x5bEf5e3274e0574502F618b1d3152a06e9e45AEd
+```
+
+**Mainnet**
+```
+0x998e34FA680DCE1B53859bF40Cd933167Eb8a1E6
+```
 
 ### Customized Lightweight Proxies
 You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
