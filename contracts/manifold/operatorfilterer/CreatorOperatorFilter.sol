@@ -24,7 +24,7 @@ contract CreatorOperatorFilterer is IERC165 {
     function getBlockedOperators(address creator) external view returns (address[] memory result) {
         EnumerableSet.AddressSet storage set = _creatorBlockedOperators[creator];
         result = new address[](set.length());
-        for (uint i; i < set.length(); i++) {
+        for (uint i; i < set.length(); ++i) {
             result[i] = set.at(i);
         }
     }
@@ -32,7 +32,7 @@ contract CreatorOperatorFilterer is IERC165 {
     function getBlockedOperatorHashes(address creator) external view returns (bytes32[] memory result) {
         EnumerableSet.Bytes32Set storage set = _creatorFilteredCodeHashes[creator];
         result = new bytes32[](set.length());
-        for (uint i; i < set.length(); i++) {
+        for (uint i; i < set.length(); ++i) {
             result[i] = set.at(i);
         }
     }
@@ -40,7 +40,7 @@ contract CreatorOperatorFilterer is IERC165 {
     function configureBlockedOperators(address creator, address[] memory newOperators, bool[] memory blocked) public creatorAdminRequired(creator) {
         require(newOperators.length == blocked.length, "Mismatch input length");
 
-        for (uint i; i < newOperators.length; i++) {
+        for (uint i; i < newOperators.length; ++i) {
             if (blocked[i]) {
                 _creatorBlockedOperators[creator].add(newOperators[i]);
             } else {
@@ -52,7 +52,7 @@ contract CreatorOperatorFilterer is IERC165 {
     function configureBlockedOperatorHashes(address creator, bytes32[] memory hashes, bool[] memory blocked) public creatorAdminRequired(creator) {
         require(hashes.length == blocked.length, "Mismatch input length");
         
-        for (uint i; i < hashes.length; i++) {
+        for (uint i; i < hashes.length; ++i) {
             if (blocked[i]) {
                 _creatorFilteredCodeHashes[creator].add(hashes[i]);
             } else {
