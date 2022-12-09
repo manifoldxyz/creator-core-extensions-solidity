@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC1155/IERC1155CreatorExtensionApproveTransfer.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
+/// @author: manifold.xyz
+
+/**
+ * Creator controlled Operator Filter for Manifold Creator contracts
+ */
 contract CreatorOperatorFilterer is IERC165 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -21,34 +26,48 @@ contract CreatorOperatorFilterer is IERC165 {
         _;
     }
 
-    function getBlockedOperators(address creator) external view returns (address[] memory result) {
-        EnumerableSet.AddressSet storage set = _creatorBlockedOperators[creator];
+    /**
+     * @dev Get list of blocked operator addresses for a given creator contract
+     */
+    function getBlockedOperators(address creatorContractAddress) external view returns (address[] memory result) {
+        EnumerableSet.AddressSet storage set = _creatorBlockedOperators[creatorContractAddress];
         result = new address[](set.length());
         for (uint i; i < set.length(); ++i) {
             result[i] = set.at(i);
         }
     }
 
-    function getBlockedOperatorHashes(address creator) external view returns (bytes32[] memory result) {
-        EnumerableSet.Bytes32Set storage set = _creatorFilteredCodeHashes[creator];
+    /**
+     * @dev Get list of blocked operator code hashes for a given creator contract
+     */
+    function getBlockedOperatorHashes(address creatorContractAddress) external view returns (bytes32[] memory result) {
+        EnumerableSet.Bytes32Set storage set = _creatorFilteredCodeHashes[creatorContractAddress];
         result = new bytes32[](set.length());
         for (uint i; i < set.length(); ++i) {
             result[i] = set.at(i);
         }
     }
 
-    function configureBlockedOperators(address creator, address[] memory newOperators, bool[] memory blocked) public creatorAdminRequired(creator) {
-        require(newOperators.length == blocked.length, "Mismatch input length");
+    /**
+     * @dev Configure list of operator addresses for a given creator contract
+     *      Only an admin of the creator contract can make this call
+     */
+    function configureBlockedOperators(address creator, address[] memory operators, bool[] memory blocked) public creatorAdminRequired(creator) {
+        require(operators.length == blocked.length, "Mismatch input length");
 
-        for (uint i; i < newOperators.length; ++i) {
+        for (uint i; i < operators.length; ++i) {
             if (blocked[i]) {
-                _creatorBlockedOperators[creator].add(newOperators[i]);
+                _creatorBlockedOperators[creator].add(operators[i]);
             } else {
-                _creatorBlockedOperators[creator].remove(newOperators[i]);
+                _creatorBlockedOperators[creator].remove(operators[i]);
             }
         }
     }
 
+    /**
+     * @dev Configure list of operator code hashes for a given creator contract
+     *      Only an admin of the creator contract can make this call
+     */
     function configureBlockedOperatorHashes(address creator, bytes32[] memory hashes, bool[] memory blocked) public creatorAdminRequired(creator) {
         require(hashes.length == blocked.length, "Mismatch input length");
         
@@ -61,8 +80,12 @@ contract CreatorOperatorFilterer is IERC165 {
         }
     }
 
-    function configureBlockedOperatorsAndHashes(address creator, address[] memory newOperators, bytes32[] memory hashes, bool[] memory blockedOperators, bool[] memory blockedHashes) public creatorAdminRequired(creator) {
-        configureBlockedOperators(creator, newOperators, blockedOperators);
+    /**
+     * @dev Configure list of operator addresses and code hashes for a given creator contract
+     *      Only an admin of the creator contract can make this call
+     */
+    function configureBlockedOperatorsAndHashes(address creator, address[] memory operators, bool[] memory blockedOperators, bytes32[] memory hashes, bool[] memory blockedHashes) public creatorAdminRequired(creator) {
+        configureBlockedOperators(creator, operators, blockedOperators);
         configureBlockedOperatorHashes(creator, hashes, blockedHashes);
     }
 
