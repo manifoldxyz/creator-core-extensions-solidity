@@ -90,12 +90,12 @@ Shared extension to support Creator Controlled operator filters
 
 **Goerli**
 ```
-0x5bEf5e3274e0574502F618b1d3152a06e9e45AEd
+0x1CCCeFAD6E9a3226C2A218662EdF7D465D184893
 ```
 
 **Mainnet**
 ```
-0x998e34FA680DCE1B53859bF40Cd933167Eb8a1E6
+0x3E31CB740351D8650b36e8Ece95A8Efcd1fc28C2
 ```
 
 ### Customized Lightweight Proxies
