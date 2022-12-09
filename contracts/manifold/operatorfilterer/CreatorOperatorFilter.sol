@@ -17,6 +17,8 @@ contract CreatorOperatorFilterer is IERC165 {
 
     error OperatorNotAllowed(address operator);
     error CodeHashFiltered(address account, bytes32 codeHash);
+    event OperatorUpdated(address indexed registrant, address indexed operator, bool indexed filtered);
+    event CodeHashUpdated(address indexed registrant, bytes32 indexed codeHash, bool indexed filtered);
 
     mapping(address => EnumerableSet.AddressSet) private _creatorBlockedOperators;
     mapping(address => EnumerableSet.Bytes32Set) private _creatorFilteredCodeHashes;
@@ -56,11 +58,14 @@ contract CreatorOperatorFilterer is IERC165 {
         require(operators.length == blocked.length, "Mismatch input length");
 
         for (uint i; i < operators.length; ++i) {
-            if (blocked[i]) {
-                _creatorBlockedOperators[creator].add(operators[i]);
+            address operator = operators[i];
+            bool blocked = blocked[i];
+            if (blocked) {
+                _creatorBlockedOperators[creator].add(operator);
             } else {
-                _creatorBlockedOperators[creator].remove(operators[i]);
+                _creatorBlockedOperators[creator].remove(operator);
             }
+            emit OperatorUpdated(creator, operator, blocked);
         }
     }
 
@@ -72,11 +77,14 @@ contract CreatorOperatorFilterer is IERC165 {
         require(hashes.length == blocked.length, "Mismatch input length");
         
         for (uint i; i < hashes.length; ++i) {
-            if (blocked[i]) {
-                _creatorFilteredCodeHashes[creator].add(hashes[i]);
+            bytes32 hash_ = hashes[i];
+            bool blocked = blocked[i];
+            if (blocked) {
+                _creatorFilteredCodeHashes[creator].add(hash_);
             } else {
-                _creatorFilteredCodeHashes[creator].remove(hashes[i]);
+                _creatorFilteredCodeHashes[creator].remove(hash_);
             }
+            emit CodeHashUpdated(creator, hash_, blocked);
         }
     }
 
