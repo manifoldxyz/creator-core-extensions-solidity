@@ -29,7 +29,7 @@ contract ERC721FrozenMetadata is IERC165, IERC721FrozenMetadata, ReentrancyGuard
     }
     
     /**
-     * @dev See {IManifoldERC721Edition-mint}.
+     * @dev See {IManifoldERC721FrozenMetadata-mint}.
      */
     function mintToken(address creator, address recipient, string calldata tokenURI) external override nonReentrant creatorAdminRequired(creator) returns(uint256) {
         require(bytes(tokenURI).length > 0, "Cannot mint blank string");

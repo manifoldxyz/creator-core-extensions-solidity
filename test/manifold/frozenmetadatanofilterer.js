@@ -1,13 +1,15 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
+const OperatorFilter = artifacts.require("CreatorOperatorFilterer");
 const ERC721Creator = artifacts.require('MockERC721Creator');
-const ERC721FrozenMetadata = artifacts.require("ERC721FrozenMetadata");
+const ERC721FrozenMetadata = artifacts.require("ERC721FrozenMetadataNoFilterer");
 
 contract('Manifold Frozen Metadata', function ([minter, ...accounts]) {
   const name = 'Token';
   const symbol = 'NFT';
   const [
     deployer,
+    operator,
     owner,
     another,
     anyone,
@@ -19,9 +21,7 @@ contract('Manifold Frozen Metadata', function ([minter, ...accounts]) {
 
     beforeEach(async function () {
       creator = await ERC721Creator.new('c1', 'c1', {from:owner});
-      
       extension = await ERC721FrozenMetadata.new({from:deployer});
-      
       await creator.registerExtension(extension.address, "", {from:owner});
     });
 
@@ -48,6 +48,17 @@ contract('Manifold Frozen Metadata', function ([minter, ...accounts]) {
       // And no code is written in the extension to do so. Effectively,
       // this freezes the token.
       await truffleAssert.reverts(creator.setTokenURIExtension(1, "{hey2:hey2}", {from:owner}), "Must be registered extension");
+    });
+
+    it('transfer restriction test', async function () {
+      await extension.mintToken(creator.address, operator, "{hey:hey}", {from:owner})
+      // Create an operator filter and set it
+      var filterer = await OperatorFilter.new();
+      await creator.setApproveTransfer(filterer.address, {from:owner});
+      await filterer.configureBlockedOperators(creator.address, [operator], [true], { from: owner })
+
+      // Should still be able to transfer
+      await creator.transferFrom(operator, another, 1, {from:operator});
     });
 
   });
