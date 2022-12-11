@@ -3,7 +3,7 @@ const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockERC721Creator');
 const ERC721FrozenMetadata = artifacts.require("ERC721FrozenMetadata");
 
-contract('Manifold Frozen Metadata', function ([minter, ...accounts]) {
+contract('Manifold 721 Frozen Metadata', function ([minter, ...accounts]) {
   const name = 'Token';
   const symbol = 'NFT';
   const [
@@ -13,7 +13,7 @@ contract('Manifold Frozen Metadata', function ([minter, ...accounts]) {
     anyone,
     ] = accounts;
 
-  describe('Manifold Frozen Metadata', function() {
+  describe('Manifold 1155 Frozen Metadata', function() {
     var creator;
     var extension;
 
