@@ -96,24 +96,16 @@ contract ERC721BurnRedeem is IERC165, IERC721BurnRedeem, ICreatorExtensionTokenU
         uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
+        BurnRedeem storage _burnRedeem = _burnRedeems[creatorContractAddress][index];
         // Revert if burnRedeem at index already exists
-        require(_burnRedeems[creatorContractAddress][index].storageProtocol == StorageProtocol.INVALID, "Burn redeem already initialized");
+        require(_burnRedeem.storageProtocol == StorageProtocol.INVALID, "Burn redeem already initialized");
 
         // Sanity check
         require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
 
-         // Create the burn redeem
-        _burnRedeems[creatorContractAddress][index] = BurnRedeem({
-            startDate: burnRedeemParameters.startDate,
-            endDate: burnRedeemParameters.endDate,
-            redeemedCount: 0,
-            totalSupply: burnRedeemParameters.totalSupply,
-            identical: burnRedeemParameters.identical,
-            storageProtocol: burnRedeemParameters.storageProtocol,
-            location: burnRedeemParameters.location,
-            cost: burnRedeemParameters.cost,
-            burnSet: burnRedeemParameters.burnSet
-        });
+        // Create the burn redeem
+        _setParameters(_burnRedeem, burnRedeemParameters);
+        _setBurnGroups(_burnRedeem, burnRedeemParameters.burnSet);
 
         emit BurnRedeemInitialized(creatorContractAddress, index, msg.sender);
     }
@@ -126,24 +118,15 @@ contract ERC721BurnRedeem is IERC165, IERC721BurnRedeem, ICreatorExtensionTokenU
         uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        BurnRedeem memory _burnRedeem = _burnRedeems[creatorContractAddress][index];
+        BurnRedeem storage _burnRedeem = _burnRedeems[creatorContractAddress][index];
 
         // Sanity checks
         require(_burnRedeem.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
         require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
 
         // Overwrite the existing burnRedeem
-        _burnRedeems[creatorContractAddress][index] = BurnRedeem({
-            startDate: burnRedeemParameters.startDate,
-            endDate: burnRedeemParameters.endDate,
-            redeemedCount: _burnRedeem.redeemedCount,
-            totalSupply: burnRedeemParameters.totalSupply,
-            identical: burnRedeemParameters.identical,
-            storageProtocol: burnRedeemParameters.storageProtocol,
-            location: burnRedeemParameters.location,
-            cost: burnRedeemParameters.cost,
-            burnSet: burnRedeemParameters.burnSet
-        });
+        _setParameters(_burnRedeem, burnRedeemParameters);
+        _setBurnGroups(_burnRedeem, burnRedeemParameters.burnSet);
     }
 
     /**
@@ -255,6 +238,34 @@ contract ERC721BurnRedeem is IERC165, IERC721BurnRedeem, ICreatorExtensionTokenU
     }
 
     /**
+     * Helper to set top level properties for a burn redeem
+     */
+    function _setParameters(BurnRedeem storage _burnRedeem, BurnRedeemParameters calldata burnRedeemParameters) private {
+        _burnRedeem.startDate = burnRedeemParameters.startDate;
+        _burnRedeem.endDate = burnRedeemParameters.endDate;
+        _burnRedeem.totalSupply = burnRedeemParameters.totalSupply;
+        _burnRedeem.identical = burnRedeemParameters.identical;
+        _burnRedeem.storageProtocol = burnRedeemParameters.storageProtocol;
+        _burnRedeem.location = burnRedeemParameters.location;
+        _burnRedeem.cost = burnRedeemParameters.cost;
+    }
+
+    /**
+     * Helper to set the burn groups for a burn redeem
+     */
+    function _setBurnGroups(BurnRedeem storage _burnRedeem, BurnGroup[] calldata burnGroups) private {
+        delete _burnRedeem.burnSet;
+        for (uint256 i = 0; i < burnGroups.length; i++) {
+            _burnRedeem.burnSet.push();
+            BurnGroup storage burnGroup = _burnRedeem.burnSet[i];
+            burnGroup.requiredCount = burnGroups[i].requiredCount;
+            for (uint256 j = 0; j < burnGroups[i].items.length; j++) {
+                burnGroup.items.push(burnGroups[i].items[j]);
+            }
+        }
+    }
+
+    /**
      * Helper to validate target burn redeem
      */
     function _validateBurnRedeem(BurnRedeem storage _burnRedeem) private {
@@ -280,10 +291,12 @@ contract ERC721BurnRedeem is IERC165, IERC721BurnRedeem, ICreatorExtensionTokenU
         if (burnItem.validationType == ValidationType.CONTRACT) {
             return;
         } else if (burnItem.validationType == ValidationType.RANGE) {
-            require(tokenId >= burnItem.minTokenId && tokenId <= burnItem.maxTokenId, "Invalid token id");
+            require(tokenId >= burnItem.minTokenId && tokenId <= burnItem.maxTokenId, "Invalid token ID");
+            return;
         } else if (burnItem.validationType == ValidationType.MERKLE_TREE) {
             bytes32 leaf = keccak256(abi.encodePacked(tokenId));
             require(MerkleProof.verify(merkleProof, burnItem.merkleRoot, leaf), "Invalid merkle proof");
+            return;
         }
         revert("Invalid burn item");
     }
