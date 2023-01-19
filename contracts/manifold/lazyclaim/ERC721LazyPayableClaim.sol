@@ -231,10 +231,10 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             // Non-merkle mint
             if (claim.walletMax != 0) {
                 require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax, "Maximum tokens already minted for this wallet");
-                unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]++; }
+                unchecked{ ++_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]; }
             }
         }
-        unchecked{ claim.total++; }
+        unchecked{ ++claim.total; }
 
         // Do mint
         uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(msg.sender);

@@ -222,10 +222,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             // Non-merkle mint
             if (claim.walletMax != 0) {
                 require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax, "Maximum tokens already minted for this wallet");
-                unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]++; }
+                unchecked{ ++_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]; }
             }
         }
-        unchecked{ claim.total++; }
+        unchecked{ ++claim.total; }
 
         // Do mint
         address[] memory recipients = new address[](1);
