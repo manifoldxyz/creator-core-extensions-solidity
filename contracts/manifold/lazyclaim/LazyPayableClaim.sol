@@ -6,6 +6,7 @@ import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "../../libraries/delegation-registry/IDelegationRegistry.sol";
+import "../../libraries/manifold-membership/IManifoldMembership.sol";
 
 import "./ILazyPayableClaim.sol";
 
@@ -14,13 +15,17 @@ import "./ILazyPayableClaim.sol";
  * @author manifold.xyz
  * @notice Lazy payable claim with optional whitelist ERC721 tokens
  */
-abstract contract LazyPayableClaim is ILazyPayableClaim {
+abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
 
     uint256 internal constant MINT_INDEX_BITMASK = 0xFF;
     // solhint-disable-next-line
     address public immutable DELEGATION_REGISTRY;
+
+    uint256 public constant MINT_FEE = 690000000000000;
+    address public MEMBERSHIP_ADDRESS;
+
     uint32 internal constant MAX_UINT_32 = 0xffffffff;
     uint256 internal constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
@@ -45,6 +50,48 @@ abstract contract LazyPayableClaim is ILazyPayableClaim {
 
     constructor(address delegationRegistry) {
         DELEGATION_REGISTRY = delegationRegistry;
+    }
+
+    /**
+     * See {ILazyClaim-withdraw}.
+     */
+    function withdraw(address payable receiver, uint256 amount) external override adminRequired {
+        (bool sent, ) = receiver.call{value: amount}("");
+        require(sent, "Failed to transfer to receiver");
+    }
+
+    /**
+     * See {ILazyClaim-setMembershipAddress}.
+     */
+    function setMembershipAddress(address membershipAddress) external override adminRequired {
+        MEMBERSHIP_ADDRESS = membershipAddress;
+    }
+
+    /**
+     * See {ILazyClaim-getMintFee}.
+     */
+    function getMintFee(uint16 mintCount) public view override returns (uint256 fee) {
+        if (MEMBERSHIP_ADDRESS != address(0)) {
+            if (!IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
+                if (mintCount != 1) {
+                    fee = mintCount * MINT_FEE;
+                } else {
+                    fee = MINT_FEE;
+                }
+            }
+        }
+    }
+
+    function _checkPrice(uint256 cost, uint16 mintCount) internal view returns (uint256) {
+        if (mintCount != 1) {
+            cost = cost * mintCount;
+        }
+        uint256 fee = getMintFee(mintCount);
+
+        // Check price
+        require(msg.value == cost + fee, "Must pay more.");
+
+        return cost;
     }
 
     function _checkMintIndex(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) internal view returns (bool) {

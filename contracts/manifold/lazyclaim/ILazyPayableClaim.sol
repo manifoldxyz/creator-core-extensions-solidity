@@ -14,6 +14,20 @@ interface ILazyPayableClaim {
     event ClaimMint(address indexed creatorContract, uint256 indexed claimIndex);
     event ClaimMintBatch(address indexed creatorContract, uint256 indexed claimIndex, uint16 mintCount);
 
+    /**
+     * @notice Withdraw funds
+     */
+    function withdraw(address payable receiver, uint256 amount) external;
+
+    /**
+     * @notice Set the Manifold Membership address
+     */
+    function setMembershipAddress(address membershipAddress) external;
+
+    /**
+     * @notice Get the mint fee for a given number of mints
+     */
+    function getMintFee(uint16 mintCount) external view returns (uint256);
 
     /**
      * @notice check if a mint index has been consumed or not (only for merkle claims)

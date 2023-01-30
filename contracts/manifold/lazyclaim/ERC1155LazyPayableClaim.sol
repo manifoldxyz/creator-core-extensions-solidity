@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import "./LazyPayableClaim.sol";
 import "./IERC1155LazyPayableClaim.sol";
-import "../../libraries/delegation-registry/IDelegationRegistry.sol";
 
 /**
  * @title Lazy Payable Claim
@@ -27,9 +26,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     // { contractAddress => { tokenId => { claimIndex } }
     mapping(address => mapping(uint256 => uint256)) private _claimTokenIds;
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, AdminControl) returns (bool) {
         return interfaceId == type(IERC1155LazyPayableClaim).interfaceId ||
+            interfaceId == type(ILazyPayableClaim).interfaceId ||
             interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
+            interfaceId == type(IAdminControl).interfaceId ||
             interfaceId == type(IERC165).interfaceId;
     }
 
@@ -169,8 +170,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
-        // Check price
-        require(msg.value == claim.cost, "Must pay more.");
+        uint256 cost = _checkPrice(claim.cost, 1);
 
         // Check timestamps
         require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
@@ -200,7 +200,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         // Transfer proceeds to receiver
         // solhint-disable-next-line
-        (bool sent, ) = claim.paymentReceiver.call{value: msg.value}("");
+        (bool sent, ) = claim.paymentReceiver.call{value: cost}("");
         require(sent, "Failed to transfer to receiver");
 
         emit ClaimMint(creatorContractAddress, _claimTokenIds[creatorContractAddress][claimIndex]);
@@ -215,8 +215,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
-        // Check price
-        require(msg.value == claim.cost * mintCount, "Must pay more.");
+        uint256 cost = _checkPrice(claim.cost, mintCount);
 
         // Check timestamps
         require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
@@ -250,7 +249,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         amounts[0] = mintCount;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
         // solhint-disable-next-line
-        (bool sent, ) = claim.paymentReceiver.call{value: msg.value}("");
+        (bool sent, ) = claim.paymentReceiver.call{value: cost}("");
         require(sent, "Failed to transfer to receiver");
 
         emit ClaimMintBatch(creatorContractAddress, claimIndex, mintCount);
