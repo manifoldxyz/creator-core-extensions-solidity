@@ -3,14 +3,12 @@
 pragma solidity ^0.8.0;
 
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
-import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 
+import "./LazyPayableClaim.sol";
 import "./IERC721LazyPayableClaim.sol";
 import "../../libraries/delegation-registry/IDelegationRegistry.sol";
 
@@ -19,33 +17,18 @@ import "../../libraries/delegation-registry/IDelegationRegistry.sol";
  * @author manifold.xyz
  * @notice Lazy payable claim with optional whitelist ERC721 tokens
  */
-contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExtensionTokenURI, ReentrancyGuard {
+contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExtensionTokenURI, ReentrancyGuard, LazyPayableClaim {
     using Strings for uint256;
-
-    string private constant ARWEAVE_PREFIX = "https://arweave.net/";
-    string private constant IPFS_PREFIX = "ipfs://";
-    uint256 private constant MINT_INDEX_BITMASK = 0xFF;
-    // solhint-disable-next-line
-    address public immutable DELEGATION_REGISTRY;
-    uint32 private constant MAX_UINT_32 = 0xffffffff;
-    uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     // stores mapping from tokenId to the claim it represents
     // { contractAddress => { tokenId => Claim } }
     mapping(address => mapping(uint256 => Claim)) private _claims;
 
-    // ONLY USED FOR NON-MERKLE MINTS: stores the number of tokens minted per wallet per claim, in order to limit maximum
-    // { contractAddress => { claimIndex => { walletAddress => walletMints } } }
-    mapping(address => mapping(uint256 => mapping(address => uint256))) private _mintsPerWallet;
-
-    // ONLY USED FOR MERKLE MINTS: stores mapping from claim to indices minted
-    // { contractAddress => {claimIndex => { claimIndexOffset => index } } }
-    mapping(address => mapping(uint256 => mapping(uint256 => uint256))) private _claimMintIndices;
-
     struct TokenClaim {
         uint224 claimIndex;
         uint32 mintOrder;
     }
+
     // stores which tokenId corresponds to which claimIndex, used to generate token uris
     // { contractAddress => { tokenId => TokenClaim } }
     mapping(address => mapping(uint256 => TokenClaim)) private _tokenClaims;
@@ -56,20 +39,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             interfaceId == type(IERC165).interfaceId;
     }
 
-    constructor(address delegationRegistry) {
-        DELEGATION_REGISTRY = delegationRegistry;
-    }
-
-    /**
-     * @notice This extension is shared, not single-creator. So we must ensure
-     * that a claim's initializer is an admin on the creator contract
-     * @param creatorContractAddress    the address of the creator contract to check the admin against
-     */
-    modifier creatorAdminRequired(address creatorContractAddress) {
-        AdminControl creatorCoreContract = AdminControl(creatorContractAddress);
-        require(creatorCoreContract.isAdmin(msg.sender), "Wallet is not an administrator for contract");
-        _;
-    }
+    constructor(address delegationRegistry) LazyPayableClaim(delegationRegistry) {}
 
     /**
      * See {IERC721LazyClaim-initializeClaim}.
@@ -164,50 +134,44 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     }
 
     /**
-     * See {IERC721LazyClaim-getClaim}.
+     * See {ILazyClaim-getClaim}.
      */
-    function getClaim(address creatorContractAddress, uint256 claimIndex) external override view returns(Claim memory claim) {
+    function getClaim(address creatorContractAddress, uint256 claimIndex) public override view returns(Claim memory claim) {
         claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
     }
 
     /**
-     * See {IERC721LazyClaim-checkMintIndex}.
+     * See {ILazyClaim-checkMintIndex}.
      */
-    function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) public override view returns(bool) {
-        Claim storage claim = _claims[creatorContractAddress][claimIndex];
-        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
-        require(claim.merkleRoot != "", "Can only check merkle claims");
-        uint256 claimMintIndex = mintIndex >> 8;
-        uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
-        uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
-        return mintBitmask & claimMintTracking != 0;
+    function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external override view returns(bool) {
+        Claim memory claim = getClaim(creatorContractAddress, claimIndex);
+        return _checkMintIndex(claim.merkleRoot, creatorContractAddress, claimIndex, mintIndex);
     }
 
     /**
-     * See {IERC721LazyClaim-checkMintIndices}.
+     * See {ILazyClaim-checkMintIndices}.
      */
     function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
+        Claim memory claim = getClaim(creatorContractAddress, claimIndex);
         uint256 mintIndicesLength = mintIndices.length;
         minted = new bool[](mintIndices.length);
         for (uint256 i = 0; i < mintIndicesLength;) {
-            minted[i] = checkMintIndex(creatorContractAddress, claimIndex, mintIndices[i]);
+            minted[i] = _checkMintIndex(claim.merkleRoot, creatorContractAddress, claimIndex, mintIndices[i]);
             unchecked{ ++i; }
         }
     }
 
     /**
-     * See {IERC721LazyClaim-getTotalMints}.
+     * See {ILazyClaim-getTotalMints}.
      */
     function getTotalMints(address minter, address creatorContractAddress, uint256 claimIndex) external override view returns(uint32) {
-        Claim storage claim = _claims[creatorContractAddress][claimIndex];
-        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
-        require(claim.walletMax != 0, "Can only retrieve for non-merkle claims with walletMax");
-        return  uint32(_mintsPerWallet[creatorContractAddress][claimIndex][minter]);
+        Claim memory claim = getClaim(creatorContractAddress, claimIndex);
+        return _getTotalMints(claim.walletMax, minter, creatorContractAddress, claimIndex);
     }
 
     /**
-     * See {IERC721LazyClaim-mint}.
+     * See {ILazyClaim-mint}.
      */
     function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
@@ -226,7 +190,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
 
         if (claim.merkleRoot != "") {
             // Merkle mint
-            _checkMerkleAndUpdate(claim, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
+            _checkMerkleAndUpdate(claim.merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
         } else {
             // Non-merkle mint
             if (claim.walletMax != 0) {
@@ -249,7 +213,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     }
 
     /**
-     * See {IERC721LazyClaim-mintBatch}.
+     * See {ILazyClaim-mintBatch}.
      */
     function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
@@ -277,7 +241,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
                 uint32 mintIndex = mintIndices[i];
                 bytes32[] memory merkleProof = merkleProofs[i];
                 
-                _checkMerkleAndUpdate(claim, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
+                _checkMerkleAndUpdate(claim.merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
                 unchecked { ++i; }
             }
         } else {
@@ -327,30 +291,6 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
 
             unchecked{ ++i; }
         }
-    }
-
-    /**
-     * Helper to check merkle proof and whether or not the mintIndex was consumed. Also updates the consumed counts
-     */
-    function _checkMerkleAndUpdate(Claim storage claim, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
-        // Merkle mint
-        bytes32 leaf;
-        if (mintFor == msg.sender) {
-            leaf = keccak256(abi.encodePacked(msg.sender, mintIndex));
-        } else {
-            // Direct verification failed, try delegate verification
-            IDelegationRegistry dr = IDelegationRegistry(DELEGATION_REGISTRY);
-            require(dr.checkDelegateForContract(msg.sender, mintFor, address(this)), "Invalid delegate");
-            leaf = keccak256(abi.encodePacked(mintFor, mintIndex));
-        }
-        require(MerkleProof.verify(merkleProof, claim.merkleRoot, leaf), "Could not verify merkle proof");
-
-        // Check if mintIndex has been minted
-        uint256 claimMintIndex = mintIndex >> 8;
-        uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
-        uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
-        require(mintBitmask & claimMintTracking == 0, "Already minted");
-        _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex] = claimMintTracking | mintBitmask;
     }
 
     /**
