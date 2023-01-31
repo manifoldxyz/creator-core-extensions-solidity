@@ -2,6 +2,7 @@ const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721BurnRedeem = artifacts.require("ERC721BurnRedeem");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
+const ERC1155Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC1155Creator');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
@@ -9,12 +10,14 @@ const ethers = require('ethers');
 contract('ERC721BurnRedeem', function ([...accounts]) {
   const [owner, anotherOwner, anyone1, anyone2, anyone3, anyone4, anyone5, anyone6, anyone7] = accounts;
   describe('BurnRedeem', function () {
-    let creator, burnRedeem, burnable721;
+    let creator, burnRedeem, burnable721, burnable721_2, burnable1155, burnable1155_2;
     beforeEach(async function () {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
       burnRedeem = await ERC721BurnRedeem.new({from:owner});
       burnable721 = await ERC721Creator.new("Test", "TEST", {from:owner});
       burnable721_2 = await ERC721Creator.new("Test", "TEST", {from:owner});
+      burnable1155 = await ERC1155Creator.new("Test", "TEST", {from:owner});
+      burnable1155_2 = await ERC1155Creator.new("Test", "TEST", {from:owner});
       
       // Must register with empty prefix in order to set per-token uri's
       await creator.registerExtension(burnRedeem.address, {from:owner});
@@ -33,11 +36,13 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: later,
           totalSupply: 10,
-          identical: true,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           burnSet: [],
+        },
+        {
+          identical: true,
         },
         {from:anyone1}
       ), "Wallet is not an admin");
@@ -50,11 +55,13 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: later,
           totalSupply: 10,
-          identical: true,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           burnSet: [],
+        },
+        {
+          identical: true,
         },
         {from:owner}
       ));
@@ -72,11 +79,13 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: now,
           totalSupply: 10,
-          identical: true,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           burnSet: [],
+        },
+        {
+          identical: true,
         },
         {from:owner}
       ), "startDate after endDate");
@@ -89,11 +98,13 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: later,
           totalSupply: 10,
-          identical: true,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           burnSet: [],
+        },
+        {
+          identical: true,
         },
         {from:owner}
       ), "Burn redeem not initialized");
@@ -110,11 +121,13 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: later,
           totalSupply: 10,
-          identical: true,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           burnSet: [],
+        },
+        {
+          identical: true,
         },
         {from:owner}
       );
@@ -127,11 +140,13 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: now,
           totalSupply: 10,
-          identical: true,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           burnSet: [],
+        },
+        {
+          identical: true,
         },
         {from:owner}
       ), "startDate after endDate");
@@ -148,7 +163,6 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: later,
           totalSupply: 10,
-          identical: true,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
@@ -159,6 +173,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
                 {
                   validationType: 1,
                   contractAddress: burnable721.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
                   minTokenId: 0,
                   maxTokenId: 0,
                   merkleRoot: ethers.utils.formatBytes32String("")
@@ -166,6 +183,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
               ]
             }
           ],
+        },
+        {
+          identical: true,
         },
         {from:owner}
       );
@@ -185,7 +205,6 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: later,
           totalSupply: 10,
-          identical: false,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
@@ -196,6 +215,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
                 {
                   validationType: 1,
                   contractAddress: burnable721.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
                   minTokenId: 0,
                   maxTokenId: 0,
                   merkleRoot: ethers.utils.formatBytes32String("")
@@ -203,6 +225,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
               ]
             }
           ],
+        },
+        {
+          identical: false,
         },
         {from:owner}
       );
@@ -234,7 +259,6 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: start,
           endDate: end,
           totalSupply: 10,
-          identical: false,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
@@ -245,6 +269,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
                 {
                   validationType: 1,
                   contractAddress: burnable721.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
                   minTokenId: 0,
                   maxTokenId: 0,
                   merkleRoot: ethers.utils.formatBytes32String("")
@@ -252,6 +279,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
               ]
             }
           ],
+        },
+        {
+          identical: false,
         },
         {from:owner}
       );
@@ -269,7 +299,174 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal(1, balance);
     });
 
-    it('burnRedeem test', async function() {
+    it('onERC11555Received test', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "bytes32[]"], [creator.address, 1, 0, []]);
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
+      await burnable1155_2.mintBaseNew([anyone1], [2], [""], { from: owner });
+
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1);
+      assert.equal(0, balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(2, balance);
+      
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 1,
+                  amount: 2,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+
+      // Reverts due to wrong contract
+      await truffleAssert.reverts(burnable1155_2.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}), "Invalid burn token");
+
+      // Passes with right token id
+      await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}));
+
+      // Ensure tokens are burned/minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(0, balance);
+      balance = await creator.balanceOf(anyone1);
+      assert.equal(1, balance);
+    });
+
+    it('onERC11555BatchReceived test', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+      let burnRedeemData = web3.eth.abi.encodeParameters(
+        ["address", "uint256", {
+          "BurnToken[]": {
+            "groupIndex": "uint48",
+            "itemIndex": "uint48",
+            "contractAddress": "address",
+            "id": "uint256",
+            "merkleProof": "bytes32[]"
+          }
+        }],
+        [creator.address, 1,
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: burnable1155.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            },
+            {
+              groupIndex: 0,
+              itemIndex: 1,
+              contractAddress: burnable1155.address,
+              id: 2,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            },
+          ]
+        ]
+      );
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
+
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1);
+      assert.equal(0, balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(2, balance);
+      balance = await burnable1155.balanceOf(anyone1, 2);
+      assert.equal(2, balance);
+      
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          burnSet: [
+            {
+              requiredCount: 2,
+              items: [
+                {
+                  validationType: 2,
+                  contractAddress: burnable1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 1,
+                  amount: 2,
+                  minTokenId: 1,
+                  maxTokenId: 1,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                },
+                {
+                  validationType: 2,
+                  contractAddress: burnable1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 1,
+                  amount: 2,
+                  minTokenId: 2,
+                  maxTokenId: 2,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+
+      // Passes with right token id
+      await truffleAssert.passes(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [2, 2], burnRedeemData, {from:anyone1}));
+
+      // Ensure tokens are burned/minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(0, balance);
+      balance = await burnable1155.balanceOf(anyone1, 2);
+      assert.equal(0, balance);
+      balance = await creator.balanceOf(anyone1);
+      assert.equal(1, balance);
+    });
+
+    it('burnRedeem test - burn 721', async function() {
 
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
@@ -303,7 +500,6 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           startDate: start,
           endDate: end,
           totalSupply: 10,
-          identical: false,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
@@ -314,6 +510,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
                 {
                   validationType: 1,
                   contractAddress: burnable721.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
                   minTokenId: 0,
                   maxTokenId: 0,
                   merkleRoot: ethers.utils.formatBytes32String("")
@@ -326,6 +525,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
                 {
                   validationType: 2,
                   contractAddress: burnable721_2.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
                   minTokenId: 1,
                   maxTokenId: 2,
                   merkleRoot: ethers.utils.formatBytes32String("")
@@ -333,6 +535,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
                 {
                   validationType: 3,
                   contractAddress: burnable721_2.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
                   minTokenId: 0,
                   maxTokenId: 0,
                   merkleRoot: merkleTreeWithValues.getHexRoot()
@@ -340,6 +545,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
               ]
             }
           ],
+        },
+        {
+          identical: false,
         },
         {from:owner}
       );
