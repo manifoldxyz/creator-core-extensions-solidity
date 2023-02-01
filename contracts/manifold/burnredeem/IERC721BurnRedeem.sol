@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "./IBurnRedeem.sol";
+import "./IBurnRedeemCore.sol";
 
-interface IERC721BurnRedeem is IBurnRedeem {
+interface IERC721BurnRedeem is IBurnRedeemCore {
     struct ExtendedConfig {
         bool identical;
     }
@@ -25,7 +25,7 @@ interface IERC721BurnRedeem is IBurnRedeem {
      * @param creatorContractAddress    the creator contract corresponding to the burn redeem
      * @param index                     the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
      * @param burnRedeemParameters      the parameters which will affect the minting behavior of the burn redeem
-     * @param config                    redeem configuration specific to the 721 implementation
+     * @param config                    configuration specific to the 721 implementation
      */
     function updateBurnRedeem(address creatorContractAddress, uint256 index, BurnRedeemParameters calldata burnRedeemParameters, ExtendedConfig calldata config) external;
 }

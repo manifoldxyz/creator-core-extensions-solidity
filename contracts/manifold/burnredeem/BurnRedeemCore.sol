@@ -40,26 +40,26 @@ pragma solidity ^0.8.0;
 //                                                                                 //
 /////////////////////////////////////////////////////////////////////////////////////
 
-import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
+import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-import "./IBurnRedeem.sol";
+import "./IBurnRedeemCore.sol";
 import "./BurnInterfaces.sol";
 
 /**
- * @title Burn Redeem
+ * @title Burn Redeem Core
  * @author manifold.xyz
- * @notice Burn Redeem shared extension.
+ * @notice Core logic for Burn Redeem shared extensions.
  */
-abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI {
+abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurnRedeemCore, ICreatorExtensionTokenURI {
     using Strings for uint256;
 
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
@@ -71,12 +71,12 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
     // { contractAddress => { tokenId => { redeemIndex } }
     mapping(address => mapping(uint256 => RedeemToken)) internal _redeemTokens;
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
-        return interfaceId == type(IBurnRedeem).interfaceId ||
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165, AdminControl) returns (bool) {
+        return interfaceId == type(IBurnRedeemCore).interfaceId ||
             interfaceId == type(IERC721Receiver).interfaceId ||
             interfaceId == type(IERC1155Receiver).interfaceId ||
             interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
-            interfaceId == type(IERC165).interfaceId;
+            super.supportsInterface(interfaceId);
     }
 
     /**
@@ -131,7 +131,7 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
     }
 
     /**
-     * See {IBurnRedeem-getBurnRedeem}.
+     * See {IBurnRedeemCore-getBurnRedeem}.
      */
     function getBurnRedeem(address creatorContractAddress, uint256 index) external override view returns(BurnRedeem memory) {
         require(_burnRedeems[creatorContractAddress][index].storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
@@ -139,15 +139,32 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
     }
 
     /**
-     * See {IBurnRedeem-burnRedeem}.
+     * See {IBurnRedeemCore-burnRedeem}.
      */
-    function burnRedeem(address creatorContractAddress, uint256 index, BurnToken[] calldata burnTokens) external payable override {
+    function burnRedeem(address creatorContractAddress, uint256 index, BurnToken[] calldata burnTokens) external payable override nonReentrant {
         BurnRedeem storage _burnRedeem = _burnRedeems[creatorContractAddress][index];
         _validateBurnRedeem(_burnRedeem);
+        _forwardValue(creatorContractAddress, _burnRedeem);
 
         // Do burn redeem
         _burnTokens(_burnRedeem, burnTokens, msg.sender);
         _mint(creatorContractAddress, index, _burnRedeem, msg.sender);
+    }
+
+    /**
+     * @dev See {IBurnRedeemCore-recoverERC721}.
+     */
+    function recoverERC721(address tokenAddress, uint256 tokenId, address destination) external override adminRequired {
+        IERC721(tokenAddress).transferFrom(address(this), destination, tokenId);
+    }
+
+    /**
+     * Forward value to the burn redeem's owner
+     */
+    function _forwardValue(address creatorContractAddress, BurnRedeem storage _burnRedeem) private {
+        if (_burnRedeem.cost > 0) {
+            payable(Ownable(creatorContractAddress).owner()).transfer(msg.value);
+        }
     }
 
     /**
@@ -180,7 +197,7 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
         address from,
         uint256 id,
         bytes calldata data
-    ) external override returns(bytes4) {
+    ) external override nonReentrant returns(bytes4) {
         _onERC721Received(from, id, data);
         return this.onERC721Received.selector;
     }
@@ -194,7 +211,7 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
         uint256 id,
         uint256 value,
         bytes calldata data
-    ) external override returns(bytes4) {
+    ) external override nonReentrant returns(bytes4) {
         _onERC1155Received(from, id, value, data);
         return this.onERC1155Received.selector;
     }
@@ -208,7 +225,7 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
         uint256[] calldata ids,
         uint256[] calldata values,
         bytes calldata data
-    ) external override returns(bytes4) {
+    ) external override nonReentrant returns(bytes4) {
         _onERC1155BatchReceived(from, ids, values, data);
         return this.onERC1155BatchReceived.selector;
     }
@@ -241,6 +258,7 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
             _burnRedeem.burnSet[0].requiredCount == 1,
             "Not a 1:1 burn redeem"
         );
+        _forwardValue(creatorContractAddress, _burnRedeem);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = _burnRedeem.burnSet[0].items[burnItemIndex];
@@ -281,6 +299,7 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
             _burnRedeem.burnSet[0].requiredCount == 1,
             "Not a 1:1 burn redeem"
         );
+        _forwardValue(creatorContractAddress, _burnRedeem);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = _burnRedeem.burnSet[0].items[burnItemIndex];
@@ -322,6 +341,8 @@ abstract contract BurnRedeem is IERC165, IBurnRedeem, ICreatorExtensionTokenURI 
             require(burnToken.id == ids[i], "Invalid token");
             require(burnItem.amount == values[i], "Invalid amount");
         }
+
+        _forwardValue(creatorContractAddress, _burnRedeem);
 
         // Do burn redeem
         _burnTokens(_burnRedeem, burnTokens, address(this));

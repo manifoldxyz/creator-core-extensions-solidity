@@ -6,11 +6,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
- * Burn Redeem interface
+ * Burn Redeem Core interface
  */
-interface IBurnRedeem is IERC721Receiver, IERC1155Receiver {
+interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver {
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
     enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE }
     enum TokenSpec { INVALID, ERC721, ERC1155 }
@@ -84,4 +85,12 @@ interface IBurnRedeem is IERC721Receiver, IERC1155Receiver {
      * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
      */
     function burnRedeem(address creatorContractAddress, uint256 index, BurnToken[] calldata burnTokens) external payable;
+    
+    /**
+     * @notice recover a token that was sent to the contract without safeTransferFrom
+     * @param tokenAddress              the address of the token contract
+     * @param tokenId                   the id of the token
+     * @param destination               the address to send the token to
+     */
+    function recoverERC721(address tokenAddress, uint256 tokenId, address destination) external;
 }

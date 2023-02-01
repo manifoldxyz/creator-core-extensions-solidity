@@ -4,14 +4,20 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "./BurnRedeem.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
+
+import "./BurnRedeemCore.sol";
 import "./IERC721BurnRedeem.sol";
 
-contract ERC721BurnRedeem is BurnRedeem, IERC721BurnRedeem {
+contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     using Strings for uint256;
 
     // { creatorContractAddress => { index =>  ExtendedConfig } }
     mapping(address => mapping(uint256 => ExtendedConfig)) private _configs;
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(BurnRedeemCore, IERC165) returns (bool) {
+        return interfaceId == type(IERC721BurnRedeem).interfaceId || super.supportsInterface(interfaceId);
+    }
     
     /**
      * @dev See {IERC721BurnRedeem-initializeBurnRedeem}.
@@ -40,6 +46,7 @@ contract ERC721BurnRedeem is BurnRedeem, IERC721BurnRedeem {
     }
 
     /**
+     * Helper to set extended config for 721 redeems
      */
     function _setConfig(address creatorContractAddress, uint256 index, ExtendedConfig calldata config) internal {
         ExtendedConfig storage _config = _configs[creatorContractAddress][index];

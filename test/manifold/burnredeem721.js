@@ -1,4 +1,3 @@
-const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721BurnRedeem = artifacts.require("ERC721BurnRedeem");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
@@ -8,7 +7,7 @@ const keccak256 = require('keccak256');
 const ethers = require('ethers');
 
 contract('ERC721BurnRedeem', function ([...accounts]) {
-  const [owner, anotherOwner, anyone1, anyone2, anyone3, anyone4, anyone5, anyone6, anyone7] = accounts;
+  const [owner, anyone1] = accounts;
   describe('BurnRedeem', function () {
     let creator, burnRedeem, burnable721, burnable721_2, burnable1155, burnable1155_2;
     beforeEach(async function () {
