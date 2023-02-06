@@ -4,7 +4,7 @@ const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-so
 const ERC1155Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC1155Creator');
 const ethers = require('ethers');
 
-const MANIFOLD_FEE = ethers.BigNumber.from('690000000000000');
+const BURN_FEE = ethers.BigNumber.from('690000000000000');
 
 contract('ERC1155BurnRedeem', function ([...accounts]) {
   const [owner, anyone1] = accounts;
@@ -232,7 +232,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
             merkleProof: [ethers.utils.formatBytes32String("")]
           },
         ],
-        {from:anyone1, value: MANIFOLD_FEE}
+        {from:anyone1, value: BURN_FEE}
       )
 
 

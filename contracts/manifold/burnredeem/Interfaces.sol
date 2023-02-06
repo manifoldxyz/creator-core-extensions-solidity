@@ -21,3 +21,7 @@ interface OZBurnable1155 {
 interface Manifold1155 {
     function burn(address account, uint256[] memory tokenIds, uint256[] memory amounts) external;
 }
+
+interface IManifoldMembership {
+   function isActiveMember(address sender) external view returns (bool);
+} 

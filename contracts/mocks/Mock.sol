@@ -71,3 +71,15 @@ contract MockRegistry {
 
     function registerAndSubscribe(address registrant, address subscription) external {}
 }
+
+contract MockManifoldMembership {
+    mapping(address => bool) private _members;
+
+    function setMember(address member, bool isMember) public {
+        _members[member] = isMember;
+    }
+
+    function isActiveMember(address sender) external view returns (bool) {
+        return _members[sender];
+    }
+}
