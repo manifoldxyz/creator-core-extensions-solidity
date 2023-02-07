@@ -3,6 +3,7 @@ const ERC1155BurnRedeem = artifacts.require("ERC1155BurnRedeem");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
 const ERC1155Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC1155Creator');
 const ethers = require('ethers');
+const MockManifoldMembership = artifacts.require('MockManifoldMembership');
 
 const BURN_FEE = ethers.BigNumber.from('690000000000000');
 
@@ -13,6 +14,8 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
     beforeEach(async function () {
       creator = await ERC1155Creator.new("Test", "TEST", {from:owner});
       burnRedeem = await ERC1155BurnRedeem.new("Test", "TEST", {from:owner});
+      manifoldMembership = await MockManifoldMembership.new({from:owner});
+      await burnRedeem.setMembershipAddress(manifoldMembership.address);
       burnable1155 = await ERC1155Creator.new("Test", "TEST", {from:owner});
       burnable1155_2 = await ERC1155Creator.new("Test", "TEST", {from:owner});
       burnable721 = await ERC721Creator.new("Test", "TEST", {from:owner});
@@ -237,6 +240,83 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
 
       assert.equal('XXX', await creator.uri(1));
+    });
+
+    it('onERC1155Received test - multiple redemptions', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "bytes32[]"], [creator.address, 1, 0, []]);
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner });
+
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(0, balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(10, balance);
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 6,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 1,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          redeemAmount: 2,
+          redeemTokenId: 0,
+        },
+        {from:owner}
+      );
+
+      // Receiver functions require membership
+      await manifoldMembership.setMember(anyone1, true, {from:owner});
+
+      // Passes with value == 2 * burnItem.amount (2 redemptions)
+      await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}));
+
+      // Ensure tokens are burned/minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(8, balance);
+      balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(4, balance);
+
+      // Passes with value == 2 * burnItem.amount (2 redemptions), but only 1 redemption left
+      await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}));
+
+      // Ensure tokens are burned/returned/minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      // Only 1 redemption left, so 1 token is returned
+      assert.equal(7, balance);
+      balance = await creator.balanceOf(anyone1, 1);
+      assert.equal(6, balance);
+
+      // Reverts with no redemptions left
+      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "No tokens available");
     });
   });
 });

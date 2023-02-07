@@ -18,7 +18,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
       burnRedeem = await ERC721BurnRedeem.new({from:owner});
       manifoldMembership = await MockManifoldMembership.new({from:owner});
-      burnRedeem.setMembershipAddress(manifoldMembership.address);
+      await burnRedeem.setMembershipAddress(manifoldMembership.address);
       burnable721 = await ERC721Creator.new("Test", "TEST", {from:owner});
       burnable721_2 = await ERC721Creator.new("Test", "TEST", {from:owner});
       burnable1155 = await ERC1155Creator.new("Test", "TEST", {from:owner});
@@ -620,7 +620,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
 
       // Check that cost was sent to creator
       const creatorBalanceAfter = await web3.eth.getBalance(owner);
-      assert(ethers.BigNumber.from(creatorBalanceBefore).add(cost).eq(creatorBalanceAfter));
+      assert.equal(ethers.BigNumber.from(creatorBalanceBefore).add(cost).toString(), creatorBalanceAfter);
     });
 
     it('burnRedeem test - with membership', async function() {
@@ -686,6 +686,142 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           {from:anyone1}
         )
       );
+    });
+
+    it('burnRedeem test - multiple redemptions', async function() {
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+
+      // Mint burnable tokens
+      await burnable721.mintBase(anyone1, { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
+      
+      // Burn #1
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable721.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+      // Burn #2
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        2,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 1,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 1,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+
+      // Set approvals
+      await burnable721.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
+      await burnable1155.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
+
+      const userBalanceBefore = await web3.eth.getBalance(anyone1);
+
+      // Passes with multiple redemptions
+      const tx = await burnRedeem.methods['burnRedeem(address[],uint256[],(uint48,uint48,address,uint256,bytes32[])[][])'](
+        [creator.address, creator.address, creator.address],
+        [1, 2, 2],
+        [
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: burnable721.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            }
+          ],
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: burnable1155.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            }
+          ],
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: burnable1155.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            }
+          ]
+        ],
+        {from:anyone1, value: BURN_FEE.mul(3)}
+      );
+
+      const userBalanceAfter = await web3.eth.getBalance(anyone1);
+
+      let balance = await burnable721.balanceOf(anyone1);
+      assert.equal(0, balance);
+      // 1 token burned for Burn #2 (sold out thereafter), the second should not be burned
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(1, balance);
+      // Only 2 redemptions should have gone through
+      balance = await creator.balanceOf(anyone1);
+      assert.equal(2, balance);
+
+      // User should only be charged for 2 burn redeems
+      const cost = BURN_FEE.mul(2);
+      const gasFee = tx.receipt.gasUsed * tx.receipt.effectiveGasPrice;
+      assert.equal(ethers.BigNumber.from(userBalanceBefore).sub(cost).sub(gasFee).toString(), userBalanceAfter);
     });
 
     it('onERC721Received test', async function() {
@@ -758,7 +894,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal(1, balance);
     });
 
-    it('onERC11555Received test', async function() {
+    it('onERC1155Received test', async function() {
 
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
@@ -828,7 +964,83 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal(1, balance);
     });
 
-    it('onERC11555BatchReceived test', async function() {
+    it('onERC1155Received test - multiple redemptions', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "bytes32[]"], [creator.address, 1, 0, []]);
+
+      // Mint burnable tokens
+      await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner });
+
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1);
+      assert.equal(0, balance);
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(10, balance);
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 3,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 1,
+                  amount: 2,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+
+      // Receiver functions require membership
+      await manifoldMembership.setMember(anyone1, true, {from:owner});
+
+      // Passes with value == 2 * burnItem.amount (2 redemptions)
+      await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}));
+
+      // Ensure tokens are burned/minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(6, balance);
+      balance = await creator.balanceOf(anyone1);
+      assert.equal(2, balance);
+
+      // Passes with value == 2 * burnItem.amount (2 redemptions), but only 1 redemption left
+      await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}));
+
+      // Ensure tokens are burned/returned/minted
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      // Only 1 redemption left, so 2 tokens are returned
+      assert.equal(4, balance);
+      balance = await creator.balanceOf(anyone1);
+      assert.equal(3, balance);
+
+      // Reverts with no redemptions left
+      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}), "No tokens available");
+    });
+
+    it('onERC1155BatchReceived test', async function() {
 
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch

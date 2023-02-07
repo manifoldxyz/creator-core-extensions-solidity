@@ -63,9 +63,27 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
     }
 
     /**
-     * Helper to mint the redeem token
+     * Helper to check the remaining number of redemptions available
      */
-    function _mint(address creatorContractAddress, uint256 index, BurnRedeem storage _burnRedeem, address to) internal override {
+    function _redemptionsRemaining(address creatorContractAddress, uint256 index, BurnRedeem storage _burnRedeem) internal override view returns(uint256) {
+        if (_burnRedeem.totalSupply == 0) {
+            return MAX_UINT_256;
+        }
+        ExtendedConfig storage config = _configs[creatorContractAddress][index];
+        return (_burnRedeem.totalSupply - _burnRedeem.redeemedCount) / config.redeemAmount;
+    }
+
+    /**
+     * Helper to mint redeem token
+     */
+    function _redeem(address creatorContractAddress, uint256 index, BurnRedeem storage _burnRedeem, address to) internal override {
+        _redeem(creatorContractAddress, index, _burnRedeem, to, /* count = */ 1);
+    }
+
+    /**
+     * Helper to mint multiple redeem tokens
+     */
+    function _redeem(address creatorContractAddress, uint256 index, BurnRedeem storage _burnRedeem, address to, uint32 count) internal override {
         ExtendedConfig storage config = _configs[creatorContractAddress][index];
         
         address[] memory addresses = new address[](1);
@@ -73,13 +91,12 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = config.redeemTokenId;
         uint256[] memory values = new uint256[](1);
-        values[0] = config.redeemAmount;
+        values[0] = config.redeemAmount * count;
         
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(addresses, tokenIds, values);
-        _burnRedeem.redeemedCount += config.redeemAmount;
+        _burnRedeem.redeemedCount += uint32(values[0]);
 
         emit BurnRedeemMint(creatorContractAddress, index, config.redeemTokenId);
-
     }
 
     /**
