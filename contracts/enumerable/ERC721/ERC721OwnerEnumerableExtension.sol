@@ -43,7 +43,7 @@ abstract contract ERC721OwnerEnumerableExtension is ERC721CreatorExtensionApprov
         return _creatorOwnerBalance[creator][owner];
     }
 
-    function approveTransfer(address from, address to, uint256 tokenId) external override returns (bool) {
+    function approveTransfer(address, address from, address to, uint256 tokenId) external override returns (bool) {
         if (from != address(0) && from != to) {
             _removeTokenFromOwnerEnumeration(from, tokenId);
         }

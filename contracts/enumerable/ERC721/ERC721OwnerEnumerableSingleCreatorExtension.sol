@@ -47,7 +47,7 @@ abstract contract ERC721OwnerEnumerableSingleCreatorBase is ERC721SingleCreatorE
         return _ownerBalance[owner];
     }
 
-    function approveTransfer(address from, address to, uint256 tokenId) external override returns (bool) {
+    function approveTransfer(address, address from, address to, uint256 tokenId) external override returns (bool) {
         require(msg.sender == _creator, "Invalid caller");
         if (from != address(0) && from != to) {
             _removeTokenFromOwnerEnumeration(from, tokenId);

@@ -37,9 +37,9 @@ These are extensions that can be installed by any Manifold Creator contract to g
 #### Manifold ERC721 Edition
 Provides a more efficient way to batch mint NFTs to one or many addresses
 
-**Rinkeby**
+**Goerli**
 ```
-0x53963B7C101c844Ec2A9D63B40e1dc93e5ba4A35
+0x9cac159ec266E76ed7377b801f3b5d2cC7bcf40d
 ```
 
 **Mainnet**
@@ -50,39 +50,53 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 #### Manifold Lazy Claim
 These are ERC721 and ERC1155 Lazy Claim extensions.
 
-**ERC721 Rinkeby**
+**ERC721 Goerli**
 ```
-0x3e625b7521fa1ec922bd561b766d80e05316d035
+0xC3Ba6907a64d63A28E5BE8bFF9c6c1EaD7Ce7EA7
 ```
 
 **ERC721 Mainnet**
 ```
-0xb08Aa31Cc2B8C0582bE42D38Bb643292e0A4b9EB
+0xa46f952645D4DeEc07A7Cd98D1Ec9EC888d4b61E
 ```
 
-**ERC1155 Rinkeby**
+**ERC1155 Goerli**
 ```
-0x30185652e86b922110a28F952E977D6EBbb83d2D
+0xa402f5e27b5da8D6593f6bEDE97BE5820529D64a
 ```
 
 **ERC1155 Mainnet**
 ```
-0xca71c5270EFf44Eb6D813A92c0ba12577bDDf208
+0x44e94034AFcE2Dd3CD5Eb62528f239686Fc8f162
 ```
 
-#### Manifold Frozen Metadata
-These are ERC721 Frozen Metadata extensions.
+#### OperatorFilterer
+Shared extension to support OpenSea's Operator Filter Registry
 
-**ERC721 Rinkeby**
-```
-0x1F4B810bf5A9C12cF32ff664144B58e02a6Cb82E
-```
+contracts/manifold/operatorfiltere/OperatorFilterer.sol and referring to the following implementation addresses:
 
-**ERC721 Mainnet**
+**Goerli**
 ```
-0x5bEf5e3274e0574502F618b1d3152a06e9e45AEd
+0x851b63Bf5f575eA68A84baa5Ff9174172E4d7838   # Subscribed to OpenSea's registry
 ```
 
+**Mainnet**
+```
+0x1dE06D2875453a272628BbB957077d18eb4A84CD  # Subscribed to OpenSea's registry
+```
+
+#### CreatorOperatorFilterer
+Shared extension to support Creator Controlled operator filters
+
+**Goerli**
+```
+0x1CCCeFAD6E9a3226C2A218662EdF7D465D184893
+```
+
+**Mainnet**
+```
+0x3E31CB740351D8650b36e8Ece95A8Efcd1fc28C2
+```
 
 ### Customized Lightweight Proxies
 You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
@@ -98,9 +112,9 @@ e.g.
 
 contracts/edition/ERC721PrefixEditionTemplate.sol and referring to the following implementation addresses:
 
-**Rinkeby**
+**Goerli**
 ```
-0x3AD50422Ac43D4F0E30AAF73A0b07A907618C548
+0x...
 ```
 
 **Mainnet**
@@ -113,9 +127,9 @@ Numbered editions assume that all metadata is unchanging except for the Edition 
 
 contracts/edition/ERC721NumberedEditionTemplate.sol and referring to the following implementation addresses:
 
-**Rinkeby**
+**Goerli**
 ```
-0x211AAcd0b144F1e51b2633D38d8Ac2F864dE7042
+0x...
 ```
 
 **Mainnet**
@@ -129,15 +143,16 @@ Numbered editions which may be used for Nifty Gateway open edition sales.
 
 contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referring to the following implementation addresses:
 
-**Rinkeby**
+**Goerli**
 ```
-0xFB19a709486e758DfC340F9ad1AAd2bD604cf30d
+0x...
 ```
 
 **Mainnet**
 ```
 0x...
 ```
+
 
 ## Running the package unit tests
 

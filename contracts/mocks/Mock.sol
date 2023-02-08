@@ -16,7 +16,7 @@ contract MockERC721Creator is ERC721Creator {
 }
 
 contract MockERC1155Creator is ERC1155Creator {
-     constructor () ERC1155Creator() {}
+     constructor (string memory _name, string memory _symbol) ERC1155Creator(_name, _symbol) {}
 }
 
 contract MockERC721OwnerEnumerableExtension is ERC721OwnerEnumerableExtension {
@@ -48,4 +48,26 @@ contract MockETHReceiver {
             unchecked{ j++; }
         }
     }
+}
+
+contract MockRegistry {
+    address[] public _failOperators;
+
+    function setBlockedOperators(address[] memory failOperators) public {
+        for (uint i = 0; i < failOperators.length; i++) {
+            _failOperators.push(failOperators[i]);
+        }
+    }
+
+    function isOperatorAllowed(address, address operator) external view returns (bool) {
+        for (uint i = 0; i < _failOperators.length; i++) {
+            if (_failOperators[i] == operator) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function registerAndSubscribe(address registrant, address subscription) external {}
 }

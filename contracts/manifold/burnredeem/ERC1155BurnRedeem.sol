@@ -2,14 +2,52 @@
 
 pragma solidity ^0.8.0;
 
+/////////////////////////////////////////////////////////////////////////////////////
+//                                                                                 //
+//                                                                                 //
+//                                     .%(#.                                       //
+//                                      #(((#%,                                    //
+//                                      (#(((((#%*                                 //
+//                                      /#((((((((##*                              //
+//                                      (#((((((((((##%.                           //
+//                                     ,##(/*/(////((((#%*                         //
+//                                   .###(//****/////(((##%,                       //
+//                  (,          ,%#((((((///******/////((##%(                      //
+//                *((,         ,##(///////*********////((###%*                     //
+//              /((((         ,##(//////************/(((((###%                     //
+//             /((((         ,##((////***************/((((###%                     //
+//             (((          .###((///*****************((((####                     //
+//             .            (##((//*******************((((##%*                     //
+//               (#.       .###((/********************((((##%.      %.             //
+//             ,%(#.       .###(/********,,,,,,,*****/(((###%#     ((%,            //
+//            /%#/(/       /###(//****,,,,,,,,,,,****/((((((##%%%%#((#%.           //
+//           /##(//(#.    ,###((/****,,,,,,,,,,,,,***/((/(((((((((#####%           //
+//          *%##(/////((###((((/***,,,,,,,,,,,,,,,***//((((((((((####%%%/          //
+//          ####(((//////(//////**,,,,,,.....,,,,,,****/(((((//((####%%%%          //
+//         .####(((/((((((/////**,,,,,.......,,,,,,,,*****/////(#####%%%%          //
+//         .#%###((////(((//***,,,,,,..........,,,,,,,,*****//((#####%%%%          //
+//          /%%%###/////*****,,,,,,,..............,,,,,,,****/(((####%%%%          //
+//           /%%###(////****,,,,,,.....        ......,,,,,,**(((####%%%%           //
+//            ,#%###(///****,,,,,....            .....,,,,,***/(/(##%%(            //
+//              (####(//****,,....                 ....,,,,,***/(####              //
+//                (###(/***,,,...                    ...,,,,***(##/                //
+//             #.   (#((/**,,,,..                    ...,,,,*((#,                  //
+//               ,#(##(((//,,,,..                   ...,,,*/(((#((/                //
+//                  *#(((///*,,....                ....,*//((((                    //
+//                      *(///***,....            ...,***//,                        //
+//                           ,//***,...       ..,,*,                               //
+//                                                                                 //
+//                                                                                 //
+/////////////////////////////////////////////////////////////////////////////////////
+
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
-import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
+import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 
-import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import "./IERC1155BurnRedeem.sol";
@@ -17,14 +55,13 @@ import "./IERC1155BurnRedeem.sol";
 /**
  * @title Burn Redeem
  * @author manifold.xyz
- * @notice Burn Redeem shared extension for Manifold Studio.
+ * @notice Burn Redeem shared extension for Manifold Creator contracts.
  */
 contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionTokenURI {
     using Strings for uint256;
 
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
-    uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     // stores mapping from tokenId to the burn redeem it represents
     // { creatorContractAddress => { tokenId => BurnRedeem } }
@@ -46,8 +83,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
      * @param creatorContractAddress    the address of the creator contract to check the admin against
      */
     modifier creatorAdminRequired(address creatorContractAddress) {
-        AdminControl creatorCoreContract = AdminControl(creatorContractAddress);
-        require(creatorCoreContract.isAdmin(msg.sender), "Wallet is not an administrator for contract");
+        require(IAdminControl(creatorContractAddress).isAdmin(msg.sender), "Wallet is not an admin");
         _;
     }
 
@@ -63,12 +99,18 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         require(_burnRedeems[creatorContractAddress][index].burnTokenAddress == address(0), "Burn redeem already initialized");
 
         // Sanity checks
-        require(ERC165Checker.supportsInterface(burnRedeemParameters.burnTokenAddress, type(IERC1155CreatorCore).interfaceId), "burnTokenAddress must be a ERC1155Creator contract");
-        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "Cannot have startDate greater than or equal to endDate");
+        require(ERC165Checker.supportsInterface(burnRedeemParameters.burnTokenAddress, type(IERC1155CreatorCore).interfaceId), "burnToken must be ERC1155Creator");
+        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
+        require(burnRedeemParameters.totalSupply == 0 || burnRedeemParameters.totalSupply % burnRedeemParameters.redeemAmount == 0, "Remainder left from totalSupply");
 
+        address[] memory receivers = new address[](1);
+        receivers[0] = msg.sender;
+        string[] memory uris = new string[](1);
+        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
          // Create the burn redeem
         _burnRedeems[creatorContractAddress][index] = BurnRedeem({
-            redeemTokenId: MAX_UINT_256,
+            redeemTokenId: newTokenIds[0],
             burnTokenId: burnRedeemParameters.burnTokenId,
             burnTokenAddress: burnRedeemParameters.burnTokenAddress,
             startDate: burnRedeemParameters.startDate,
@@ -80,7 +122,8 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
             storageProtocol: burnRedeemParameters.storageProtocol,
             location: burnRedeemParameters.location
         });
-        
+        _redeemTokenIds[creatorContractAddress][newTokenIds[0]] = index;
+
         emit BurnRedeemInitialized(creatorContractAddress, index, msg.sender);
     }
 
@@ -93,15 +136,16 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         BurnRedeemParameters calldata burnRedeemParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
         BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][index];
+
         // Sanity checks
-        require(ERC165Checker.supportsInterface(burnRedeemParameters.burnTokenAddress, type(IERC1155).interfaceId), "burnTokenAddress must support ERC1155 interface");
+        require(ERC165Checker.supportsInterface(burnRedeemParameters.burnTokenAddress, type(IERC1155CreatorCore).interfaceId), "burnToken must be ERC1155Creator");
         require(burnRedeem.burnTokenAddress != address(0), "Burn redeem not initialized");
-        require(burnRedeem.totalSupply == 0 ||  burnRedeem.totalSupply <= burnRedeemParameters.totalSupply, "Cannot decrease totalSupply");
-        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "Cannot have startDate greater than or equal to endDate");
+        require(burnRedeemParameters.totalSupply == 0 || burnRedeemParameters.totalSupply % burnRedeemParameters.redeemAmount == 0, "Remainder left from totalSupply");
+        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
 
         // Overwrite the existing burnRedeem
         _burnRedeems[creatorContractAddress][index] = BurnRedeem({
-            redeemTokenId:burnRedeem.redeemTokenId,
+            redeemTokenId: burnRedeem.redeemTokenId,
             burnTokenId: burnRedeemParameters.burnTokenId,
             burnTokenAddress: burnRedeemParameters.burnTokenAddress,
             startDate: burnRedeemParameters.startDate,
@@ -194,27 +238,20 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         require(data.length % 96 == 32, "Invalid data");
         uint256 redemptionCount = (data.length - 32)/96;
 
-        address[] memory minterAddress = new address[](1);
-        minterAddress[0] = abi.decode(data[0:32], (address));
-        uint256[] memory redemptionAmount = new uint256[](1);
+        // Single value arrays used for mint calls
+        address[] memory mintToAddress = new address[](1);
+        mintToAddress[0] = abi.decode(data[0:32], (address));
 
-         // Iterate over calldata and validate
         uint256 amountRequired = 0;
+
+        // Iterate over redemptions in calldata and mint redeem tokens for each
         for (uint256 i = 0; i < redemptionCount;) {
-            // Read calldata
-            (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
-
-            (BurnRedeem storage burnRedeem, uint256 burnAmount, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, id, amount);
-
-            // Do mint if needed
-            if (amountToRedeem > 0) {
-                amountRequired += burnAmount;
-                redemptionAmount[0] = amountToRedeem;
-                _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
-                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId,amountToRedeem, msg.sender, id);
-            }
+            // Perform mint
+            (uint256 burnedAmount, ) = _performRedeem(mintToAddress, id, data, i);
+            amountRequired += burnedAmount;
             unchecked { ++i; }
         }
+
         require(amountRequired <= value, "Invalid value sent");
         require(amountRequired > 0, "None available");
 
@@ -229,7 +266,7 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
 
         // Return remaining tokens
         if (amountRequired < value) {
-            IERC1155(msg.sender).safeTransferFrom(address(this), from, id, value-amountRequired, "");
+            IERC1155(msg.sender).safeTransferFrom(address(this), from, id, value - amountRequired, "");
         }
     }
 
@@ -251,88 +288,117 @@ contract ERC1155BurnRedeem is IERC165, IERC1155BurnRedeem, ICreatorExtensionToke
         uint256 redemptionCount = (data.length - 32)/96;
         require(redemptionCount == ids.length, "Invalid data");
 
-        address[] memory minterAddress = new address[](1);
-        minterAddress[0] = abi.decode(data[0:32], (address));
-        uint256[] memory redemptionAmount = new uint256[](1);
+        // Single value arrays used for mint calls
+        address[] memory mintToAddress = new address[](1);
+        mintToAddress[0] = abi.decode(data[0:32], (address));
 
         // Track excess values
-        uint256[] memory consumedValues = new uint256[](redemptionCount);
+        uint256[] memory burnedValues = new uint256[](redemptionCount);
         uint256[] memory remainingValues = new uint256[](redemptionCount);
 
         // Track if tokens were redeemed
         bool tokensRedeemed = false;
         bool excessValues = false;
 
-        // Iterate over calldata
+        // Iterate over redemptions in calldata and mint redeem tokens for each
         for (uint256 i = 0; i < redemptionCount;) {
-            // Read calldata
-            (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
-
-            (BurnRedeem storage burnRedeem, uint256 burnAmount, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, ids[i], amount);
-
-            // Do mint if needed
-            if (amountToRedeem > 0) {
-                // Store consumed and excess values
-                consumedValues[i] = burnAmount;
-                if (burnAmount != values[i]) {
-                    remainingValues[i] = values[i] - burnAmount;
+            uint256 id = ids[i];
+            uint256 value = values[i];
+            // Perform mint
+            (uint256 burnedAmount, uint256 redeemedAmount) = _performRedeem(mintToAddress, id, data, i);
+            if (burnedAmount > 0) {
+                burnedValues[i] = burnedAmount;
+                // Store burned and excess values
+                if (burnedAmount != value) {
+                    remainingValues[i] = value - burnedAmount;
                     excessValues = true;
                 }
-                // Store values for mint
-                redemptionAmount[0] = amountToRedeem;
+
+            } else {
+                 // Store excess values
+                remainingValues[i] = value;
+                excessValues = true;
+            }
+            if (redeemedAmount > 0) {
                 tokensRedeemed = true;
-                _mintRedeem(creatorContractAddress, index, burnRedeem, minterAddress, redemptionAmount);
-                emit BurnRedeemMint(creatorContractAddress, burnRedeem.redeemTokenId, amountToRedeem, msg.sender, ids[i]);
             }
             unchecked { ++i; }
         }
 
         require(tokensRedeemed, "None available");
 
+        // Return remaining tokens
         if (excessValues) {
-            for (uint256 i = 0; i < redemptionCount; i++) {
-                if (remainingValues[i] > 0) {
-                    IERC1155(msg.sender).safeTransferFrom(address(this), from, ids[i], remainingValues[i], "");
-                }
-            }
+            _returnTokens(from, ids, remainingValues);
         }
 
         // Do burn
-        IERC1155CreatorCore(msg.sender).burn(address(this), ids, consumedValues);
+        IERC1155CreatorCore(msg.sender).burn(address(this), ids, burnedValues);
     }
 
     /**
-     * Mint a redemption
+     * Helper to return excess tokens
      */
-    function _mintRedeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeem, address[] memory minterAddress, uint256[] memory redeemAmounts) private {
-        if (burnRedeem.redeemTokenId == MAX_UINT_256) {
-            // No token minted yet, mint new token
-            string [] memory uris = new string[](1);
-            uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(minterAddress, redeemAmounts, uris);
-            burnRedeem.redeemTokenId = newTokenIds[0];
-            _redeemTokenIds[creatorContractAddress][newTokenIds[0]] = index;
-        } else {
-            uint256[] memory tokenIds = new uint256[](1);
-            tokenIds[0] = burnRedeem.redeemTokenId;
-            IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(minterAddress, tokenIds, redeemAmounts);
+    function _returnTokens(address recipient, uint256[] calldata tokenIds, uint256[] memory values) private {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            uint256 value = values[i];
+            if (value > 0) {
+                IERC1155(msg.sender).safeTransferFrom(address(this), recipient, tokenId, value, "");
+            }
         }
+    }
+
+    /**
+     * Helper to perform the redemption
+     */
+    function _performRedeem(address[] memory mintToAddress, uint256 burnTokenId, bytes calldata data, uint256 i) private returns(uint256 burnedAmount, uint256 redeemedAmount) {
+        (address creatorContractAddress, uint256 index, uint32 amount) = abi.decode(data[32+i*96:32+(i+1)*96], (address, uint256, uint32));
+        (BurnRedeem storage burnRedeem, uint256 amountToBurn, uint256 amountToRedeem) = _retrieveActiveBurnRedeem(creatorContractAddress, index, burnTokenId, amount);
+
+        // Do mint if needed
+        if (amountToRedeem > 0) {
+            burnedAmount = amountToBurn;
+            redeemedAmount = amountToRedeem;
+            // Mint redemption
+            _mintRedeem(mintToAddress, burnTokenId, creatorContractAddress, burnRedeem.redeemTokenId, amountToRedeem);
+        }
+    }
+
+
+    /**
+     * Helper to mint the redeemed token
+     */
+    function _mintRedeem(address[] memory mintToAddress, uint256 burnTokenId, address creatorContractAddress, uint256 tokenId, uint256 value) private {
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+        uint256[] memory values = new uint256[](1);
+        values[0] = value;
+        
+        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(mintToAddress, tokenIds, values);
+        emit BurnRedeemMint(creatorContractAddress, tokenId, value, msg.sender, burnTokenId);
+
     }
 
     /**
      * Returns active burn redeem, amount to burn and amount of redemptions that can occur
      */
-    function _retrieveActiveBurnRedeem(address creatorContractAddress, uint256 index, uint256 burnTokenId, uint256 amount) private returns(BurnRedeem storage burnRedeem, uint256 burnAmount, uint256 amountToRedeem) {
+    function _retrieveActiveBurnRedeem(address creatorContractAddress, uint256 index, uint256 burnTokenId, uint256 amount) private returns(BurnRedeem storage burnRedeem, uint256 amountToBurn, uint256 amountToRedeem) {
         burnRedeem = _burnRedeems[creatorContractAddress][index];
+
+        // Sanity checks
         require(burnRedeem.startDate == 0 || burnRedeem.startDate < block.timestamp, "Transaction before start date");
         require(burnRedeem.endDate == 0 || burnRedeem.endDate >= block.timestamp, "Transaction after end date");
         require(burnRedeem.burnTokenAddress == msg.sender && burnRedeem.burnTokenId == burnTokenId, "Token not eligible");
-        if (burnRedeem.totalSupply > 0 && burnRedeem.redeemedCount < burnRedeem.totalSupply) {
+
+        if (burnRedeem.totalSupply == 0 || burnRedeem.redeemedCount < burnRedeem.totalSupply) {
             amountToRedeem = burnRedeem.redeemAmount * amount;
-            burnAmount = burnRedeem.burnAmount * amount;
+            amountToBurn = burnRedeem.burnAmount * amount;
+
             // Too many requested, consume the remaining
-            if (burnRedeem.redeemedCount + amountToRedeem > burnRedeem.totalSupply) {
+            if (burnRedeem.totalSupply > 0 && burnRedeem.redeemedCount + amountToRedeem > burnRedeem.totalSupply) {
                 amountToRedeem = burnRedeem.totalSupply - burnRedeem.redeemedCount;
-                burnAmount = amountToRedeem/burnRedeem.burnAmount;
+                amountToBurn = amountToRedeem / burnRedeem.redeemAmount * burnRedeem.burnAmount;
             }
             unchecked{ burnRedeem.redeemedCount += uint32(amountToRedeem); }
         }
