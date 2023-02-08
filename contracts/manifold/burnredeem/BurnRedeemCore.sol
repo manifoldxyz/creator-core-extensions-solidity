@@ -108,11 +108,10 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         BurnRedeemParameters calldata burnRedeemParameters
     ) internal {
         BurnRedeem storage _burnRedeem = _burnRedeems[creatorContractAddress][index];
-        // Revert if burnRedeem at index already exists
-        require(_burnRedeem.storageProtocol == StorageProtocol.INVALID, "Burn redeem already initialized");
 
-        // Sanity check
-        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
+        // Sanity checks
+        require(_burnRedeem.storageProtocol == StorageProtocol.INVALID, "Burn redeem already initialized");
+        _validateParameters(burnRedeemParameters);
 
         // Create the burn redeem
         _setParameters(_burnRedeem, burnRedeemParameters);
@@ -133,7 +132,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Sanity checks
         require(_burnRedeem.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
-        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
+        _validateParameters(burnRedeemParameters);
 
         // Overwrite the existing burnRedeem
         _setParameters(_burnRedeem, burnRedeemParameters);
@@ -158,7 +157,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         require(msg.value == _burnRedeem.cost + fee, "Invalid value sent");
 
         _validateBurnRedeem(_burnRedeem);
-        _forwardValue(creatorContractAddress, _burnRedeem);
+        _forwardValue(_burnRedeem);
 
         // Do burn redeem
         _burnTokens(_burnRedeem, burnTokens, msg.sender);
@@ -189,7 +188,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             uint256 fee = isActiveMember ? 0 : _getManifoldFee(burnTokens[i].length, false);
             valueLeft -= fee + _burnRedeem.cost;
             _validateBurnRedeem(_burnRedeem, /* checkSupply = */ false);
-            _forwardValue(creatorContractAddresses[i], _burnRedeem);
+            _forwardValue(_burnRedeem);
 
             // Do burn redeem
             _burnTokens(_burnRedeem, burnTokens[i], msg.sender);
@@ -424,9 +423,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Forward burn redeem cost to the burn redeem's owner
      */
-    function _forwardValue(address creatorContractAddress, BurnRedeem storage _burnRedeem) private {
+    function _forwardValue(BurnRedeem storage _burnRedeem) private {
         if (_burnRedeem.cost > 0) {
-            payable(Ownable(creatorContractAddress).owner()).sendValue(_burnRedeem.cost);
+            _burnRedeem.paymentReceiver.sendValue(_burnRedeem.cost);
         }
     }
 
@@ -453,6 +452,15 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     }
 
     /**
+     * Helper to validate the parameters for a burn redeem
+     */
+    function _validateParameters(BurnRedeemParameters calldata burnRedeemParameters) internal pure {
+        require(burnRedeemParameters.storageProtocol != StorageProtocol.INVALID, "Storage protocol invalid");
+        require(burnRedeemParameters.paymentReceiver != address(0), "Payment receiver required");
+        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
+    }
+
+    /**
      * Helper to set top level properties for a burn redeem
      */
     function _setParameters(BurnRedeem storage _burnRedeem, BurnRedeemParameters calldata burnRedeemParameters) private {
@@ -462,6 +470,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         _burnRedeem.storageProtocol = burnRedeemParameters.storageProtocol;
         _burnRedeem.location = burnRedeemParameters.location;
         _burnRedeem.cost = burnRedeemParameters.cost;
+        _burnRedeem.paymentReceiver = burnRedeemParameters.paymentReceiver;
     }
 
     /**

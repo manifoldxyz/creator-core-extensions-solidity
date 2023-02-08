@@ -44,6 +44,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [],
         },
         {
@@ -63,6 +64,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [],
         },
         {
@@ -87,6 +89,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [],
         },
         {
@@ -106,6 +109,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [],
         },
         {
@@ -129,6 +133,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [],
         },
         {
@@ -148,6 +153,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [],
         },
         {
@@ -171,6 +177,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: anyone1,
           burnSet: [
             {
               requiredCount: 1,
@@ -226,6 +233,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -290,6 +298,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -552,6 +561,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: cost,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -640,6 +650,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -707,6 +718,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -741,6 +753,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -851,6 +864,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -921,6 +935,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -990,6 +1005,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -1098,6 +1114,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 2,

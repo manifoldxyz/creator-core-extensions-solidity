@@ -37,6 +37,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint48 startDate;
         uint48 endDate;
         uint32 totalSupply;
+        address payable paymentReceiver;
         StorageProtocol storageProtocol;
         string location;
         uint256 cost;
@@ -48,6 +49,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint48 endDate;
         uint32 redeemedCount;
         uint32 totalSupply;
+        address payable paymentReceiver;
         StorageProtocol storageProtocol;
         string location;
         uint256 cost;

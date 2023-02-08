@@ -41,6 +41,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: anyone1,
           burnSet: []
         },
         {
@@ -61,6 +62,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: []
         },
         {
@@ -86,6 +88,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: []
         },
         {
@@ -106,6 +109,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: []
         },
         {
@@ -130,6 +134,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: []
         },
         {
@@ -150,6 +155,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: []
         },
         {
@@ -170,6 +176,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: []
         },
         {
@@ -194,6 +201,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
@@ -268,6 +276,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
+          paymentReceiver: owner,
           burnSet: [
             {
               requiredCount: 1,
