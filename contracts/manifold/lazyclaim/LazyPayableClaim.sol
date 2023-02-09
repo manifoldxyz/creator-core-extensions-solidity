@@ -70,8 +70,9 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     function _transferFunds(uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
         uint256 totalCost = cost;
-        if (MEMBERSHIP_ADDRESS != address(0)) {
-            if (!IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
+        address membershipAddress = MEMBERSHIP_ADDRESS;
+        if (membershipAddress != address(0)) {
+            if (!IManifoldMembership(membershipAddress).isActiveMember(msg.sender)) {
                 totalCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
             }
         } else {
@@ -84,7 +85,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
         // Check price
         require(msg.value == totalCost, "Invalid amount");
-        if (cost > 0) {
+        if (cost != 0) {
             // solhint-disable-next-line
             (bool sent, ) = recipient.call{value: cost}("");
             require(sent, "Failed to transfer to receiver");
@@ -92,8 +93,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     }
 
     function _checkMintIndex(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) internal view returns (bool) {
-        uint256 claimMintIndex = mintIndex >> 8;
         require(merkleRoot != "", "Can only check merkle claims");
+        uint256 claimMintIndex = mintIndex >> 8;
         uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
         uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
         return mintBitmask & claimMintTracking != 0;
