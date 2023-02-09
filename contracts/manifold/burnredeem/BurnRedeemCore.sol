@@ -64,8 +64,8 @@ import "./Interfaces.sol";
 abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurnRedeemCore, ICreatorExtensionTokenURI {
     using Strings for uint256;
 
-    uint256 internal constant BURN_FEE = 690000000000000;
-    uint256 internal constant MULTI_BURN_FEE = 990000000000000;
+    uint256 public constant BURN_FEE = 690000000000000;
+    uint256 public constant MULTI_BURN_FEE = 990000000000000;
 
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
