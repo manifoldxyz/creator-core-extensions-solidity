@@ -9,7 +9,7 @@ import "./IERC721RedeemBase.sol";
 /**
  * @dev Burn NFT's to receive another lazy minted NFT
  */
-interface IERC721BurnRedeem is IERC721RedeemBase {
+interface IERC721Burn is IERC721RedeemBase {
 
     /**
      * @dev Enable recovery of a given token. Can only be called by contract owner/admin.

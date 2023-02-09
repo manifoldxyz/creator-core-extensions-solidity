@@ -6,10 +6,9 @@ pragma solidity ^0.8.0;
 
 import "./IBurnRedeemCore.sol";
 
-interface IERC1155BurnRedeem is IBurnRedeemCore {
+interface IERC721BurnRedeem is IBurnRedeemCore {
     struct ExtendedConfig {
-        uint256 redeemTokenId;
-        uint32 redeemAmount;
+        bool identical;
     }
 
     /**
@@ -17,7 +16,7 @@ interface IERC1155BurnRedeem is IBurnRedeemCore {
      * @param creatorContractAddress    the creator contract the burn will mint redeem tokens for
      * @param index                     the index of the burnRedeem in the mapping of creatorContractAddress' _burnRedeems
      * @param burnRedeemParameters      the parameters which will affect the minting behavior of the burn redeem
-     * @param config                    configuration specific to the 1155 implementation
+     * @param config                    configuration specific to the 721 implementation
      */
     function initializeBurnRedeem(address creatorContractAddress, uint256 index, BurnRedeemParameters calldata burnRedeemParameters, ExtendedConfig calldata config) external;
 
@@ -26,7 +25,7 @@ interface IERC1155BurnRedeem is IBurnRedeemCore {
      * @param creatorContractAddress    the creator contract corresponding to the burn redeem
      * @param index                     the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
      * @param burnRedeemParameters      the parameters which will affect the minting behavior of the burn redeem
-     * @param config                    configuration specific to the 1155 implementation
+     * @param config                    configuration specific to the 721 implementation
      */
     function updateBurnRedeem(address creatorContractAddress, uint256 index, BurnRedeemParameters calldata burnRedeemParameters, ExtendedConfig calldata config) external;
 }
