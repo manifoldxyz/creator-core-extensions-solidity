@@ -4,6 +4,7 @@ const ERC721LazyPayableClaim = artifacts.require("ERC721LazyPayableClaim");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
 const DelegationRegistry = artifacts.require('DelegationRegistry');
 const MockETHReceiver = artifacts.require('MockETHReceiver');
+const MockManifoldMembership = artifacts.require('MockManifoldMembership');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
@@ -17,6 +18,8 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
       delegationRegistry = await DelegationRegistry.new();
       lazyClaim = await ERC721LazyPayableClaim.new(delegationRegistry.address, {from:owner});
+      manifoldMembership = await MockManifoldMembership.new({from:owner});
+      await lazyClaim.setMembershipAddress(manifoldMembership.address);
       fee = ethers.BigNumber.from((await lazyClaim.MINT_FEE()).toString());
       merkleFee = ethers.BigNumber.from((await lazyClaim.MINT_FEE_MERKLE()).toString());
 
