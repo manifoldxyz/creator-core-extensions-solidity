@@ -176,11 +176,12 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         bool isActiveMember = _isActiveMember(msg.sender);
         uint256 valueLeft = msg.value;
 
-        for (uint256 i = 0; i < creatorContractAddresses.length; i++) {
+        for (uint256 i; i < creatorContractAddresses.length;) {
             BurnRedeem storage _burnRedeem = _burnRedeems[creatorContractAddresses[i]][indexes[i]];
 
             // Skip burn redeem if no supply remains
             if (_redemptionsRemaining(_burnRedeem) == 0) {
+                unchecked { ++i; }
                 continue;
             }
 
@@ -192,6 +193,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             // Do burn redeem
             _burnTokens(_burnRedeem, burnTokens[i], msg.sender);
             _redeem(creatorContractAddresses[i], indexes[i], _burnRedeem, msg.sender);
+
+            unchecked { ++i; }
         }
 
         // Refund any excess value
@@ -379,11 +382,12 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         _validateBurnRedeem(_burnRedeem);
         require(burnTokens.length == ids.length, "Invalid number of burn tokens");
 
-        for (uint256 i = 0; i < burnTokens.length; i++) {
+        for (uint256 i; i < burnTokens.length;) {
             BurnToken memory burnToken = burnTokens[i];
             BurnItem memory burnItem = _burnRedeem.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
             require(burnToken.id == ids[i], "Invalid token");
             require(burnItem.amount == values[i], "Invalid amount");
+            unchecked { ++i; }
         }
 
         // Do burn redeem
@@ -415,8 +419,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
 
         // Do burn redeem
-        for (uint32 i = 0; i < redemptionCount; i++) {
+        for (uint32 i; i < redemptionCount;) {
             _burn(burnItem, address(this), msg.sender, id);
+            unchecked { ++i; }
         }
         _redeem(creatorContractAddress, index, _burnRedeem, from, redemptionCount);
     }
@@ -438,7 +443,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // Check that each group in the burn set is satisfied
         uint256[] memory groupCounts = new uint256[](_burnRedeem.burnSet.length);
 
-        for (uint256 i = 0; i < burnTokens.length; i++) {
+        for (uint256 i; i < burnTokens.length;) {
             BurnToken memory burnToken = burnTokens[i];
             BurnItem memory burnItem = _burnRedeem.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
 
@@ -446,10 +451,13 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             _burn(burnItem, account, burnToken.contractAddress, burnToken.id);
 
             groupCounts[burnToken.groupIndex] += 1;
+
+            unchecked { ++i; }
         }
 
-        for (uint256 i = 0; i < groupCounts.length; i++) {
+        for (uint256 i; i < groupCounts.length;) {
             require(groupCounts[i] == _burnRedeem.burnSet[i].requiredCount, "Invalid number of tokens");
+            unchecked { ++i; }
         }
     }
 
@@ -480,13 +488,15 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      */
     function _setBurnGroups(BurnRedeem storage _burnRedeem, BurnGroup[] calldata burnGroups) private {
         delete _burnRedeem.burnSet;
-        for (uint256 i = 0; i < burnGroups.length; i++) {
+        for (uint256 i; i < burnGroups.length;) {
             _burnRedeem.burnSet.push();
             BurnGroup storage burnGroup = _burnRedeem.burnSet[i];
             burnGroup.requiredCount = burnGroups[i].requiredCount;
-            for (uint256 j = 0; j < burnGroups[i].items.length; j++) {
+            for (uint256 j; j < burnGroups[i].items.length;) {
                 burnGroup.items.push(burnGroups[i].items[j]);
+                unchecked { ++j; }
             }
+            unchecked { ++i; }
         }
     }
 
