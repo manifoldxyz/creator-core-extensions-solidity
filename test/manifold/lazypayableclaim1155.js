@@ -436,9 +436,9 @@ contract('LazyPayableClaim', function ([...accounts]) {
         {from:owner}
       );
 
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(fee.mul(2))}), "Must pay more.");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')}), "Must pay more.");
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(fee.mul(2))}), "Invalid amount");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')}), "Invalid amount");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1}), "Invalid amount");
     });
 
     it('non-merkle mint test - check balance', async function () {
@@ -707,7 +707,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       // Test minting
 
       // Mint a token to random wallet
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Transaction before start date");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Claim inactive");
       await helper.advanceTimeAndBlock(start+1-(await web3.eth.getBlock('latest')).timestamp+1);
       await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)});
 
@@ -755,7 +755,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       // Reverts due to end of mint period
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 2]));
       const merkleProof3 = merkleTree.getHexProof(merkleLeaf3);
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)}), "Transaction after end date");
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)}), "Claim inactive");
     });
 
     it('airdrop test', async function () {

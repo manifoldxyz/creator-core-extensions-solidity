@@ -180,8 +180,11 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
         // Check timestamps
-        require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
-        require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
+        require(
+            (claim.startDate == 0 || claim.startDate < block.timestamp) &&
+            (claim.endDate == 0 || claim.endDate >= block.timestamp),
+            "Claim inactive"
+        );
 
         // Check totalMax
         require(claim.totalMax == 0 || claim.total < claim.totalMax, "Maximum tokens already minted for this claim");
@@ -210,10 +213,12 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
-
         // Check timestamps
-        require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
-        require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
+        require(
+            (claim.startDate == 0 || claim.startDate < block.timestamp) &&
+            (claim.endDate == 0 || claim.endDate >= block.timestamp),
+            "Claim inactive"
+        );
 
         // Check totalMax
         require(claim.totalMax == 0 || claim.total+mintCount <= claim.totalMax, "Too many requested for this claim");

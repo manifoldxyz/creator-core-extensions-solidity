@@ -171,12 +171,16 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
         // Check timestamps
-        require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
-        require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
+        require(
+            (claim.startDate == 0 || claim.startDate < block.timestamp) &&
+            (claim.endDate == 0 || claim.endDate >= block.timestamp),
+            "Claim inactive"
+        );
 
         // Check totalMax
         require(claim.totalMax == 0 || claim.total < claim.totalMax, "Maximum tokens already minted for this claim");
 
+        //  Validate mint
         _validateMint(creatorContractAddress, claimIndex, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
         unchecked{ ++claim.total; }
 
@@ -203,8 +207,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
         // Check timestamps
-        require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
-        require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
+        require(
+            (claim.startDate == 0 || claim.startDate < block.timestamp) &&
+            (claim.endDate == 0 || claim.endDate >= block.timestamp),
+            "Claim inactive"
+        );
 
         // Check totalMax
         require(claim.totalMax == 0 || claim.total+mintCount <= claim.totalMax, "Too many requested for this claim");
