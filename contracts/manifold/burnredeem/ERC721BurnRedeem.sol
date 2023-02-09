@@ -58,7 +58,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
      */
     function _redeem(address creatorContractAddress, uint256 index, BurnRedeem storage _burnRedeem, address to) internal override {
         uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(to);
-        _burnRedeem.redeemedCount += 1;
+        ++_burnRedeem.redeemedCount;
         _redeemTokens[creatorContractAddress][newTokenId] = RedeemToken(uint224(index), _burnRedeem.redeemedCount);
 
         emit BurnRedeemMint(creatorContractAddress, index, newTokenId);

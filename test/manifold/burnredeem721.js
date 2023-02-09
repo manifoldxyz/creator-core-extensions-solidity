@@ -11,7 +11,7 @@ const BURN_FEE = ethers.BigNumber.from('690000000000000');
 const MULTI_BURN_FEE = ethers.BigNumber.from('990000000000000');
 
 contract('ERC721BurnRedeem', function ([...accounts]) {
-  const [owner, anyone1] = accounts;
+  const [owner, anyone1, anyone2] = accounts;
   describe('BurnRedeem', function () {
     let creator, burnRedeem, burnable721, burnable721_2, burnable1155, burnable1155_2;
     beforeEach(async function () {
@@ -481,6 +481,32 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         "Invalid value"
       );
 
+      // Reverts when msg.sender is not token owner, but tokens are approved
+      await truffleAssert.reverts(
+        burnRedeem.burnRedeem(
+          creator.address,
+          1,
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: burnable721.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            },
+            {
+              groupIndex: 1,
+              itemIndex: 0,
+              contractAddress: burnable721_2.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            },
+          ],
+          {from:anyone2, value: MULTI_BURN_FEE}
+        ),
+        "Sender is not owner"
+      );
+
       // Passes with met requirements - range
       await truffleAssert.passes(
         burnRedeem.burnRedeem(
@@ -781,41 +807,53 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await burnable721.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
       await burnable1155.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
 
+      const addresses = [creator.address, creator.address, creator.address];
+      const indexes = [1, 2, 2];
+      const burnTokens = [
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable721.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          }
+        ],
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable1155.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          }
+        ],
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable1155.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          }
+        ]
+      ];
+
+      // Reverts with insufficient fee
+      await truffleAssert.reverts(burnRedeem.methods['burnRedeem(address[],uint256[],(uint48,uint48,address,uint256,bytes32[])[][])'](
+        addresses,
+        indexes,
+        burnTokens,
+        {from:anyone1, value: BURN_FEE}
+      ));
+
       const userBalanceBefore = await web3.eth.getBalance(anyone1);
 
       // Passes with multiple redemptions
       const tx = await burnRedeem.methods['burnRedeem(address[],uint256[],(uint48,uint48,address,uint256,bytes32[])[][])'](
-        [creator.address, creator.address, creator.address],
-        [1, 2, 2],
-        [
-          [
-            {
-              groupIndex: 0,
-              itemIndex: 0,
-              contractAddress: burnable721.address,
-              id: 1,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            }
-          ],
-          [
-            {
-              groupIndex: 0,
-              itemIndex: 0,
-              contractAddress: burnable1155.address,
-              id: 1,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            }
-          ],
-          [
-            {
-              groupIndex: 0,
-              itemIndex: 0,
-              contractAddress: burnable1155.address,
-              id: 1,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            }
-          ]
-        ],
+        addresses,
+        indexes,
+        burnTokens,
         {from:anyone1, value: BURN_FEE.mul(3)}
       );
 
@@ -915,14 +953,14 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "bytes32[]"], [creator.address, 1, 0, []]);
 
       // Mint burnable tokens
-      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
-      await burnable1155_2.mintBaseNew([anyone1], [2], [""], { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [3], [""], { from: owner });
+      await burnable1155_2.mintBaseNew([anyone1], [3], [""], { from: owner });
 
       // Ensure that the creator contract state is what we expect before mints
       let balance = await creator.balanceOf(anyone1);
       assert.equal(0, balance);
       balance = await burnable1155.balanceOf(anyone1, 1);
-      assert.equal(2, balance);
+      assert.equal(3, balance);
 
       await burnRedeem.initializeBurnRedeem(
         creator.address,
@@ -968,12 +1006,15 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       // Reverts due to wrong contract
       await truffleAssert.reverts(burnable1155_2.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}), "Invalid burn token");
 
+      // Reverts with invalid amount
+      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 3, burnRedeemData, {from:anyone1}), "Invalid amount");
+
       // Passes with right token id
       await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}));
 
       // Ensure tokens are burned/minted
       balance = await burnable1155.balanceOf(anyone1, 1);
-      assert.equal(0, balance);
+      assert.equal(1, balance);
       balance = await creator.balanceOf(anyone1);
       assert.equal(1, balance);
     });
