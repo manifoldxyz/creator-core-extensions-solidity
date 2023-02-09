@@ -20,7 +20,7 @@ import "./IERC721BurnRedeem.sol";
 /**
  * @dev Burn NFT's to receive another lazy minted NFT
  */
-contract ERC721BurnRedeem is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRedeem, IERC1155Receiver, IERC721Receiver {
+contract ERC721Burn is ReentrancyGuard, ERC721RedeemBase, IERC721Burn, IERC1155Receiver, IERC721Receiver {
     using EnumerableSet for EnumerableSet.UintSet;
 
     mapping (address => mapping (uint256 => address)) private _recoverableERC721;
@@ -31,12 +31,12 @@ contract ERC721BurnRedeem is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRedee
      * @dev See {IERC165-supportsInterface}.
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721RedeemBase, IERC165) returns (bool) {
-        return interfaceId == type(IERC721BurnRedeem).interfaceId || interfaceId == type(IERC1155Receiver).interfaceId
+        return interfaceId == type(IERC721Burn).interfaceId || interfaceId == type(IERC1155Receiver).interfaceId
             || interfaceId == type(IERC721Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /**
-     * @dev See {IERC721BurnRedeem-setERC721Recoverable}
+     * @dev See {IERC721Burn-setERC721Recoverable}
      */
     function setERC721Recoverable(address contract_, uint256 tokenId, address recoverer) external virtual override adminRequired {
         require(ERC165Checker.supportsInterface(contract_, type(IERC721).interfaceId), "BurnRedeem: Must implement IERC721");
@@ -44,7 +44,7 @@ contract ERC721BurnRedeem is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRedee
     }
 
     /**
-     * @dev See {IERC721BurnRedeem-recoverERC721}
+     * @dev See {IERC721Burn-recoverERC721}
      */
     function recoverERC721(address contract_, uint256 tokenId) external virtual override {
         address recoverer = _recoverableERC721[contract_][tokenId];
@@ -53,7 +53,7 @@ contract ERC721BurnRedeem is ReentrancyGuard, ERC721RedeemBase, IERC721BurnRedee
     }
 
     /**
-     * @dev See {IERC721BurnRedeem-redeemERC721}
+     * @dev See {IERC721Burn-redeemERC721}
      */
     function redeemERC721(address[] calldata contracts, uint256[] calldata tokenIds) external virtual override nonReentrant {
         require(contracts.length == tokenIds.length, "BurnRedeem: Invalid parameters");
