@@ -188,7 +188,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         amounts[0] = 1;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
 
-        emit ClaimMint(creatorContractAddress, _claimTokenIds[creatorContractAddress][claimIndex]);
+        emit ClaimMint(creatorContractAddress, claimIndex);
     }
 
     /**
