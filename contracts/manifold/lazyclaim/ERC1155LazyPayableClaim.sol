@@ -178,11 +178,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         );
 
         // Check totalMax
-        require(claim.totalMax == 0 || claim.total < claim.totalMax, "Maximum tokens already minted for this claim");
+        require(claim.totalMax == 0 || ++claim.total <= claim.totalMax, "Maximum tokens already minted for this claim");
 
         // Validate mint
         _validateMint(creatorContractAddress, claimIndex, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
-        unchecked{ ++claim.total; }
 
         // Transfer funds
         _transferFunds(claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "");
@@ -214,11 +213,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         );
 
         // Check totalMax
-        require(claim.totalMax == 0 || claim.total+mintCount <= claim.totalMax, "Too many requested for this claim");
+        claim.total += mintCount;
+        require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
         // Validate mint
         _validateMint(creatorContractAddress, claimIndex, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
-        unchecked{ claim.total += mintCount; }
 
         // Transfer funds
         _transferFunds(claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
