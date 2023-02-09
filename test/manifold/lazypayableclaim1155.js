@@ -29,6 +29,10 @@ contract('LazyPayableClaim', function ([...accounts]) {
       let later = now + 1000;
 
       // Must be admin
+      await truffleAssert.reverts(lazyClaim.withdraw(anyone1, 20, {from: anyone1}), "AdminControl: Must be owner or admin")
+      await truffleAssert.reverts(lazyClaim.setMembershipAddress(anyone1, {from: anyone1}), "AdminControl: Must be owner or admin")
+
+      // Must be admin
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
         1,
@@ -791,6 +795,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
       assert.equal('test.com', newTokenURI);
 
       // Optional parameters - using claim 2
+      // Cannot mint for someone else
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 2, 0, [], anyone2, {from:anyone1, value:fee}), "Invalid input");
       await lazyClaim.mint(creator.address, 2, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
       await lazyClaim.mint(creator.address, 2, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
       await lazyClaim.mint(creator.address, 2, 0, [], anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(fee)});

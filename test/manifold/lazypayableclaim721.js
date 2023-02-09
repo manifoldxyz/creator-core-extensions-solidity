@@ -29,6 +29,10 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       let later = now + 1000;
 
       // Must be admin
+      await truffleAssert.reverts(lazyClaim.withdraw(anyone1, 20, {from: anyone1}), "AdminControl: Must be owner or admin")
+      await truffleAssert.reverts(lazyClaim.setMembershipAddress(anyone1, {from: anyone1}), "AdminControl: Must be owner or admin")
+
+      // Must be admin
       await truffleAssert.reverts(lazyClaim.initializeClaim(
         creator.address,
         1,
@@ -1224,10 +1228,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       assert.equal(claim.paymentReceiver, owner);
 
       // Test minting
-
-      // Mint a token to random wallet
       await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Claim inactive");
       await helper.advanceTimeAndBlock(start+1-(await web3.eth.getBlock('latest')).timestamp+1);
+      // Mint a token to random wallet
       await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)});
       claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.total, 1);
@@ -1270,6 +1273,8 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       assert.equal('test.com/1', newTokenURI);
 
       // Optional parameters - using claim 2
+      // Cannot mint for someone else
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 2, 0, [], anyone2, {from:anyone1, value:fee}), "Invalid input");
       await lazyClaim.mint(creator.address, 2, 0, [], anyone1, {from:anyone1, value: fee});
       await lazyClaim.mint(creator.address, 2, 0, [], anyone1, {from:anyone1, value: fee});
       await lazyClaim.mint(creator.address, 2, 0, [], anyone2, {from:anyone2, value: fee});

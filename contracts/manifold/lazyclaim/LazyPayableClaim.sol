@@ -111,6 +111,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
             // Merkle mint
             _checkMerkleAndUpdate(merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
         } else {
+            require(mintFor == msg.sender, "Invalid input");
             // Non-merkle mint
             if (walletMax != 0) {
                 require(++_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] <= walletMax, "Maximum tokens already minted for this wallet");
@@ -130,10 +131,11 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
                 unchecked { ++i; }
             }
         } else {
+            require(mintFor == msg.sender, "Invalid input");
             // Non-merkle mint
             if (walletMax != 0) {
-                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]+mintCount <= walletMax, "Too many requested for this wallet");
-                unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] += mintCount; }
+                _mintsPerWallet[creatorContractAddress][claimIndex][mintFor] += mintCount;
+                require(_mintsPerWallet[creatorContractAddress][claimIndex][mintFor] <= walletMax, "Too many requested for this wallet");
             }
         }
     }

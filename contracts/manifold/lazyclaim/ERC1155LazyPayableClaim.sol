@@ -189,7 +189,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         // Do mint
         address[] memory recipients = new address[](1);
-        recipients[0] = msg.sender;
+        recipients[0] = mintFor;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
@@ -225,7 +225,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         // Do mint
         address[] memory recipients = new address[](1);
-        recipients[0] = msg.sender;
+        recipients[0] = mintFor;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = mintCount;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);

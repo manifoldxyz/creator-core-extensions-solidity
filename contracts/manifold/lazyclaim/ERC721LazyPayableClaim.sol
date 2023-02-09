@@ -201,7 +201,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "");
 
         // Do mint
-        uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(msg.sender);
+        uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(mintFor);
 
         // Insert the new tokenId into _tokenClaims for the current claim address & index
         _tokenClaims[creatorContractAddress][newTokenId] = TokenClaim(uint224(claimIndex), claim.total);
@@ -236,7 +236,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
 
-        uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(msg.sender, mintCount);
+        uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(mintFor, mintCount);
         for (uint256 i = 0; i < mintCount;) {
             _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(claimIndex), uint32(newMintIndex+i));
             unchecked { ++i; }
