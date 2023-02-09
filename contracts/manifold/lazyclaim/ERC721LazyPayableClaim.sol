@@ -245,7 +245,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         uint256 newMintIndex = claim.total - mintCount + 1;
 
         // Transfer funds
-        _transferFundsProxy(claim.erc20, claim.cost, claim.paymentReceiver, mintCount);
+        _transferFundsProxy(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
 
         uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(mintFor, mintCount);
         for (uint256 i; i < mintCount;) {

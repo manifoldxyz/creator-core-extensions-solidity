@@ -231,7 +231,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         _validateMintProxy(creatorContractAddress, claimIndex, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
-        _transferFundsProxy(claim.erc20, claim.cost, claim.paymentReceiver, mintCount);
+        _transferFundsProxy(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
 
         // Do mint
         address[] memory recipients = new address[](1);

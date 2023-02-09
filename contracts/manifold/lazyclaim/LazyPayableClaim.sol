@@ -123,9 +123,9 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _transferFundsProxy(address erc20, uint256 cost, address payable recipient, uint16 mintCount) internal {
+    function _transferFundsProxy(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
         require(erc20 == address(0) && _proxyAddresses.contains(msg.sender), "Not approved");
-        uint256 payableCost = cost + MINT_FEE;
+        uint256 payableCost = cost + (merkle ? MINT_FEE_MERKLE : MINT_FEE);
         if (mintCount > 1) {
             payableCost *= mintCount;
             cost *= mintCount;

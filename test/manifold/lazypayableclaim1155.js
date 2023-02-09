@@ -1104,7 +1104,9 @@ contract('LazyPayableClaim', function ([...accounts]) {
       const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
-      await lazyClaim.mintProxy(creator.address, 3, 2, [0, 1], [merkleProof1, merkleProof2], anyone2, {from:anyone1, value: ethers.BigNumber.from('2').add(fee.mul(2))});
+      // Should fail if standard fee is provided
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 3, 2, [0, 1], [merkleProof1, merkleProof2], anyone2, {from:anyone1, value: ethers.BigNumber.from('2').add(fee.mul(2))}), "Invalid amount");
+      await lazyClaim.mintProxy(creator.address, 3, 2, [0, 1], [merkleProof1, merkleProof2], anyone2, {from:anyone1, value: ethers.BigNumber.from('2').add(merkleFee.mul(2))});
       assert.equal(3, await creator.balanceOf(anyone2, 1));
 
       // Removing proxy
