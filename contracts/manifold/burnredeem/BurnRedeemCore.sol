@@ -49,7 +49,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
@@ -63,7 +62,6 @@ import "./Interfaces.sol";
  * @notice Core logic for Burn Redeem shared extensions.
  */
 abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurnRedeemCore, ICreatorExtensionTokenURI {
-    using Address for address payable;
     using Strings for uint256;
 
     uint256 internal constant BURN_FEE = 690000000000000;
@@ -198,7 +196,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Refund any excess value
         if (valueLeft > 0) {
-            payable(msg.sender).sendValue(valueLeft);
+            (bool sent, ) = msg.sender.call{value: valueLeft}("");
+            require(sent, "Failed to transfer to recipient");
         }
     }
 
@@ -214,7 +213,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      */
     function withdraw(address payable recipient, uint256 amount) external override adminRequired {
         (bool sent, ) = recipient.call{value: amount}("");
-        require(sent, "Failed to transfer to receiver");
+        require(sent, "Failed to transfer to recipient");
     }
 
     /**
@@ -427,7 +426,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      */
     function _forwardValue(BurnRedeem storage _burnRedeem) private {
         if (_burnRedeem.cost > 0) {
-            _burnRedeem.paymentReceiver.sendValue(_burnRedeem.cost);
+            (bool sent, ) = _burnRedeem.paymentReceiver.call{value: _burnRedeem.cost}("");
+            require(sent, "Failed to transfer to recipient");
         }
     }
 
