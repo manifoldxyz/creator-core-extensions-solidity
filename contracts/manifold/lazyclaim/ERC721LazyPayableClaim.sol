@@ -187,7 +187,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         );
 
         // Check totalMax
-        require(claim.totalMax == 0 || ++claim.total <= claim.totalMax, "Maximum tokens already minted for this claim");
+        require(++claim.total <= claim.totalMax || claim.totalMax == 0, "Maximum tokens already minted for this claim");
 
         // Validate mint
         _validateMint(creatorContractAddress, claimIndex, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
@@ -250,23 +250,21 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Fetch the claim, create newMintIndex to keep track of token ids created by the airdrop
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         uint256 newMintIndex = claim.total+1;
-
         for (uint256 i = 0; i < recipients.length;) {
             // Airdrop the tokens
             uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(recipients[i], amounts[i]);
-            
+
             // Register the tokenClaims, so that tokenURI will work for airdropped tokens
             for (uint256 j = 0; j < newTokenIds.length;) {
                 _tokenClaims[creatorContractAddress][newTokenIds[j]] = TokenClaim(uint224(claimIndex), uint32(newMintIndex+j));
                 unchecked { ++j; }
             }
-
             // Increment claim.total and newMintIndex for the next airdrop
-            unchecked{ claim.total += uint32(newTokenIds.length); }
             unchecked{ newMintIndex += newTokenIds.length; }
-
             unchecked{ ++i; }
         }
+        require(newMintIndex - claim.total - 1 <= MAX_UINT_32, "Too many requested");
+        claim.total += uint32(newMintIndex - claim.total - 1);
     }
 
     /**

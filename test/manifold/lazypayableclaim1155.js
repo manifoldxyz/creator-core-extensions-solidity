@@ -696,7 +696,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       );
     
       // Claim should have expected info
-      const claim = await lazyClaim.getClaim(creator.address, 1, {from:owner});
+      let claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.merkleRoot, merkleTree.getHexRoot());
       assert.equal(claim.location, 'arweaveHash1');
       assert.equal(claim.totalMax, 3);
@@ -710,7 +710,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
       await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Claim inactive");
       await helper.advanceTimeAndBlock(start+1-(await web3.eth.getBlock('latest')).timestamp+1);
       await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)});
-
+      claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.total, 1);
 
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
@@ -786,6 +787,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
 
       // Perform an airdrop
       await lazyClaim.airdrop(creator.address, 1, [anyone1], [1], { from: owner });
+      let claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.total, 1);
 
       // Mint
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
@@ -794,6 +797,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
 
       // Perform another airdrop after minting
       await lazyClaim.airdrop(creator.address, 1, [anyone1, anyone2], [1, 5], { from: owner });
+      claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.total, 8);
 
       // Mint again after second airdrop
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));
