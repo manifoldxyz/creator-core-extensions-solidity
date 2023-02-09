@@ -4,7 +4,6 @@ const ERC721LazyPayableClaim = artifacts.require("ERC721LazyPayableClaim");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
 const DelegationRegistry = artifacts.require('DelegationRegistry');
 const MockETHReceiver = artifacts.require('MockETHReceiver');
-const MockManifoldMembership = artifacts.require('MockManifoldMembership');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
@@ -18,8 +17,6 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
       delegationRegistry = await DelegationRegistry.new();
       lazyClaim = await ERC721LazyPayableClaim.new(delegationRegistry.address, {from:owner});
-      manifoldMembership = await MockManifoldMembership.new({from:owner});
-      await lazyClaim.setMembershipAddress(manifoldMembership.address);
       fee = ethers.BigNumber.from((await lazyClaim.MINT_FEE()).toString());
       merkleFee = ethers.BigNumber.from((await lazyClaim.MINT_FEE_MERKLE()).toString());
 
@@ -46,6 +43,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:anyone1}
       ), "Wallet is not an administrator for contract");
@@ -65,6 +63,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -89,6 +88,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot initialize with invalid storage protocol");
@@ -108,6 +108,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -127,6 +128,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot provide both mintsPerWallet and merkleRoot");
@@ -146,6 +148,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Claim not initialized");
@@ -169,6 +172,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -188,6 +192,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot set invalid storage protocol");
@@ -207,9 +212,30 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
+
+      // Fails due to change in erc20
+      await truffleAssert.reverts(lazyClaim.updateClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 10,
+          walletMax: 1,
+          startDate: now,
+          endDate: now+1,
+          storageProtocol: 1,
+          identical: true,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000001',
+        },
+        {from:owner}
+      ), "Cannot change payment token");
     });
 
     it('merkle mint test - with cost', async function () {
@@ -237,6 +263,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -277,6 +304,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -310,6 +338,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('0'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -350,6 +379,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('0'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -382,6 +412,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -433,6 +464,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -452,6 +484,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -503,6 +536,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('0'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -554,6 +588,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('0'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -573,6 +608,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('0'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -616,6 +652,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -646,6 +683,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -670,6 +708,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('2'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -698,6 +737,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -726,6 +766,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('2'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -758,6 +799,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: anyone4,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -786,6 +828,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('2'),
           paymentReceiver: anyone4,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -818,6 +861,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('0'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -850,6 +894,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -882,6 +927,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -930,6 +976,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -983,6 +1030,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1001,6 +1049,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1057,6 +1106,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1093,6 +1143,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:anotherOwner}
       ), "Wallet is not an administrator for contract");
@@ -1116,6 +1167,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1135,6 +1187,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1154,6 +1207,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('0'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1170,6 +1224,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       assert.equal(claim.paymentReceiver, owner);
 
       // Test minting
+
       // Mint a token to random wallet
       await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Claim inactive");
       await helper.advanceTimeAndBlock(start+1-(await web3.eth.getBlock('latest')).timestamp+1);
@@ -1206,6 +1261,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1249,20 +1305,19 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
 
       // Perform an airdrop
       await lazyClaim.airdrop(creator.address, 1, [anyone1], [1], { from: owner });
-      let claim = await lazyClaim.getClaim(creator.address, 1);
-      assert.equal(claim.total, 1);
 
       // Mint
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
       await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
-      claim = await lazyClaim.getClaim(creator.address, 1);
+      let claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.total, 2);
 
       // Perform another airdrop after minting
@@ -1319,6 +1374,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1372,6 +1428,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -1379,6 +1436,8 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Perform a mint on the claim
       const mintTx = await lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))});
       console.log("Gas cost:\tmint w/ contract receiver:\t"+ mintTx.receipt.gasUsed);
+      let claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.total, 3);
     });
   });
 });

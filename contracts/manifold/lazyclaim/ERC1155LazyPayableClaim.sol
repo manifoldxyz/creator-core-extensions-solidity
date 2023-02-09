@@ -70,7 +70,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             location: claimParameters.location,
             tokenId: newTokenIds[0],
             cost: claimParameters.cost,
-            paymentReceiver: claimParameters.paymentReceiver
+            paymentReceiver: claimParameters.paymentReceiver,
+            erc20: claimParameters.erc20
         });
         _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
         
@@ -85,16 +86,15 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         uint256 claimIndex,
         ClaimParameters calldata claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        // Sanity checks
-        require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
+        Claim memory claim = _claims[creatorContractAddress][claimIndex];
+        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
-
-        Claim memory currentClaim = _claims[creatorContractAddress][claimIndex];
+        require(claimParameters.erc20 == claim.erc20, "Cannot change payment token");
 
         // Overwrite the existing claim
         _claims[creatorContractAddress][claimIndex] = Claim({
-            total: currentClaim.total,
+            total: claim.total,
             totalMax: claimParameters.totalMax,
             walletMax: claimParameters.walletMax,
             startDate: claimParameters.startDate,
@@ -102,9 +102,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             storageProtocol: claimParameters.storageProtocol,
             merkleRoot: claimParameters.merkleRoot,
             location: claimParameters.location,
-            tokenId: currentClaim.tokenId,
+            tokenId: claim.tokenId,
             cost: claimParameters.cost,
-            paymentReceiver: claimParameters.paymentReceiver
+            paymentReceiver: claimParameters.paymentReceiver,
+            erc20: claimParameters.erc20
         });
     }
 
@@ -184,7 +185,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         _validateMint(creatorContractAddress, claimIndex, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
 
         // Transfer funds
-        _transferFunds(claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "");
+        _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "");
 
         // Do mint
         address[] memory recipients = new address[](1);
@@ -220,7 +221,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         _validateMint(creatorContractAddress, claimIndex, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
-        _transferFunds(claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
+        _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
 
         // Do mint
         address[] memory recipients = new address[](1);

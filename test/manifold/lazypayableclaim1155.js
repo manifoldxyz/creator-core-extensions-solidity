@@ -42,6 +42,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:anyone1}
       ), "Wallet is not an administrator for contract");
@@ -60,6 +61,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -83,6 +85,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 0,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot initialize with invalid storage protocol");
@@ -101,6 +104,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
@@ -119,6 +123,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot provide both mintsPerWallet and merkleRoot");
@@ -137,6 +142,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Claim not initialized");
@@ -159,6 +165,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -177,6 +184,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 0,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot set invalid storage protocol");
@@ -195,9 +203,29 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       ), "Cannot have startDate greater than or equal to endDate");
+
+      // Fails due to change in erc20
+      await truffleAssert.reverts(lazyClaim.updateClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 10,
+          walletMax: 1,
+          startDate: now,
+          endDate: now+1,
+          storageProtocol: 1,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000001',
+        },
+        {from:owner}
+      ), "Cannot change payment token");
     });
 
     it('merkle mint test', async function () {
@@ -224,6 +252,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -267,6 +296,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -298,6 +328,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -348,6 +379,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -366,6 +398,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       )
@@ -404,6 +437,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -432,6 +466,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -458,6 +493,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -488,6 +524,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -535,6 +572,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -587,6 +625,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -633,6 +672,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:anotherOwner}
       ), "Wallet is not an administrator for contract");
@@ -655,6 +695,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 2,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -673,6 +714,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 2,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -691,6 +733,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 2,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -739,6 +782,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -781,6 +825,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -837,6 +882,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           storageProtocol: 1,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );
@@ -890,6 +936,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
           identical: true,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
       );

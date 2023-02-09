@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "../../libraries/delegation-registry/IDelegationRegistry.sol";
@@ -29,6 +30,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     uint32 internal constant MAX_UINT_32 = 0xffffffff;
     uint256 internal constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    address private constant ADDRESS_ZERO = 0x0000000000000000000000000000000000000000;
 
     // ONLY USED FOR NON-MERKLE MINTS: stores the number of tokens minted per wallet per claim, in order to limit maximum
     // { contractAddress => { claimIndex => { walletAddress => walletMints } } }
@@ -68,24 +70,28 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         MEMBERSHIP_ADDRESS = membershipAddress;
     }
 
-    function _transferFunds(uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
-        uint256 totalCost = cost;
-        address membershipAddress = MEMBERSHIP_ADDRESS;
-        if (membershipAddress != address(0)) {
-            if (!IManifoldMembership(membershipAddress).isActiveMember(msg.sender)) {
-                totalCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
+    function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
+        uint256 payableCost;
+        if (erc20 != ADDRESS_ZERO) {
+            IERC20(erc20).transferFrom(msg.sender, recipient, cost*mintCount);
+        } else {
+            payableCost = cost;
+        }
+        if (MEMBERSHIP_ADDRESS != ADDRESS_ZERO) {
+            if (!IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
+                payableCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
             }
         } else {
-            totalCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
+            payableCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
         }
         if (mintCount > 1) {
-            totalCost *= mintCount;
+            payableCost *= mintCount;
             cost *= mintCount;
         }
 
         // Check price
-        require(msg.value == totalCost, "Invalid amount");
-        if (cost != 0) {
+        require(msg.value == payableCost, "Invalid amount");
+        if (cost > 0) {
             // solhint-disable-next-line
             (bool sent, ) = recipient.call{value: cost}("");
             require(sent, "Failed to transfer to receiver");
@@ -93,8 +99,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     }
 
     function _checkMintIndex(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) internal view returns (bool) {
-        require(merkleRoot != "", "Can only check merkle claims");
         uint256 claimMintIndex = mintIndex >> 8;
+        require(merkleRoot != "", "Can only check merkle claims");
         uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
         uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
         return mintBitmask & claimMintTracking != 0;
