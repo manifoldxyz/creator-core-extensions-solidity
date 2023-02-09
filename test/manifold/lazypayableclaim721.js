@@ -4,19 +4,22 @@ const ERC721LazyPayableClaim = artifacts.require("ERC721LazyPayableClaim");
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
 const DelegationRegistry = artifacts.require('DelegationRegistry');
 const MockETHReceiver = artifacts.require('MockETHReceiver');
+const MockManifoldMembership = artifacts.require('MockManifoldMembership');
 const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
 
 contract('LazyPayableClaim721', function ([...accounts]) {
-  const [owner, anotherOwner, anyone1, anyone2, anyone3, anyone4, anyone5, anyone6, anyone7] = accounts;
+  const [owner, lazyClaimOwner, anotherOwner, anyone1, anyone2, anyone3, anyone4, anyone5, anyone6, anyone7] = accounts;
   describe('LazyPayableClaim721', function () {
     let creator, lazyClaim;
     let fee, merkleFee;
     beforeEach(async function () {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
       delegationRegistry = await DelegationRegistry.new();
-      lazyClaim = await ERC721LazyPayableClaim.new(delegationRegistry.address, {from:owner});
+      lazyClaim = await ERC721LazyPayableClaim.new(delegationRegistry.address, {from:lazyClaimOwner});
+      manifoldMembership = await MockManifoldMembership.new({from:owner});
+      lazyClaim.setMembershipAddress(manifoldMembership.address, {from:lazyClaimOwner});
       fee = ethers.BigNumber.from((await lazyClaim.MINT_FEE()).toString());
       merkleFee = ethers.BigNumber.from((await lazyClaim.MINT_FEE_MERKLE()).toString());
 
@@ -31,6 +34,8 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Must be admin
       await truffleAssert.reverts(lazyClaim.withdraw(anyone1, 20, {from: anyone1}), "AdminControl: Must be owner or admin")
       await truffleAssert.reverts(lazyClaim.setMembershipAddress(anyone1, {from: anyone1}), "AdminControl: Must be owner or admin")
+      await truffleAssert.reverts(lazyClaim.addMintProxyAddresses([anyone1], {from: anyone1}), "AdminControl: Must be owner or admin")
+      await truffleAssert.reverts(lazyClaim.removeMintProxyAddresses([anyone1], {from: anyone1}), "AdminControl: Must be owner or admin")
 
       // Must be admin
       await truffleAssert.reverts(lazyClaim.initializeClaim(
@@ -135,7 +140,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           erc20: '0x0000000000000000000000000000000000000000',
         },
         {from:owner}
-      ), "Cannot provide both mintsPerWallet and merkleRoot");
+      ), "Cannot provide both walletMax and merkleRoot");
 
       // Cannot update non-existant claim
       await truffleAssert.reverts(lazyClaim.updateClaim(
@@ -1445,6 +1450,161 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       console.log("Gas cost:\tmint w/ contract receiver:\t"+ mintTx.receipt.gasUsed);
       let claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.total, 3);
+    });
+
+    it('membership mint', async function () {
+      let now = (await web3.eth.getBlock('latest')).timestamp-30;
+      let later = now + 1000;
+  
+      // Initialize the claim
+      await lazyClaim.initializeClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 10,
+          walletMax: 10,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:owner}
+      );
+
+      const merkleElements = [];
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 1]));
+      merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
+
+      // Initialize the claim (merkle)
+      await lazyClaim.initializeClaim(
+        creator.address,
+        2,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:owner}
+      );
+
+      await manifoldMembership.setMember(anyone1, true, {from:owner});
+      // Perform a mint on the claim
+      await lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('3')});
+      const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
+      const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
+      const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 1]));
+      const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
+      await lazyClaim.mintBatch(creator.address, 2, 2, [0, 1], [merkleProof1, merkleProof2], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')});
+    
+    });
+
+    it('proxy mint', async function () {
+      // Construct a contract receiver
+      const mockETHReceiver = await MockETHReceiver.new({ from: owner });
+  
+      let now = (await web3.eth.getBlock('latest')).timestamp-30;
+      let later = now + 1000;
+  
+      // Initialize the claim
+      await lazyClaim.initializeClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 10,
+          walletMax: 10,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:owner}
+      );
+
+      // Initialize the claim (erc20)
+      await lazyClaim.initializeClaim(
+        creator.address,
+        2,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 3,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000001',
+        },
+        {from:owner}
+      );
+
+      const merkleElements = [];
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone5, 2]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone6, 256]));
+      merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
+      // Initialize the claim (merkle)
+      await lazyClaim.initializeClaim(
+        creator.address,
+        3,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:owner}
+      );
+  
+      // No permissions to proxy mint
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 1, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
+      // Add anyone1 as a proxy minter
+      await lazyClaim.addMintProxyAddresses([anyone1], {from: lazyClaimOwner});
+
+      // Perform a mint on the claim
+      await lazyClaim.mintProxy(creator.address, 1, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))})
+      assert.equal(3, await creator.balanceOf(anyone2));
+
+      // Cannot mint erc20's even if approved
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 2, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
+
+      // Cannot mint merkle claims
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 3, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Claim inactive")
+
+      // Removing proxy
+      await lazyClaim.removeMintProxyAddresses([anyone1], {from: lazyClaimOwner});
+      // No permissions to proxy mint
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 1, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
+
     });
   });
 });

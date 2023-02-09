@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "../../libraries/delegation-registry/IDelegationRegistry.sol";
 import "../../libraries/manifold-membership/IManifoldMembership.sol";
@@ -17,6 +18,8 @@ import "./ILazyPayableClaim.sol";
  * @notice Lazy payable claim with optional whitelist ERC721 tokens
  */
 abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
 
@@ -39,6 +42,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     // ONLY USED FOR MERKLE MINTS: stores mapping from claim to indices minted
     // { contractAddress => {claimIndex => { claimIndexOffset => index } } }
     mapping(address => mapping(uint256 => mapping(uint256 => uint256))) internal _claimMintIndices;
+
+    EnumerableSet.AddressSet private _proxyAddresses;
 
     /**
      * @notice This extension is shared, not single-creator. So we must ensure
@@ -70,6 +75,26 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         MEMBERSHIP_ADDRESS = membershipAddress;
     }
 
+    /**
+     * See {ILazyClaim-addMintProxyAddresses}.
+     */
+    function addMintProxyAddresses(address[] calldata proxyAddresses) external override adminRequired {
+        for (uint256 i; i < proxyAddresses.length;) {
+            _proxyAddresses.add(proxyAddresses[i]);
+            unchecked { ++i; }
+        }
+    }
+
+    /**
+     * See {ILazyClaim-removeMintProxyAddresses}.
+     */
+    function removeMintProxyAddresses(address[] calldata proxyAddresses) external override adminRequired {
+        for (uint256 i; i < proxyAddresses.length;) {
+            _proxyAddresses.remove(proxyAddresses[i]);
+            unchecked { ++i; }
+        }
+    }
+
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
         uint256 payableCost;
         if (erc20 != ADDRESS_ZERO) {
@@ -91,14 +116,30 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
         // Check price
         require(msg.value == payableCost, "Invalid amount");
-        if (cost > 0) {
+        if (cost != 0) {
             // solhint-disable-next-line
             (bool sent, ) = recipient.call{value: cost}("");
             require(sent, "Failed to transfer to receiver");
         }
     }
 
-    function _checkMintIndex(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) internal view returns (bool) {
+    function _transferFundsProxy(address erc20, uint256 cost, address payable recipient, uint16 mintCount) internal {
+        require(erc20 == address(0) && _proxyAddresses.contains(msg.sender), "Not approved");
+        uint256 payableCost = cost + MINT_FEE;
+        if (mintCount > 1) {
+            payableCost *= mintCount;
+            cost *= mintCount;
+        }
+        // Check price
+        require(msg.value == payableCost, "Invalid amount");
+        if (cost != 0) {
+            // solhint-disable-next-line
+            (bool sent, ) = recipient.call{value: cost}("");
+            require(sent, "Failed to transfer to receiver");
+        }
+    }
+
+    function _checkMintIndex(address creatorContractAddress, uint256 claimIndex, bytes32 merkleRoot, uint32 mintIndex) internal view returns (bool) {
         uint256 claimMintIndex = mintIndex >> 8;
         require(merkleRoot != "", "Can only check merkle claims");
         uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][claimIndex][claimMintIndex];
@@ -106,10 +147,17 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         return mintBitmask & claimMintTracking != 0;
     }
 
-    function _validateMint(address creatorContractAddress, uint256 claimIndex, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
+    function _validateMint(address creatorContractAddress, uint256 claimIndex, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
+        // Check timestamps
+        require(
+            (startDate == 0 || startDate < block.timestamp) &&
+            (endDate == 0 || endDate >= block.timestamp),
+            "Claim inactive"
+        );
+
         if (merkleRoot != "") {
             // Merkle mint
-            _checkMerkleAndUpdate(merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
+            _checkMerkleAndUpdate(creatorContractAddress, claimIndex, merkleRoot, mintIndex, merkleProof, mintFor);
         } else {
             require(mintFor == msg.sender, "Invalid input");
             // Non-merkle mint
@@ -119,15 +167,22 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMint(address creatorContractAddress, uint256 claimIndex, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
+    function _validateMint(address creatorContractAddress, uint256 claimIndex, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
+        // Check timestamps
+        require(
+            (startDate == 0 || startDate < block.timestamp) &&
+            (endDate == 0 || endDate >= block.timestamp),
+            "Claim inactive"
+        );
+
         if (merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
-            for (uint256 i = 0; i < mintCount;) {
+            for (uint256 i; i < mintCount;) {
                 uint32 mintIndex = mintIndices[i];
                 bytes32[] memory merkleProof = merkleProofs[i];
                 
-                _checkMerkleAndUpdate(merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
+                _checkMerkleAndUpdate(creatorContractAddress, claimIndex, merkleRoot, mintIndex, merkleProof, mintFor);
                 unchecked { ++i; }
             }
         } else {
@@ -140,7 +195,23 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _checkMerkleAndUpdate(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
+    function _validateMintProxy(address creatorContractAddress, uint256 claimIndex, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, address mintFor) internal {
+        // Check timestamps
+        require(
+            merkleRoot == "" &&
+            (startDate == 0 || startDate < block.timestamp) &&
+            (endDate == 0 || endDate >= block.timestamp),
+            "Claim inactive"
+        );
+
+        // Non-merkle mint
+        if (walletMax != 0) {
+            _mintsPerWallet[creatorContractAddress][claimIndex][mintFor] += mintCount;
+            require(_mintsPerWallet[creatorContractAddress][claimIndex][mintFor] <= walletMax, "Too many requested for this wallet");
+        }
+    }
+
+    function _checkMerkleAndUpdate(address creatorContractAddress, uint256 claimIndex, bytes32 merkleRoot, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
         // Merkle mint
         bytes32 leaf;
         if (mintFor == msg.sender) {
