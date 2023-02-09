@@ -419,7 +419,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
 
         // Do burn redeem
-        for (uint32 i; i < redemptionCount;) {
+        for (uint256 i; i < redemptionCount;) {
             _burn(burnItem, address(this), msg.sender, id);
             unchecked { ++i; }
         }
