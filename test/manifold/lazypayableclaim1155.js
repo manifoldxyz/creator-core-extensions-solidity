@@ -1064,9 +1064,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
 
       const merkleElements = [];
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
-      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));
-      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone5, 2]));
-      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone6, 256]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
       // Initialize the claim (merkle)
       await lazyClaim.initializeClaim(
@@ -1088,25 +1086,31 @@ contract('LazyPayableClaim', function ([...accounts]) {
         {from:owner}
       );
   
+
       // No permissions to proxy mint
-      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 1, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 1, 3, [], [], anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
       // Add anyone1 as a proxy minter
       await lazyClaim.addMintProxyAddresses([anyone1], {from: lazyClaimOwner});
 
       // Perform a mint on the claim
-      await lazyClaim.mintProxy(creator.address, 1, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))})
+      await lazyClaim.mintProxy(creator.address, 1, 3, [], [], anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))})
       assert.equal(3, await creator.balanceOf(anyone2, 1));
 
       // Cannot mint erc20's even if approved
-      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 2, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 2, 3, [], [], anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
 
-      // Cannot mint merkle claims
-      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 3, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Claim inactive")
+      // Mint merkle claims
+      const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
+      const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
+      const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
+      const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
+      await lazyClaim.mintProxy(creator.address, 3, 2, [0, 1], [merkleProof1, merkleProof2], anyone2, {from:anyone1, value: ethers.BigNumber.from('2').add(fee.mul(2))});
+      assert.equal(3, await creator.balanceOf(anyone2, 1));
 
       // Removing proxy
       await lazyClaim.removeMintProxyAddresses([anyone1], {from: lazyClaimOwner});
       // No permissions to proxy mint
-      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 1, 3, anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 1, 3, [], [], anyone2, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Not approved")
 
     });
   });

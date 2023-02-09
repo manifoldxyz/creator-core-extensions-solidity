@@ -61,7 +61,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     }
 
     /**
-     * See {ILazyClaim-withdraw}.
+     * See {ILazyPayableClaim-withdraw}.
      */
     function withdraw(address payable receiver, uint256 amount) external override adminRequired {
         (bool sent, ) = receiver.call{value: amount}("");
@@ -69,14 +69,14 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     }
 
     /**
-     * See {ILazyClaim-setMembershipAddress}.
+     * See {ILazyPayableClaim-setMembershipAddress}.
      */
     function setMembershipAddress(address membershipAddress) external override adminRequired {
         MEMBERSHIP_ADDRESS = membershipAddress;
     }
 
     /**
-     * See {ILazyClaim-addMintProxyAddresses}.
+     * See {ILazyPayableClaim-addMintProxyAddresses}.
      */
     function addMintProxyAddresses(address[] calldata proxyAddresses) external override adminRequired {
         for (uint256 i; i < proxyAddresses.length;) {
@@ -86,7 +86,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     }
 
     /**
-     * See {ILazyClaim-removeMintProxyAddresses}.
+     * See {ILazyPayableClaim-removeMintProxyAddresses}.
      */
     function removeMintProxyAddresses(address[] calldata proxyAddresses) external override adminRequired {
         for (uint256 i; i < proxyAddresses.length;) {
@@ -157,7 +157,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
         if (merkleRoot != "") {
             // Merkle mint
-            _checkMerkleAndUpdate(creatorContractAddress, claimIndex, merkleRoot, mintIndex, merkleProof, mintFor);
+            _checkMerkleAndUpdate(msg.sender, creatorContractAddress, claimIndex, merkleRoot, mintIndex, merkleProof, mintFor);
         } else {
             require(mintFor == msg.sender, "Invalid input");
             // Non-merkle mint
@@ -179,10 +179,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
             for (uint256 i; i < mintCount;) {
-                uint32 mintIndex = mintIndices[i];
-                bytes32[] memory merkleProof = merkleProofs[i];
-                
-                _checkMerkleAndUpdate(creatorContractAddress, claimIndex, merkleRoot, mintIndex, merkleProof, mintFor);
+                _checkMerkleAndUpdate(msg.sender, creatorContractAddress, claimIndex, merkleRoot, mintIndices[i], merkleProofs[i], mintFor);
                 unchecked { ++i; }
             }
         } else {
@@ -195,31 +192,40 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintProxy(address creatorContractAddress, uint256 claimIndex, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, address mintFor) internal {
+    function _validateMintProxy(address creatorContractAddress, uint256 claimIndex, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
         require(
-            merkleRoot == "" &&
             (startDate == 0 || startDate < block.timestamp) &&
             (endDate == 0 || endDate >= block.timestamp),
             "Claim inactive"
         );
 
-        // Non-merkle mint
-        if (walletMax != 0) {
-            _mintsPerWallet[creatorContractAddress][claimIndex][mintFor] += mintCount;
-            require(_mintsPerWallet[creatorContractAddress][claimIndex][mintFor] <= walletMax, "Too many requested for this wallet");
+        if (merkleRoot != "") {
+            require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
+            // Merkle mint
+            for (uint256 i; i < mintCount;) {
+                // Proxy mints treat the mintFor as the transaction sender
+                _checkMerkleAndUpdate(mintFor, creatorContractAddress, claimIndex, merkleRoot, mintIndices[i], merkleProofs[i], mintFor);
+                unchecked { ++i; }
+            }
+        } else {
+            // Non-merkle mint
+            if (walletMax != 0) {
+                _mintsPerWallet[creatorContractAddress][claimIndex][mintFor] += mintCount;
+                require(_mintsPerWallet[creatorContractAddress][claimIndex][mintFor] <= walletMax, "Too many requested for this wallet");
+            }
         }
     }
 
-    function _checkMerkleAndUpdate(address creatorContractAddress, uint256 claimIndex, bytes32 merkleRoot, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
+    function _checkMerkleAndUpdate(address sender, address creatorContractAddress, uint256 claimIndex, bytes32 merkleRoot, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
         // Merkle mint
         bytes32 leaf;
-        if (mintFor == msg.sender) {
-            leaf = keccak256(abi.encodePacked(msg.sender, mintIndex));
+        if (mintFor == sender) {
+            leaf = keccak256(abi.encodePacked(sender, mintIndex));
         } else {
             // Direct verification failed, try delegate verification
             IDelegationRegistry dr = IDelegationRegistry(DELEGATION_REGISTRY);
-            require(dr.checkDelegateForContract(msg.sender, mintFor, address(this)), "Invalid delegate");
+            require(dr.checkDelegateForContract(sender, mintFor, address(this)), "Invalid delegate");
             leaf = keccak256(abi.encodePacked(mintFor, mintIndex));
         }
         require(MerkleProof.verify(merkleProof, merkleRoot, leaf), "Could not verify merkle proof");

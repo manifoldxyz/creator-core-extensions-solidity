@@ -138,7 +138,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     }
 
     /**
-     * See {ILazyClaim-checkMintIndex}.
+     * See {ILazyPayableClaim-checkMintIndex}.
      */
     function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external override view returns(bool) {
         Claim memory claim = getClaim(creatorContractAddress, claimIndex);
@@ -146,7 +146,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     }
 
     /**
-     * See {ILazyClaim-checkMintIndices}.
+     * See {ILazyPayableClaim-checkMintIndices}.
      */
     function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
         Claim memory claim = getClaim(creatorContractAddress, claimIndex);
@@ -159,7 +159,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     }
 
     /**
-     * See {ILazyClaim-getTotalMints}.
+     * See {ILazyPayableClaim-getTotalMints}.
      */
     function getTotalMints(address minter, address creatorContractAddress, uint256 claimIndex) external override view returns(uint32) {
         Claim memory claim = getClaim(creatorContractAddress, claimIndex);
@@ -167,7 +167,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     }
 
     /**
-     * See {ILazyClaim-mint}.
+     * See {ILazyPayableClaim-mint}.
      */
     function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override nonReentrant {
         Claim storage claim = _getClaim(creatorContractAddress, claimIndex);
@@ -192,7 +192,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     }
 
     /**
-     * See {ILazyClaim-mintBatch}.
+     * See {ILazyPayableClaim-mintBatch}.
      */
     function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override nonReentrant {
         Claim storage claim = _getClaim(creatorContractAddress, claimIndex);
@@ -218,9 +218,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     }
 
     /**
-     * See {ILazyClaim-mintProxy}.
+     * See {ILazyPayableClaim-mintProxy}.
      */
-    function mintProxy(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, address mintFor) external payable override {
+    function mintProxy(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, claimIndex);
 
         // Check totalMax
@@ -228,7 +228,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
         // Validate mint
-        _validateMintProxy(creatorContractAddress, claimIndex, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintFor);
+        _validateMintProxy(creatorContractAddress, claimIndex, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
         _transferFundsProxy(claim.erc20, claim.cost, claim.paymentReceiver, mintCount);
