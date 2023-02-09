@@ -568,6 +568,181 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal(2, balance);
     });
 
+    it('burnRedeem test - malicious sender reverts', async function() {
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+
+      // Mint burnable tokens
+      await burnable721.mintBase(anyone1, { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [2], [""], { from: owner });
+      
+      // Burn #1
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable721.address,
+                  tokenSpec: 1,
+                  burnSpec: 0,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+      // Burn #2
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        2,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 0,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+      // Burn #3
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        3,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 1,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+
+      // Set approvals
+      await burnable721.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
+      await burnable1155.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
+
+      // Reverts when msg.sender is not token owner, but tokens are approved
+      // 721 with no burn
+      await truffleAssert.reverts(
+        burnRedeem.burnRedeem(
+          creator.address,
+          1,
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: burnable721.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            }
+          ],
+          {from:anyone2, value: BURN_FEE}
+        ),
+        "ERC721: transfer from incorrect owner"
+      );
+      // 1155 with no burn
+      await truffleAssert.reverts(
+        burnRedeem.burnRedeem(
+          creator.address,
+          2,
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: burnable1155.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            }
+          ],
+          {from:anyone2, value: BURN_FEE}
+        ),
+        "ERC1155: caller is not token owner nor approved."
+      );
+      // 1155 with burn
+      await truffleAssert.reverts(
+        burnRedeem.burnRedeem(
+          creator.address,
+          3,
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: burnable1155.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            }
+          ],
+          {from:anyone2, value: BURN_FEE}
+        ),
+        "Caller is not owner nor approved."
+      );
+    });
+
     it('burnRedeem test - burnRedeem.cost', async function() {
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;

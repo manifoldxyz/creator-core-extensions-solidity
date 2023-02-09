@@ -448,7 +448,12 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             BurnItem memory burnItem = _burnRedeem.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
 
             _validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
-            _verifyBurnItemOwner(burnItem, burnToken.contractAddress, burnToken.id, owner);
+
+            // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
+            if (burnItem.tokenSpec == TokenSpec.ERC721 && burnItem.burnSpec != BurnSpec.NONE) {
+                require(IERC721(burnToken.contractAddress).ownerOf(burnToken.id) == owner, "Sender is not owner");
+            }
+
             _burn(burnItem, owner, burnToken.contractAddress, burnToken.id);
 
             groupCounts[burnToken.groupIndex] += 1;
@@ -558,17 +563,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             return;
         }
         revert("Invalid burn item");
-    }
-
-    /**
-     * Helper to verify msg.sender owns a burn item
-     */
-    function _verifyBurnItemOwner(BurnItem memory burnItem, address contractAddress, uint256 tokenId, address owner) private view {
-        if (burnItem.tokenSpec == TokenSpec.ERC721) {
-            require(IERC721(contractAddress).ownerOf(tokenId) == owner, "Sender is not owner");
-        } else if (burnItem.tokenSpec == TokenSpec.ERC1155) {
-            require(IERC1155(contractAddress).balanceOf(owner, tokenId) >= burnItem.amount, "Sender is not owner");
-        }
     }
 
     /**
