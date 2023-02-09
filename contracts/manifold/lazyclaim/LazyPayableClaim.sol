@@ -84,9 +84,11 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
         // Check price
         require(msg.value == totalCost, "Invalid amount");
-        // solhint-disable-next-line
-        (bool sent, ) = recipient.call{value: cost}("");
-        require(sent, "Failed to transfer to receiver");
+        if (cost > 0) {
+            // solhint-disable-next-line
+            (bool sent, ) = recipient.call{value: cost}("");
+            require(sent, "Failed to transfer to receiver");
+        }
     }
 
     function _checkMintIndex(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) internal view returns (bool) {
