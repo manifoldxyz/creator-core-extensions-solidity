@@ -901,6 +901,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
       const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)});
+      assert.equal(await creator.balanceOf(anyone1, 1), 1);
+      assert.equal(await creator.balanceOf(anyone2, 1), 0);
 
       // Mint with contract-level delegate
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone4, 1]));
