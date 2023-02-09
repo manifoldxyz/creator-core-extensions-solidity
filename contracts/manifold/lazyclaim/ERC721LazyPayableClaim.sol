@@ -186,16 +186,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Check totalMax
         require(claim.totalMax == 0 || claim.total < claim.totalMax, "Maximum tokens already minted for this claim");
 
-        if (claim.merkleRoot != "") {
-            // Merkle mint
-            _checkMerkleAndUpdate(claim.merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
-        } else {
-            // Non-merkle mint
-            if (claim.walletMax != 0) {
-                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < claim.walletMax, "Maximum tokens already minted for this wallet");
-                unchecked{ ++_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]; }
-            }
-        }
+        _validateMint(creatorContractAddress, claimIndex, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
         unchecked{ ++claim.total; }
 
         // Transfer funds
@@ -227,28 +218,11 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Check totalMax
         require(claim.totalMax == 0 || claim.total+mintCount <= claim.totalMax, "Too many requested for this claim");
         
+        //  Validate mint
+        _validateMint(creatorContractAddress, claimIndex, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
         uint256 newMintIndex = claim.total+1;
         unchecked{ claim.total += mintCount; }
-
-        if (claim.merkleRoot != "") {
-            require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
-            // Merkle mint
-            for (uint256 i = 0; i < mintCount;) {
-                uint32 mintIndex = mintIndices[i];
-                bytes32[] memory merkleProof = merkleProofs[i];
-                
-                _checkMerkleAndUpdate(claim.merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
-                unchecked { ++i; }
-            }
-        } else {
-            // Non-merkle mint
-            if (claim.walletMax != 0) {
-                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]+mintCount <= claim.walletMax, "Too many requested for this wallet");
-                unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] += mintCount; }
-            }
-            
-        }
-
+        
         // Transfer funds
         _transferFunds(claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
 

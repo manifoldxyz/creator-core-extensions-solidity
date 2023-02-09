@@ -97,7 +97,40 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         return mintBitmask & claimMintTracking != 0;
     }
 
-    function _checkMerkleAndUpdate(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) internal {
+    function _validateMint(address creatorContractAddress, uint256 claimIndex, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
+        if (merkleRoot != "") {
+            // Merkle mint
+            _checkMerkleAndUpdate(merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
+        } else {
+            // Non-merkle mint
+            if (walletMax != 0) {
+                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < walletMax, "Maximum tokens already minted for this wallet");
+                unchecked{ ++_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]; }
+            }
+        }
+    }
+
+    function _validateMint(address creatorContractAddress, uint256 claimIndex, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
+        if (merkleRoot != "") {
+            require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
+            // Merkle mint
+            for (uint256 i = 0; i < mintCount;) {
+                uint32 mintIndex = mintIndices[i];
+                bytes32[] memory merkleProof = merkleProofs[i];
+                
+                _checkMerkleAndUpdate(merkleRoot, creatorContractAddress, claimIndex, mintIndex, merkleProof, mintFor);
+                unchecked { ++i; }
+            }
+        } else {
+            // Non-merkle mint
+            if (walletMax != 0) {
+                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]+mintCount <= walletMax, "Too many requested for this wallet");
+                unchecked{ _mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] += mintCount; }
+            }
+        }
+    }
+
+    function _checkMerkleAndUpdate(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
         // Merkle mint
         bytes32 leaf;
         if (mintFor == msg.sender) {
