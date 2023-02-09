@@ -28,7 +28,6 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await creator.registerExtension(burnRedeem.address, {from:owner});
     });
 
-
     it('access test', async function () {
       let now = Math.floor(Date.now() / 1000) - 30; // seconds since unix epoch
       let later = now + 1000;
@@ -833,7 +832,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
 
       // User should only be charged for 2 burn redeems
       const cost = BURN_FEE.mul(2);
-      const gasFee = tx.receipt.gasUsed * tx.receipt.effectiveGasPrice;
+      const gasFee = tx.receipt.gasUsed * (await web3.eth.getTransaction(tx.tx)).gasPrice
       assert.equal(ethers.BigNumber.from(userBalanceBefore).sub(cost).sub(gasFee).toString(), userBalanceAfter);
     });
 
@@ -1259,9 +1258,8 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
 
       // Passes with valid withdrawal amount from owner
       const tx = await burnRedeem.withdraw(owner, BURN_FEE.mul(10), {from:owner});
-
       const ownerBalanceAfter = await web3.eth.getBalance(owner);
-      const gasFee = tx.receipt.gasUsed * tx.receipt.effectiveGasPrice;
+      const gasFee = tx.receipt.gasUsed * (await web3.eth.getTransaction(tx.tx)).gasPrice
       assert.equal(ethers.BigNumber.from(ownerBalanceBefore).add(BURN_FEE.mul(10)).sub(gasFee).toString(), ownerBalanceAfter);
     });
   });
