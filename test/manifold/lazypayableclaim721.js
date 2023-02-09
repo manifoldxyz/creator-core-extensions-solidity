@@ -1028,8 +1028,43 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       assert.equal('YYY/3', await creator.tokenURI(8));
     });
 
-    it('functionality test', async function() {
+    it('walletMax test', async function() {
 
+      const merkleElements = [];
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 2]));
+      merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
+
+      // Test initializing a new claim
+      let start = (await web3.eth.getBlock('latest')).timestamp-100; // seconds since unix epoch
+      let end = start + 300;
+
+      await lazyClaim.initializeClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 3,
+          walletMax: 1,
+          startDate: start,
+          endDate: end,
+          storageProtocol: 1,
+          identical: false,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+        },
+        {from:owner}
+      );
+
+      // Test minting
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)}), "Maximum tokens already minted for this wallet");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('3').add(fee.mul(2))}), "Too many requested for this wallet");
+    });
+
+    it('functionality test', async function() {
       const merkleElements = [];
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));

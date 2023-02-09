@@ -104,8 +104,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         } else {
             // Non-merkle mint
             if (walletMax != 0) {
-                require(_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] < walletMax, "Maximum tokens already minted for this wallet");
-                unchecked{ ++_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender]; }
+                require(++_mintsPerWallet[creatorContractAddress][claimIndex][msg.sender] <= walletMax, "Maximum tokens already minted for this wallet");
             }
         }
     }
