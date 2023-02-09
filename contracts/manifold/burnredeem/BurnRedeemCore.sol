@@ -53,6 +53,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
+import "../../libraries/manifold-membership/IManifoldMembership.sol";
 import "./IBurnRedeemCore.sol";
 import "./Interfaces.sol";
 
@@ -212,7 +213,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * @dev See {IBurnRedeemCore-withdraw}.
      */
     function withdraw(address payable recipient, uint256 amount) external override adminRequired {
-        recipient.sendValue(amount);
+        (bool sent, ) = recipient.call{value: amount}("");
+        require(sent, "Failed to transfer to receiver");
     }
 
     /**
@@ -580,7 +582,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
             if (burnItem.burnSpec == BurnSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
-                ERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "");
+                IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "");
 
             } else if (burnItem.burnSpec == BurnSpec.MANIFOLD) {
                 // Burn using the creator core's burn function
@@ -600,7 +602,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
             if (burnItem.burnSpec == BurnSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
-                ERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
+                IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
 
             } else if (burnItem.burnSpec == BurnSpec.MANIFOLD || burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
                 // Burn using the contract's burn function
