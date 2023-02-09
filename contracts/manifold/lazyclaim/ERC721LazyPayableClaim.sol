@@ -179,8 +179,6 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
-        uint256 cost = _checkPrice(claim.cost, 1);
-
         // Check timestamps
         require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
         require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
@@ -200,14 +198,14 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         }
         unchecked{ ++claim.total; }
 
+        // Transfer funds
+        _transferFunds(claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "");
+
         // Do mint
         uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(msg.sender);
 
         // Insert the new tokenId into _tokenClaims for the current claim address & index
         _tokenClaims[creatorContractAddress][newTokenId] = TokenClaim(uint224(claimIndex), claim.total);
-        // solhint-disable-next-line
-        (bool sent, ) = claim.paymentReceiver.call{value: cost}("");
-        require(sent, "Failed to transfer to receiver");
 
         emit ClaimMint(creatorContractAddress, claimIndex);
     }
@@ -221,7 +219,6 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
-        uint256 cost = _checkPrice(claim.cost, mintCount);
 
         // Check timestamps
         require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
@@ -251,14 +248,15 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             }
             
         }
+
+        // Transfer funds
+        _transferFunds(claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
+
         uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(msg.sender, mintCount);
         for (uint256 i = 0; i < mintCount;) {
             _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(claimIndex), uint32(newMintIndex+i));
             unchecked { ++i; }
         }
-        // solhint-disable-next-line
-        (bool sent, ) = claim.paymentReceiver.call{value: cost}("");
-        require(sent, "Failed to transfer to receiver");
 
         emit ClaimMintBatch(creatorContractAddress, claimIndex, mintCount);
     }

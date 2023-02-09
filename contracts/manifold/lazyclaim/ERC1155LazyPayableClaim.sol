@@ -170,8 +170,6 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
 
-        uint256 cost = _checkPrice(claim.cost, 1);
-
         // Check timestamps
         require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
         require(claim.endDate == 0 || claim.endDate >= block.timestamp, "Transaction after end date");
@@ -191,17 +189,15 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         }
         unchecked{ ++claim.total; }
 
+        // Transfer funds
+        _transferFunds(claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "");
+
         // Do mint
         address[] memory recipients = new address[](1);
         recipients[0] = msg.sender;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
-
-        // Transfer proceeds to receiver
-        // solhint-disable-next-line
-        (bool sent, ) = claim.paymentReceiver.call{value: cost}("");
-        require(sent, "Failed to transfer to receiver");
 
         emit ClaimMint(creatorContractAddress, _claimTokenIds[creatorContractAddress][claimIndex]);
     }
@@ -214,8 +210,6 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         
         // Safely retrieve the claim
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
-
-        uint256 cost = _checkPrice(claim.cost, mintCount);
 
         // Check timestamps
         require(claim.startDate == 0 || claim.startDate < block.timestamp, "Transaction before start date");
@@ -242,15 +236,15 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         }
         unchecked{ claim.total += mintCount; }
 
+        // Transfer funds
+        _transferFunds(claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
+
         // Do mint
         address[] memory recipients = new address[](1);
         recipients[0] = msg.sender;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = mintCount;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
-        // solhint-disable-next-line
-        (bool sent, ) = claim.paymentReceiver.call{value: cost}("");
-        require(sent, "Failed to transfer to receiver");
 
         emit ClaimMintBatch(creatorContractAddress, claimIndex, mintCount);
     }

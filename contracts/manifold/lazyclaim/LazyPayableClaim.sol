@@ -24,6 +24,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     address public immutable DELEGATION_REGISTRY;
 
     uint256 public constant MINT_FEE = 420000000000000;
+    uint256 public constant MINT_FEE_MERKLE = 690000000000000;
     address public MEMBERSHIP_ADDRESS;
 
     uint32 internal constant MAX_UINT_32 = 0xffffffff;
@@ -67,31 +68,25 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         MEMBERSHIP_ADDRESS = membershipAddress;
     }
 
-    /**
-     * See {ILazyClaim-getMintFee}.
-     */
-    function getMintFee(uint16 mintCount) public view override returns (uint256 fee) {
+    function _transferFunds(uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
+        uint256 totalCost = cost;
         if (MEMBERSHIP_ADDRESS != address(0)) {
             if (!IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
-                if (mintCount != 1) {
-                    fee = mintCount * MINT_FEE;
-                } else {
-                    fee = MINT_FEE;
-                }
+                totalCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
             }
+        } else {
+            totalCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
         }
-    }
-
-    function _checkPrice(uint256 cost, uint16 mintCount) internal view returns (uint256) {
-        if (mintCount != 1) {
-            cost = cost * mintCount;
+        if (mintCount > 1) {
+            totalCost *= mintCount;
+            cost *= mintCount;
         }
-        uint256 fee = getMintFee(mintCount);
 
         // Check price
-        require(msg.value == cost + fee, "Must pay more.");
-
-        return cost;
+        require(msg.value == totalCost, "Must pay more.");
+        // solhint-disable-next-line
+        (bool sent, ) = recipient.call{value: cost}("");
+        require(sent, "Failed to transfer to receiver");
     }
 
     function _checkMintIndex(bytes32 merkleRoot, address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) internal view returns (bool) {

@@ -25,11 +25,6 @@ interface ILazyPayableClaim {
     function setMembershipAddress(address membershipAddress) external;
 
     /**
-     * @notice Get the mint fee for a given number of mints
-     */
-    function getMintFee(uint16 mintCount) external view returns (uint256);
-
-    /**
      * @notice check if a mint index has been consumed or not (only for merkle claims)
      *
      * @param creatorContractAddress    the address of the creator contract for the claim

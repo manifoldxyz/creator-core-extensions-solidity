@@ -12,11 +12,14 @@ contract('LazyPayableClaim721', function ([...accounts]) {
   const [owner, anotherOwner, anyone1, anyone2, anyone3, anyone4, anyone5, anyone6, anyone7] = accounts;
   describe('LazyPayableClaim721', function () {
     let creator, lazyClaim;
+    let fee, merkleFee;
     beforeEach(async function () {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
       delegationRegistry = await DelegationRegistry.new();
       lazyClaim = await ERC721LazyPayableClaim.new(delegationRegistry.address, {from:owner});
-      
+      fee = ethers.BigNumber.from((await lazyClaim.MINT_FEE()).toString());
+      merkleFee = ethers.BigNumber.from((await lazyClaim.MINT_FEE_MERKLE()).toString());
+
       // Must register with empty prefix in order to set per-token uri's
       await creator.registerExtension(lazyClaim.address, {from:owner});
     });
@@ -240,23 +243,23 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       const merkleProof1 = merkleTreeWithValues.getHexProof(merkleLeaf1);
 
       // Merkle validation failure
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Could not verify merkle proof");
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: ethers.BigNumber.from('1')}), "Could not verify merkle proof");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Could not verify merkle proof");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)}), "Could not verify merkle proof");
 
-      await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)});
       // Cannot mint with same mintIndex again
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Already minted");
 
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTreeWithValues.getHexProof(merkleLeaf2);
-      await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 2]));
       const merkleProof3 = merkleTreeWithValues.getHexProof(merkleLeaf3);
-      await lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone2, {from:anyone2, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
 
       const merkleLeaf4 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 3]));
       const merkleProof4 = merkleTreeWithValues.getHexProof(merkleLeaf4);
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: ethers.BigNumber.from('1')}), "Maximum tokens already minted for this claim");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)}), "Maximum tokens already minted for this claim");
 
       await lazyClaim.updateClaim(
         creator.address,
@@ -275,7 +278,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         },
         {from:owner}
       )
-      await lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: ethers.BigNumber.from('1')});
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: ethers.BigNumber.from('1')}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(fee)}), "Must pay more.");
+      await lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)});
     });
 
     it('merkle mint test - free mint', async function () {
@@ -311,23 +316,23 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       const merkleProof1 = merkleTreeWithValues.getHexProof(merkleLeaf1);
 
       // Merkle validation failure
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof1, anyone1, {from:anyone1}), "Could not verify merkle proof");
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2}), "Could not verify merkle proof");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof1, anyone1, {from:anyone1, value: merkleFee}), "Could not verify merkle proof");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: merkleFee}), "Could not verify merkle proof");
 
-      await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1});
+      await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: merkleFee});
       // Cannot mint with same mintIndex again
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: merkleFee}), "Already minted");
 
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTreeWithValues.getHexProof(merkleLeaf2);
-      await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2});
+      await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: merkleFee});
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 2]));
       const merkleProof3 = merkleTreeWithValues.getHexProof(merkleLeaf3);
-      await lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone2, {from:anyone2});
+      await lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone2, {from:anyone2, value: merkleFee});
 
       const merkleLeaf4 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 3]));
       const merkleProof4 = merkleTreeWithValues.getHexProof(merkleLeaf4);
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3}), "Maximum tokens already minted for this claim");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: merkleFee}), "Maximum tokens already minted for this claim");
 
       await lazyClaim.updateClaim(
         creator.address,
@@ -346,7 +351,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         },
         {from:owner}
       )
-      await lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3});
+      await lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: merkleFee});
     });
 
     it('merkle mint test - batch with cost', async function () {
@@ -383,14 +388,14 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       const merkleProof1 = merkleTreeWithValues.getHexProof(merkleLeaf1);
 
       // Merkle validation failure
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [0], [merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')}), "Invalid input");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0, 0], [merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Invalid input");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1, merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Invalid input");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [0], [merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(merkleFee.mul(2))}), "Invalid input");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0, 0], [merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Invalid input");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1, merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Invalid input");
 
-      await lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)});
       // Cannot mint with same mintIndex again
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Already minted");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Already minted");
 
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTreeWithValues.getHexProof(merkleLeaf2);
@@ -402,15 +407,15 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       const merkleProof5 = merkleTreeWithValues.getHexProof(merkleLeaf5);
 
       // Cannot steal someone else's merkleproof
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,3], [merkleProof2,merkleProof4], anyone2, {from:anyone2, value: ethers.BigNumber.from('2')}), "Could not verify merkle proof");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,3], [merkleProof2,merkleProof4], anyone2, {from:anyone2, value: ethers.BigNumber.from('2').add(merkleFee.mul(2))}), "Could not verify merkle proof");
 
-      const mintTx = await lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], anyone2, {from:anyone2, value: ethers.BigNumber.from('2')});
+      const mintTx = await lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], anyone2, {from:anyone2, value: ethers.BigNumber.from('2').add(merkleFee.mul(2))});
       console.log("Gas cost:\tBatch mint 2:\t"+ mintTx.receipt.gasUsed);
 
       // base mint something in between
       await creator.mintBase(anyone5, {from: owner});
 
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], anyone3, {from:anyone3, value: ethers.BigNumber.from('1')}), "Too many requested for this claim");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)}), "Too many requested for this claim");
 
       await lazyClaim.updateClaim(
         creator.address,
@@ -429,7 +434,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         },
         {from:owner}
       )
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3, value: ethers.BigNumber.from('2')}), "Too many requested for this claim");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3, value: ethers.BigNumber.from('2').add(merkleFee.mul(2))}), "Too many requested for this claim");
 
       await lazyClaim.updateClaim(
         creator.address,
@@ -449,11 +454,11 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         {from:owner}
       )
       // Cannot mint with same mintIndex again
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: ethers.BigNumber.from('1')}), "Already minted");
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone2, {from:anyone2, value: ethers.BigNumber.from('1')}), "Already minted");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], anyone2, {from:anyone2, value: ethers.BigNumber.from('2')}), "Already minted");
-      
-      await lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3, value: ethers.BigNumber.from('2')});
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], anyone2, {from:anyone2, value: ethers.BigNumber.from('2').add(merkleFee.mul(2))}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3, value: ethers.BigNumber.from('2').add(merkleFee)}), "Must pay more.");
+      await lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3, value: ethers.BigNumber.from('2').add(merkleFee.mul(2))});
 
       let balance1 = await creator.balanceOf(anyone1);
       assert.equal(1,balance1);
@@ -504,14 +509,14 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       const merkleProof1 = merkleTreeWithValues.getHexProof(merkleLeaf1);
 
       // Merkle validation failure
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [0], [merkleProof1], anyone1, {from:anyone1}), "Invalid input");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0, 0], [merkleProof1], anyone1, {from:anyone1}), "Invalid input");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1, merkleProof1], anyone1, {from:anyone1}), "Invalid input");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [0], [merkleProof1], anyone1, {from:anyone1, value: merkleFee.mul(2)}), "Invalid input");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0, 0], [merkleProof1], anyone1, {from:anyone1, value: merkleFee}), "Invalid input");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1, merkleProof1], anyone1, {from:anyone1, value: merkleFee}), "Invalid input");
 
-      await lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], anyone1, {from:anyone1});
+      await lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], anyone1, {from:anyone1, value: merkleFee});
       // Cannot mint with same mintIndex again
       await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1}), "Already minted");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], anyone1, {from:anyone1}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [0], [merkleProof1], anyone1, {from:anyone1, value: merkleFee}), "Already minted");
 
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTreeWithValues.getHexProof(merkleLeaf2);
@@ -523,15 +528,15 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       const merkleProof5 = merkleTreeWithValues.getHexProof(merkleLeaf5);
 
       // Cannot steal someone else's merkleproof
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,3], [merkleProof2,merkleProof4], owner), "Could not verify merkle proof");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,3], [merkleProof2,merkleProof4], owner, {value: merkleFee.mul(2)}), "Could not verify merkle proof");
 
-      const mintTx = await lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], anyone2, {from:anyone2});
+      const mintTx = await lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], anyone2, {from:anyone2, value: merkleFee.mul(2)});
       console.log("Gas cost:\tBatch mint 2:\t"+ mintTx.receipt.gasUsed);
 
       // base mint something in between
       await creator.mintBase(anyone5, {from: owner});
 
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], anyone3, {from:anyone3}), "Too many requested for this claim");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [3], [merkleProof4], anyone3, {from:anyone3, value: merkleFee}), "Too many requested for this claim");
 
       await lazyClaim.updateClaim(
         creator.address,
@@ -550,7 +555,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         },
         {from:owner}
       )
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3}), "Too many requested for this claim");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3, value: merkleFee.mul(2)}), "Too many requested for this claim");
 
       await lazyClaim.updateClaim(
         creator.address,
@@ -570,11 +575,11 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         {from:owner}
       )
       // Cannot mint with same mintIndex again
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2}), "Already minted");
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone2, {from:anyone2}), "Already minted");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], anyone2, {from:anyone2}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: merkleFee}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone2, {from:anyone2, value: merkleFee.mul(2)}), "Already minted");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [1,2], [merkleProof2,merkleProof3], anyone2, {from:anyone2, value: merkleFee.mul(2)}), "Already minted");
       
-      await lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3});
+      await lazyClaim.mintBatch(creator.address, 1, 2, [3,4], [merkleProof4,merkleProof5], anyone3, {from:anyone3, value: merkleFee.mul(2)});
 
       let balance1 = await creator.balanceOf(anyone1);
       assert.equal(1,balance1);
@@ -613,11 +618,11 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         {from:owner}
       );
 
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('4')}), "Too many requested for this wallet");
-      await lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('3')});
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Too many requested for this wallet");
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('3')}), "Too many requested for this claim");
-      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2')});
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('4').add(fee.mul(4))}), "Too many requested for this wallet");
+      await lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))});
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)}), "Too many requested for this wallet");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('3').add(fee.mul(3))}), "Too many requested for this claim");
+      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2').add(fee.mul(2))});
 
     });
 
@@ -643,8 +648,10 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         {from:owner}
       );
 
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('3')}), "Must pay more.");
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(fee.mul(2))}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('4').add(fee.mul(4))}), "Too many requested for this wallet");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: fee}), "Must pay more.");
       
       // update mint price
       await lazyClaim.updateClaim(
@@ -665,8 +672,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         {from:owner}
       );
 
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('4')}), "Must pay more.");
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(fee)}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('4')}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)}), "Must pay more.");
     });
 
 
@@ -694,9 +702,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       let beforeBalance =  await web3.eth.getBalance(owner)
 
-      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
-      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2')});
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
+      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2').add(fee.mul(2))});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
 
       let afterBalance = await web3.eth.getBalance(owner)
       assert.equal(ethers.BigNumber.from(4).toNumber(), (ethers.BigNumber.from(afterBalance).sub(ethers.BigNumber.from(beforeBalance)).toNumber()));
@@ -722,9 +730,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       
       beforeBalance =  await web3.eth.getBalance(owner)
 
-      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')});
-      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('4')});
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')});
+      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(fee)});
+      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('4').add(fee.mul(2))});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(fee)});
 
       afterBalance = await web3.eth.getBalance(owner)
       assert.equal(ethers.BigNumber.from(8).toNumber(), (ethers.BigNumber.from(afterBalance).sub(ethers.BigNumber.from(beforeBalance)).toNumber()));
@@ -754,9 +762,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       let beforeBalance =  await web3.eth.getBalance(anyone4)
 
-      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
-      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2')});
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
+      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2').add(fee.mul(2))});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
 
       let afterBalance = await web3.eth.getBalance(anyone4)
       assert.equal(ethers.BigNumber.from(4).toNumber(), (ethers.BigNumber.from(afterBalance).sub(ethers.BigNumber.from(beforeBalance)).toNumber()));
@@ -782,9 +790,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       
       beforeBalance =  await web3.eth.getBalance(anyone4)
 
-      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')});
-      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('4')});
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')});
+      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(fee)});
+      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('4').add(fee.mul(2))});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2').add(fee)});
 
       afterBalance = await web3.eth.getBalance(anyone4)
       assert.equal(ethers.BigNumber.from(8).toNumber(), (ethers.BigNumber.from(afterBalance).sub(ethers.BigNumber.from(beforeBalance)).toNumber()));
@@ -812,14 +820,15 @@ contract('LazyPayableClaim721', function ([...accounts]) {
         {from:owner}
       );
 
-      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('4')}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('2')}), "Must pay more.");
+      await truffleAssert.reverts(lazyClaim.mintBatch(creator.address, 1, 4, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('4')}), "Too many requested for this wallet");
       await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Must pay more.");
 
       let beforeBalance =  await web3.eth.getBalance(owner)
 
-      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1});
-      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2});
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1});
+      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: fee});
+      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: fee.mul(2)});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: fee});
 
       let afterBalance = await web3.eth.getBalance(owner)
       assert.equal(ethers.BigNumber.from(0).toNumber(), (ethers.BigNumber.from(afterBalance).sub(ethers.BigNumber.from(beforeBalance)).toNumber()));
@@ -845,9 +854,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       
       beforeBalance =  await web3.eth.getBalance(owner)
 
-      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
-      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2')});
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mintBatch(creator.address, 1, 1, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
+      await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2').add(fee.mul(2))});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(fee)});
 
       afterBalance = await web3.eth.getBalance(owner)
       assert.equal(ethers.BigNumber.from(4).toNumber(), (ethers.BigNumber.from(afterBalance).sub(ethers.BigNumber.from(beforeBalance)).toNumber()));
@@ -880,17 +889,17 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       await creator.mintBase(anyone1, { from: owner });
 
       // Mint 2 tokens using the extension
-      const mintTx = await lazyClaim.mint(creator.address, 1, 0, [], anyone2, {from:anyone2, value: ethers.BigNumber.from('1')});
+      const mintTx = await lazyClaim.mint(creator.address, 1, 0, [], anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(fee)});
       console.log("Gas cost:\tfirst mint:\t"+ mintTx.receipt.gasUsed);
 
-      const mintTx2 = await lazyClaim.mint(creator.address, 1, 0, [], anyone3, {from:anyone3, value: ethers.BigNumber.from('1')});
+      const mintTx2 = await lazyClaim.mint(creator.address, 1, 0, [], anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(fee)});
       console.log("Gas cost:\tsecond mint:\t"+ mintTx2.receipt.gasUsed);
 
       // Mint a token using creator contract, to test breaking up extension's indexRange
       await creator.mintBase(anyone4, { from: owner });
 
       // Mint 1 token using the extension
-      const mintTx3 = await lazyClaim.mint(creator.address, 1, 0, [], anyone5, {from:anyone5, value: ethers.BigNumber.from('1')});
+      const mintTx3 = await lazyClaim.mint(creator.address, 1, 0, [], anyone5, {from:anyone5, value: ethers.BigNumber.from('1').add(fee)});
       console.log("Gas cost:\tthird mint:\t"+ mintTx3.receipt.gasUsed);
     });
 
@@ -930,12 +939,12 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Mint 2 tokens using the extension
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
-      const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: ethers.BigNumber.from('1')});
+      const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
       console.log("Gas cost:\tfirst mint:\t"+ mintTx.receipt.gasUsed);
 
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
-      const mintTx2 = await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone3, {from:anyone3, value: ethers.BigNumber.from('1')});
+      const mintTx2 = await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)});
       console.log("Gas cost:\tsecond mint:\t"+ mintTx2.receipt.gasUsed);
 
       // Mint a token using creator contract, to test breaking up extension's indexRange
@@ -944,13 +953,13 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Mint 1 token using the extension
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone5, 2]));
       const merkleProof3 = merkleTree.getHexProof(merkleLeaf3);
-      const mintTx3 = await lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone5, {from:anyone5, value: ethers.BigNumber.from('1')});
+      const mintTx3 = await lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone5, {from:anyone5, value: ethers.BigNumber.from('1').add(merkleFee)});
       console.log("Gas cost:\tthird mint:\t"+ mintTx3.receipt.gasUsed);
 
       // Mint 1 token using the extension
       const merkleLeaf4 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone6, 256]));
       const merkleProof4 = merkleTree.getHexProof(merkleLeaf4);
-      const mintTx4 = await lazyClaim.mint(creator.address, 1, 256, merkleProof4, anyone6, {from:anyone6, value: ethers.BigNumber.from('1')});
+      const mintTx4 = await lazyClaim.mint(creator.address, 1, 256, merkleProof4, anyone6, {from:anyone6, value: ethers.BigNumber.from('1').add(merkleFee)});
       console.log("Gas cost:\tfourth mint:\t"+ mintTx4.receipt.gasUsed);
     });
 
@@ -979,14 +988,14 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       await creator.mintBase(anyone1, { from: owner });
 
       // Mint 2 tokens using the extension
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone2, {from:anyone2, value: ethers.BigNumber.from('1')});
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone3, {from:anyone3, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(fee)});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(fee)});
 
       // Mint a token using creator contract, to test breaking up extension's indexRange
       await creator.mintBase(anyone4, { from: owner });
 
       // Mint 1 token using the extension
-      await lazyClaim.mint(creator.address, 1, 0, [], anyone5, {from:anyone5, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mint(creator.address, 1, 0, [], anyone5, {from:anyone5, value: ethers.BigNumber.from('1').add(fee)});
 
       assert.equal('XXX/1', await creator.tokenURI(2));
       assert.equal('XXX/2', await creator.tokenURI(3));
@@ -1027,7 +1036,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Cannot claim before initialization
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
       const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Claim not initialized");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Claim not initialized");
 
       await lazyClaim.initializeClaim(
         creator.address,
@@ -1099,14 +1108,14 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Test minting
 
       // Mint a token to random wallet
-      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1')}), "Transaction before start date");
+      await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)}), "Transaction before start date");
       await helper.advanceTimeAndBlock(start+1-(await web3.eth.getBlock('latest')).timestamp+1);
-      await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)});
 
 
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
-      await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: ethers.BigNumber.from('1')});
+      await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
 
       // Now ensure that the creator contract state is what we expect after mints
       let balance = await creator.balanceOf(anyone1);
@@ -1141,16 +1150,16 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       assert.equal('test.com/1', newTokenURI);
 
       // Optional parameters - using claim 2
-      await lazyClaim.mint(creator.address, 2, 0, [], anyone1, {from:anyone1});
-      await lazyClaim.mint(creator.address, 2, 0, [], anyone1, {from:anyone1});
-      await lazyClaim.mint(creator.address, 2, 0, [], anyone2, {from:anyone2});
+      await lazyClaim.mint(creator.address, 2, 0, [], anyone1, {from:anyone1, value: fee});
+      await lazyClaim.mint(creator.address, 2, 0, [], anyone1, {from:anyone1, value: fee});
+      await lazyClaim.mint(creator.address, 2, 0, [], anyone2, {from:anyone2, value: fee});
 
       // end claim period
       await helper.advanceTimeAndBlock(end+2-(await web3.eth.getBlock('latest')).timestamp+1);
       // Reverts due to end of mint period
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 2]));
       const merkleProof3 = merkleTree.getHexProof(merkleLeaf3);
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone3, {from:anyone3, value: ethers.BigNumber.from('1')}), "Transaction after end date");
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)}), "Transaction after end date");
     });
 
     it('airdrop test', async function () {
@@ -1186,7 +1195,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Mint
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
-      const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: ethers.BigNumber.from('1')});
+      const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
 
       // Perform another airdrop after minting
       await lazyClaim.airdrop(creator.address, 1, [anyone1, anyone2], [1, 5], { from: owner });
@@ -1194,7 +1203,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Mint again after second airdrop
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
-      const mintTx2 = await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone3, {from:anyone3, value: ethers.BigNumber.from('1')});
+      const mintTx2 = await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)});
 
       // Check balances
       let balance1 = await creator.balanceOf(anyone1);
@@ -1251,17 +1260,17 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Mint with wallet-level delegate
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
-      const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone1, value: ethers.BigNumber.from('1')});
+      const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone1, value: ethers.BigNumber.from('1').add(merkleFee)});
 
       // Mint with contract-level delegate
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone4, 1]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
-      const mintTx2 = await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone4, {from:anyone3, value: ethers.BigNumber.from('1')});
+      const mintTx2 = await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone4, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)});
 
       // Fail to mint when no delegate is set
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone6, 2]));
       const merkleProof3 = merkleTree.getHexProof(merkleLeaf2);
-      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone6, {from:anyone5, value: ethers.BigNumber.from('1')}), 'Invalid delegate');
+      truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone6, {from:anyone5, value: ethers.BigNumber.from('1').add(merkleFee)}), 'Invalid delegate');
     });
 
     it('delegate registry address test', async function () {
@@ -1298,7 +1307,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       );
 
       // Perform a mint on the claim
-      const mintTx = await lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('3')});
+      const mintTx = await lazyClaim.mintBatch(creator.address, 1, 3, [], [], anyone1, {from:anyone1, value: ethers.BigNumber.from('3').add(fee.mul(3))});
       console.log("Gas cost:\tmint w/ contract receiver:\t"+ mintTx.receipt.gasUsed);
     });
   });
