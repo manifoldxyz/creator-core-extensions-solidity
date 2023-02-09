@@ -1175,5 +1175,94 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       balance = await creator.balanceOf(anyone1);
       assert.equal(1, balance);
     });
+
+    it('withdraw test', async function() {
+
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+
+      // Mint burnable tokens
+      for (let i = 0; i < 10; i++) {
+        await burnable721.mintBase(anyone1, { from: owner });
+      }
+      
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable721.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            },
+          ],
+        },
+        {
+          identical: false,
+        },
+        {from:owner}
+      );
+
+      const addresses = [];
+      const indexes = [];
+      const burnTokens = [];
+
+      for (let i = 0; i < 10; i++) {
+        addresses.push(creator.address);
+        indexes.push(1);
+        burnTokens.push([
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable721.address,
+            id: i + 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          }
+        ]);
+      }
+
+      await burnable721.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
+
+      await burnRedeem.methods['burnRedeem(address[],uint256[],(uint48,uint48,address,uint256,bytes32[])[][])'](
+        addresses,
+        indexes,
+        burnTokens,
+        {from:anyone1, value: BURN_FEE.mul(10)}
+      );
+
+      // Reverts when non admin tries to withdraw
+      await truffleAssert.reverts(burnRedeem.withdraw(anyone1, BURN_FEE.mul(10), {from:anyone1}), "AdminControl: Must be owner or admin");
+
+      // Reverts with too large of a withdrawal
+      await truffleAssert.reverts(burnRedeem.withdraw(owner, BURN_FEE.mul(200), {from:owner}), "Failed to transfer to recipient");
+
+      const ownerBalanceBefore = await web3.eth.getBalance(owner);
+
+      // Passes with valid withdrawal amount from owner
+      const tx = await burnRedeem.withdraw(owner, BURN_FEE.mul(10), {from:owner});
+
+      const ownerBalanceAfter = await web3.eth.getBalance(owner);
+      const gasFee = tx.receipt.gasUsed * tx.receipt.effectiveGasPrice;
+      assert.equal(ethers.BigNumber.from(ownerBalanceBefore).add(BURN_FEE.mul(10)).sub(gasFee).toString(), ownerBalanceAfter);
+    });
   });
 });
