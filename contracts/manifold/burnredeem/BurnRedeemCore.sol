@@ -419,7 +419,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
 
         // Do burn redeem
-        for (uint32 i; i < redemptionCount;) {
+        for (uint256 i; i < redemptionCount;) {
             _burn(burnItem, address(this), msg.sender, id);
             unchecked { ++i; }
         }
@@ -439,7 +439,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Burn all listed tokens and check that the burn set is satisfied
      */
-    function _burnTokens(BurnRedeem storage _burnRedeem, BurnToken[] memory burnTokens, address account) private {
+    function _burnTokens(BurnRedeem storage _burnRedeem, BurnToken[] memory burnTokens, address owner) private {
         // Check that each group in the burn set is satisfied
         uint256[] memory groupCounts = new uint256[](_burnRedeem.burnSet.length);
 
@@ -448,7 +448,13 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             BurnItem memory burnItem = _burnRedeem.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
 
             _validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
-            _burn(burnItem, account, burnToken.contractAddress, burnToken.id);
+
+            // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
+            if (burnItem.tokenSpec == TokenSpec.ERC721 && burnItem.burnSpec != BurnSpec.NONE) {
+                require(IERC721(burnToken.contractAddress).ownerOf(burnToken.id) == owner, "Sender is not owner");
+            }
+
+            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id);
 
             groupCounts[burnToken.groupIndex] += 1;
 
