@@ -868,58 +868,58 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       );
 
       // Passes with met requirements - range
-      await truffleAssert.passes(
-        burnRedeem.burnRedeem(
-          creator.address,
-          1,
-          1,
-          [
-            {
-              groupIndex: 0,
-              itemIndex: 0,
-              contractAddress: burnable721.address,
-              id: 1,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            },
-            {
-              groupIndex: 1,
-              itemIndex: 0,
-              contractAddress: burnable721_2.address,
-              id: 1,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            },
-          ],
-          {from:anyone1, value: MULTI_BURN_FEE}
-        )
+      let tx = await burnRedeem.burnRedeem(
+        creator.address,
+        1,
+        1,
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable721.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          },
+          {
+            groupIndex: 1,
+            itemIndex: 0,
+            contractAddress: burnable721_2.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          },
+        ],
+        {from:anyone1, value: MULTI_BURN_FEE}
       );
+
+      console.log("Gas cost:\tBurn 2 721s (range validation) through burnRedeem:\t"+ tx.receipt.gasUsed);
 
       // Passes with met requirements - merkle proof
       const merkleLeaf = keccak256(ethers.utils.solidityPack(['uint256'], [3]));
       const merkleProof = merkleTreeWithValues.getHexProof(merkleLeaf);
-      await truffleAssert.passes(
-        burnRedeem.burnRedeem(
-          creator.address,
-          1,
-          1,
-          [
-            {
-              groupIndex: 0,
-              itemIndex: 0,
-              contractAddress: burnable721.address,
-              id: 2,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            },
-            {
-              groupIndex: 1,
-              itemIndex: 1,
-              contractAddress: burnable721_2.address,
-              id: 3,
-              merkleProof: merkleProof
-            },
-          ],
-          {from:anyone1, value: MULTI_BURN_FEE}
-        )
+      tx = await burnRedeem.burnRedeem(
+        creator.address,
+        1,
+        1,
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable721.address,
+            id: 2,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          },
+          {
+            groupIndex: 1,
+            itemIndex: 1,
+            contractAddress: burnable721_2.address,
+            id: 3,
+            merkleProof: merkleProof
+          },
+        ],
+        {from:anyone1, value: MULTI_BURN_FEE}
       );
+
+      console.log("Gas cost:\tBurn 2 721s (range and merkle validation) through burnRedeem:\t"+ tx.receipt.gasUsed);
 
       // Ensure tokens are burned/minted
       balance = await burnable721.balanceOf(anyone1);
@@ -1223,37 +1223,37 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       );
 
       // Passes with burnCount > 1
-      await truffleAssert.passes(
-        burnRedeem.burnRedeem(
-          creator.address,
-          1,
-          3,
-          [
-            {
-              groupIndex: 0,
-              itemIndex: 0,
-              contractAddress: burnable1155_2.address,
-              id: 1,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            },
-            {
-              groupIndex: 1,
-              itemIndex: 0,
-              contractAddress: burnable1155.address,
-              id: 1,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            },
-            {
-              groupIndex: 2,
-              itemIndex: 0,
-              contractAddress: burnable1155.address,
-              id: 2,
-              merkleProof: merkleProof
-            },
-          ],
-          {from:anyone1, value: MULTI_BURN_FEE.mul(3)}
-        )
+      let tx = await burnRedeem.burnRedeem(
+        creator.address,
+        1,
+        3,
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable1155_2.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          },
+          {
+            groupIndex: 1,
+            itemIndex: 0,
+            contractAddress: burnable1155.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          },
+          {
+            groupIndex: 2,
+            itemIndex: 0,
+            contractAddress: burnable1155.address,
+            id: 2,
+            merkleProof: merkleProof
+          },
+        ],
+        {from:anyone1, value: MULTI_BURN_FEE.mul(3)}
       );
+
+      console.log("Gas cost:\tBurn 3 1155s x3 (contract, range and merkle validation) through burnRedeem:\t"+ tx.receipt.gasUsed);
 
       // Ensure tokens are burned/minted
       balance = await burnable1155.balanceOf(anyone1, 1);
@@ -1850,23 +1850,23 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await manifoldMembership.setMember(anyone1, true, {from:owner});
 
       // Passes with no fee
-      await truffleAssert.passes(
-        burnRedeem.burnRedeem(
-          creator.address,
-          1,
-          1,
-          [
-            {
-              groupIndex: 0,
-              itemIndex: 0,
-              contractAddress: burnable721.address,
-              id: 1,
-              merkleProof: [ethers.utils.formatBytes32String("")]
-            }
-          ],
-          {from:anyone1}
-        )
+      let tx = await burnRedeem.burnRedeem(
+        creator.address,
+        1,
+        1,
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable721.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          }
+        ],
+        {from:anyone1}
       );
+
+      console.log("Gas cost:\tBurn 1 721 (contract validation) through burnRedeem:\t"+ tx.receipt.gasUsed);
     });
 
     it('burnRedeem test - multiple redemptions', async function() {
@@ -2033,6 +2033,8 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {from:anyone1, value: BURN_FEE.mul(3)}
       );
 
+      console.log("Gas cost:\tBatch (burn 1 721), (burn 1 1155 x2) (contract validation) through burnRedeem:\t"+ tx.receipt.gasUsed);
+
       const userBalanceAfter = await web3.eth.getBalance(anyone1);
 
       let balance = await burnable721.balanceOf(anyone1);
@@ -2111,7 +2113,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnable721_2.methods['safeTransferFrom(address,address,uint256,bytes)'](anyone1, burnRedeem.address, 1, burnRedeemData, {from:anyone1}), "Invalid burn token");
 
       // Passes with right token id
-      await truffleAssert.passes(burnable721.methods['safeTransferFrom(address,address,uint256,bytes)'](anyone1, burnRedeem.address, 1, burnRedeemData, {from:anyone1}));
+      let tx = await burnable721.methods['safeTransferFrom(address,address,uint256,bytes)'](anyone1, burnRedeem.address, 1, burnRedeemData, {from:anyone1});
+
+      console.log("Gas cost:\tBurn 1 721 (contract validation) through 721 receiver:\t"+ tx.receipt.gasUsed);
 
       // Ensure tokens are burned/minted
       balance = await burnable721.balanceOf(anyone1);
@@ -2184,7 +2188,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 3, burnRedeemData, {from:anyone1}), "Invalid input");
 
       // Passes with right token id
-      await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}));
+      let tx = await burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1});
+
+      console.log("Gas cost:\tBurn 2 1155s (contract validation) through 1155 receiver:\t"+ tx.receipt.gasUsed);
 
       // Ensure tokens are burned/minted
       balance = await burnable1155.balanceOf(anyone1, 1);
@@ -2247,7 +2253,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await manifoldMembership.setMember(anyone1, true, {from:owner});
 
       // Passes with value == 2 * burnItem.amount (2 redemptions)
-      await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}));
+      let tx = await burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1});
+
+      console.log("Gas cost:\tBurn 2 1155s x2 (contract validation) through 1155 receiver:\t"+ tx.receipt.gasUsed);
 
       // Ensure tokens are burned/minted
       balance = await burnable1155.balanceOf(anyone1, 1);
@@ -2377,7 +2385,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2, 3], [2, 2, 2], burnRedeemData, {from:anyone1}), "Invalid input");
 
       // Passes with right token id
-      await truffleAssert.passes(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [2, 2], burnRedeemData, {from:anyone1}));
+      let tx = await burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [2, 2], burnRedeemData, {from:anyone1});
+
+      console.log("Gas cost:\tBurn 4 1155s (contract validation) through 1155 batch receiver:\t"+ tx.receipt.gasUsed);
 
       // burnCount > 1
       burnRedeemData = web3.eth.abi.encodeParameters(
@@ -2413,7 +2423,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [2, 2], burnRedeemData, {from:anyone1}), "Invalid amount");
 
       // Passes with right values
-      await truffleAssert.passes(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [8, 8], burnRedeemData, {from:anyone1}));
+      tx = await burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [8, 8], burnRedeemData, {from:anyone1});
+
+      console.log("Gas cost:\tBurn 4 1155s x4 (contract validation) through 1155 batch receiver:\t"+ tx.receipt.gasUsed);
 
       // Ensure tokens are burned/minted
       balance = await burnable1155.balanceOf(anyone1, 1);
