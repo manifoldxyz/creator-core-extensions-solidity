@@ -29,4 +29,14 @@ interface IERC721BurnRedeem is IBurnRedeemCore {
      * @param identicalTokenURI         whether or not the tokenURI is identical
      */
     function updateBurnRedeem(address creatorContractAddress, uint256 index, BurnRedeemParameters calldata burnRedeemParameters, bool identicalTokenURI) external;
+
+    /**
+     * @notice update an existing burn redeem at index
+     * @param creatorContractAddress    the creator contract corresponding to the burn redeem
+     * @param index                     the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
+     * @param storageProtocol           the storage protocol for the metadata
+     * @param location                  the location of the metadata
+     * @param identicalTokenURI         whether or not the URI's are supposed to be identical
+     */
+    function updateTokenURI(address creatorContractAddress, uint256 index, StorageProtocol storageProtocol, string calldata location, bool identicalTokenURI) external;
 }

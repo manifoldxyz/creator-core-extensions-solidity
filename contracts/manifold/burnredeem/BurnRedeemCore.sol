@@ -144,7 +144,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         return _getBurnRedeem(creatorContractAddress, index);
     }
 
-    function _getBurnRedeem(address creatorContractAddress, uint256 index) private  view returns(BurnRedeem storage burnRedeemInstance) {
+    function _getBurnRedeem(address creatorContractAddress, uint256 index) internal view returns(BurnRedeem storage burnRedeemInstance) {
         burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
         require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
     }

@@ -51,6 +51,19 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
     }
 
     /**
+     * See {IERC1155BurnRedeem-updateURI}.
+     */
+    function updateURI(
+        address creatorContractAddress,
+        uint256 index, StorageProtocol storageProtocol,
+        string calldata location
+    ) external override creatorAdminRequired(creatorContractAddress) {
+        BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, index);
+        burnRedeemInstance.storageProtocol = storageProtocol;
+        burnRedeemInstance.location = location;
+    }
+
+    /**
      * Helper to mint multiple redeem tokens
      */
     function _redeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeemInstance, address to, uint32 count) internal override {

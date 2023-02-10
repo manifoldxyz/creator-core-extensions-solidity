@@ -65,6 +65,33 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         },
         {from:owner}
       ));
+
+      // Fails because not admin
+      await truffleAssert.reverts(burnRedeem.updateBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: now,
+          endDate: later,
+          redeemAmount: 1,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: anyone1,
+          burnSet: []
+        },
+        {from:anyone1}
+      ), "Wallet is not an admin");
+
+      // Fails because not admin
+      await truffleAssert.reverts(burnRedeem.updateURI(
+        creator.address,
+        1,
+        1,
+        "",
+        {from:anyone1}
+      ), "Wallet is not an admin");
     });
 
     it('initializeBurnRedeem input sanitization test', async function () {

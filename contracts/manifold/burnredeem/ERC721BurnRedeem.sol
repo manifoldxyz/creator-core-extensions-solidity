@@ -48,6 +48,22 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         _identicalTokenURI[creatorContractAddress][index] = identicalTokenURI;
     }
 
+    /**
+     * See {IERC721BurnRedeem-updateTokenURI}.
+     */
+    function updateTokenURI(
+        address creatorContractAddress,
+        uint256 index,
+        StorageProtocol storageProtocol,
+        string calldata location,
+        bool identicalTokenURI
+    ) external override creatorAdminRequired(creatorContractAddress) {
+        BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, index);
+        burnRedeemInstance.storageProtocol = storageProtocol;
+        burnRedeemInstance.location = location;
+        _identicalTokenURI[creatorContractAddress][index] = identicalTokenURI;
+    }
+
     /** 
      * Helper to mint multiple redeem tokens
      */
