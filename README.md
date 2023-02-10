@@ -73,7 +73,7 @@ These are ERC721 and ERC1155 Lazy Claim extensions.
 #### OperatorFilterer
 Shared extension to support OpenSea's Operator Filter Registry
 
-contracts/manifold/operatorfiltere/OperatorFilterer.sol and referring to the following implementation addresses:
+contracts/manifold/operatorfilterer/OperatorFilterer.sol and referring to the following implementation addresses:
 
 **Goerli**
 ```
