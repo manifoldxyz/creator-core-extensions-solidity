@@ -162,8 +162,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * See {IBurnRedeemCore-burnRedeem}.
      */
-    function burnRedeem(address creatorContractAddress, uint256 index, uint32 burnCount, BurnToken[] calldata burnTokens) external payable override nonReentrant {
-        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, index, burnCount, burnTokens, _isActiveMember(msg.sender), true);
+    function burnRedeem(address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable override nonReentrant {
+        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, index, burnRedeemCount, burnTokens, _isActiveMember(msg.sender), true);
         if (msg.value > payableCost) {
             _forwardValue(payable(msg.sender), msg.value - payableCost);
         }
@@ -172,10 +172,10 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * (Batch overload) see {IBurnRedeemCore-burnRedeem}.
      */
-    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, uint32[] calldata burnCounts, BurnToken[][] calldata burnTokens) external payable override nonReentrant {
+    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable override nonReentrant {
         require(
             creatorContractAddresses.length == indexes.length &&
-            creatorContractAddresses.length == burnCounts.length &&
+            creatorContractAddresses.length == burnRedeemCounts.length &&
             creatorContractAddresses.length == burnTokens.length,
             "Invalid calldata"
         );
@@ -183,7 +183,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         bool isActiveMember = _isActiveMember(msg.sender);
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < creatorContractAddresses.length;) {
-            msgValueRemaining -= _burnRedeem(msgValueRemaining, creatorContractAddresses[i], indexes[i], burnCounts[i], burnTokens[i], isActiveMember, false);
+            msgValueRemaining -= _burnRedeem(msgValueRemaining, creatorContractAddresses[i], indexes[i], burnRedeemCounts[i], burnTokens[i], isActiveMember, false);
             unchecked { ++i; }
         }
 
@@ -192,12 +192,12 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
     }
 
-    function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 index, uint32 burnCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {
+    function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {
         BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, index);
 
         // Get the amount that can be burned
-        burnCount = _getAvailableBurnCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnCount);
-        if (burnCount == 0) {
+        burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
+        if (burnRedeemCount == 0) {
             if (revertNoneRemaining) revert("No tokens available");
             return 0;
         }
@@ -207,9 +207,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         if (!isActiveMember) {
             payableCost += _getManifoldFee(burnTokens.length);
         }
-        if (burnCount > 1) {
-            payableCost *= burnCount;
-            cost *= burnCount;
+        if (burnRedeemCount > 1) {
+            payableCost *= burnRedeemCount;
+            cost *= burnRedeemCount;
         }
         require(msgValue >= payableCost, "Invalid amount");
         if (cost > 0) {
@@ -217,8 +217,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
 
         // Do burn redeem
-        _burnTokens(burnRedeemInstance, burnTokens, burnCount, msg.sender);
-        _redeem(creatorContractAddress, index, burnRedeemInstance, msg.sender, burnCount);
+        _burnTokens(burnRedeemInstance, burnTokens, burnRedeemCount, msg.sender);
+        _redeem(creatorContractAddress, index, burnRedeemInstance, msg.sender, burnRedeemCount);
 
         return payableCost;
     }
@@ -273,13 +273,13 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         address creatorContractAddress;
         uint256 burnRedeemIndex;
-        uint32 burnCount;
+        uint32 burnRedeemCount;
         uint256 burnItemIndex;
         bytes32[] memory merkleProof;
-        (creatorContractAddress, burnRedeemIndex, burnCount, burnItemIndex, merkleProof) = abi.decode(data, (address, uint256, uint32, uint256, bytes32[]));
+        (creatorContractAddress, burnRedeemIndex, burnRedeemCount, burnItemIndex, merkleProof) = abi.decode(data, (address, uint256, uint32, uint256, bytes32[]));
 
         // Do burn redeem
-        _onERC1155Received(from, id, value, creatorContractAddress, burnRedeemIndex, burnCount, burnItemIndex, merkleProof);
+        _onERC1155Received(from, id, value, creatorContractAddress, burnRedeemIndex, burnRedeemCount, burnItemIndex, merkleProof);
 
         return this.onERC1155Received.selector;
     }
@@ -299,12 +299,12 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         address creatorContractAddress;
         uint256 burnRedeemIndex;
-        uint32 burnCount;
+        uint32 burnRedeemCount;
         BurnToken[] memory burnTokens;
-        (creatorContractAddress, burnRedeemIndex, burnCount, burnTokens) = abi.decode(data, (address, uint256, uint32, BurnToken[]));
+        (creatorContractAddress, burnRedeemIndex, burnRedeemCount, burnTokens) = abi.decode(data, (address, uint256, uint32, BurnToken[]));
 
         // Do burn redeem
-        _onERC1155BatchReceived(from, ids, values, creatorContractAddress, burnRedeemIndex, burnCount, burnTokens);
+        _onERC1155BatchReceived(from, ids, values, creatorContractAddress, burnRedeemIndex, burnRedeemCount, burnTokens);
 
         return this.onERC1155BatchReceived.selector;
     }
@@ -343,8 +343,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             "Invalid input"
         );
 
-        uint256 burnCount = _getAvailableBurnCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1);
-        require(burnCount != 0, "No tokens available");
+        uint256 burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1);
+        require(burnRedeemCount != 0, "No tokens available");
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
@@ -361,7 +361,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Execute onERC1155Received burn/redeem
      */
-    function _onERC1155Received(address from, uint256 tokenId, uint256 value, address creatorContractAddress, uint256 burnRedeemIndex, uint32 burnCount, uint256 burnItemIndex, bytes32[] memory merkleProof) private {
+    function _onERC1155Received(address from, uint256 tokenId, uint256 value, address creatorContractAddress, uint256 burnRedeemIndex, uint32 burnRedeemCount, uint256 burnItemIndex, bytes32[] memory merkleProof) private {
         BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, burnRedeemIndex);
 
         // A single 1155 can only be sent in directly for a burn if:
@@ -376,27 +376,27 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             "Invalid input"
         );
 
-        uint32 availableBurnCount = _getAvailableBurnCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnCount);
-        require(availableBurnCount != 0, "No tokens available");
+        uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
+        require(availableBurnRedeemCount != 0, "No tokens available");
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
-        require(value == burnItem.amount*burnCount, "Invalid input");
+        require(value == burnItem.amount * burnRedeemCount, "Invalid input");
         _validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
-        _burn(burnItem, address(this), msg.sender, tokenId, availableBurnCount);
-        _redeem(creatorContractAddress, burnRedeemIndex, burnRedeemInstance, from, availableBurnCount);
+        _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount);
+        _redeem(creatorContractAddress, burnRedeemIndex, burnRedeemInstance, from, availableBurnRedeemCount);
 
         // Return excess amount
-        if (availableBurnCount != burnCount) {
-            IERC1155(msg.sender).safeTransferFrom(address(this), from, tokenId, (burnCount - availableBurnCount)*burnItem.amount, "");
+        if (availableBurnRedeemCount != burnRedeemCount) {
+            IERC1155(msg.sender).safeTransferFrom(address(this), from, tokenId, (burnRedeemCount - availableBurnRedeemCount) * burnItem.amount, "");
         }
     }
 
     /**
      * Execute onERC1155BatchReceived burn/redeem
      */
-    function _onERC1155BatchReceived(address from, uint256[] memory tokenIds, uint256[] memory values, address creatorContractAddress, uint256 burnRedeemIndex, uint32 burnCount, BurnToken[] memory burnTokens) private {
+    function _onERC1155BatchReceived(address from, uint256[] memory tokenIds, uint256[] memory values, address creatorContractAddress, uint256 burnRedeemIndex, uint32 burnRedeemCount, BurnToken[] memory burnTokens) private {
         BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, burnRedeemIndex);
 
         // A single 1155 can only be sent in directly for a burn if:
@@ -409,8 +409,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             _isActiveMember(from),
             "Invalid input"
         );
-        uint32 availableBurnCount = _getAvailableBurnCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnCount);
-        require(availableBurnCount != 0, "No tokens available");
+        uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
+        require(availableBurnRedeemCount != 0, "No tokens available");
 
         // Verify the values match what is needed
         uint256[] memory returnValues = new uint256[](tokenIds.length);
@@ -418,19 +418,19 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             BurnToken memory burnToken = burnTokens[i];
             BurnItem memory burnItem = burnRedeemInstance.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
             require(burnToken.id == tokenIds[i], "Invalid token");
-            require(burnItem.amount*burnCount == values[i], "Invalid amount");
-            if (availableBurnCount != burnCount) {
-                returnValues[i] = values[i] - burnItem.amount*availableBurnCount;
+            require(burnItem.amount * burnRedeemCount == values[i], "Invalid amount");
+            if (availableBurnRedeemCount != burnRedeemCount) {
+                returnValues[i] = values[i] - burnItem.amount * availableBurnRedeemCount;
             }
             unchecked { ++i; }
         }
 
         // Do burn redeem
-        _burnTokens(burnRedeemInstance, burnTokens, availableBurnCount, address(this));
-        _redeem(creatorContractAddress, burnRedeemIndex, burnRedeemInstance, from, availableBurnCount);
+        _burnTokens(burnRedeemInstance, burnTokens, availableBurnRedeemCount, address(this));
+        _redeem(creatorContractAddress, burnRedeemIndex, burnRedeemInstance, from, availableBurnRedeemCount);
 
         // Return excess amount
-        if (availableBurnCount != burnCount) {
+        if (availableBurnRedeemCount != burnRedeemCount) {
             IERC1155(msg.sender).safeBatchTransferFrom(address(this), from, tokenIds, returnValues, "");
         }
     }
@@ -446,7 +446,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Burn all listed tokens and check that the burn set is satisfied
      */
-    function _burnTokens(BurnRedeem storage burnRedeemInstance, BurnToken[] memory burnTokens, uint256 burnCount, address owner) private {
+    function _burnTokens(BurnRedeem storage burnRedeemInstance, BurnToken[] memory burnTokens, uint256 burnRedeemCount, address owner) private {
         // Check that each group in the burn set is satisfied
         uint256[] memory groupCounts = new uint256[](burnRedeemInstance.burnSet.length);
 
@@ -456,14 +456,14 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
             _validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
 
-            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnCount);
-            groupCounts[burnToken.groupIndex] += burnCount;
+            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnRedeemCount);
+            groupCounts[burnToken.groupIndex] += burnRedeemCount;
 
             unchecked { ++i; }
         }
 
         for (uint256 i; i < groupCounts.length;) {
-            require(groupCounts[i] == burnRedeemInstance.burnSet[i].requiredCount*burnCount, "Invalid number of tokens");
+            require(groupCounts[i] == burnRedeemInstance.burnSet[i].requiredCount * burnRedeemCount, "Invalid number of tokens");
             unchecked { ++i; }
         }
     }
@@ -500,10 +500,21 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         for (uint256 i; i < burnGroups.length;) {
             burnRedeemInstance.burnSet.push();
             BurnGroup storage burnGroup = burnRedeemInstance.burnSet[i];
+            require(
+                burnGroups[i].requiredCount > 0 &&
+                burnGroups[i].requiredCount <= burnGroups[i].items.length,
+                "Invalid input"
+            );
             burnGroup.requiredCount = burnGroups[i].requiredCount;
             for (uint256 j; j < burnGroups[i].items.length;) {
                 BurnItem memory burnItem = burnGroups[i].items[j];
-                require(burnItem.tokenSpec == TokenSpec.ERC1155 || burnItem.amount == 0, "Invalid input");
+                require(
+                    (
+                        (burnItem.tokenSpec == TokenSpec.ERC1155 && burnItem.amount > 0) ||
+                        (burnItem.tokenSpec == TokenSpec.ERC721 && burnItem.amount == 0)
+                    ) &&
+                    burnItem.validationType != ValidationType.INVALID,
+                    "Invalid input");
                 burnGroup.items.push(burnGroups[i].items[j]);
                 unchecked { ++j; }
             }
@@ -545,17 +556,17 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     }
 
     /**
-     * Helper to get the number of burns the person can accomplish
+     * Helper to get the number of burn redeems the person can accomplish
      */
-    function _getAvailableBurnCount(uint32 totalSupply, uint32 redeemedCount, uint32 redeemAmount, uint32 desiredCount) internal pure returns(uint32 burnCount) {
+    function _getAvailableBurnRedeemCount(uint32 totalSupply, uint32 redeemedCount, uint32 redeemAmount, uint32 desiredCount) internal pure returns(uint32 burnRedeemCount) {
         if (totalSupply == 0) {
-            burnCount = desiredCount;
+            burnRedeemCount = desiredCount;
         } else {
             uint32 remainingCount = (totalSupply - redeemedCount) / redeemAmount;
             if (remainingCount > desiredCount) {
-                burnCount = desiredCount;
+                burnRedeemCount = desiredCount;
             } else {
-                burnCount = remainingCount;
+                burnRedeemCount = remainingCount;
             }
         }
     }
@@ -568,9 +579,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Helper to burn token
      */
-    function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnCount) private {
+    function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount) private {
         if (burnItem.tokenSpec == TokenSpec.ERC1155) {
-            uint256 amount = burnItem.amount*burnCount;
+            uint256 amount = burnItem.amount * burnRedeemCount;
 
             if (burnItem.burnSpec == BurnSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
@@ -592,7 +603,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 revert("Invalid burn spec");
             }
         } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
-            require(burnCount == 1, "Invalid burn spec");
+            require(burnRedeemCount == 1, "Invalid burn count");
             if (burnItem.burnSpec == BurnSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
                 IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");

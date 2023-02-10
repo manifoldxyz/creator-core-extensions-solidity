@@ -13,10 +13,31 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  */
 interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
+
+    /**
+     * @notice the validation type used for a `BurnItem`
+     * CONTRACT                 any token from a specific contract is valid
+     * RANGE                    token IDs within a range (inclusive) are valid
+     * MERKLE_TREE              various individual token IDs included in a merkle tree are valid
+     */
     enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE }
+
     enum TokenSpec { INVALID, ERC721, ERC1155 }
     enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN }
 
+    /**
+     * @notice a `BurnItem` indicates which tokens are eligible to be burned
+     * @param validationType    which type of validation used to check that the burn item is 
+     *                          satisfied
+     * @param tokenSpec         whether the token is an ERC721 or ERC1155
+     * @param burnSpec          whether the contract for a token has a `burn` function and, if so,
+     *                          what interface
+     * @param amount            (only for ERC1155 tokens) the amount (value) required to burn
+     * @param minTokenId        (only for RANGE validation) the minimum valid token ID
+     * @param maxTokenId        (only for RANGE validation) the maximum valid token ID
+     * @param merkleRoot        (only for MERKLE_TREE validation) the root of the merkle tree of
+     *                          valid token IDs
+     */
     struct BurnItem {
         ValidationType validationType;
         address contractAddress;
@@ -28,11 +49,29 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         bytes32 merkleRoot;
     }
 
+    /**
+     * @notice a `BurnGroup` is a group of valid `BurnItem`s
+     * @param requiredCount     the number of `BurnItem`s (0 < requiredCount <= items.length) that 
+     *                          need to be included in a burn
+     * @param items             the list of `BurnItem`s
+     */
     struct BurnGroup {
         uint256 requiredCount;
         BurnItem[] items;
     }
 
+    /**
+     * @notice parameters for burn redeem intialization/updates
+     * @param paymentReceiver   the address to forward proceeds from paid burn redeems
+     * @param storageProtocol   the type of storage used for the redeem token URIs
+     * @param redeemAmount      the number of redeem tokens to mint for each burn redeem
+     * @param totalSupply       the maximum number of redeem tokens to mint (0 for unlimited)
+     * @param startDate         the starting time for the burn redeem (0 for immediately)
+     * @param endDate           the end time for the burn redeem (0 for never)
+     * @param cost              the cost for each burn redeem
+     * @param location          used to construct the token URI (Arweave hash, full URI, etc.)
+     * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
+     */
     struct BurnRedeemParameters {
         address payable paymentReceiver;
         StorageProtocol storageProtocol;
@@ -58,6 +97,14 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         BurnGroup[] burnSet;
     }
 
+    /**
+     * @notice a pointer to a `BurnItem` in a `BurnGroup` used in calls to `burnRedeem`
+     * @param groupIndex        the index of the `BurnGroup` in `BurnRedeem.burnSet`
+     * @param itemIndex         the index of the `BurnItem` in `BurnGroup.items`
+     * @param contractAddress   the address of the contract for the token
+     * @param id                the token ID
+     * @param merkleProof       the merkle proof for the token ID (only for MERKLE_TREE validation)
+     */
     struct BurnToken {
         uint48 groupIndex;
         uint48 itemIndex;
@@ -81,19 +128,19 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @notice burn tokens and mint a redeem token
      * @param creatorContractAddress    the address of the creator contract
      * @param index                     the index of the burn redeem
-     * @param burnCount                 the number of burns we want to do
+     * @param burnRedeemCount           the number of burn redeems we want to do
      * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
      */
-    function burnRedeem(address creatorContractAddress, uint256 index, uint32 burnCount, BurnToken[] calldata burnTokens) external payable;
+    function burnRedeem(address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable;
 
     /**
      * @notice burn tokens and mint redeem tokens multiple times in a single transaction
      * @param creatorContractAddresses  the addresses of the creator contracts
      * @param indexes                   the indexes of the burn redeems
-     * @param burnCounts                the burn counts for each burn
+     * @param burnRedeemCounts          the burn redeem counts for each burn
      * @param burnTokens                the tokens to burn for each burn redeem with pointers to the corresponding BurnItem requirement
      */
-    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, uint32[] calldata burnCounts, BurnToken[][] calldata burnTokens) external payable;
+    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable;
 
     /**
      * @notice recover a token that was sent to the contract without safeTransferFrom
