@@ -37,16 +37,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           paymentReceiver: anyone1,
           burnSet: []
-        },
-        {
-          redeemAmount: 1,
-          redeemTokenId: 0,
         },
         {from:anyone1}
       ), "Wallet is not an admin");
@@ -58,16 +55,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
           burnSet: []
-        },
-        {
-          redeemAmount: 1,
-          redeemTokenId: 0,
         },
         {from:owner}
       ));
@@ -84,16 +78,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: now,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
           burnSet: []
-        },
-        {
-          redeemAmount: 1,
-          redeemTokenId: 0,
         },
         {from:owner}
       ), "startDate after endDate");
@@ -105,16 +96,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
           burnSet: []
-        },
-        {
-          redeemAmount: 1,
-          redeemTokenId: 0,
         },
         {from:owner}
       ), "Burn redeem not initialized");
@@ -130,16 +118,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
           burnSet: []
-        },
-        {
-          redeemAmount: 1,
-          redeemTokenId: 0,
         },
         {from:owner}
       );
@@ -151,16 +136,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 3,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
           burnSet: []
-        },
-        {
-          redeemAmount: 3,
-          redeemTokenId: 0,
         },
         {from:owner}
       ), "Remainder left from totalSupply");
@@ -172,16 +154,13 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: now,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
           burnSet: []
-        },
-        {
-          redeemAmount: 1,
-          redeemTokenId: 0,
         },
         {from:owner}
       ), "startDate after endDate");
@@ -198,6 +177,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
           startDate: now,
           endDate: later,
           totalSupply: 10,
+          redeemAmount: 1,
           storageProtocol: 1,
           location: "XXX",
           cost: 0,
@@ -220,10 +200,6 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          redeemAmount: 1,
-          redeemTokenId: 0,
-        },
         {from:owner}
       );
 
@@ -233,6 +209,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
 
       await burnRedeem.burnRedeem(
         creator.address,
+        1,
         1,
         [
           {
@@ -255,7 +232,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
-      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "bytes32[]"], [creator.address, 1, 0, []]);
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint32", "uint256", "bytes32[]"], [creator.address, 1, 2, 0, []]);
 
       // Mint burnable tokens
       await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner });
@@ -272,6 +249,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 2,
           totalSupply: 6,
           storageProtocol: 1,
           location: "XXX",
@@ -294,10 +272,6 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
               ]
             }
           ],
-        },
-        {
-          redeemAmount: 2,
-          redeemTokenId: 0,
         },
         {from:owner}
       );

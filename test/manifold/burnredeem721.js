@@ -39,6 +39,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -59,6 +60,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -84,6 +86,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: now,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -97,6 +100,27 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {from:owner}
       ), "startDate after endDate");
 
+      // Fails due to non-mod-0 redeemAmount
+      await truffleAssert.reverts(burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: 0,
+          endDate: now,
+          redeemAmount: 3,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [],
+        },
+        {
+          identical: true,
+        },
+        {from:owner}
+      ), "Remainder left from totalSupply");
+
       // Cannot update non-existant burn redeem
       await truffleAssert.reverts(burnRedeem.updateBurnRedeem(
         creator.address,
@@ -104,6 +128,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -128,6 +153,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -148,6 +174,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: now,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -160,6 +187,27 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         },
         {from:owner}
       ), "startDate after endDate");
+
+      // Fails due to non-mod-0 redeemAmount
+      await truffleAssert.reverts(burnRedeem.updateBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: 0,
+          endDate: now,
+          redeemAmount: 3,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [],
+        },
+        {
+          identical: true,
+        },
+        {from:owner}
+      ), "Remainder left from totalSupply");
     });
 
     it('tokenURI test', async function () {
@@ -172,6 +220,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -208,6 +257,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await burnRedeem.burnRedeem(
         creator.address,
         1,
+        1,
         [
           {
             groupIndex: 0,
@@ -228,6 +278,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: now,
           endDate: later,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -293,6 +344,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -356,6 +408,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           1,
+          1,
           [
             {
               groupIndex: 0,
@@ -374,6 +427,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(
         burnRedeem.burnRedeem(
           creator.address,
+          1,
           1,
           [
             {
@@ -408,6 +462,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           1,
+          1,
           [
             {
               groupIndex: 0,
@@ -433,6 +488,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(
         burnRedeem.burnRedeem(
           creator.address,
+          1,
           1,
           [
             {
@@ -460,6 +516,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           1,
+          1,
           [
             {
               groupIndex: 0,
@@ -478,13 +535,14 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone1}
         ),
-        "Invalid value"
+        "Invalid amount"
       );
 
       // Reverts when msg.sender is not token owner, but tokens are approved
       await truffleAssert.reverts(
         burnRedeem.burnRedeem(
           creator.address,
+          1,
           1,
           [
             {
@@ -512,6 +570,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           1,
+          1,
           [
             {
               groupIndex: 0,
@@ -538,6 +597,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.passes(
         burnRedeem.burnRedeem(
           creator.address,
+          1,
           1,
           [
             {
@@ -583,6 +643,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -618,6 +679,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -653,6 +715,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -692,6 +755,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           1,
+          1,
           [
             {
               groupIndex: 0,
@@ -710,6 +774,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           2,
+          1,
           [
             {
               groupIndex: 0,
@@ -728,6 +793,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           3,
+          1,
           [
             {
               groupIndex: 0,
@@ -757,6 +823,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -794,6 +861,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           1,
+          1,
           [
             {
               groupIndex: 0,
@@ -805,7 +873,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone1, value: BURN_FEE}
         ),
-        "Invalid value"
+        "Invalid amount"
       );
 
       const creatorBalanceBefore = await web3.eth.getBalance(owner);
@@ -814,6 +882,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.passes(
         burnRedeem.burnRedeem(
           creator.address,
+          1,
           1,
           [
             {
@@ -846,6 +915,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -885,6 +955,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         burnRedeem.burnRedeem(
           creator.address,
           1,
+          1,
           [
             {
               groupIndex: 0,
@@ -914,6 +985,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -949,6 +1021,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 1,
           storageProtocol: 1,
           location: "XXX",
@@ -1013,21 +1086,24 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           }
         ]
       ];
+      const burnCounts = [1, 1, 1];
 
       // Reverts with insufficient fee
-      await truffleAssert.reverts(burnRedeem.methods['burnRedeem(address[],uint256[],(uint48,uint48,address,uint256,bytes32[])[][])'](
+      await truffleAssert.reverts(burnRedeem.methods['burnRedeem(address[],uint256[],uint32[],(uint48,uint48,address,uint256,bytes32[])[][])'](
         addresses,
         indexes,
+        burnCounts,
         burnTokens,
         {from:anyone1, value: BURN_FEE}
-      ));
+      ), "Invalid amount");
 
       const userBalanceBefore = await web3.eth.getBalance(anyone1);
 
       // Passes with multiple redemptions
-      const tx = await burnRedeem.methods['burnRedeem(address[],uint256[],(uint48,uint48,address,uint256,bytes32[])[][])'](
+      const tx = await burnRedeem.methods['burnRedeem(address[],uint256[],uint32[],(uint48,uint48,address,uint256,bytes32[])[][])'](
         addresses,
         indexes,
+        burnCounts,
         burnTokens,
         {from:anyone1, value: BURN_FEE.mul(3)}
       );
@@ -1072,6 +1148,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -1102,7 +1179,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       );
 
       // Reverts without membership
-      await truffleAssert.reverts(burnable721.methods['safeTransferFrom(address,address,uint256,bytes)'](anyone1, burnRedeem.address, 1, burnRedeemData, {from:anyone1}), "Not an active member");
+      await truffleAssert.reverts(burnable721.methods['safeTransferFrom(address,address,uint256,bytes)'](anyone1, burnRedeem.address, 1, burnRedeemData, {from:anyone1}), "Invalid input");
 
       // Receiver functions require membership
       await manifoldMembership.setMember(anyone1, true, {from:owner});
@@ -1125,7 +1202,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
-      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "bytes32[]"], [creator.address, 1, 0, []]);
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint32", "uint256", "bytes32[]"], [creator.address, 1, 1, 0, []]);
 
       // Mint burnable tokens
       await burnable1155.mintBaseNew([anyone1], [3], [""], { from: owner });
@@ -1143,6 +1220,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -1173,7 +1251,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       );
 
       // Reverts without membership
-      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}), "Not an active member");
+      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}), "Invalid input");
 
       // Receiver functions require membership
       await manifoldMembership.setMember(anyone1, true, {from:owner});
@@ -1182,7 +1260,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnable1155_2.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}), "Invalid burn token");
 
       // Reverts with invalid amount
-      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 3, burnRedeemData, {from:anyone1}), "Invalid amount");
+      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 3, burnRedeemData, {from:anyone1}), "Invalid input");
 
       // Passes with right token id
       await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}));
@@ -1199,7 +1277,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
-      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint256", "bytes32[]"], [creator.address, 1, 0, []]);
+      let burnRedeemData = web3.eth.abi.encodeParameters(["address", "uint256", "uint32", "uint256", "bytes32[]"], [creator.address, 1, 2, 0, []]);
 
       // Mint burnable tokens
       await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner });
@@ -1216,6 +1294,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 3,
           storageProtocol: 1,
           location: "XXX",
@@ -1261,14 +1340,14 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.passes(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}));
 
       // Ensure tokens are burned/returned/minted
-      balance = await burnable1155.balanceOf(anyone1, 1);
-      // Only 1 redemption left, so 2 tokens are returned
-      assert.equal(4, balance);
       balance = await creator.balanceOf(anyone1);
       assert.equal(3, balance);
+      // Only 1 redemption left, so 2 tokens are returned
+      balance = await burnable1155.balanceOf(anyone1, 1);
+      assert.equal(4, balance);
 
       // Reverts with no redemptions left
-      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 2, burnRedeemData, {from:anyone1}), "No tokens available");
+      await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 4, burnRedeemData, {from:anyone1}), "No tokens available");
     });
 
     it('onERC1155BatchReceived test', async function() {
@@ -1277,7 +1356,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
       let burnRedeemData = web3.eth.abi.encodeParameters(
-        ["address", "uint256", {
+        ["address", "uint256", "uint32", {
           "BurnToken[]": {
             "groupIndex": "uint48",
             "itemIndex": "uint48",
@@ -1286,7 +1365,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             "merkleProof": "bytes32[]"
           }
         }],
-        [creator.address, 1,
+        [creator.address, 1, 1,
           [
             {
               groupIndex: 0,
@@ -1325,6 +1404,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -1365,7 +1445,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       );
 
       // Reverts without membership
-      await truffleAssert.reverts(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [2, 2], burnRedeemData, {from:anyone1}), "Not an active member");
+      await truffleAssert.reverts(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [2, 2], burnRedeemData, {from:anyone1}), "Invalid input");
 
       // Receiver functions require membership
       await manifoldMembership.setMember(anyone1, true, {from:owner});
@@ -1377,7 +1457,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [1, 1], burnRedeemData, {from:anyone1}), "Invalid amount");
 
       // Reverts with extra tokens
-      await truffleAssert.reverts(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2, 3], [2, 2, 2], burnRedeemData, {from:anyone1}), "Invalid number of burn tokens");
+      await truffleAssert.reverts(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2, 3], [2, 2, 2], burnRedeemData, {from:anyone1}), "Invalid input");
 
       // Passes with right token id
       await truffleAssert.passes(burnable1155.methods['safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'](anyone1, burnRedeem.address, [1, 2], [2, 2], burnRedeemData, {from:anyone1}));
@@ -1408,6 +1488,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {
           startDate: start,
           endDate: end,
+          redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
           location: "XXX",
@@ -1440,6 +1521,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       const addresses = [];
       const indexes = [];
       const burnTokens = [];
+      const burnCounts = [];
 
       for (let i = 0; i < 10; i++) {
         addresses.push(creator.address);
@@ -1453,13 +1535,15 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             merkleProof: [ethers.utils.formatBytes32String("")]
           }
         ]);
+        burnCounts.push(1);
       }
 
       await burnable721.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
 
-      await burnRedeem.methods['burnRedeem(address[],uint256[],(uint48,uint48,address,uint256,bytes32[])[][])'](
+      await burnRedeem.methods['burnRedeem(address[],uint256[],uint32[],(uint48,uint48,address,uint256,bytes32[])[][])'](
         addresses,
         indexes,
+        burnCounts,
         burnTokens,
         {from:anyone1, value: BURN_FEE.mul(10)}
       );

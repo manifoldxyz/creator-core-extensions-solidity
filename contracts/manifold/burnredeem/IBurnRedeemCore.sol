@@ -36,6 +36,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     struct BurnRedeemParameters {
         address payable paymentReceiver;
         StorageProtocol storageProtocol;
+        uint32 redeemAmount;
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
@@ -48,6 +49,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         address payable paymentReceiver;
         StorageProtocol storageProtocol;
         uint32 redeemedCount;
+        uint32 redeemAmount;
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
@@ -84,17 +86,19 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @notice burn tokens and mint a redeem token
      * @param creatorContractAddress    the address of the creator contract
      * @param index                     the index of the burn redeem
+     * @param burnCount                 the number of burns we want to do
      * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
      */
-    function burnRedeem(address creatorContractAddress, uint256 index, BurnToken[] calldata burnTokens) external payable;
+    function burnRedeem(address creatorContractAddress, uint256 index, uint32 burnCount, BurnToken[] calldata burnTokens) external payable;
 
     /**
      * @notice burn tokens and mint redeem tokens multiple times in a single transaction
      * @param creatorContractAddresses  the addresses of the creator contracts
      * @param indexes                   the indexes of the burn redeems
+     * @param burnCounts                the burn counts for each burn
      * @param burnTokens                the tokens to burn for each burn redeem with pointers to the corresponding BurnItem requirement
      */
-    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, BurnToken[][] calldata burnTokens) external payable;
+    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, uint32[] calldata burnCounts, BurnToken[][] calldata burnTokens) external payable;
 
     /**
      * @notice recover a token that was sent to the contract without safeTransferFrom

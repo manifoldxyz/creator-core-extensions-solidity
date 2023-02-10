@@ -54,23 +54,25 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     }
 
     /** 
-     * Helper to mint redeem token
-     */
-    function _redeem(address creatorContractAddress, uint256 index, BurnRedeem storage _burnRedeem, address to) internal override {
-        uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(to);
-        ++_burnRedeem.redeemedCount;
-        _redeemTokens[creatorContractAddress][newTokenId] = RedeemToken(uint224(index), _burnRedeem.redeemedCount);
-
-        emit BurnRedeemMint(creatorContractAddress, index, newTokenId);
-    }
-
-    /** 
      * Helper to mint multiple redeem tokens
      */
-    function _redeem(address creatorContractAddress, uint256 index, BurnRedeem storage _burnRedeem, address to, uint32 count) internal override {
-        for (uint256 i; i < count;) {
-            _redeem(creatorContractAddress, index, _burnRedeem, to);
-            unchecked { ++i; }
+    function _redeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeemInstance, address to, uint32 count) internal override {
+        if (burnRedeemInstance.redeemAmount == 1 && count == 1) {
+            ++burnRedeemInstance.redeemedCount;
+            uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(to);
+            _redeemTokens[creatorContractAddress][newTokenId] = RedeemToken(uint224(index), burnRedeemInstance.redeemedCount);
+            emit BurnRedeemMint(creatorContractAddress, index, newTokenId);
+        } else {
+            uint256 totalCount = burnRedeemInstance.redeemAmount * count;
+            require(totalCount <= MAX_UINT_16, "Invalid input");
+            uint256 startingCount = burnRedeemInstance.redeemedCount+1;
+            burnRedeemInstance.redeemedCount += uint32(totalCount);
+            uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, uint16(totalCount));
+            for (uint256 i; i < totalCount;) {
+                _redeemTokens[creatorContractAddress][newTokenIds[i]] = RedeemToken(uint224(index), uint32(startingCount+i));
+                emit BurnRedeemMint(creatorContractAddress, index, newTokenIds[i]);
+                unchecked { i++; }
+            }
         }
     }
 
