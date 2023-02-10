@@ -6,6 +6,7 @@ pragma solidity ^0.8.0;
 
 import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../enumerable/ERC721/ERC721OwnerEnumerableExtension.sol";
 import "../enumerable/ERC721/ERC721OwnerEnumerableSingleCreatorExtension.sol";
@@ -47,5 +48,49 @@ contract MockETHReceiver {
         for (uint j = 0; j < 2300;) {
             unchecked{ j++; }
         }
+    }
+}
+
+contract MockRegistry {
+    address[] public _failOperators;
+
+    function setBlockedOperators(address[] memory failOperators) public {
+        for (uint i = 0; i < failOperators.length; i++) {
+            _failOperators.push(failOperators[i]);
+        }
+    }
+
+    function isOperatorAllowed(address, address operator) external view returns (bool) {
+        for (uint i = 0; i < _failOperators.length; i++) {
+            if (_failOperators[i] == operator) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function registerAndSubscribe(address registrant, address subscription) external {}
+}
+
+contract MockManifoldMembership {
+    mapping(address => bool) private _members;
+
+    function setMember(address member, bool isMember) public {
+        _members[member] = isMember;
+    }
+
+    function isActiveMember(address sender) external view returns (bool) {
+        return _members[sender];
+    }
+}
+
+contract MockERC20 is ERC20 {
+
+    constructor (string memory _name, string memory _symbol) ERC20(_name, _symbol) {
+    }
+
+    function testMint(address to, uint256 amount) external {
+        _mint(to, amount);
     }
 }
