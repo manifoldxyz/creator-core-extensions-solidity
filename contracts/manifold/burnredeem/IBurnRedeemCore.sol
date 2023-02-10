@@ -36,7 +36,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     struct BurnRedeemParameters {
         address payable paymentReceiver;
         StorageProtocol storageProtocol;
-        uint32 redeemAmount;
+        uint16 redeemAmount;
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
@@ -49,7 +49,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         address payable paymentReceiver;
         StorageProtocol storageProtocol;
         uint32 redeemedCount;
-        uint32 redeemAmount;
+        uint16 redeemAmount;
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;

@@ -459,10 +459,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
             _validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
 
-            // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
-            if (burnItem.tokenSpec == TokenSpec.ERC721 && burnItem.burnSpec != BurnSpec.NONE) {
-                require(IERC721(burnToken.contractAddress).ownerOf(burnToken.id) == owner, "Sender is not owner");
-            }
             _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnCount);
             groupCounts[burnToken.groupIndex] += burnCount;
 
@@ -605,6 +601,10 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
 
             } else if (burnItem.burnSpec == BurnSpec.MANIFOLD || burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
+                if (from != address(this)) {
+                    // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
+                    require(IERC721(contractAddress).ownerOf(tokenId) == from, "Sender is not owner");
+                }
                 // Burn using the contract's burn function
                 Burnable721(contractAddress).burn(tokenId);
 
