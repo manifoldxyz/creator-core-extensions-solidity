@@ -47,9 +47,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           paymentReceiver: owner,
           burnSet: [],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:anyone1}
       ), "Wallet is not an admin");
 
@@ -68,9 +66,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           paymentReceiver: owner,
           burnSet: [],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:owner}
       ));
     });
@@ -94,9 +90,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           paymentReceiver: owner,
           burnSet: [],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:owner}
       ), "startDate after endDate");
 
@@ -115,9 +109,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           paymentReceiver: owner,
           burnSet: [],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:owner}
       ), "Remainder left from totalSupply");
 
@@ -136,9 +128,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           paymentReceiver: owner,
           burnSet: [],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:owner}
       ), "Burn redeem not initialized");
     });
@@ -161,9 +151,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           paymentReceiver: owner,
           burnSet: [],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:owner}
       );
 
@@ -182,9 +170,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           paymentReceiver: owner,
           burnSet: [],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:owner}
       ), "startDate after endDate");
 
@@ -203,9 +189,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           paymentReceiver: owner,
           burnSet: [],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:owner}
       ), "Remainder left from totalSupply");
     });
@@ -244,9 +228,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: true,
-        },
+        true,
         {from:owner}
       );
 
@@ -302,9 +284,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -393,9 +373,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -667,9 +645,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
       // Burn #2
@@ -703,9 +679,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
       // Burn #3
@@ -739,9 +713,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -847,9 +819,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -939,9 +909,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -1009,9 +977,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
       // Burn #2
@@ -1045,9 +1011,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -1172,9 +1136,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -1244,9 +1206,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -1318,9 +1278,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -1438,9 +1396,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             }
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 
@@ -1512,9 +1468,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             },
           ],
         },
-        {
-          identical: false,
-        },
+        false,
         {from:owner}
       );
 

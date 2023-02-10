@@ -66,11 +66,6 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         bytes32[] merkleProof;
     }
 
-    struct RedeemToken {
-        uint224 burnRedeemIndex;
-        uint32 mintNumber;
-    }
-
     event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed index, address initializer);
     event BurnRedeemMint(address indexed creatorContract, uint256 indexed index, uint256 indexed tokenId);
 

@@ -10,8 +10,10 @@ import "./IERC1155BurnRedeem.sol";
 contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
     using Strings for uint256;
 
-    // { creatorContractAddress => { index =>  tokenIds } }
-    mapping(address => mapping(uint256 => uint256)) private _tokenIds;
+    // { creatorContractAddress => { index =>  tokenId } }
+    mapping(address => mapping(uint256 => uint256)) private _redeemTokenIds;
+    // { creatorContractAddress => { tokenId =>  index } }
+    mapping(address => mapping(uint256 => uint256)) private _redeemIndexes;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(BurnRedeemCore, IERC165) returns (bool) {
         return interfaceId == type(IERC1155BurnRedeem).interfaceId || super.supportsInterface(interfaceId);
@@ -33,8 +35,8 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         string[] memory uris = new string[](1);
         uint256[] memory amounts = new uint256[](1);
         uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
-        _redeemTokens[creatorContractAddress][newTokenIds[0]] = RedeemToken(uint224(index), 0);
-        _tokenIds[creatorContractAddress][index] = newTokenIds[0];
+        _redeemTokenIds[creatorContractAddress][index] = newTokenIds[0];
+        _redeemIndexes[creatorContractAddress][newTokenIds[0]] = index;
     }
 
     /**
@@ -55,7 +57,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         address[] memory addresses = new address[](1);
         addresses[0] = to;
         uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = _tokenIds[creatorContractAddress][index];
+        tokenIds[0] = _redeemTokenIds[creatorContractAddress][index];
         uint256[] memory values = new uint256[](1);
         values[0] = burnRedeemInstance.redeemAmount * count;
         
@@ -69,7 +71,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
      * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-        uint256 index = _redeemTokens[creatorContractAddress][tokenId].burnRedeemIndex;
+        uint256 index = _redeemIndexes[creatorContractAddress][tokenId];
         require(index > 0, "Token does not exist");
         BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][index];
 

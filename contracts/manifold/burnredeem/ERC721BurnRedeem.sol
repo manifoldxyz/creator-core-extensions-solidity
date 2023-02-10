@@ -12,8 +12,11 @@ import "./IERC721BurnRedeem.sol";
 contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     using Strings for uint256;
 
-    // { creatorContractAddress => { index =>  ExtendedConfig } }
-    mapping(address => mapping(uint256 => ExtendedConfig)) private _configs;
+    // { contractAddress => { tokenId => { redeemIndex } }
+    mapping(address => mapping(uint256 => RedeemToken)) internal _redeemTokens;
+
+    // { creatorContractAddress => { index =>  bool } }
+    mapping(address => mapping(uint256 => bool)) private _identicalTokenURI;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(BurnRedeemCore, IERC165) returns (bool) {
         return interfaceId == type(IERC721BurnRedeem).interfaceId || super.supportsInterface(interfaceId);
@@ -26,10 +29,10 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         address creatorContractAddress,
         uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters,
-        ExtendedConfig calldata config
+        bool identicalTokenURI
     ) external creatorAdminRequired(creatorContractAddress) {
         _initialize(creatorContractAddress, index, burnRedeemParameters);
-        _setConfig(creatorContractAddress, index, config);
+        _identicalTokenURI[creatorContractAddress][index] = identicalTokenURI;
     }
 
     /**
@@ -39,18 +42,10 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         address creatorContractAddress,
         uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters,
-        ExtendedConfig calldata config
+        bool identicalTokenURI
     ) external creatorAdminRequired(creatorContractAddress) {
         _update(creatorContractAddress, index, burnRedeemParameters);
-        _setConfig(creatorContractAddress, index, config);
-    }
-
-    /**
-     * Helper to set extended config for 721 redeems
-     */
-    function _setConfig(address creatorContractAddress, uint256 index, ExtendedConfig calldata config) internal {
-        ExtendedConfig storage _config = _configs[creatorContractAddress][index];
-        _config.identical = config.identical;
+        _identicalTokenURI[creatorContractAddress][index] = identicalTokenURI;
     }
 
     /** 
@@ -83,7 +78,6 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         RedeemToken memory token = _redeemTokens[creatorContractAddress][tokenId];
         require(token.burnRedeemIndex > 0, "Token does not exist");
         BurnRedeem memory _burnRedeem = _burnRedeems[creatorContractAddress][token.burnRedeemIndex];
-        ExtendedConfig memory _config = _configs[creatorContractAddress][token.burnRedeemIndex];
 
         string memory prefix = "";
         if (_burnRedeem.storageProtocol == StorageProtocol.ARWEAVE) {
@@ -93,7 +87,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         }
         uri = string(abi.encodePacked(prefix, _burnRedeem.location));
 
-        if (!_config.identical) {
+        if (!_identicalTokenURI[creatorContractAddress][token.burnRedeemIndex]) {
             uri = string(abi.encodePacked(uri, "/", uint256(token.mintNumber).toString()));
         }
     }

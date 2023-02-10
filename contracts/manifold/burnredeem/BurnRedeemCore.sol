@@ -77,9 +77,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     // { creatorContractAddress => { index => BurnRedeem } }
     mapping(address => mapping(uint256 => BurnRedeem)) internal _burnRedeems;
 
-    // { contractAddress => { tokenId => { redeemIndex } }
-    mapping(address => mapping(uint256 => RedeemToken)) internal _redeemTokens;
-
     address public manifoldMembershipContract;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165, AdminControl) returns (bool) {
