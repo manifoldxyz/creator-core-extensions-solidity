@@ -7,6 +7,10 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 
 import "../enumerable/ERC721/ERC721OwnerEnumerableExtension.sol";
 import "../enumerable/ERC721/ERC721OwnerEnumerableSingleCreatorExtension.sol";
@@ -92,5 +96,37 @@ contract MockERC20 is ERC20 {
 
     function testMint(address to, uint256 amount) external {
         _mint(to, amount);
+    }
+}
+
+contract MockERC721 is ERC721 {
+    constructor (string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
+
+    function mint(address to, uint256 tokenId) public {
+        _mint(to, tokenId);
+    }
+}
+
+contract MockERC1155 is ERC1155 {
+    constructor (string memory _uri) ERC1155(_uri) {}
+
+    function mint(address to, uint256 id, uint256 amount) public {
+        _mint(to, id, amount, "");
+    }
+}
+
+contract MockERC721Burnable is ERC721Burnable {
+    constructor (string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
+
+    function mint(address to, uint256 tokenId) public {
+        _mint(to, tokenId);
+    }
+}
+
+contract MockERC1155Burnable is ERC1155Burnable {
+    constructor (string memory _uri) ERC1155(_uri) {}
+
+    function mint(address to, uint256 id, uint256 amount) public {
+        _mint(to, id, amount, "");
     }
 }
