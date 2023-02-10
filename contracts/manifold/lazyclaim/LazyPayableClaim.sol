@@ -31,7 +31,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     uint256 public constant MINT_FEE_MERKLE = 690000000000000;
     address public MEMBERSHIP_ADDRESS;
 
-    uint32 internal constant MAX_UINT_32 = 0xffffffff;
+    uint256 internal constant MAX_UINT_32 = 0xffffffff;
     uint256 internal constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     address private constant ADDRESS_ZERO = 0x0000000000000000000000000000000000000000;
 
@@ -150,7 +150,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     function _validateMint(address creatorContractAddress, uint256 claimIndex, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
         // Check timestamps
         require(
-            (startDate == 0 || startDate < block.timestamp) &&
+            (startDate <= block.timestamp) &&
             (endDate == 0 || endDate >= block.timestamp),
             "Claim inactive"
         );
@@ -170,7 +170,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     function _validateMint(address creatorContractAddress, uint256 claimIndex, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
         require(
-            (startDate == 0 || startDate < block.timestamp) &&
+            (startDate <= block.timestamp) &&
             (endDate == 0 || endDate >= block.timestamp),
             "Claim inactive"
         );
@@ -195,7 +195,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     function _validateMintProxy(address creatorContractAddress, uint256 claimIndex, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
         require(
-            (startDate == 0 || startDate < block.timestamp) &&
+            (startDate <= block.timestamp) &&
             (endDate == 0 || endDate >= block.timestamp),
             "Claim inactive"
         );
