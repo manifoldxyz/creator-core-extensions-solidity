@@ -1,6 +1,6 @@
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('MockERC721Creator');
-const ERC721BurnRedeem = artifacts.require("ERC721BurnRedeem");
+const ERC721BurnRedeem = artifacts.require("ERC721Burn");
 const MockERC721 = artifacts.require('@manifoldxyz/creator-core-solidity/MockERC721');
 const MockERC1155 = artifacts.require('@manifoldxyz/creator-core-solidity/MockERC1155');
 
