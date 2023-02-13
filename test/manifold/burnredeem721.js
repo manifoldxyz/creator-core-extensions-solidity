@@ -404,6 +404,27 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         true,
         {from:owner}
       ), "Remainder left from totalSupply");
+
+      await burnRedeem.burnRedeem(creator.address, 1, 2, [], {from:owner, value: BURN_FEE.mul(2)});
+
+      // Fails due to non-mod-0 redeemAmount after redemptions
+      await truffleAssert.reverts(burnRedeem.updateBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: 0,
+          endDate: now,
+          redeemAmount: 3,
+          totalSupply: 9,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [],
+        },
+        true,
+        {from:owner}
+      ), "Invalid amount");
     });
 
     it('tokenURI test', async function () {
@@ -595,7 +616,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       let end = start + 300;
 
       // Mint burnable tokens
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
         await burnable721.mintBase(anyone1, { from: owner });
         await burnable721_2.mintBase(anyone1, { from: owner });
       }
@@ -604,9 +625,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       let balance = await creator.balanceOf(anyone1);
       assert.equal(0, balance);
       balance = await burnable721.balanceOf(anyone1);
-      assert.equal(3, balance);
+      assert.equal(4, balance);
       balance = await burnable721_2.balanceOf(anyone1);
-      assert.equal(3, balance);
+      assert.equal(4, balance);
 
       const merkleElements = [];
       merkleElements.push(ethers.utils.solidityPack(['uint256'], [3]));
@@ -868,7 +889,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       );
 
       // Passes with met requirements - range
-      let tx = await burnRedeem.burnRedeem(
+      await burnRedeem.burnRedeem(
         creator.address,
         1,
         1,
@@ -891,6 +912,30 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {from:anyone1, value: MULTI_BURN_FEE}
       );
 
+      // Grab gas cost
+      let tx = await burnRedeem.burnRedeem(
+        creator.address,
+        1,
+        1,
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: burnable721.address,
+            id: 2,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          },
+          {
+            groupIndex: 1,
+            itemIndex: 0,
+            contractAddress: burnable721_2.address,
+            id: 2,
+            merkleProof: [ethers.utils.formatBytes32String("")]
+          },
+        ],
+        {from:anyone1, value: MULTI_BURN_FEE}
+      );
+
       console.log("Gas cost:\tBurn 2 721s (range validation) through burnRedeem:\t"+ tx.receipt.gasUsed);
 
       // Passes with met requirements - merkle proof
@@ -905,7 +950,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             groupIndex: 0,
             itemIndex: 0,
             contractAddress: burnable721.address,
-            id: 2,
+            id: 3,
             merkleProof: [ethers.utils.formatBytes32String("")]
           },
           {
@@ -927,7 +972,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       balance = await burnable721_2.balanceOf(anyone1);
       assert.equal(1, balance);
       balance = await creator.balanceOf(anyone1);
-      assert.equal(2, balance);
+      assert.equal(3, balance);
     });
 
     it('burnRedeem test - burn 721 - burnSpec = NONE', async function() {
