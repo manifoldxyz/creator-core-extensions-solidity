@@ -844,16 +844,60 @@ contract('LazyPayableClaim', function ([...accounts]) {
       await lazyClaim.airdrop(creator.address, 1, [anyone1], [1], { from: owner });
       let claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.total, 1);
+      assert.equal(claim.totalMax, 0);
 
       // Mint
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
       const mintTx = await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
 
+      // Update totalMax to 1, will actually set to 2 because there are two
+      await lazyClaim.updateClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "XXX",
+          totalMax: 1,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:owner}
+      )
+      claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.totalMax, 2);
+
       // Perform another airdrop after minting
       await lazyClaim.airdrop(creator.address, 1, [anyone1, anyone2], [1, 5], { from: owner });
       claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.total, 8);
+      assert.equal(claim.totalMax, 8);
+
+      // Update totalMax back to 0
+      await lazyClaim.updateClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "XXX",
+          totalMax: 0,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:owner}
+      )
+      claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.totalMax, 0);
 
       // Mint again after second airdrop
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));

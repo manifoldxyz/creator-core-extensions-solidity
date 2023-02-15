@@ -137,6 +137,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // Overwrite the existing burnRedeem
         _setParameters(burnRedeemInstance, burnRedeemParameters);
         _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
+        _maybeUpdateTotalSupply(burnRedeemInstance);
     }
 
     /**
@@ -146,12 +147,18 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         return _getBurnRedeem(creatorContractAddress, index);
     }
 
+    /**
+     * Helper to get burn redeem instance
+     */
     function _getBurnRedeem(address creatorContractAddress, uint256 index) internal view returns(BurnRedeem storage burnRedeemInstance) {
         burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
         require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
     }
 
-    function _getActiveBurnRedeem(address creatorContractAddress, uint256 index) private  view returns(BurnRedeem storage burnRedeemInstance) {
+    /**
+     * Helper to get active burn redeem instance
+     */
+    function _getActiveBurnRedeem(address creatorContractAddress, uint256 index) private view returns(BurnRedeem storage burnRedeemInstance) {
         burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
         require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
         require(
@@ -159,6 +166,18 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             (block.timestamp < burnRedeemInstance.endDate || burnRedeemInstance.endDate == 0),
             "Burn redeem not active"
         );
+    }
+
+    /**
+     * Helper to update total supply if redeemedCount exceeds totalSupply after airdrop or instance update.
+     */
+    function _maybeUpdateTotalSupply(BurnRedeem storage burnRedeemInstance) private {
+        if (
+            burnRedeemInstance.totalSupply != 0 &&
+            burnRedeemInstance.redeemedCount > burnRedeemInstance.totalSupply
+        ) {
+            burnRedeemInstance.totalSupply = burnRedeemInstance.redeemedCount;
+        }
     }
 
     /**
@@ -192,6 +211,32 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         if (msgValueRemaining != 0) {
             _forwardValue(payable(msg.sender), msgValueRemaining);
         }
+    }
+
+    /**
+     * See {IBurnRedeemCore-airdrop}.
+     */
+    function airdrop(address creatorContractAddress, uint256 index, address[] calldata recipients, uint32[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {
+        require(recipients.length == amounts.length, "Invalid calldata");
+        BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, index);
+
+        uint256 totalAmount;
+        for (uint256 i; i < amounts.length;) {
+            totalAmount += amounts[i] * burnRedeemInstance.redeemAmount;
+            unchecked{ ++i; }
+        }
+        require(
+            totalAmount + burnRedeemInstance.redeemedCount <= MAX_UINT_32,
+            "Invalid amount"
+        );
+
+        // Airdrop the tokens
+        for (uint256 i; i < recipients.length;) {
+            _redeem(creatorContractAddress, index, burnRedeemInstance, recipients[i], amounts[i]);
+            unchecked{ ++i; }
+        }
+
+        _maybeUpdateTotalSupply(burnRedeemInstance);
     }
 
     function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {

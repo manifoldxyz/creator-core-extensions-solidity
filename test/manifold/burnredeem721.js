@@ -425,6 +425,48 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         true,
         {from:owner}
       ), "Invalid amount");
+
+      // totalSupply = redeemedCount if updated below redeemedCount
+      await burnRedeem.updateBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: 0,
+          endDate: now,
+          redeemAmount: 1,
+          totalSupply: 1,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [],
+        },
+        true,
+        {from:owner}
+      )
+      let burnRedeemInstance = await burnRedeem.getBurnRedeem(creator.address, 1);
+      assert.equal(burnRedeemInstance.totalSupply, 2);
+
+      // totalSupply = 0 if updated to 0 and redeemedCount > 0
+      await burnRedeem.updateBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: 0,
+          endDate: now,
+          redeemAmount: 1,
+          totalSupply: 0,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [],
+        },
+        true,
+        {from:owner}
+      )
+      burnRedeemInstance = await burnRedeem.getBurnRedeem(creator.address, 1);
+      assert.equal(burnRedeemInstance.totalSupply, 0);
     });
 
     it('tokenURI test', async function () {
@@ -2955,6 +2997,79 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
 
       // Reverts due to misconfiguration
       await truffleAssert.reverts(burnable1155.methods['safeTransferFrom(address,address,uint256,uint256,bytes)'](anyone1, burnRedeem.address, 1, 1, burnRedeemData, {from:anyone1}), "Invalid input");
+    });
+
+    it('airdrop test', async function() {
+      let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let later = now + 1000;
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: now,
+          endDate: later,
+          redeemAmount: 2,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: anyone1,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: burnable721.address,
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                }
+              ]
+            }
+          ],
+        },
+        false,
+        {from:owner}
+      );
+
+      // First airdrop
+      await burnRedeem.airdrop(creator.address, 1, [anyone1, anyone2], [1, 1], {from:owner});
+
+      // redeemedCount updated
+      let burnRedeemInstance = await burnRedeem.getBurnRedeem(creator.address, 1);
+      assert.equal(burnRedeemInstance.redeemedCount, 4);
+      assert.equal(burnRedeemInstance.totalSupply, 10);
+
+      // Tokens minted
+      let balance = await creator.balanceOf(anyone1);
+      assert.equal(balance, 2);
+      balance = await creator.balanceOf(anyone2);
+      assert.equal(balance, 2);
+
+      // Second airdrop
+      await burnRedeem.airdrop(creator.address, 1, [anyone1, anyone2], [9, 9], {from:owner});
+
+      // Total supply updated to redeemedCount
+      burnRedeemInstance = await burnRedeem.getBurnRedeem(creator.address, 1);
+      assert.equal(burnRedeemInstance.redeemedCount, 40);
+      assert.equal(burnRedeemInstance.totalSupply, 40);
+
+      // Tokens minted
+      balance = await creator.balanceOf(anyone1);
+      assert.equal(balance, 20);
+      balance = await creator.balanceOf(anyone2);
+      assert.equal(balance, 20);
+
+      // Reverts when redeemedCount would exceed max uint32
+      await truffleAssert.reverts(
+        burnRedeem.airdrop(creator.address, 1, [anyone1], [2147483647]),
+        "Invalid amount"
+      )
     });
   });
 });

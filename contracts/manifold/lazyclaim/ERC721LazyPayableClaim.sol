@@ -83,7 +83,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     function updateClaim(
         address creatorContractAddress,
         uint256 claimIndex,
-        ClaimParameters calldata claimParameters
+        ClaimParameters memory claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
         // Sanity checks
         Claim memory claim = _claims[creatorContractAddress][claimIndex];
@@ -91,6 +91,9 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
         require(claimParameters.erc20 == claim.erc20, "Cannot change payment token");
+        if (claimParameters.totalMax != 0 && claim.total > claimParameters.totalMax) {
+            claimParameters.totalMax = claim.total;
+        }
 
         // Overwrite the existing claim
         _claims[creatorContractAddress][claimIndex] = Claim({
@@ -284,6 +287,9 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         }
         require(newMintIndex - claim.total - 1 <= MAX_UINT_32, "Too many requested");
         claim.total += uint32(newMintIndex - claim.total - 1);
+        if (claim.totalMax != 0 && claim.total > claim.totalMax) {
+            claim.totalMax = claim.total;
+        }
     }
 
     /**

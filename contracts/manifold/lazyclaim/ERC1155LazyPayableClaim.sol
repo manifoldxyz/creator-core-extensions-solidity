@@ -84,13 +84,16 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     function updateClaim(
         address creatorContractAddress,
         uint256 claimIndex,
-        ClaimParameters calldata claimParameters
+        ClaimParameters memory claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
         Claim memory claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
         require(claimParameters.erc20 == claim.erc20, "Cannot change payment token");
+        if (claimParameters.totalMax != 0 && claim.total > claimParameters.totalMax) {
+            claimParameters.totalMax = claim.total;
+        }
 
         // Overwrite the existing claim
         _claims[creatorContractAddress][claimIndex] = Claim({
@@ -260,6 +263,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         }
         require(totalAmount <= MAX_UINT_32, "Too many requested");
         claim.total += uint32(totalAmount);
+        if (claim.totalMax != 0 && claim.total > claim.totalMax) {
+            claim.totalMax = claim.total;
+        }
 
         // Airdrop the tokens
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
