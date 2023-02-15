@@ -260,6 +260,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         }
         require(totalAmount <= MAX_UINT_32, "Too many requested");
         claim.total += uint32(totalAmount);
+        require(claim.total <= claim.totalMax, "Too many requested");
 
         // Airdrop the tokens
         _mintClaim(creatorContractAddress, claim, recipients, amounts);

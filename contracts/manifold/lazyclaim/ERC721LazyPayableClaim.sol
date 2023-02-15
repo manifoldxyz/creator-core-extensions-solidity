@@ -284,6 +284,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         }
         require(newMintIndex - claim.total - 1 <= MAX_UINT_32, "Too many requested");
         claim.total += uint32(newMintIndex - claim.total - 1);
+        require(claim.total <= claim.totalMax, "Too many requested");
     }
 
     /**
