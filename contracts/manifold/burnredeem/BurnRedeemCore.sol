@@ -137,13 +137,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // Overwrite the existing burnRedeem
         _setParameters(burnRedeemInstance, burnRedeemParameters);
         _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
-
-        if (
-            burnRedeemInstance.totalSupply != 0 &&
-            burnRedeemInstance.redeemedCount > burnRedeemInstance.totalSupply
-        ) {
-            burnRedeemInstance.totalSupply = burnRedeemInstance.redeemedCount;
-        }
+        _maybeUpdateTotalSupply(burnRedeemInstance);
     }
 
     /**
@@ -153,12 +147,18 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         return _getBurnRedeem(creatorContractAddress, index);
     }
 
+    /**
+     * Helper to get burn redeem instance
+     */
     function _getBurnRedeem(address creatorContractAddress, uint256 index) internal view returns(BurnRedeem storage burnRedeemInstance) {
         burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
         require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
     }
 
-    function _getActiveBurnRedeem(address creatorContractAddress, uint256 index) private  view returns(BurnRedeem storage burnRedeemInstance) {
+    /**
+     * Helper to get active burn redeem instance
+     */
+    function _getActiveBurnRedeem(address creatorContractAddress, uint256 index) private view returns(BurnRedeem storage burnRedeemInstance) {
         burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
         require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
         require(
@@ -166,6 +166,18 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             (block.timestamp < burnRedeemInstance.endDate || burnRedeemInstance.endDate == 0),
             "Burn redeem not active"
         );
+    }
+
+    /**
+     * Helper to update total supply if redeemedCount exceeds totalSupply after airdrop or instance update.
+     */
+    function _maybeUpdateTotalSupply(BurnRedeem storage burnRedeemInstance) private {
+        if (
+            burnRedeemInstance.totalSupply != 0 &&
+            burnRedeemInstance.redeemedCount > burnRedeemInstance.totalSupply
+        ) {
+            burnRedeemInstance.totalSupply = burnRedeemInstance.redeemedCount;
+        }
     }
 
     /**
@@ -224,12 +236,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             unchecked{ ++i; }
         }
 
-        if (
-            burnRedeemInstance.totalSupply != 0 &&
-            burnRedeemInstance.redeemedCount > burnRedeemInstance.totalSupply
-        ) {
-            burnRedeemInstance.totalSupply = burnRedeemInstance.redeemedCount;
-        }
+        _maybeUpdateTotalSupply(burnRedeemInstance);
     }
 
     function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {

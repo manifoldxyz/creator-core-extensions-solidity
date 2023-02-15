@@ -147,7 +147,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param creatorContractAddress    the creator contract to mint tokens for
      * @param index                     the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
      * @param recipients                addresses to airdrop to
-     * @param amounts                   number of tokens to airdrop to each address in addresses
+     * @param amounts                   number of redeems to perform for each address in recipients
      */
     function airdrop(address creatorContractAddress, uint256 index, address[] calldata recipients, uint32[] calldata amounts) external;
 
