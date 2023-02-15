@@ -91,7 +91,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
         require(claimParameters.erc20 == claim.erc20, "Cannot change payment token");
-        if (claimParameters.totalMax != 0 && claim.total >= claimParameters.totalMax) {
+        if (claimParameters.totalMax != 0 && claim.total > claimParameters.totalMax) {
             claimParameters.totalMax = claim.total;
         }
 
