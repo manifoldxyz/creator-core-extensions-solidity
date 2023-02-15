@@ -76,11 +76,11 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         } else {
             uint256 totalCount = burnRedeemInstance.redeemAmount * count;
             require(totalCount <= MAX_UINT_16, "Invalid input");
-            uint256 startingCount = burnRedeemInstance.redeemedCount+1;
+            uint256 startingCount = burnRedeemInstance.redeemedCount + 1;
             burnRedeemInstance.redeemedCount += uint32(totalCount);
             uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, uint16(totalCount));
             for (uint256 i; i < totalCount;) {
-                _redeemTokens[creatorContractAddress][newTokenIds[i]] = RedeemToken(uint224(index), uint32(startingCount+i));
+                _redeemTokens[creatorContractAddress][newTokenIds[i]] = RedeemToken(uint224(index), uint32(startingCount + i));
                 emit BurnRedeemMint(creatorContractAddress, index, newTokenIds[i]);
                 unchecked { i++; }
             }

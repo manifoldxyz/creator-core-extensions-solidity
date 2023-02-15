@@ -143,6 +143,15 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable;
 
     /**
+     * @notice allow admin to airdrop arbitrary tokens 
+     * @param creatorContractAddress    the creator contract to mint tokens for
+     * @param index                     the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
+     * @param recipients                addresses to airdrop to
+     * @param amounts                   number of tokens to airdrop to each address in addresses
+     */
+    function airdrop(address creatorContractAddress, uint256 index, address[] calldata recipients, uint32[] calldata amounts) external;
+
+    /**
      * @notice recover a token that was sent to the contract without safeTransferFrom
      * @param tokenAddress              the address of the token contract
      * @param tokenId                   the id of the token

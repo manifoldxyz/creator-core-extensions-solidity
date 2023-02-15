@@ -137,6 +137,13 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // Overwrite the existing burnRedeem
         _setParameters(burnRedeemInstance, burnRedeemParameters);
         _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
+
+        if (
+            burnRedeemInstance.totalSupply != 0 &&
+            burnRedeemInstance.redeemedCount > burnRedeemInstance.totalSupply
+        ) {
+            burnRedeemInstance.totalSupply = burnRedeemInstance.redeemedCount;
+        }
     }
 
     /**
@@ -191,6 +198,37 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         if (msgValueRemaining != 0) {
             _forwardValue(payable(msg.sender), msgValueRemaining);
+        }
+    }
+
+    /**
+     * See {IBurnRedeemCore-airdrop}.
+     */
+    function airdrop(address creatorContractAddress, uint256 index, address[] calldata recipients, uint32[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {
+        require(recipients.length == amounts.length, "Invalid calldata");
+        BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, index);
+
+        uint256 totalAmount;
+        for (uint256 i; i < amounts.length;) {
+            totalAmount += amounts[i] * burnRedeemInstance.redeemAmount;
+            unchecked{ ++i; }
+        }
+        require(
+            totalAmount + burnRedeemInstance.redeemedCount <= MAX_UINT_32,
+            "Invalid amount"
+        );
+
+        // Airdrop the tokens
+        for (uint256 i; i < recipients.length;) {
+            _redeem(creatorContractAddress, index, burnRedeemInstance, recipients[i], amounts[i]);
+            unchecked{ ++i; }
+        }
+
+        if (
+            burnRedeemInstance.totalSupply != 0 &&
+            burnRedeemInstance.redeemedCount > burnRedeemInstance.totalSupply
+        ) {
+            burnRedeemInstance.totalSupply = burnRedeemInstance.redeemedCount;
         }
     }
 
