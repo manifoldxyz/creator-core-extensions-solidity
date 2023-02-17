@@ -98,7 +98,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
         uint256 payableCost;
         if (erc20 != ADDRESS_ZERO) {
-            IERC20(erc20).transferFrom(msg.sender, recipient, cost*mintCount);
+            require(IERC20(erc20).transferFrom(msg.sender, recipient, cost*mintCount), "Insufficient funds");
         } else {
             payableCost = cost;
         }
