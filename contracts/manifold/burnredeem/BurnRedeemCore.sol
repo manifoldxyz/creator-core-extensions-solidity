@@ -138,6 +138,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         _setParameters(burnRedeemInstance, burnRedeemParameters);
         _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
         _maybeUpdateTotalSupply(burnRedeemInstance);
+        emit BurnRedeemUpdated(creatorContractAddress, index);
     }
 
     /**

@@ -110,6 +110,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             paymentReceiver: claimParameters.paymentReceiver,
             erc20: claim.erc20
         });
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 
     /**
@@ -140,6 +141,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             paymentReceiver: claim.paymentReceiver,
             erc20: claim.erc20
         });
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 
     /**

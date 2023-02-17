@@ -116,7 +116,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
         // Check price
         require(msg.value >= payableCost, "Invalid amount");
-        if (cost != 0) {
+        if (erc20 == ADDRESS_ZERO && cost != 0) {
             // solhint-disable-next-line
             (bool sent, ) = recipient.call{value: cost}("");
             require(sent, "Failed to transfer to receiver");

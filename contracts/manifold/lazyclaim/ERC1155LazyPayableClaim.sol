@@ -110,6 +110,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             paymentReceiver: claimParameters.paymentReceiver,
             erc20: claimParameters.erc20
         });
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 
     /**
@@ -126,6 +127,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         claim.storageProtocol = storageProtocol;
         claim.location = location;
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 
     /**

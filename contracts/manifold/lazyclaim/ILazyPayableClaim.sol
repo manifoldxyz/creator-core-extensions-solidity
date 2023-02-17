@@ -11,6 +11,7 @@ interface ILazyPayableClaim {
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
     
     event ClaimInitialized(address indexed creatorContract, uint256 indexed claimIndex, address initializer);
+    event ClaimUpdated(address indexed creatorContract, uint256 indexed claimIndex);
     event ClaimMint(address indexed creatorContract, uint256 indexed claimIndex);
     event ClaimMintBatch(address indexed creatorContract, uint256 indexed claimIndex, uint16 mintCount);
     event ClaimMintProxy(address indexed creatorContract, uint256 indexed claimIndex, uint16 mintCount, address proxy, address mintFor);

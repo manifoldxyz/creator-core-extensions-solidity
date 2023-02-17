@@ -131,5 +131,70 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
     });
 
+    it('membership test', async function() {
+      const merkleElements = [];
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
+      merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
+
+      // Test initializing a new claim
+      let start = (await web3.eth.getBlock('latest')).timestamp - 100; // seconds since unix epoch
+      let end = start + 300;
+
+      await lazyClaim.initializeClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "arweaveHash1",
+          totalMax: 3,
+          walletMax: 0,
+          startDate: start,
+          endDate: end,
+          storageProtocol: 2,
+          identical: true,
+          cost: 100,
+          paymentReceiver: owner,
+          erc20: mockERC20.address,
+        },
+        {from:owner}
+      );
+
+      // Initialize a second claim - with optional parameters disabled
+      await lazyClaim.initializeClaim(
+        creator.address,
+        2,
+        {
+          merkleRoot: "0x0000000000000000000000000000000000000000000000000000000000000000",
+          location: "arweaveHash2",
+          totalMax: 0,
+          walletMax: 0,
+          startDate: 0,
+          endDate: 0,
+          storageProtocol: 2,
+          identical: true,
+          cost: 200,
+          paymentReceiver: owner,
+          erc20: mockERC20.address,
+        },
+        {from:owner}
+      );
+
+      const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
+      const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
+
+
+      await manifoldMembership.setMember(anyone1, true, {from:owner});
+      await mockERC20.approve(lazyClaim.address, 1000, {from: anyone1});
+      await mockERC20.testMint(anyone1, 1000);
+
+      // Mint a token (merkle)
+      await lazyClaim.mint(creator.address, 1, 0, merkleProof1, anyone1, {from:anyone1});
+      claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.total, 1);
+      assert.equal(900, await mockERC20.balanceOf(anyone1));
+      assert.equal(100, await mockERC20.balanceOf(owner));
+      assert.equal(1, await creator.balanceOf(anyone1));
+    });
+
   });
 });
