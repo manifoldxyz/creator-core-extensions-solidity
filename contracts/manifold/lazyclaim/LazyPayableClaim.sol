@@ -98,7 +98,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
         uint256 payableCost;
         if (erc20 != ADDRESS_ZERO) {
-            IERC20(erc20).transferFrom(msg.sender, recipient, cost*mintCount);
+            require(IERC20(erc20).transferFrom(msg.sender, recipient, cost*mintCount), "Insufficient funds");
         } else {
             payableCost = cost;
         }
@@ -116,7 +116,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
         // Check price
         require(msg.value >= payableCost, "Invalid amount");
-        if (cost != 0) {
+        if (erc20 == ADDRESS_ZERO && cost != 0) {
             // solhint-disable-next-line
             (bool sent, ) = recipient.call{value: cost}("");
             require(sent, "Failed to transfer to receiver");

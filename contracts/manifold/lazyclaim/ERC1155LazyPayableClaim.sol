@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import "./LazyPayableClaim.sol";
@@ -16,7 +15,7 @@ import "./IERC1155LazyPayableClaim.sol";
  * @author manifold.xyz
  * @notice Lazy claim with optional whitelist ERC1155 tokens
  */
-contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorExtensionTokenURI, ReentrancyGuard, LazyPayableClaim {
+contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorExtensionTokenURI, LazyPayableClaim {
     using Strings for uint256;
 
     // stores mapping from tokenId to the claim it represents
@@ -110,6 +109,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             paymentReceiver: claimParameters.paymentReceiver,
             erc20: claimParameters.erc20
         });
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 
     /**
@@ -126,6 +126,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         claim.storageProtocol = storageProtocol;
         claim.location = location;
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 
     /**
@@ -172,7 +173,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {ILazyPayableClaim-mint}.
      */
-    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override nonReentrant {
+    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, claimIndex);
 
         // Check totalMax
@@ -197,7 +198,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {ILazyPayableClaim-mintBatch}.
      */
-    function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override nonReentrant {
+    function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, claimIndex);
 
         // Check totalMax

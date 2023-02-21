@@ -62,6 +62,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         burnRedeemInstance.storageProtocol = storageProtocol;
         burnRedeemInstance.location = location;
         _identicalTokenURI[creatorContractAddress][index] = identicalTokenURI;
+        emit BurnRedeemUpdated(creatorContractAddress, index);
     }
 
     /** 

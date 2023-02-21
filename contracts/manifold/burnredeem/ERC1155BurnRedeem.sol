@@ -61,6 +61,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, index);
         burnRedeemInstance.storageProtocol = storageProtocol;
         burnRedeemInstance.location = location;
+        emit BurnRedeemUpdated(creatorContractAddress, index);
     }
 
     /**

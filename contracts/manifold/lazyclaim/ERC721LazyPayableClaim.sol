@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import "./LazyPayableClaim.sol";
@@ -16,7 +15,7 @@ import "./IERC721LazyPayableClaim.sol";
  * @author manifold.xyz
  * @notice Lazy payable claim with optional whitelist ERC721 tokens
  */
-contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExtensionTokenURI, ReentrancyGuard, LazyPayableClaim {
+contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExtensionTokenURI, LazyPayableClaim {
     using Strings for uint256;
 
     // stores mapping from tokenId to the claim it represents
@@ -110,6 +109,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             paymentReceiver: claimParameters.paymentReceiver,
             erc20: claim.erc20
         });
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 
     /**
@@ -140,6 +140,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             paymentReceiver: claim.paymentReceiver,
             erc20: claim.erc20
         });
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 
     /**
