@@ -27,7 +27,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     // solhint-disable-next-line
     address public immutable DELEGATION_REGISTRY;
 
-    uint256 public constant MINT_FEE = 420000000000000;
+    uint256 public constant MINT_FEE = 500000000000000;
     uint256 public constant MINT_FEE_MERKLE = 690000000000000;
     address public MEMBERSHIP_ADDRESS;
 
