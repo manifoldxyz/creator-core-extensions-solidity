@@ -96,8 +96,8 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
   ) external virtual override {
     _validateClaimRestrictions(creatorContractAddress, instanceId);
     _validateClaimRequest(creatorContractAddress, instanceId, message, signature, nonce, amount);
-    _mint(creatorContractAddress, instanceId, msg.sender, amount);
     _addressMintCount[creatorContractAddress][instanceId][msg.sender] += amount;
+    _mint(creatorContractAddress, instanceId, msg.sender, amount);
   }
 
   /**
