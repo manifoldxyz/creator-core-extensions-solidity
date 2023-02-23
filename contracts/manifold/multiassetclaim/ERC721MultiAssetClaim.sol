@@ -13,13 +13,13 @@ import "./MultiAssetClaimCore.sol";
 
 contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
   struct TokenClaim {
-    uint256 instanceId;
+    uint224 instanceId;
     uint32 mintOrder;
   }
   // { contractAddress => { tokenId => TokenClaim }
   mapping(address => mapping(uint256 => TokenClaim)) internal _tokenIdToTokenClaimMap;
   // { contractAddress => { instanceId => { address => mintCount } }
-  mapping(address => mapping(uint256 => mapping(address => uint16))) internal _addressMintCount;
+  mapping(address => mapping(uint256 => mapping(address => uint256))) internal _addressMintCount;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, IERC165) returns (bool) {
     return (interfaceId == type(IERC721MultiAssetClaim).interfaceId ||
@@ -129,7 +129,7 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
       if (!instance.useDynamicPresalePurchaseLimit) {
         // Make sure we are not over presalePurchaseLimit
         if (instance.presalePurchaseLimit != 0) {
-          uint16 mintCount = _addressMintCount[creatorContractAddress][instanceId][msg.sender];
+          uint256 mintCount = _addressMintCount[creatorContractAddress][instanceId][msg.sender];
           require(
             instance.presalePurchaseLimit > mintCount && amount <= (instance.presalePurchaseLimit - mintCount),
             "Too many requested"
@@ -137,7 +137,7 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
         }
         // Make sure we are not over purchaseLimit
         if (instance.purchaseLimit != 0) {
-          uint16 mintCount = _addressMintCount[creatorContractAddress][instanceId][msg.sender];
+          uint256 mintCount = _addressMintCount[creatorContractAddress][instanceId][msg.sender];
           require(
             instance.purchaseLimit > mintCount && amount <= (instance.purchaseLimit - mintCount),
             "Too many requested"
@@ -152,7 +152,7 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
     } else {
       // Make sure we are not over purchaseLimit
       if (instance.purchaseLimit != 0) {
-        uint16 mintCount = _addressMintCount[creatorContractAddress][instanceId][msg.sender];
+        uint256 mintCount = _addressMintCount[creatorContractAddress][instanceId][msg.sender];
         require(instance.purchaseLimit > mintCount && amount <= (instance.purchaseLimit - mintCount), "Too many requested");
       }
       _validatePrice(amount, instance);
@@ -238,7 +238,7 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
 
       // Mint token
       uint256 tokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(to);
-      _tokenIdToTokenClaimMap[creatorContractAddress][tokenId] = TokenClaim(instanceId, instance.purchaseCount);
+      _tokenIdToTokenClaimMap[creatorContractAddress][tokenId] = TokenClaim(uint224(instanceId), instance.purchaseCount);
       emit Unveil(creatorContractAddress, instanceId, instance.purchaseCount, tokenId);
     } else {
       uint32 tokenStart = instance.purchaseCount + 1;
@@ -250,7 +250,7 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
       for (uint32 i = 0; i < tokenIds.length; ) {
         emit Unveil(creatorContractAddress, instanceId, tokenStart + i, tokenIds[i]);
 
-        _tokenIdToTokenClaimMap[creatorContractAddress][tokenIds[i]] = TokenClaim(instanceId, tokenStart + i);
+        _tokenIdToTokenClaimMap[creatorContractAddress][tokenIds[i]] = TokenClaim(uint224(instanceId), tokenStart + i);
         unchecked {
           i++;
         }

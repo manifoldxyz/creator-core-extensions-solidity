@@ -11,45 +11,45 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  */
 interface IMultiAssetClaimCore is IERC165 {
   struct ActivationParameters {
-    uint256 startTime;
-    uint256 duration;
-    uint256 presaleInterval;
-    uint256 claimStartTime;
-    uint256 claimEndTime;
+    uint48 startTime;
+    uint48 duration;
+    uint48 presaleInterval;
+    uint48 claimStartTime;
+    uint48 claimEndTime;
   }
 
   struct InitializationParameters {
-    address signingAddress;
-    address payable paymentReceiver;
+    bool useDynamicPresalePurchaseLimit;
     uint16 transactionLimit;
     uint16 purchaseMax;
     uint16 purchaseRemaining;
-    uint256 purchasePrice;
     uint16 purchaseLimit;
-    uint256 presalePurchasePrice;
     uint16 presalePurchaseLimit;
-    bool useDynamicPresalePurchaseLimit;
+    uint256 purchasePrice;
+    uint256 presalePurchasePrice;
+    address signingAddress;
+    address payable paymentReceiver;
   }
 
   struct MultiAssetClaimInstance {
-    string baseURI;
-    address payable paymentReceiver;
+    bool isActive;
+    bool useDynamicPresalePurchaseLimit;
     bool isTransferLocked;
     uint16 transactionLimit;
     uint16 purchaseMax;
     uint16 purchaseRemaining;
-    uint256 purchasePrice;
     uint16 purchaseLimit;
-    uint256 presalePurchasePrice;
     uint16 presalePurchaseLimit;
     uint16 purchaseCount;
-    bool isActive;
-    uint256 startTime;
-    uint256 endTime;
-    uint256 presaleInterval;
-    uint256 claimStartTime;
-    uint256 claimEndTime;
-    bool useDynamicPresalePurchaseLimit;
+    uint48 startTime;
+    uint48 endTime;
+    uint48 presaleInterval;
+    uint48 claimStartTime;
+    uint48 claimEndTime;
+    uint256 purchasePrice;
+    uint256 presalePurchasePrice;
+    string baseURI;
+    address payable paymentReceiver;
   }
 
   event MultiAssetClaimInitialized(address creatorContractAddress, uint256 instanceId, address initializer);
@@ -57,11 +57,11 @@ interface IMultiAssetClaimCore is IERC165 {
   event MultiAssetClaimActivated(
     address creatorContractAddress,
     uint256 instanceId,
-    uint256 startTime,
-    uint256 endTime,
-    uint256 presaleInterval,
-    uint256 claimStartTime,
-    uint256 claimEndTime
+    uint48 startTime,
+    uint48 endTime,
+    uint48 presaleInterval,
+    uint48 claimStartTime,
+    uint48 claimEndTime
   );
 
   event MultiAssetClaimDeactivated(address creatorContractAddress, uint256 instanceId);
