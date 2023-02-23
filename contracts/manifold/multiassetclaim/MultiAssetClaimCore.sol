@@ -46,7 +46,10 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
     MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
 
     // Revert if claim at instanceId already exists
-    require(instance.purchaseMax == 0 && signingAddress == address(0), "Claim already initialized");
+    require(signingAddress == address(0), "Claim already initialized");
+    require(initializationParameters.signingAddress != address(0), "Invalid signing address");
+    require(initializationParameters.paymentReceiver != address(0), "Invalid payment address");
+    require(initializationParameters.purchaseMax != 0, "Invalid payment address");
 
     instance.paymentReceiver = initializationParameters.paymentReceiver;
     _signingAddresses[creatorContractAddress][instanceId] = initializationParameters.signingAddress;
