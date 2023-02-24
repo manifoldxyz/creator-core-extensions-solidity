@@ -8,10 +8,10 @@ import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "./IERC721MultiAssetClaim.sol";
-import "./MultiAssetClaimCore.sol";
+import "./IERC721Collectible.sol";
+import "./CollectibleCore.sol";
 
-contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
+contract ERC721Collectible is CollectibleCore, IERC721Collectible {
   struct TokenClaim {
     uint224 instanceId;
     uint32 mintOrder;
@@ -22,7 +22,7 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
   mapping(address => mapping(uint256 => mapping(address => uint256))) internal _addressMintCount;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl, IERC165) returns (bool) {
-    return (interfaceId == type(IERC721MultiAssetClaim).interfaceId ||
+    return (interfaceId == type(IERC721Collectible).interfaceId ||
       interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
       interfaceId == type(IERC721CreatorExtensionApproveTransfer).interfaceId ||
       interfaceId == type(IAdminControl).interfaceId ||
@@ -30,25 +30,28 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
   }
 
   /**
-   * @dev See {IERC721MultiAssetClaim-premint}.
+   * @dev See {IERC721Collectible-premint}.
    */
   function premint(
     address creatorContractAddress,
     uint256 instanceId,
     uint16 amount
   ) external override creatorAdminRequired(creatorContractAddress) {
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    require(!instance.isActive, "Already active");
+
     _mint(creatorContractAddress, instanceId, msg.sender, amount);
   }
 
   /**
-   * @dev See {IERC721MultiAssetClaim-premint}.
+   * @dev See {IERC721Collectible-premint}.
    */
   function premint(
     address creatorContractAddress,
     uint256 instanceId,
     address[] calldata addresses
   ) external override creatorAdminRequired(creatorContractAddress) {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
     require(!instance.isActive, "Already active");
 
     for (uint256 i = 0; i < addresses.length; ) {
@@ -60,31 +63,31 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
   }
 
   /**
-   * @dev See {IERC721MultiAssetClaim-setTokenURIPrefix}.
+   * @dev See {IERC721Collectible-setTokenURIPrefix}.
    */
   function setTokenURIPrefix(
     address creatorContractAddress,
     uint256 instanceId,
     string calldata prefix
   ) external override creatorAdminRequired(creatorContractAddress) {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
     instance.baseURI = prefix;
   }
 
   /**
-   * @dev See {IERC721MultiAssetClaim-setTransferLocked}.
+   * @dev See {IERC721Collectible-setTransferLocked}.
    */
   function setTransferLocked(
     address creatorContractAddress,
     uint256 instanceId,
     bool isLocked
   ) external override creatorAdminRequired(creatorContractAddress) {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
     instance.isTransferLocked = isLocked;
   }
 
   /**
-   * @dev See {IERC721MultiAssetClaim-claim}.
+   * @dev See {IERC721Collectible-claim}.
    */
   function claim(
     address creatorContractAddress,
@@ -111,7 +114,7 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
     bytes calldata signature,
     bytes32 nonce
   ) public payable virtual override {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
     _validatePurchaseRestrictions(creatorContractAddress, instanceId);
 
     bool isPresale = _isPresale(creatorContractAddress, instanceId);
@@ -174,18 +177,18 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
   /**
    * @dev returns the collection state
    */
-  function state(address creatorContractAddress, uint256 instanceId) external view returns (MultiAssetClaimInstance memory) {
+  function state(address creatorContractAddress, uint256 instanceId) external view returns (CollectibleInstance memory) {
     return _getInstance(creatorContractAddress, instanceId);
   }
 
   /**
-   * @dev See {IERC721MultiAssetClaim-purchaseRemaining}.
+   * @dev See {IERC721Collectible-purchaseRemaining}.
    */
   function purchaseRemaining(
     address creatorContractAddress,
     uint256 instanceId
   ) public view virtual override returns (uint16) {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
     return instance.purchaseMax - instance.purchaseCount;
   }
 
@@ -193,13 +196,13 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
    * @dev See {ICreatorExtensionTokenURI-tokenURI}
    */
   function tokenURI(address creatorContractAddress, uint256 tokenId) external view override returns (string memory) {
-    uint256 instanceId = _tokenIdToTokenClaimMap[creatorContractAddress][tokenId].instanceId;
-    require(instanceId != 0, "Token not found");
+    TokenClaim storage tokenClaim = _tokenIdToTokenClaimMap[creatorContractAddress][tokenId];
+    require(tokenClaim.instanceId != 0, "Token not found");
 
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, tokenClaim.instanceId);
     require(bytes(instance.baseURI).length != 0, "No base uri prefix set");
 
-    return string(abi.encodePacked(instance.baseURI, Strings.toString(tokenId)));
+    return string(abi.encodePacked(instance.baseURI, Strings.toString(tokenClaim.mintOrder)));
   }
 
   /**
@@ -220,18 +223,24 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
    * @dev See {IERC721CreatorExtensionApproveTransfer-approveTransfer}.
    */
   function approveTransfer(address, address from, address, uint256 tokenId) external view override returns (bool) {
+    // always allow mints
+    if (from == address(0)) {
+      return true;
+    }
+  
     uint256 instanceId = _tokenIdToTokenClaimMap[msg.sender][tokenId].instanceId;
     require(instanceId != 0, "Token not found");
 
-    MultiAssetClaimInstance storage instance = _getInstance(msg.sender, instanceId);
-    return _validateTokenTransferability(from, instance);
+    CollectibleInstance storage instance = _getInstance(msg.sender, instanceId);
+
+    return !instance.isTransferLocked;
   }
 
   /**
    * @dev override if you want to perform different mint functionality
    */
   function _mint(address creatorContractAddress, uint256 instanceId, address to, uint16 amount) internal virtual {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
 
     if (amount == 1) {
       instance.purchaseCount++;
@@ -259,26 +268,16 @@ contract ERC721MultiAssetClaim is MultiAssetClaimCore, IERC721MultiAssetClaim {
   }
 
   /**
-   * Returns whether or not token transfers are enabled.
-   */
-  function _validateTokenTransferability(
-    address from,
-    MultiAssetClaimInstance storage instance
-  ) internal view returns (bool) {
-    return from == address(0) || !instance.isTransferLocked;
-  }
-
-  /**
    * Validate price (override for custom pricing mechanics)
    */
-  function _validatePrice(uint16 amount, MultiAssetClaimInstance storage instance) internal virtual {
+  function _validatePrice(uint16 amount, CollectibleInstance storage instance) internal virtual {
     require(msg.value == amount * instance.purchasePrice, "Invalid purchase amount sent");
   }
 
   /**
    * Validate price (override for custom pricing mechanics)
    */
-  function _validatePresalePrice(uint16 amount, MultiAssetClaimInstance storage instance) internal virtual {
+  function _validatePresalePrice(uint16 amount, CollectibleInstance storage instance) internal virtual {
     require(msg.value == amount * instance.presalePurchasePrice, "Invalid purchase amount sent");
   }
 }

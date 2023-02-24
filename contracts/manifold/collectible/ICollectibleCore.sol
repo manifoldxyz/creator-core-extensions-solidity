@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 /// @author: manifold.xyz
 
 /**
- * @dev MultiAssetClaimBase Interface
+ * @dev CollectibleBase Interface
  */
-interface IMultiAssetClaimCore is IERC165 {
+interface ICollectibleCore is IERC165 {
   struct ActivationParameters {
     uint48 startTime;
     uint48 duration;
@@ -31,7 +31,19 @@ interface IMultiAssetClaimCore is IERC165 {
     address payable paymentReceiver;
   }
 
-  struct MultiAssetClaimInstance {
+
+  struct ModifyInitializationParameters {
+    bool useDynamicPresalePurchaseLimit;
+    uint16 transactionLimit;
+    uint16 purchaseMax;
+    uint16 purchaseRemaining;
+    uint16 purchaseLimit;
+    uint16 presalePurchaseLimit;
+    uint256 purchasePrice;
+    uint256 presalePurchasePrice;
+  }
+
+  struct CollectibleInstance {
     bool isActive;
     bool useDynamicPresalePurchaseLimit;
     bool isTransferLocked;
@@ -52,9 +64,9 @@ interface IMultiAssetClaimCore is IERC165 {
     address payable paymentReceiver;
   }
 
-  event MultiAssetClaimInitialized(address creatorContractAddress, uint256 instanceId, address initializer);
+  event CollectibleInitialized(address creatorContractAddress, uint256 instanceId, address initializer);
 
-  event MultiAssetClaimActivated(
+  event CollectibleActivated(
     address creatorContractAddress,
     uint256 instanceId,
     uint48 startTime,
@@ -64,18 +76,18 @@ interface IMultiAssetClaimCore is IERC165 {
     uint48 claimEndTime
   );
 
-  event MultiAssetClaimDeactivated(address creatorContractAddress, uint256 instanceId);
+  event CollectibleDeactivated(address creatorContractAddress, uint256 instanceId);
 
   /**
    * @notice get a burn redeem corresponding to a creator contract and index
    * @param creatorContractAddress    the address of the creator contract
    * @param index                     the index of the burn redeem
-   * @return MultiAssetClaimInstsance               the burn redeem object
+   * @return CollectibleInstsance               the burn redeem object
    */
-  function getMultiAssetClaim(
+  function getCollectible(
     address creatorContractAddress,
     uint256 index
-  ) external view returns (MultiAssetClaimInstance memory);
+  ) external view returns (CollectibleInstance memory);
 
   /**
    * @dev Check if nonce has been used
@@ -121,7 +133,7 @@ interface IMultiAssetClaimCore is IERC165 {
    * @param instanceId                the id of the multi-asssetclaim in the mapping of creatorContractAddress <-> instance id
    * @param initializationParameters  initial claim parameters
    */
-  function initializeMultiAssetClaim(
+  function initializeCollectible(
     address creatorContractAddress,
     uint256 instanceId,
     InitializationParameters calldata initializationParameters
@@ -136,6 +148,6 @@ interface IMultiAssetClaimCore is IERC165 {
   function modifyInitializationParameters(
     address creatorContractAddress,
     uint256 instanceId,
-    InitializationParameters calldata initializationParameters
+    ModifyInitializationParameters calldata initializationParameters
   ) external;
 }

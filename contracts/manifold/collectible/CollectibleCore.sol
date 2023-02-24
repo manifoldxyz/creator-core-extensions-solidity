@@ -6,22 +6,22 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import "./IMultiAssetClaimCore.sol";
+import "./ICollectibleCore.sol";
 
 /**
  * Collection Drop Contract (Base)
  */
-abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
+abstract contract CollectibleCore is ICollectibleCore, AdminControl {
   using ECDSA for bytes32;
 
   address public manifoldMembershipContract;
 
-  // { creatorContractAddress => { index => nonce => t/f  } }
+  // { creatorContractAddress => { instanceId => nonce => t/f  } }
   mapping(address => mapping(uint256 => mapping(bytes32 => bool))) internal _usedNonces;
-  // { creatorContractAddress => { index => address  } }
+  // { creatorContractAddress => { instanceId => address  } }
   mapping(address => mapping(uint256 => address)) private _signingAddresses;
-  // { creatorContractAddress => { index => MultiAssetClaimInstance } }
-  mapping(address => mapping(uint256 => MultiAssetClaimInstance)) internal _instances;
+  // { creatorContractAddress => { instanceId => CollectibleInstance } }
+  mapping(address => mapping(uint256 => CollectibleInstance)) internal _instances;
 
   /**
    * @notice This extension is shared, not single-creator. So we must ensure
@@ -35,21 +35,21 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
   }
 
   /**
-   * See {IMultiAssetClaimCore-initializeMultiAssetClaim}.
+   * See {ICollectibleCore-initializeCollectible}.
    */
-  function initializeMultiAssetClaim(
+  function initializeCollectible(
     address creatorContractAddress,
     uint256 instanceId,
     InitializationParameters calldata initializationParameters
   ) external override creatorAdminRequired(creatorContractAddress) {
     address signingAddress = _signingAddresses[creatorContractAddress][instanceId];
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _instances[creatorContractAddress][instanceId];
 
     // Revert if claim at instanceId already exists
-    require(signingAddress == address(0), "Claim already initialized");
+    require(signingAddress == address(0), "Collectible already initialized");
     require(initializationParameters.signingAddress != address(0), "Invalid signing address");
     require(initializationParameters.paymentReceiver != address(0), "Invalid payment address");
-    require(initializationParameters.purchaseMax != 0, "Invalid payment address");
+    require(initializationParameters.purchaseMax != 0, "Invalid purchase max");
 
     instance.paymentReceiver = initializationParameters.paymentReceiver;
     _signingAddresses[creatorContractAddress][instanceId] = initializationParameters.signingAddress;
@@ -62,11 +62,11 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
     instance.useDynamicPresalePurchaseLimit = initializationParameters.useDynamicPresalePurchaseLimit;
     instance.paymentReceiver = initializationParameters.paymentReceiver;
 
-    emit MultiAssetClaimInitialized(creatorContractAddress, instanceId, msg.sender);
+    emit CollectibleInitialized(creatorContractAddress, instanceId, msg.sender);
   }
 
   /**
-   * See {IMultiAssetClaimCore-withdraw}.
+   * See {ICollectibleCore-withdraw}.
    */
   function withdraw(address payable receiver, uint256 amount) external override adminRequired {
     (bool sent, ) = receiver.call{ value: amount }("");
@@ -74,14 +74,14 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
   }
 
   /**
-   * See {IMultiAssetClaimCore-activate}.
+   * See {ICollectibleCore-activate}.
    */
   function activate(
     address creatorContractAddress,
     uint256 instanceId,
     ActivationParameters calldata activationParameters
   ) external override creatorAdminRequired(creatorContractAddress) {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
     require(!instance.isActive, "Already active");
     require(activationParameters.startTime > block.timestamp, "Cannot activate in the past");
     require(
@@ -100,7 +100,7 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
     instance.claimEndTime = activationParameters.claimEndTime;
     instance.isActive = true;
 
-    emit MultiAssetClaimActivated(
+    emit CollectibleActivated(
       creatorContractAddress,
       instanceId,
       instance.startTime,
@@ -112,13 +112,13 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
   }
 
   /**
-   * See {IMultiAssetClaimCore-deactivate}.
+   * See {ICollectibleCore-deactivate}.
    */
   function deactivate(
     address creatorContractAddress,
     uint256 instanceId
   ) external override creatorAdminRequired(creatorContractAddress) {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
 
     instance.startTime = 0;
     instance.endTime = 0;
@@ -126,35 +126,35 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
     instance.claimStartTime = 0;
     instance.claimEndTime = 0;
 
-    emit MultiAssetClaimDeactivated(creatorContractAddress, instanceId);
+    emit CollectibleDeactivated(creatorContractAddress, instanceId);
   }
 
   /**
-   * @dev See {IMultiAssetClaimCore-getMultiAssetClaim}.
+   * @dev See {ICollectibleCore-getCollectible}.
    */
-  function getMultiAssetClaim(
+  function getCollectible(
     address creatorContractAddress,
     uint256 index
-  ) external view override returns (MultiAssetClaimInstance memory) {
-    return _getMultiAssetClaim(creatorContractAddress, index);
+  ) external view override returns (CollectibleInstance memory) {
+    return _getCollectible(creatorContractAddress, index);
   }
 
   /**
-   * @dev See {IERC721MultiAssetClaim-setManifoldMembership}.
+   * @dev See {IERC721Collectible-setManifoldMembership}.
    */
   function setMembershipAddress(address addr) external override adminRequired {
     manifoldMembershipContract = addr;
   }
 
   /**
-   * @dev See {IERC721MultiAssetClaim-modifyInitializationParameters}.
+   * @dev See {IERC721Collectible-modifyInitializationParameters}.
    */
   function modifyInitializationParameters(
     address creatorContractAddress,
     uint256 instanceId,
-    InitializationParameters calldata initializationParameters
+    ModifyInitializationParameters calldata initializationParameters
   ) external override creatorAdminRequired(creatorContractAddress) {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
 
     require(!instance.isActive, "Already active");
     instance.purchasePrice = initializationParameters.purchasePrice;
@@ -168,10 +168,10 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
   /**
    * Validate claim signature
    */
-  function _getMultiAssetClaim(
+  function _getCollectible(
     address creatorContractAddress,
     uint256 instanceId
-  ) internal view returns (MultiAssetClaimInstance storage) {
+  ) internal view returns (CollectibleInstance storage) {
     return _instances[creatorContractAddress][instanceId];
   }
 
@@ -193,7 +193,7 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
    * Validate claim restrictions
    */
   function _validateClaimRestrictions(address creatorContractAddress, uint256 instanceId) internal virtual {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
     require(instance.isActive, "Inactive");
     require(block.timestamp >= instance.claimStartTime && block.timestamp <= instance.claimEndTime, "Outside claim period.");
   }
@@ -249,14 +249,14 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
    * Perform purchase restriction checks. Override if more logic is needed
    */
   function _validatePurchaseRestrictions(address creatorContractAddress, uint256 instanceId) internal virtual {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
 
     require(instance.isActive, "Inactive");
     require(block.timestamp >= instance.startTime, "Purchasing not active");
   }
 
   /**
-   * @dev See {IMultiAssetClaimCore-nonceUsed}.
+   * @dev See {ICollectibleCore-nonceUsed}.
    */
   function nonceUsed(
     address creatorContractAddress,
@@ -270,7 +270,7 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
    * @dev Check if currently in presale
    */
   function _isPresale(address creatorContractAddress, uint256 instanceId) internal view returns (bool) {
-    MultiAssetClaimInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
 
     return (block.timestamp > instance.startTime && block.timestamp - instance.startTime < instance.presaleInterval);
   }
@@ -278,9 +278,9 @@ abstract contract MultiAssetClaimCore is IMultiAssetClaimCore, AdminControl {
   function _getInstance(
     address creatorContractAddress,
     uint256 instanceId
-  ) internal view returns (MultiAssetClaimInstance storage instance) {
+  ) internal view returns (CollectibleInstance storage instance) {
     instance = _instances[creatorContractAddress][instanceId];
-    require(instance.purchaseMax != 0, "Claim not initialized");
+    require(instance.purchaseMax != 0, "Collectible not initialized");
   }
 
   /**

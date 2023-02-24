@@ -9,12 +9,12 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
-import "./IMultiAssetClaimCore.sol";
+import "./ICollectibleCore.sol";
 
 /**
  * @dev ERC721 Collection Interface
  */
-interface IERC721MultiAssetClaim is IMultiAssetClaimCore, IERC721CreatorExtensionApproveTransfer, ICreatorExtensionTokenURI {
+interface IERC721Collectible is ICollectibleCore, IERC721CreatorExtensionApproveTransfer, ICreatorExtensionTokenURI {
   event Unveil(address creatorContractAddress, uint256 instanceId, uint256 tokenMintIndex, uint256 tokenId);
 
   /**
@@ -76,7 +76,7 @@ interface IERC721MultiAssetClaim is IMultiAssetClaimCore, IERC721CreatorExtensio
   /**
    * @dev returns the collection state
    */
-  function state(address creatorContractAddress, uint256 instanceId) external view returns (MultiAssetClaimInstance memory);
+  function state(address creatorContractAddress, uint256 instanceId) external view returns (CollectibleInstance memory);
 
   /**
    * @dev Get number of tokens left
