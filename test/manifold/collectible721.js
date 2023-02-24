@@ -2,25 +2,28 @@ const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require("truffle-assertions");
 const ERC721Creator = artifacts.require("@manifoldxyz/creator-core-collectibles-solidity/ERC721Creator");
 const ERC721Collectible = artifacts.require("ERC721Collectible");
+const { BigNumber } = require("ethers");
+const MockManifoldMembership = artifacts.require("MockManifoldMembership");
 
 const { signTransactionWithAmount, signTransaction } = require("../helpers/signatureHelpers");
+const MINT_FEE = BigNumber.from("690000000000000");
 
-contract("Collectible721", function ([creator, ...accounts]) {
+contract("Collectible721", function (accounts) {
   const name = "Token";
   const symbol = "NFT";
-  const [collectibleOwner, owner, signer, another, anyone1, anyone2, anyone3, anyone4, anyone5] = accounts;
+  const [paymentReceiver, collectibleOwner, owner, signer, another, anyone1, anyone2, anyone3, anyone4, anyone5] = accounts;
   const INSTANCE_ID = 1;
   const TOKEN_ID = 3;
 
   describe("Collectible721", function () {
     var creator;
     var collectible;
-    var maxTokens = 10;
     var tokenPrice = 100;
     var transactionLimit = 5;
     var purchaseLimit = 5;
     var presalePurchaseLimit = 3;
     var presaleTokenPrice = 50;
+    let manifoldMembership;
     const initializationParameters = {
       useDynamicPresalePurchaseLimit: false,
       transactionLimit,
@@ -31,7 +34,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       purchasePrice: tokenPrice,
       presalePurchasePrice: presaleTokenPrice,
       signingAddress: signer,
-      paymentReceiver: anyone5,
+      paymentReceiver: paymentReceiver,
     };
     const activationParameters = {
       startTime: Date.now(),
@@ -46,7 +49,8 @@ contract("Collectible721", function ([creator, ...accounts]) {
       collectible = await ERC721Collectible.new({
         from: collectibleOwner,
       });
-
+      manifoldMembership = await MockManifoldMembership.new({ from: owner });
+      await collectible.setMembershipAddress(manifoldMembership.address, { from: collectibleOwner });
       await creator.registerExtension(collectible.address, "", { from: owner });
     });
 
@@ -94,6 +98,12 @@ contract("Collectible721", function ([creator, ...accounts]) {
         }),
         "Wallet is not an administrator for contract"
       );
+      await truffleAssert.reverts(
+        collectible.setMembershipAddress(manifoldMembership.address, {
+          from: another,
+        }),
+        "AdminControl: Must be owner or admin"
+      );
     });
 
     it("functionality test with purchase limit", async function () {
@@ -114,13 +124,15 @@ contract("Collectible721", function ([creator, ...accounts]) {
       assert.equal(await creator.balanceOf(anyone1), 1);
       assert.equal(await creator.balanceOf(anyone2), 1);
       await truffleAssert.reverts(
-        collectible.purchase(creator.address, INSTANCE_ID, 1, "0x0", "0x0", "0x0", { from: anyone1, value: tokenPrice }),
+        collectible.purchase(creator.address, INSTANCE_ID, 1, "0x0", "0x0", "0x0", {
+          from: anyone1,
+          value: MINT_FEE.add(tokenPrice),
+        }),
         "Inactive"
       );
 
       // Start sale at future date
       var startTime = (await web3.eth.getBlock("latest")).timestamp + 100;
-      var duration = 1000;
       await collectible.activate(
         creator.address,
         INSTANCE_ID,
@@ -141,21 +153,25 @@ contract("Collectible721", function ([creator, ...accounts]) {
         "Already active"
       );
       await truffleAssert.reverts(
-        collectible.purchase(creator.address, INSTANCE_ID, 1, "0x0", "0x0", "0x0", { from: anyone1, value: tokenPrice }),
+        collectible.purchase(creator.address, INSTANCE_ID, 1, "0x0", "0x0", "0x0", {
+          from: anyone1,
+          value: MINT_FEE.add(tokenPrice),
+        }),
         "Purchasing not active"
       );
       await helper.advanceTimeAndBlock(100);
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, purchaseLimit + 1, "0x0", "0x0", "0x0", {
           from: anyone3,
-          value: (purchaseLimit + 1) * tokenPrice,
+          value: MINT_FEE.add(tokenPrice).mul(purchaseLimit + 1),
         }),
         "Too many requested"
       );
+
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, purchaseLimit, "0x0", "0x0", "0x0", {
           from: anyone3,
-          value: tokenPrice,
+          value: MINT_FEE.add(tokenPrice),
         }),
         "Invalid purchase amount sent"
       );
@@ -170,26 +186,29 @@ contract("Collectible721", function ([creator, ...accounts]) {
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
           from: anyone1,
-          value: tokenPrice,
+          value: MINT_FEE.add(tokenPrice),
         }),
         "Malformed message"
       );
       // Bad signature
       await truffleAssert.reverts(
-        collectible.purchase(creator.address, INSTANCE_ID, 1, message, badSig, nonce, { from: anyone3, value: tokenPrice }),
+        collectible.purchase(creator.address, INSTANCE_ID, 1, message, badSig, nonce, {
+          from: anyone3,
+          value: MINT_FEE.add(tokenPrice),
+        }),
         "Invalid signature"
       );
       // Ok
       var tx = await collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
         from: anyone3,
-        value: tokenPrice,
+        value: MINT_FEE.add(tokenPrice),
       });
       assert.equal(await creator.balanceOf(anyone3), 1);
       // Cannot replay
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
           from: anyone3,
-          value: tokenPrice,
+          value: MINT_FEE.add(tokenPrice),
         }),
         "Cannot replay transaction"
       );
@@ -199,13 +218,16 @@ contract("Collectible721", function ([creator, ...accounts]) {
       ({ message, signature } = await signTransaction(anyone3, nonce, signer));
       await collectible.purchase(creator.address, INSTANCE_ID, purchaseLimit - 1, message, signature, nonce, {
         from: anyone3,
-        value: (purchaseLimit - 1) * tokenPrice,
+        value: MINT_FEE.add(tokenPrice).mul(purchaseLimit - 1),
       });
 
       nonce = web3.utils.padLeft("0x24356e67", 64);
       ({ message, signature } = await signTransaction(anyone3, nonce, signer));
       await truffleAssert.reverts(
-        collectible.purchase(creator.address, INSTANCE_ID, 1, "0x0", "0x0", "0x0", { from: anyone3, value: tokenPrice }),
+        collectible.purchase(creator.address, INSTANCE_ID, 1, "0x0", "0x0", "0x0", {
+          from: anyone3,
+          value: MINT_FEE.add(tokenPrice),
+        }),
         "Too many requested"
       );
 
@@ -215,24 +237,24 @@ contract("Collectible721", function ([creator, ...accounts]) {
       const tokensRemaining = await collectible.purchaseRemaining(creator.address, INSTANCE_ID);
       await collectible.purchase(creator.address, INSTANCE_ID, tokensRemaining, message, signature, nonce, {
         from: anyone4,
-        value: tokensRemaining * tokenPrice,
+        value: MINT_FEE.add(tokenPrice).mul(tokensRemaining.toNumber()),
       });
 
       // Sold out
       nonce = web3.utils.padLeft("0x24356e69", 64);
       ({ message, signature } = await signTransaction(anyone5, nonce, signer));
       await truffleAssert.reverts(
-        collectible.purchase(creator.address, INSTANCE_ID, 1, "0x0", "0x0", "0x0", { from: anyone5, value: tokenPrice }),
+        collectible.purchase(creator.address, INSTANCE_ID, 1, "0x0", "0x0", "0x0", {
+          from: anyone5,
+          value: MINT_FEE.add(tokenPrice),
+        }),
         "Too many requested"
       );
-
-      // Withraw testing
-      await collectible.withdraw(another, 0, { from: collectibleOwner });
 
       // Transfers are locked so this reverts
       await truffleAssert.reverts(
         creator.safeTransferFrom(anyone1, anyone4, TOKEN_ID, { from: anyone1 }),
-        " Extension approval failure"
+        "Extension approval failure"
       );
 
       // Renable transfers
@@ -243,6 +265,91 @@ contract("Collectible721", function ([creator, ...accounts]) {
       await creator.safeTransferFrom(anyone4, anyone1, TOKEN_ID, { from: anyone4 });
     });
 
+    it("withdraw test", async function () {
+      await collectible.initializeCollectible(creator.address, INSTANCE_ID, initializationParameters, {
+        from: owner,
+      });
+      var startTime = (await web3.eth.getBlock("latest")).timestamp + 100;
+      await collectible.activate(
+        creator.address,
+        INSTANCE_ID,
+        {
+          ...activationParameters,
+          startTime,
+        },
+        { from: owner }
+      );
+      await helper.advanceTimeAndBlock(100);
+
+      let nonce = web3.utils.padLeft("0x24356e65", 64);
+      let { message, signature } = await signTransaction(anyone3, nonce, signer);
+
+      const creatorBalanceBefore = await web3.eth.getBalance(paymentReceiver);
+      await collectible.purchase(creator.address, INSTANCE_ID, 2, message, signature, nonce, {
+        from: anyone3,
+        value: MINT_FEE.add(tokenPrice).mul(2),
+      });
+      const creatorBalanceAfter = await web3.eth.getBalance(paymentReceiver);
+      assert(
+        BigNumber.from(creatorBalanceAfter.toString())
+          .sub(creatorBalanceBefore.toString())
+          .eq(BigNumber.from(tokenPrice).mul(2))
+      );
+      await truffleAssert.reverts(
+        collectible.withdraw(collectibleOwner, MINT_FEE.add(tokenPrice).mul(2), {
+          from: anyone3,
+        }),
+        "AdminControl: Must be owner or admin"
+      );
+
+      // request too many
+      await truffleAssert.reverts(
+        collectible.withdraw(anyone4, MINT_FEE.add(tokenPrice).mul(100), {
+          from: collectibleOwner,
+        }),
+        "Failed to transfer to receiver"
+      );
+
+      const contractBalance = await web3.eth.getBalance(collectible.address);
+      assert.equal(BigNumber.from(contractBalance.toString()).toString(), MINT_FEE.mul(2).toString());
+      const balanceBefore = await web3.eth.getBalance(anyone1);
+      await collectible.withdraw(anyone1, MINT_FEE.mul(2), {
+        from: collectibleOwner,
+      });
+      const balanceAfter = await web3.eth.getBalance(anyone1);
+      assert.equal(
+        BigNumber.from(balanceAfter.toString()).sub(balanceBefore.toString()).toString(),
+        MINT_FEE.mul(2).toString()
+      );
+    });
+
+    it("membership test", async function () {
+      await manifoldMembership.setMember(anyone1, true, { from: owner });
+      await collectible.initializeCollectible(creator.address, INSTANCE_ID, initializationParameters, {
+        from: owner,
+      });
+      var startTime = (await web3.eth.getBlock("latest")).timestamp + 100;
+      await collectible.activate(
+        creator.address,
+        INSTANCE_ID,
+        {
+          ...activationParameters,
+          startTime,
+        },
+        { from: owner }
+      );
+      await helper.advanceTimeAndBlock(100);
+
+      let nonce = web3.utils.padLeft("0x24356e65", 64);
+      let { message, signature } = await signTransaction(anyone1, nonce, signer);
+
+      await collectible.purchase(creator.address, INSTANCE_ID, 2, message, signature, nonce, {
+        from: anyone1,
+        value: tokenPrice * 2,
+      });
+      assert.equal(await creator.balanceOf(anyone1), 2);
+    });
+
     it("transaction limit test", async function () {
       await collectible.initializeCollectible(creator.address, INSTANCE_ID, initializationParameters, {
         from: owner,
@@ -250,7 +357,6 @@ contract("Collectible721", function ([creator, ...accounts]) {
 
       // Start sale at future date
       var startTime = (await web3.eth.getBlock("latest")).timestamp + 100;
-      var duration = 1000;
       await collectible.activate(
         creator.address,
         INSTANCE_ID,
@@ -268,14 +374,14 @@ contract("Collectible721", function ([creator, ...accounts]) {
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, transactionLimit + 1, message, signature, nonce, {
           from: anyone3,
-          value: tokenPrice * (transactionLimit + 1),
+          value: MINT_FEE.add(tokenPrice).mul(transactionLimit + 1),
         }),
         "Too many requested"
       );
       // Ok
       var tx = await collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
         from: anyone3,
-        value: tokenPrice,
+        value: MINT_FEE.add(tokenPrice),
       });
       console.log("purchase gas cost:", tx.receipt.gasUsed);
       assert.equal(await creator.balanceOf(anyone3), 1);
@@ -341,17 +447,26 @@ contract("Collectible721", function ([creator, ...accounts]) {
       let amount = 5;
       let { signature, message } = await signTransactionWithAmount(anyone3, nonce, signer, amount);
       await truffleAssert.reverts(
-        collectible.claim(creator.address, INSTANCE_ID, amount, message, signature, nonce, { from: anyone3 }),
+        collectible.claim(creator.address, INSTANCE_ID, amount, message, signature, nonce, {
+          from: anyone3,
+          value: MINT_FEE.mul(amount),
+        }),
         "Outside claim period"
       );
       await helper.advanceTimeAndBlock(10);
       await truffleAssert.reverts(
-        collectible.claim(creator.address, INSTANCE_ID, amount + 1, message, signature, nonce, { from: anyone3 }),
+        collectible.claim(creator.address, INSTANCE_ID, amount + 1, message, signature, nonce, {
+          from: anyone3,
+          value: MINT_FEE.mul(amount + 1),
+        }),
         "Malformed message"
       );
 
       // Ok
-      var tx = await collectible.claim(creator.address, INSTANCE_ID, amount, message, signature, nonce, { from: anyone3 });
+      var tx = await collectible.claim(creator.address, INSTANCE_ID, amount, message, signature, nonce, {
+        from: anyone3,
+        value: MINT_FEE.mul(amount),
+      });
       console.log("claim gas cost:", tx.receipt.gasUsed);
       assert.equal(await creator.balanceOf(anyone3), 5);
     });
@@ -373,7 +488,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, presalePurchaseLimit + 1, "0x0", "0x0", "0x0", {
           from: anyone3,
-          value: (presalePurchaseLimit + 1) * presaleTokenPrice,
+          value: MINT_FEE.add(presaleTokenPrice).mul(presalePurchaseLimit + 1),
         }),
         "Too many requested"
       );
@@ -383,7 +498,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       let badSig = (await signTransaction(anyone3, nonce, owner)).signature;
       await collectible.purchase(creator.address, INSTANCE_ID, presalePurchaseLimit - 1, message, signature, nonce, {
         from: anyone3,
-        value: presaleTokenPrice * (presalePurchaseLimit - 1),
+        value: MINT_FEE.add(presaleTokenPrice).mul(presalePurchaseLimit - 1),
       });
       assert.equal(await creator.balanceOf(anyone3), presalePurchaseLimit - 1);
       // Can make another purchase during presale
@@ -391,7 +506,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       ({ message, signature } = await signTransaction(anyone3, nonce, signer));
       await collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
         from: anyone3,
-        value: presaleTokenPrice,
+        value: MINT_FEE.add(presaleTokenPrice),
       });
       // Cannot make purchase over limit during presale
       nonce = web3.utils.padLeft("0x24356e67", 64);
@@ -399,7 +514,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
           from: anyone3,
-          value: presaleTokenPrice,
+          value: MINT_FEE.add(presaleTokenPrice),
         }),
         "Too many requested"
       );
@@ -407,7 +522,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       await helper.advanceTimeAndBlock(presaleInterval - 10 + 1);
       await collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
         from: anyone3,
-        value: tokenPrice,
+        value: MINT_FEE.add(tokenPrice),
       });
       assert.equal(await creator.balanceOf(anyone3), presalePurchaseLimit + 1);
     });
@@ -435,7 +550,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
 
       await collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
         from: anyone3,
-        value: presaleTokenPrice,
+        value: MINT_FEE.add(presaleTokenPrice),
       });
       assert.equal(await creator.balanceOf(anyone3), 1);
 
@@ -444,7 +559,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       ({ message, signature } = await signTransaction(anyone3, nonce, signer));
       await collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
         from: anyone3,
-        value: presaleTokenPrice,
+        value: MINT_FEE.add(presaleTokenPrice),
       });
     });
 
@@ -474,7 +589,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       ({ signature, message } = await signTransactionWithAmount(anyone1, nonce, signer, 2));
       await collectible.purchase(creator.address, INSTANCE_ID, 2, message, signature, nonce, {
         from: anyone1,
-        value: presaleTokenPrice * 2,
+        value: MINT_FEE.add(presaleTokenPrice).mul(2),
       });
       assert.equal(await creator.balanceOf(anyone1), 2);
       // Can purchase beyond static presale purchase limit
@@ -482,7 +597,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       ({ signature, message } = await signTransactionWithAmount(anyone2, nonce, signer, presalePurchaseLimit + 1));
       await collectible.purchase(creator.address, INSTANCE_ID, presalePurchaseLimit + 1, message, signature, nonce, {
         from: anyone2,
-        value: presaleTokenPrice * (presalePurchaseLimit + 1),
+        value: MINT_FEE.add(presaleTokenPrice).mul(presalePurchaseLimit + 1),
       });
       assert.equal(await creator.balanceOf(anyone2), presalePurchaseLimit + 1);
 
@@ -492,7 +607,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, 2, message, signature, nonce, {
           from: anyone3,
-          value: presaleTokenPrice * 2,
+          value: MINT_FEE.add(presaleTokenPrice).mul(2),
         }),
         "Malformed message"
       );
@@ -503,7 +618,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       ({ signature, message } = await signTransaction(anyone4, nonce, signer));
       await collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
         from: anyone4,
-        value: tokenPrice,
+        value: MINT_FEE.add(tokenPrice),
       });
       assert.equal(await creator.balanceOf(anyone4), 1);
 
@@ -513,7 +628,7 @@ contract("Collectible721", function ([creator, ...accounts]) {
       await truffleAssert.reverts(
         collectible.purchase(creator.address, INSTANCE_ID, 1, message, signature, nonce, {
           from: anyone5,
-          value: tokenPrice,
+          value: MINT_FEE.add(tokenPrice),
         }),
         "Malformed message"
       );

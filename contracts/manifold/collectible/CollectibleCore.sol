@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 /// @author: manifold.xyz
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "../../libraries/manifold-membership/IManifoldMembership.sol";
 
 import "./ICollectibleCore.sol";
 
@@ -13,6 +14,8 @@ import "./ICollectibleCore.sol";
  */
 abstract contract CollectibleCore is ICollectibleCore, AdminControl {
   using ECDSA for bytes32;
+
+  uint256 public constant MINT_FEE = 690000000000000;
 
   address public manifoldMembershipContract;
 
@@ -289,5 +292,20 @@ abstract contract CollectibleCore is ICollectibleCore, AdminControl {
   function _forwardValue(address payable receiver, uint256 amount) internal {
     (bool sent, ) = receiver.call{ value: amount }("");
     require(sent, "Failed to transfer to recipient");
+  }
+
+  /**
+  * Helper to check if the sender holds an active Manifold membership
+  */
+  function _isActiveMember(address sender) internal view returns(bool) {
+    return manifoldMembershipContract != address(0) &&
+        IManifoldMembership(manifoldMembershipContract).isActiveMember(sender);
+  }
+
+  /**
+  * Helper to get the Manifold fee for the sender
+  */
+  function _getManifoldFee(uint256 numTokens) internal view returns(uint256) {
+    return _isActiveMember(msg.sender) ? 0 : (MINT_FEE * numTokens);
   }
 }

@@ -96,10 +96,11 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
     bytes32 message,
     bytes calldata signature,
     bytes32 nonce
-  ) external virtual override {
+  ) public payable virtual override {
     _validateClaimRestrictions(creatorContractAddress, instanceId);
     _validateClaimRequest(creatorContractAddress, instanceId, message, signature, nonce, amount);
     _addressMintCount[creatorContractAddress][instanceId][msg.sender] += amount;
+    require(msg.value == _getManifoldFee(amount), "Invalid purchase amount");
     _mint(creatorContractAddress, instanceId, msg.sender, amount);
   }
 
@@ -118,6 +119,7 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
     _validatePurchaseRestrictions(creatorContractAddress, instanceId);
 
     bool isPresale = _isPresale(creatorContractAddress, instanceId);
+    uint256 priceWithoutFee;
 
     // Check purchase amounts
     require(
@@ -147,7 +149,7 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
           );
         }
       }
-      _validatePresalePrice(amount, instance);
+      priceWithoutFee = _validatePresalePrice(amount, instance);
       // Only track mint count if needed
       if (!instance.useDynamicPresalePurchaseLimit && (instance.presalePurchaseLimit != 0 || instance.purchaseLimit != 0)) {
         _addressMintCount[creatorContractAddress][instanceId][msg.sender] += amount;
@@ -158,7 +160,8 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
         uint256 mintCount = _addressMintCount[creatorContractAddress][instanceId][msg.sender];
         require(instance.purchaseLimit > mintCount && amount <= (instance.purchaseLimit - mintCount), "Too many requested");
       }
-      _validatePrice(amount, instance);
+      priceWithoutFee = _validatePrice(amount, instance);
+
       if (instance.purchaseLimit != 0) {
         _addressMintCount[creatorContractAddress][instanceId][msg.sender] += amount;
       }
@@ -170,8 +173,11 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
       _validatePurchaseRequest(creatorContractAddress, instanceId, message, signature, nonce);
     }
 
+    if (priceWithoutFee > 0) {
+      _forwardValue(instance.paymentReceiver, priceWithoutFee);
+    }
+
     _mint(creatorContractAddress, instanceId, msg.sender, amount);
-    _forwardValue(instance.paymentReceiver, msg.value);
   }
 
   /**
@@ -270,14 +276,22 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
   /**
    * Validate price (override for custom pricing mechanics)
    */
-  function _validatePrice(uint16 amount, CollectibleInstance storage instance) internal virtual {
-    require(msg.value == amount * instance.purchasePrice, "Invalid purchase amount sent");
+  function _validatePrice(uint16 numTokens, CollectibleInstance storage instance) internal virtual returns (uint256) {
+    uint256 priceWithoutFee = numTokens * instance.purchasePrice;
+    uint256 price = priceWithoutFee + _getManifoldFee(numTokens);
+    require(msg.value == price, "Invalid purchase amount sent");
+
+    return priceWithoutFee;
   }
 
   /**
    * Validate price (override for custom pricing mechanics)
    */
-  function _validatePresalePrice(uint16 amount, CollectibleInstance storage instance) internal virtual {
-    require(msg.value == amount * instance.presalePurchasePrice, "Invalid purchase amount sent");
+  function _validatePresalePrice(uint16 numTokens, CollectibleInstance storage instance) internal virtual returns (uint256) {
+    uint256 priceWithoutFee = numTokens * instance.presalePurchasePrice;
+    uint256 price = priceWithoutFee + _getManifoldFee(numTokens);
+    require(msg.value == price, "Invalid purchase amount sent");
+
+    return priceWithoutFee;
   }
 }

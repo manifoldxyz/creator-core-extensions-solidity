@@ -59,7 +59,7 @@ interface IERC721Collectible is ICollectibleCore, IERC721CreatorExtensionApprove
     bytes32 message,
     bytes calldata signature,
     bytes32 nonce
-  ) external;
+  ) external payable;
 
   /**
    * @dev purchase
