@@ -153,6 +153,18 @@ contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referr
 0x...
 ```
 
+#### Collectible ERC721 Shared Contract
+
+**Goerli**
+```
+0xC910522891fB01cde4F85F64C3D6501fAa669Bf8
+```
+
+**Mainnet**
+```
+0x...
+```
+
 
 ## Running the package unit tests
 
