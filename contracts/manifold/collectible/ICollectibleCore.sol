@@ -78,6 +78,7 @@ interface ICollectibleCore is IERC165 {
     uint256 purchasePrice;
     uint256 presalePurchasePrice;
     uint256 purchaseRemaining;
+    address payable paymentReceiver;
   }
 
   event CollectibleInitialized(address creatorContractAddress, uint256 instanceId, address initializer);
