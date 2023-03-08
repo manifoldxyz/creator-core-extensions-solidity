@@ -183,8 +183,27 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
   /**
    * @dev returns the collection state
    */
-  function state(address creatorContractAddress, uint256 instanceId) external view returns (CollectibleInstance memory) {
-    return _getInstance(creatorContractAddress, instanceId);
+  function state(address creatorContractAddress, uint256 instanceId) external view returns (CollectibleState memory) {
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+
+    return CollectibleState(
+      instance.isActive,
+      instance.useDynamicPresalePurchaseLimit,
+      instance.isTransferLocked,
+      instance.transactionLimit,
+      instance.purchaseMax,
+      instance.purchaseLimit,
+      instance.presalePurchaseLimit,
+      instance.purchaseCount,
+      instance.startTime,
+      instance.endTime,
+      instance.presaleInterval,
+      instance.claimStartTime,
+      instance.claimEndTime,
+      instance.purchasePrice,
+      instance.presalePurchasePrice,
+      purchaseRemaining(creatorContractAddress, instanceId)
+    );
   }
 
   /**
