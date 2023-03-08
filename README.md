@@ -70,6 +70,10 @@ These are ERC721 and ERC1155 Lazy Claim extensions.
 0x44e94034AFcE2Dd3CD5Eb62528f239686Fc8f162
 ```
 
+#### Manifold Burn Redeem
+
+See https://github.com/manifoldxyz/studio-app-burn-redeem/blob/main/src/lib/constants.ts
+
 #### OperatorFilterer
 Shared extension to support OpenSea's Operator Filter Registry
 
