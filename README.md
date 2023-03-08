@@ -1,6 +1,4 @@
-# creator-core-extensions-solidity
-
-## The Manifold Creator Core Extension Applications (Apps) Contracts
+# The Manifold Creator Core Extension Applications (Apps) Contracts
 
 **A library of base implementations and examples Apps for use with [Manifold Creator Core](https://github.com/manifoldxyz/creator-core-solidity).**
 
@@ -31,7 +29,7 @@ baseURI can be blank if you are overriding the tokenURI functionality.
 
 See the [developer documentation](https://docs.manifold.xyz/v/manifold-for-developers/manifold-creator-architecture/contracts/extensions) for further info about Extension Applications.
 
-### Platform Extensions
+## Non-Proxy Platform Extensions
 These are extensions that can be installed by any Manifold Creator contract to give enhanced additional functionality.  There is a single deployed instance of these extensions, and every creator contract installs the same instance, and accesses the new functionality via that extension.
 
 #### Manifold ERC721 Edition
@@ -102,7 +100,7 @@ Shared extension to support Creator Controlled operator filters
 0x3E31CB740351D8650b36e8Ece95A8Efcd1fc28C2
 ```
 
-### Customized Lightweight Proxies
+## Proxy Platform Extensions
 You can deploy customized lightweight Proxy implementations of the following Application Extensions by referring to their templates and deploying against the appropriate network's reference Implementations.
 
 #### ERC721 Editions
