@@ -178,6 +178,8 @@ npm install -g truffle
 npm install -g ganache-cli
 ```
 
+Then:
+```
 ### install dependencies
 npm install
 
@@ -192,4 +194,4 @@ truffle migrate
 
 ### Run tests
 truffle test
-
+```
