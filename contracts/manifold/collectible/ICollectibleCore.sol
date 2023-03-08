@@ -39,6 +39,7 @@ interface ICollectibleCore is IERC165 {
     uint16 presalePurchaseLimit;
     uint256 purchasePrice;
     uint256 presalePurchasePrice;
+    address payable paymentReceiver;
   }
 
   struct CollectibleInstance {
