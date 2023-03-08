@@ -142,19 +142,19 @@ abstract contract CollectibleCore is ICollectibleCore, AdminControl {
   }
 
   /**
-   * @dev See {IERC721Collectible-setManifoldMembership}.
+   * @dev See {IERC721Collectible-setMembershipAddress}.
    */
   function setMembershipAddress(address addr) external override adminRequired {
     manifoldMembershipContract = addr;
   }
 
   /**
-   * @dev See {IERC721Collectible-modifyInitializationParameters}.
+   * @dev See {ICollectibleCore-updateInitializationParameters}.
    */
-  function modifyInitializationParameters(
+  function updateInitializationParameters(
     address creatorContractAddress,
     uint256 instanceId,
-    ModifyInitializationParameters calldata initializationParameters
+    UpdateInitializationParameters calldata initializationParameters
   ) external override creatorAdminRequired(creatorContractAddress) {
     CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
 
@@ -165,7 +165,20 @@ abstract contract CollectibleCore is ICollectibleCore, AdminControl {
     instance.presalePurchasePrice = initializationParameters.presalePurchasePrice;
     instance.presalePurchaseLimit = initializationParameters.presalePurchaseLimit;
     instance.useDynamicPresalePurchaseLimit = initializationParameters.useDynamicPresalePurchaseLimit;
-    instance.paymentReceiver = initializationParameters.paymentReceiver;
+  }
+
+  /**
+   * @dev See {ICollectibleCore-updatePaymentReceiver}.
+   */
+  function updatePaymentReceiver(
+    address creatorContractAddress,
+    uint256 instanceId,
+    address payable paymentReceiver
+  ) external {
+    CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
+    require(paymentReceiver != address(0), "Invalid payment address");
+
+    instance.paymentReceiver = paymentReceiver;
   }
 
   /**
