@@ -22,7 +22,6 @@ interface ICollectibleCore is IERC165 {
     bool useDynamicPresalePurchaseLimit;
     uint16 transactionLimit;
     uint16 purchaseMax;
-    uint16 purchaseRemaining;
     uint16 purchaseLimit;
     uint16 presalePurchaseLimit;
     uint256 purchasePrice;
@@ -36,7 +35,6 @@ interface ICollectibleCore is IERC165 {
     bool useDynamicPresalePurchaseLimit;
     uint16 transactionLimit;
     uint16 purchaseMax;
-    uint16 purchaseRemaining;
     uint16 purchaseLimit;
     uint16 presalePurchaseLimit;
     uint256 purchasePrice;
@@ -49,7 +47,6 @@ interface ICollectibleCore is IERC165 {
     bool isTransferLocked;
     uint16 transactionLimit;
     uint16 purchaseMax;
-    uint16 purchaseRemaining;
     uint16 purchaseLimit;
     uint16 presalePurchaseLimit;
     uint16 purchaseCount;
@@ -62,6 +59,25 @@ interface ICollectibleCore is IERC165 {
     uint256 presalePurchasePrice;
     string baseURI;
     address payable paymentReceiver;
+  }
+
+  struct CollectibleState {
+    bool isActive;
+    bool useDynamicPresalePurchaseLimit;
+    bool isTransferLocked;
+    uint16 transactionLimit;
+    uint16 purchaseMax;
+    uint16 purchaseLimit;
+    uint16 presalePurchaseLimit;
+    uint16 purchaseCount;
+    uint48 startTime;
+    uint48 endTime;
+    uint48 presaleInterval;
+    uint48 claimStartTime;
+    uint48 claimEndTime;
+    uint256 purchasePrice;
+    uint256 presalePurchasePrice;
+    uint256 purchaseRemaining;
   }
 
   event CollectibleInitialized(address creatorContractAddress, uint256 instanceId, address initializer);

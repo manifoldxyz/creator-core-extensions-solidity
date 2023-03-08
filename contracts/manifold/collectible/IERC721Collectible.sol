@@ -76,7 +76,7 @@ interface IERC721Collectible is ICollectibleCore, IERC721CreatorExtensionApprove
   /**
    * @dev returns the collection state
    */
-  function state(address creatorContractAddress, uint256 instanceId) external view returns (CollectibleInstance memory);
+  function state(address creatorContractAddress, uint256 instanceId) external view returns (CollectibleState memory);
 
   /**
    * @dev Get number of tokens left
