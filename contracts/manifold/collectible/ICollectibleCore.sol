@@ -31,7 +31,7 @@ interface ICollectibleCore is IERC165 {
   }
 
 
-  struct ModifyInitializationParameters {
+  struct UpdateInitializationParameters {
     bool useDynamicPresalePurchaseLimit;
     uint16 transactionLimit;
     uint16 purchaseMax;
@@ -39,7 +39,6 @@ interface ICollectibleCore is IERC165 {
     uint16 presalePurchaseLimit;
     uint256 purchasePrice;
     uint256 presalePurchasePrice;
-    address payable paymentReceiver;
   }
 
   struct CollectibleInstance {
@@ -157,14 +156,26 @@ interface ICollectibleCore is IERC165 {
   ) external;
 
   /**
-   * Allows a handful of initial variables to be modified
+   * Updates a handful of sale parameters
    * @param creatorContractAddress    the creator contract the burn will mint redeem tokens for
    * @param instanceId                the id of the multi-asssetclaim in the mapping of creatorContractAddress <-> instance id
    * @param initializationParameters  initial claim parameters
    */
-  function modifyInitializationParameters(
+  function updateInitializationParameters(
     address creatorContractAddress,
     uint256 instanceId,
-    ModifyInitializationParameters calldata initializationParameters
+    UpdateInitializationParameters calldata initializationParameters
+  ) external;
+
+  /**
+   * Updates payment receiver
+   * @param creatorContractAddress    the creator contract the burn will mint redeem tokens for
+   * @param instanceId                the id of the multi-asssetclaim in the mapping of creatorContractAddress <-> instance id
+   * @param paymentReceiver           the new address that will receive payments
+   */
+  function updatePaymentReceiver(
+    address creatorContractAddress,
+    uint256 instanceId,
+    address payable paymentReceiver
   ) external;
 }
