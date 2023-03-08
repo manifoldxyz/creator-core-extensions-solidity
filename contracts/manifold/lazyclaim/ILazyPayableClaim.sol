@@ -88,7 +88,7 @@ interface ILazyPayableClaim {
     function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable;
 
     /**
-     * @notice allow a proxy to mint a token for another address (non-merkle mints only)
+     * @notice allow a proxy to mint a token for another address
      * @param creatorContractAddress    the creator contract address
      * @param claimIndex                the index of the claim for which we will mint
      * @param mintCount                 the number of claims to mint
