@@ -120,26 +120,27 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         StorageProtocol storageProtocol,
         bool identical,
         string calldata location
-    ) external override creatorAdminRequired(creatorContractAddress)  {
-        Claim memory claim = _claims[creatorContractAddress][claimIndex];
+    ) external override creatorAdminRequired(creatorContractAddress) {
+        Claim storage claim = _claims[creatorContractAddress][claimIndex];
         require(_claims[creatorContractAddress][claimIndex].storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
 
-        // Overwrite the existing claim
-        _claims[creatorContractAddress][claimIndex] = Claim({
-            total: claim.total,
-            totalMax: claim.totalMax,
-            walletMax: claim.walletMax,
-            startDate: claim.startDate,
-            endDate: claim.endDate,
-            storageProtocol: storageProtocol,
-            identical: identical,
-            merkleRoot: claim.merkleRoot,
-            location: location,
-            cost: claim.cost,
-            paymentReceiver: claim.paymentReceiver,
-            erc20: claim.erc20
-        });
+        claim.storageProtocol = storageProtocol;
+        claim.location = location;
+        claim.identical = identical;
+        emit ClaimUpdated(creatorContractAddress, claimIndex);
+    }
+
+    /**
+     * See {IERC1155LazyClaim-extendTokenURI}.
+     */
+    function extendTokenURI(
+        address creatorContractAddress, uint256 claimIndex,
+        string calldata locationChunk
+    ) external override creatorAdminRequired(creatorContractAddress) {
+        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        require(claim.storageProtocol == StorageProtocol.NONE && claim.identical, "Invalid storage protocol");
+        claim.location = string(abi.encodePacked(claim.location, locationChunk));
         emit ClaimUpdated(creatorContractAddress, claimIndex);
     }
 

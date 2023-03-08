@@ -73,6 +73,81 @@ contract('LazyPayableClaim', function ([...accounts]) {
         },
         {from:owner}
       );
+
+      truffleAssert.reverts(lazyClaim.updateClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "YYY",
+          totalMax: 10,
+          walletMax: 1,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:anotherOwner}
+      ), "Wallet is not an administrator for contract");
+
+      truffleAssert.reverts(lazyClaim.updateTokenURIParams(
+        creator.address,
+        1,
+        2,
+        "",
+        {from:anotherOwner}
+      ), "Wallet is not an administrator for contract");
+
+      truffleAssert.reverts(lazyClaim.extendTokenURI(
+        creator.address,
+        1,
+        "",
+        {from:anotherOwner}
+      ), "Wallet is not an administrator for contract");
+
+      // Overwrite the claim with parameters changed
+      await lazyClaim.updateClaim(
+        creator.address,
+        1, // the index of the claim we want to edit
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "arweaveHash1",
+          totalMax: 9,
+          walletMax: 1,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 2,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:owner}
+      );
+
+      // Claim should have expected info
+      let claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.merkleRoot, ethers.utils.formatBytes32String(""));
+      assert.equal(claim.location, 'arweaveHash1');
+      assert.equal(claim.totalMax, 9);
+      assert.equal(claim.walletMax, 1);
+      assert.equal(claim.startDate, now);
+      assert.equal(claim.endDate, later);
+      assert.equal(claim.cost, 1);
+      assert.equal(claim.paymentReceiver, owner);
+
+      assert.equal('https://arweave.net/arweaveHash1', await creator.uri(1));
+
+      // Update just the uri params
+      await lazyClaim.updateTokenURIParams(creator.address, 1, 2, 'arweaveHash3', {from:owner});
+      assert.equal('https://arweave.net/arweaveHash3', await creator.uri(1));
+      // Extend uri
+      await truffleAssert.reverts(lazyClaim.extendTokenURI(creator.address, 1, '', {from:owner}), "Invalid storage protocol");
+      await lazyClaim.updateTokenURIParams(creator.address, 1, 1, 'part1', {from:owner});
+      await lazyClaim.extendTokenURI(creator.address, 1, 'part2', {from:owner});
+      assert.equal('part1part2', await creator.uri(1));
+
     });
 
     it('initializeClaim input sanitization test', async function () {

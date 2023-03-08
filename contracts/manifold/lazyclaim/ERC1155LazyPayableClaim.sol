@@ -119,7 +119,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         address creatorContractAddress, uint256 claimIndex,
         StorageProtocol storageProtocol,
         string calldata location
-    ) external override creatorAdminRequired(creatorContractAddress)  {
+    ) external override creatorAdminRequired(creatorContractAddress) {
         Claim storage claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
@@ -127,6 +127,18 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         claim.storageProtocol = storageProtocol;
         claim.location = location;
         emit ClaimUpdated(creatorContractAddress, claimIndex);
+    }
+
+    /**
+     * See {IERC1155LazyClaim-extendTokenURI}.
+     */
+    function extendTokenURI(
+        address creatorContractAddress, uint256 claimIndex,
+        string calldata locationChunk
+    ) external override creatorAdminRequired(creatorContractAddress) {
+        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        require(claim.storageProtocol == StorageProtocol.NONE, "Invalid storage protocol");
+        claim.location = string(abi.encodePacked(claim.location, locationChunk));
     }
 
     /**

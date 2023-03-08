@@ -66,6 +66,14 @@ interface IERC721LazyPayableClaim is ILazyPayableClaim {
     function updateTokenURIParams(address creatorContractAddress, uint256 claimIndex, StorageProtocol storageProtocol, bool identical, string calldata location) external;
 
     /**
+     * @notice extend tokenURI parameters for an existing claim at claimIndex.  Must have NONE StorageProtocol
+     * @param creatorContractAddress    the creator contract corresponding to the claim
+     * @param claimIndex                the index of the claim in the list of creatorContractAddress' _claims
+     * @param locationChunk             the additional location chunk
+     */
+    function extendTokenURI(address creatorContractAddress, uint256 claimIndex, string calldata locationChunk) external;
+
+    /**
      * @notice get a claim corresponding to a creator contract and index
      * @param creatorContractAddress    the address of the creator contract
      * @param claimIndex                the index of the claim
