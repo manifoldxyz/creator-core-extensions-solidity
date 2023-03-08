@@ -174,7 +174,7 @@ abstract contract CollectibleCore is ICollectibleCore, AdminControl {
     address creatorContractAddress,
     uint256 instanceId,
     address payable paymentReceiver
-  ) external {
+  ) external override creatorAdminRequired(creatorContractAddress) {
     CollectibleInstance storage instance = _getInstance(creatorContractAddress, instanceId);
     require(paymentReceiver != address(0), "Invalid payment address");
 
