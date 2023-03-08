@@ -202,7 +202,8 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
       instance.claimEndTime,
       instance.purchasePrice,
       instance.presalePurchasePrice,
-      purchaseRemaining(creatorContractAddress, instanceId)
+      purchaseRemaining(creatorContractAddress, instanceId),
+      instance.paymentReceiver
     );
   }
 
