@@ -54,7 +54,6 @@ abstract contract CollectibleCore is ICollectibleCore, AdminControl {
     require(initializationParameters.paymentReceiver != address(0), "Invalid payment address");
     require(initializationParameters.purchaseMax != 0, "Invalid purchase max");
 
-    instance.paymentReceiver = initializationParameters.paymentReceiver;
     _signingAddresses[creatorContractAddress][instanceId] = initializationParameters.signingAddress;
     instance.purchaseMax = initializationParameters.purchaseMax;
     instance.purchasePrice = initializationParameters.purchasePrice;
@@ -166,6 +165,7 @@ abstract contract CollectibleCore is ICollectibleCore, AdminControl {
     instance.presalePurchasePrice = initializationParameters.presalePurchasePrice;
     instance.presalePurchaseLimit = initializationParameters.presalePurchaseLimit;
     instance.useDynamicPresalePurchaseLimit = initializationParameters.useDynamicPresalePurchaseLimit;
+    instance.paymentReceiver = initializationParameters.paymentReceiver;
   }
 
   /**

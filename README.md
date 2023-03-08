@@ -159,7 +159,7 @@ contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referr
 
 **Goerli**
 ```
-0x9d4Cd7352653865DC8BF42e3C0fae6Ccb97713F4
+0x50207c42beFCe49BE8b694E6bBdc845D61dF3d99
 ```
 
 **Mainnet**
