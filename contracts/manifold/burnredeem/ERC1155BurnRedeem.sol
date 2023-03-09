@@ -78,7 +78,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(addresses, tokenIds, values);
         burnRedeemInstance.redeemedCount += uint32(values[0]);
 
-        emit BurnRedeemMint(creatorContractAddress, index, tokenIds[0]);
+        emit BurnRedeemMint(creatorContractAddress, index, tokenIds[0], uint32(values[0]));
     }
 
     /**

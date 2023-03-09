@@ -73,7 +73,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             ++burnRedeemInstance.redeemedCount;
             uint256 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(to);
             _redeemTokens[creatorContractAddress][newTokenId] = RedeemToken(uint224(index), burnRedeemInstance.redeemedCount);
-            emit BurnRedeemMint(creatorContractAddress, index, newTokenId);
+            emit BurnRedeemMint(creatorContractAddress, index, newTokenId, 1);
         } else {
             uint256 totalCount = burnRedeemInstance.redeemAmount * count;
             require(totalCount <= MAX_UINT_16, "Invalid input");
@@ -82,7 +82,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, uint16(totalCount));
             for (uint256 i; i < totalCount;) {
                 _redeemTokens[creatorContractAddress][newTokenIds[i]] = RedeemToken(uint224(index), uint32(startingCount + i));
-                emit BurnRedeemMint(creatorContractAddress, index, newTokenIds[i]);
+                emit BurnRedeemMint(creatorContractAddress, index, newTokenIds[i], 1);
                 unchecked { i++; }
             }
         }
