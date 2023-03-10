@@ -18,8 +18,8 @@ import "./IERC1155LazyPayableClaim.sol";
 contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorExtensionTokenURI, LazyPayableClaim {
     using Strings for uint256;
 
-    // stores mapping from tokenId to the claim it represents
-    // { contractAddress => { tokenId => Claim } }
+    // stores mapping from contractAddress/claimIndex to the claim it represents
+    // { contractAddress => { claimIndex => Claim } }
     mapping(address => mapping(uint256 => Claim)) private _claims;
 
     // { contractAddress => { tokenId => { claimIndex } }
