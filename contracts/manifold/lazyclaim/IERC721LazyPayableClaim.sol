@@ -82,6 +82,14 @@ interface IERC721LazyPayableClaim is ILazyPayableClaim {
     function getClaim(address creatorContractAddress, uint256 claimIndex) external view returns(Claim memory);
 
     /**
+     * @notice get a claim corresponding to a creator contract and tokenId
+     * @param creatorContractAddress    the address of the creator contract
+     * @param tokenId                   the tokenId of the claim
+     * @return                          the claim object
+     */
+    function getClaimForToken(address creatorContractAddress, uint256 tokenId) external view returns(Claim memory);
+
+    /**
      * @notice allow admin to airdrop arbitrary tokens 
      * @param creatorContractAddress    the creator contract the claim will mint tokens for
      * @param claimIndex                the index of the claim in the list of creatorContractAddress' _claims

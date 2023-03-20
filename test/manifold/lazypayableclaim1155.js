@@ -839,6 +839,15 @@ contract('LazyPayableClaim', function ([...accounts]) {
       claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.total, 1);
 
+      // ClaimByToken should have expected info
+      let claimByToken = await lazyClaim.getClaimByToken(creator.address, 1);
+      assert.equal(claimByToken.merkleRoot, merkleTree.getHexRoot());
+      assert.equal(claimByToken.location, 'arweaveHash1');
+      assert.equal(claimByToken.totalMax, 3);
+      assert.equal(claimByToken.walletMax, 0);
+      assert.equal(claimByToken.startDate, start);
+      assert.equal(claimByToken.endDate, end + 1);
+
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
       await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
