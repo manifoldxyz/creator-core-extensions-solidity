@@ -71,7 +71,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     string internal constant IPFS_PREFIX = "ipfs://";
 
     uint256 internal constant MAX_UINT_16 = 0xffff;
+    uint256 internal constant MAX_UINT_24 = 0xffffff;
     uint256 internal constant MAX_UINT_32 = 0xffffffff;
+    uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
     uint256 internal constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     // { creatorContractAddress => { index => BurnRedeem } }

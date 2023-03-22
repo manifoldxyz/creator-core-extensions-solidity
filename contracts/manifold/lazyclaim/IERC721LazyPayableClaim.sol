@@ -31,6 +31,7 @@ interface IERC721LazyPayableClaim is ILazyPayableClaim {
         uint48 startDate;
         uint48 endDate;
         StorageProtocol storageProtocol;
+        uint8 contractVersion;
         bool identical;
         bytes32 merkleRoot;
         string location;

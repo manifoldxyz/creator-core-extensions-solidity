@@ -31,7 +31,9 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     uint256 public constant MINT_FEE_MERKLE = 690000000000000;
     address public MEMBERSHIP_ADDRESS;
 
+    uint256 internal constant MAX_UINT_24 = 0xffffff;
     uint256 internal constant MAX_UINT_32 = 0xffffffff;
+    uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
     uint256 internal constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     address private constant ADDRESS_ZERO = 0x0000000000000000000000000000000000000000;
 
