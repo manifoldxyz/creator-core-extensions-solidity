@@ -27,7 +27,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        _initialize(creatorContractAddress, index, burnRedeemParameters);
+        _initialize(creatorContractAddress, index, burnRedeemParameters, 0);
 
         // Mint a new token with amount '0' to the creator
         address[] memory receivers = new address[](1);

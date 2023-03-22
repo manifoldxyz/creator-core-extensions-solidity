@@ -90,6 +90,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint32 redeemedCount;
         uint16 redeemAmount;
         uint32 totalSupply;
+        uint8 contractVersion;
         uint48 startDate;
         uint48 endDate;
         uint160 cost;

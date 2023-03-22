@@ -105,7 +105,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     function _initialize(
         address creatorContractAddress,
         uint256 index,
-        BurnRedeemParameters calldata burnRedeemParameters
+        BurnRedeemParameters calldata burnRedeemParameters,
+        uint8 creatorContractVersion
     ) internal {
         BurnRedeem storage burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
 
@@ -114,6 +115,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         _validateParameters(burnRedeemParameters);
 
         // Create the burn redeem
+        burnRedeemInstance.contractVersion = creatorContractVersion;
         _setParameters(burnRedeemInstance, burnRedeemParameters);
         _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
 
