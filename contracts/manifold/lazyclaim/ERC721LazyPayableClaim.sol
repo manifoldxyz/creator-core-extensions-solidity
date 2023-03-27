@@ -167,7 +167,15 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
      * See {ILazyPayableClaim-getClaimForToken}.
      */
     function getClaimForToken(address creatorContractAddress, uint256 tokenId) public override view returns(Claim memory) {
-        return _getClaim(creatorContractAddress, _tokenClaims[creatorContractAddress][tokenId].claimIndex);
+        TokenClaim memory tokenClaim = _tokenClaims[creatorContractAddress][tokenId];
+        uint256 claimIndex;
+        if (tokenClaim.claimIndex == 0) {
+            // No claim, try to retrieve from tokenData
+            uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
+            claimIndex = uint56(tokenData >> 24);
+            require(claimIndex != 0, "Claim not initialized");
+        }
+        return _getClaim(creatorContractAddress, claimIndex);
     }
 
     function _getClaim(address creatorContractAddress, uint256 claimIndex) private view returns(Claim storage claim) {
