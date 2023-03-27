@@ -148,6 +148,13 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         return _getClaim(creatorContractAddress, claimIndex);
     }
 
+    /**
+     * See {IERC1155LazyClaim-getClaimForToken}.
+     */
+    function getClaimForToken(address creatorContractAddress, uint256 tokenId) public override view returns(Claim memory claim) {
+        return _getClaim(creatorContractAddress, _claimTokenIds[creatorContractAddress][tokenId]);
+    }
+
     function _getClaim(address creatorContractAddress, uint256 claimIndex) private view returns(Claim storage claim) {
         claim = _claims[creatorContractAddress][claimIndex];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
