@@ -259,7 +259,7 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
 
         require(bytes(instance.baseURI).length != 0, "No base uri prefix set");
 
-        return string(abi.encodePacked(instance.baseURI, Strings.toString(tokenClaim.mintOrder)));
+        return string(abi.encodePacked(instance.baseURI, Strings.toString(mintOrder)));
     }
 
     /**
@@ -301,7 +301,7 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
 
         if (amount == 1) {
             uint256 tokenId;
-            if (instance.creatorContractVersion >= 3) {
+            if (instance.contractVersion >= 3) {
                 uint80 tokenData = uint56(instanceId) << 24 | uint24(++instance.purchaseCount);
                 tokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(to, tokenData);
             } else {
@@ -313,7 +313,7 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
         } else {
             uint32 tokenStart = instance.purchaseCount + 1;
             instance.purchaseCount += amount;
-            if (instance.creatorContractVersion >= 3) {
+            if (instance.contractVersion >= 3) {
                 uint80[] memory tokenData = new uint80[](amount);
                 for (uint256 i; i < amount;) {
                     tokenData[i] = uint56(instanceId) << 24 | uint24(tokenStart + i);

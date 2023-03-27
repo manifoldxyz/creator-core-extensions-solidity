@@ -45,7 +45,7 @@ interface ICollectibleCore is IERC165 {
         bool isActive;
         bool useDynamicPresalePurchaseLimit;
         bool isTransferLocked;
-        uint8 creatorContractVersion;
+        uint8 contractVersion;
         uint16 transactionLimit;
         uint16 purchaseMax;
         uint16 purchaseLimit;

@@ -48,11 +48,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "../../libraries/manifold-membership/IManifoldMembership.sol";
+import "./BurnRedeemLib.sol";
 import "./IBurnRedeemCore.sol";
 import "./Interfaces.sol";
 
@@ -104,22 +104,11 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      */
     function _initialize(
         address creatorContractAddress,
+        uint8 creatorContractVersion,
         uint256 index,
-        BurnRedeemParameters calldata burnRedeemParameters,
-        uint8 creatorContractVersion
+        BurnRedeemParameters calldata burnRedeemParameters
     ) internal {
-        BurnRedeem storage burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
-
-        // Sanity checks
-        require(burnRedeemInstance.storageProtocol == StorageProtocol.INVALID, "Burn redeem already initialized");
-        _validateParameters(burnRedeemParameters);
-
-        // Create the burn redeem
-        burnRedeemInstance.contractVersion = creatorContractVersion;
-        _setParameters(burnRedeemInstance, burnRedeemParameters);
-        _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
-
-        emit BurnRedeemInitialized(creatorContractAddress, index, msg.sender);
+        BurnRedeemLib.initialize(creatorContractAddress, creatorContractVersion, index, _burnRedeems[creatorContractAddress][index], burnRedeemParameters);
     }
 
     /**
@@ -130,19 +119,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters
     ) internal {
-        BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, index);
-
-        // Sanity checks
-        require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
-        _validateParameters(burnRedeemParameters);
-        // The current redeemedCount must be divisible by redeemAmount
-        require(burnRedeemInstance.redeemedCount % burnRedeemParameters.redeemAmount == 0, "Invalid amount");
-
-        // Overwrite the existing burnRedeem
-        _setParameters(burnRedeemInstance, burnRedeemParameters);
-        _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
-        _maybeUpdateTotalSupply(burnRedeemInstance);
-        emit BurnRedeemUpdated(creatorContractAddress, index);
+        BurnRedeemLib.update(creatorContractAddress, index, _getBurnRedeem(creatorContractAddress, index), burnRedeemParameters);
     }
 
     /**
@@ -171,18 +148,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             (block.timestamp < burnRedeemInstance.endDate || burnRedeemInstance.endDate == 0),
             "Burn redeem not active"
         );
-    }
-
-    /**
-     * Helper to update total supply if redeemedCount exceeds totalSupply after airdrop or instance update.
-     */
-    function _maybeUpdateTotalSupply(BurnRedeem storage burnRedeemInstance) private {
-        if (
-            burnRedeemInstance.totalSupply != 0 &&
-            burnRedeemInstance.redeemedCount > burnRedeemInstance.totalSupply
-        ) {
-            burnRedeemInstance.totalSupply = burnRedeemInstance.redeemedCount;
-        }
     }
 
     /**
@@ -241,7 +206,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             unchecked{ ++i; }
         }
 
-        _maybeUpdateTotalSupply(burnRedeemInstance);
+        BurnRedeemLib.maybeUpdateTotalSupply(burnRedeemInstance);
     }
 
     function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {
@@ -403,7 +368,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Can only take in one burn item
         require(burnItem.tokenSpec == TokenSpec.ERC721, "Invalid input");
-        _validateBurnItem(burnItem, msg.sender, id, merkleProof);
+        BurnRedeemLib.validateBurnItem(burnItem, msg.sender, id, merkleProof);
 
         // Do burn and redeem
         _burn(burnItem, address(this), msg.sender, id, 1);
@@ -434,7 +399,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
         require(value == burnItem.amount * burnRedeemCount, "Invalid input");
-        _validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
+        BurnRedeemLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount);
         _redeem(creatorContractAddress, burnRedeemIndex, burnRedeemInstance, from, availableBurnRedeemCount);
@@ -506,7 +471,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             BurnToken memory burnToken = burnTokens[i];
             BurnItem memory burnItem = burnRedeemInstance.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
 
-            _validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
+            BurnRedeemLib.validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
 
             _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnRedeemCount);
             groupCounts[burnToken.groupIndex] += burnRedeemCount;
@@ -520,59 +485,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
     }
 
-    /**
-     * Helper to validate the parameters for a burn redeem
-     */
-    function _validateParameters(BurnRedeemParameters calldata burnRedeemParameters) internal pure {
-        require(burnRedeemParameters.storageProtocol != StorageProtocol.INVALID, "Storage protocol invalid");
-        require(burnRedeemParameters.paymentReceiver != address(0), "Payment receiver required");
-        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
-        require(burnRedeemParameters.totalSupply % burnRedeemParameters.redeemAmount == 0, "Remainder left from totalSupply");
-    }
-
-    /**
-     * Helper to set top level properties for a burn redeem
-     */
-    function _setParameters(BurnRedeem storage burnRedeemInstance, BurnRedeemParameters calldata burnRedeemParameters) private {
-        burnRedeemInstance.startDate = burnRedeemParameters.startDate;
-        burnRedeemInstance.endDate = burnRedeemParameters.endDate;
-        burnRedeemInstance.redeemAmount = burnRedeemParameters.redeemAmount;
-        burnRedeemInstance.totalSupply = burnRedeemParameters.totalSupply;
-        burnRedeemInstance.storageProtocol = burnRedeemParameters.storageProtocol;
-        burnRedeemInstance.location = burnRedeemParameters.location;
-        burnRedeemInstance.cost = burnRedeemParameters.cost;
-        burnRedeemInstance.paymentReceiver = burnRedeemParameters.paymentReceiver;
-    }
-
-    /**
-     * Helper to set the burn groups for a burn redeem
-     */
-    function _setBurnGroups(BurnRedeem storage burnRedeemInstance, BurnGroup[] calldata burnGroups) private {
-        delete burnRedeemInstance.burnSet;
-        for (uint256 i; i < burnGroups.length;) {
-            burnRedeemInstance.burnSet.push();
-            BurnGroup storage burnGroup = burnRedeemInstance.burnSet[i];
-            require(
-                burnGroups[i].requiredCount > 0 &&
-                burnGroups[i].requiredCount <= burnGroups[i].items.length,
-                "Invalid input"
-            );
-            burnGroup.requiredCount = burnGroups[i].requiredCount;
-            for (uint256 j; j < burnGroups[i].items.length;) {
-                BurnItem memory burnItem = burnGroups[i].items[j];
-                require(
-                    (
-                        (burnItem.tokenSpec == TokenSpec.ERC1155 && burnItem.amount > 0) ||
-                        (burnItem.tokenSpec == TokenSpec.ERC721 && burnItem.amount == 0)
-                    ) &&
-                    burnItem.validationType != ValidationType.INVALID,
-                    "Invalid input");
-                burnGroup.items.push(burnGroups[i].items[j]);
-                unchecked { ++j; }
-            }
-            unchecked { ++i; }
-        }
-    }
 
     /**
      * Helper to get the Manifold fee for the sender
@@ -587,24 +499,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     function _isActiveMember(address sender) private view returns(bool) {
         return manifoldMembershipContract != address(0) &&
             IManifoldMembership(manifoldMembershipContract).isActiveMember(sender);
-    }
-
-    /*
-     * Helper to validate burn item
-     */
-    function _validateBurnItem(BurnItem memory burnItem, address contractAddress, uint256 tokenId, bytes32[] memory merkleProof) private pure {
-        require(contractAddress == burnItem.contractAddress, "Invalid burn token");
-        if (burnItem.validationType == ValidationType.CONTRACT) {
-            return;
-        } else if (burnItem.validationType == ValidationType.RANGE) {
-            require(tokenId >= burnItem.minTokenId && tokenId <= burnItem.maxTokenId, "Invalid token ID");
-            return;
-        } else if (burnItem.validationType == ValidationType.MERKLE_TREE) {
-            bytes32 leaf = keccak256(abi.encodePacked(tokenId));
-            require(MerkleProof.verify(merkleProof, burnItem.merkleRoot, leaf), "Invalid merkle proof");
-            return;
-        }
-        revert("Invalid burn item");
     }
 
     /**

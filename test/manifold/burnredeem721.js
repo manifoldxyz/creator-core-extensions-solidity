@@ -1739,7 +1739,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone2, value: BURN_FEE}
         ),
-        "ERC1155: caller is not token owner nor approved."
+        "ERC1155: caller is not token owner or approved."
       );
       // 1155 with burn
       await truffleAssert.reverts(
@@ -1758,7 +1758,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone2, value: BURN_FEE}
         ),
-        "Caller is not owner nor approved."
+        "Caller is not owner or approved."
       );
     });
 

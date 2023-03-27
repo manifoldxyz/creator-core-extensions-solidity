@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 
 import "./BurnRedeemCore.sol";
+import "./BurnRedeemLib.sol";
 import "./IERC1155BurnRedeem.sol";
 
 contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
@@ -27,7 +28,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         uint256 index,
         BurnRedeemParameters calldata burnRedeemParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        _initialize(creatorContractAddress, index, burnRedeemParameters, 0);
+        _initialize(creatorContractAddress, 0, index, burnRedeemParameters);
 
         // Mint a new token with amount '0' to the creator
         address[] memory receivers = new address[](1);
@@ -61,7 +62,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, index);
         burnRedeemInstance.storageProtocol = storageProtocol;
         burnRedeemInstance.location = location;
-        emit BurnRedeemUpdated(creatorContractAddress, index);
+        emit BurnRedeemLib.BurnRedeemUpdated(creatorContractAddress, index);
     }
 
     /**
@@ -78,7 +79,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(addresses, tokenIds, values);
         burnRedeemInstance.redeemedCount += uint32(values[0]);
 
-        emit BurnRedeemMint(creatorContractAddress, index, tokenIds[0], uint32(values[0]));
+        emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, index, tokenIds[0], uint32(values[0]));
     }
 
     /**

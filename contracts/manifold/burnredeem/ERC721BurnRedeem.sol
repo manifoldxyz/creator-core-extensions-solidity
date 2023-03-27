@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 
 import "./BurnRedeemCore.sol";
+import "./BurnRedeemLib.sol";
 import "./IERC721BurnRedeem.sol";
 import "../../libraries/IERC721CreatorCoreVersion.sol";
 
@@ -41,7 +42,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             require(version <= 255, "Unsupported contract version");
             creatorContractVersion = uint8(version);
         } catch {}
-        _initialize(creatorContractAddress, index, burnRedeemParameters, creatorContractVersion);
+        _initialize(creatorContractAddress, creatorContractVersion, index, burnRedeemParameters);
         _identicalTokenURI[creatorContractAddress][index] = identicalTokenURI;
     }
 
@@ -72,7 +73,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         burnRedeemInstance.storageProtocol = storageProtocol;
         burnRedeemInstance.location = location;
         _identicalTokenURI[creatorContractAddress][index] = identicalTokenURI;
-        emit BurnRedeemUpdated(creatorContractAddress, index);
+        emit BurnRedeemLib.BurnRedeemUpdated(creatorContractAddress, index);
     }
 
     /** 
@@ -89,7 +90,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
                 newTokenId = IERC721CreatorCore(creatorContractAddress).mintExtension(to);
                 _redeemTokens[creatorContractAddress][newTokenId] = RedeemToken(uint224(index), burnRedeemInstance.redeemedCount);
             }
-            emit BurnRedeemMint(creatorContractAddress, index, newTokenId, 1);
+            emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, index, newTokenId, 1);
         } else {
             uint256 totalCount = burnRedeemInstance.redeemAmount * count;
             require(totalCount <= MAX_UINT_16, "Invalid input");
@@ -103,14 +104,14 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
                 }
                 uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, tokenData);
                 for (uint256 i; i < totalCount;) {
-                    emit BurnRedeemMint(creatorContractAddress, index, newTokenIds[i], 1);
+                    emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, index, newTokenIds[i], 1);
                     unchecked { i++; }
                 }
             } else {
                 uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, uint16(totalCount));
                 for (uint256 i; i < totalCount;) {
                     _redeemTokens[creatorContractAddress][newTokenIds[i]] = RedeemToken(uint224(index), uint32(startingCount + i));
-                    emit BurnRedeemMint(creatorContractAddress, index, newTokenIds[i], 1);
+                    emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, index, newTokenIds[i], 1);
                     unchecked { i++; }
                 }
             }
@@ -122,29 +123,30 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
         RedeemToken memory token = _redeemTokens[creatorContractAddress][tokenId];
-        BurnRedeem memory _burnRedeem;
+        BurnRedeem memory burnRedeem;
         uint256 mintNumber;
+        uint256 burnRedeemIndex;
         if (token.burnRedeemIndex == 0) {
             // No claim, try to retrieve from tokenData
             uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
-            uint56 burnRedeemIndex = uint56(tokenData >> 24);
+            burnRedeemIndex = uint56(tokenData >> 24);
             require(burnRedeemIndex != 0, "Token does not exist");
-            _burnRedeem = _burnRedeems[creatorContractAddress][burnRedeemIndex];
             mintNumber = uint24(tokenData & MAX_UINT_24);
         } else {
-            _burnRedeem = _burnRedeems[creatorContractAddress][token.burnRedeemIndex];
+            burnRedeemIndex = token.burnRedeemIndex;
             mintNumber = token.mintNumber;
         }
+        burnRedeem = _burnRedeems[creatorContractAddress][burnRedeemIndex];
 
         string memory prefix = "";
-        if (_burnRedeem.storageProtocol == StorageProtocol.ARWEAVE) {
+        if (burnRedeem.storageProtocol == StorageProtocol.ARWEAVE) {
             prefix = ARWEAVE_PREFIX;
-        } else if (_burnRedeem.storageProtocol == StorageProtocol.IPFS) {
+        } else if (burnRedeem.storageProtocol == StorageProtocol.IPFS) {
             prefix = IPFS_PREFIX;
         }
-        uri = string(abi.encodePacked(prefix, _burnRedeem.location));
+        uri = string(abi.encodePacked(prefix, burnRedeem.location));
 
-        if (!_identicalTokenURI[creatorContractAddress][token.burnRedeemIndex]) {
+        if (!_identicalTokenURI[creatorContractAddress][burnRedeemIndex]) {
             uri = string(abi.encodePacked(uri, "/", uint256(mintNumber).toString()));
         }
     }

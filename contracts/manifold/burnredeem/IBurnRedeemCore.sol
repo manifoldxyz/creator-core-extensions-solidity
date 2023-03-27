@@ -114,10 +114,6 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         bytes32[] merkleProof;
     }
 
-    event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed index, address initializer);
-    event BurnRedeemUpdated(address indexed creatorContract, uint256 indexed index);
-    event BurnRedeemMint(address indexed creatorContract, uint256 indexed index, uint256 indexed tokenId, uint32 redeemedCount);
-
     /**
      * @notice get a burn redeem corresponding to a creator contract and index
      * @param creatorContractAddress    the address of the creator contract
