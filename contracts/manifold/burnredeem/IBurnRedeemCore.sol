@@ -123,6 +123,14 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     function getBurnRedeem(address creatorContractAddress, uint256 index) external view returns(BurnRedeem memory);
     
     /**
+     * @notice get a burn redeem corresponding to a creator contract and index
+     * @param creatorContractAddress    the address of the creator contract
+     * @param tokenId                   the token to retrieve the burn redeem for
+     * @return BurnRedeem               the burn redeem object
+     */
+    function getBurnRedeemForToken(address creatorContractAddress, uint256 tokenId) external view returns(BurnRedeem memory);
+
+    /**
      * @notice burn tokens and mint a redeem token
      * @param creatorContractAddress    the address of the creator contract
      * @param index                     the index of the burn redeem

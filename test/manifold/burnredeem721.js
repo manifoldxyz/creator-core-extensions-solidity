@@ -930,6 +930,14 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         "Invalid burn count"
       );
 
+      await truffleAssert.reverts(
+        burnRedeem.getBurnRedeemForToken(
+          creator.address,
+          1
+        ),
+        "Token does not exist"
+      )
+
       // Passes with met requirements - range
       await burnRedeem.burnRedeem(
         creator.address,
@@ -953,6 +961,10 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         ],
         {from:anyone1, value: MULTI_BURN_FEE}
       );
+
+      // Get burn redeem for token, should succeed
+      const burnRedeemForToken = await burnRedeem.getBurnRedeemForToken(creator.address, 1)
+      assert.equal(burnRedeemForToken.contractVersion, 3);
 
       // Grab gas cost
       let tx = await burnRedeem.burnRedeem(

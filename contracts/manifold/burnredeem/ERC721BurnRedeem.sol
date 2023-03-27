@@ -150,4 +150,20 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             uri = string(abi.encodePacked(uri, "/", uint256(mintNumber).toString()));
         }
     }
+
+    /**
+     * See {IBurnRedeemCore-getBurnRedeemForToken}.
+     */
+    function getBurnRedeemForToken(address creatorContractAddress, uint256 tokenId) external override view returns(BurnRedeem memory) {
+        RedeemToken memory token = _redeemTokens[creatorContractAddress][tokenId];
+        if (token.burnRedeemIndex == 0) {
+            // No claim, try to retrieve from tokenData
+            uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
+            uint256 burnRedeemIndex = uint56(tokenData >> 24);
+            require(burnRedeemIndex != 0, "Token does not exist");
+            return _burnRedeems[creatorContractAddress][burnRedeemIndex];
+        } else {
+            return _burnRedeems[creatorContractAddress][token.burnRedeemIndex];
+        }
+    }
 }

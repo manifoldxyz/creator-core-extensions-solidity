@@ -98,4 +98,13 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         }
         uri = string(abi.encodePacked(prefix, burnRedeem.location));
     }
+
+    /**
+     * See {IBurnRedeemCore-getBurnRedeemForToken}.
+     */
+    function getBurnRedeemForToken(address creatorContractAddress, uint256 tokenId) external override view returns(BurnRedeem memory) {
+        uint256 index = _redeemIndexes[creatorContractAddress][tokenId];
+        require(index > 0, "Token does not exist");
+        return _burnRedeems[creatorContractAddress][index];
+    }
 }
