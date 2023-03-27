@@ -8,10 +8,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 
 import "./BurnRedeemCore.sol";
 import "./IERC721BurnRedeem.sol";
-
-interface IERC721CreatorCoreVersion {
-    function VERSION() external view returns(uint256);
-}
+import "../../libraries/IERC721CreatorCoreVersion.sol";
 
 contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     using Strings for uint256;
@@ -36,8 +33,8 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         BurnRedeemParameters calldata burnRedeemParameters,
         bool identicalTokenURI
     ) external creatorAdminRequired(creatorContractAddress) {
-        // Max uint56 for claimIndex
-        require(index <= MAX_UINT_56, "Invalid index");
+        // Max uint56 for index
+        require(index > 0 && index <= MAX_UINT_56, "Invalid index");
 
         uint8 creatorContractVersion;
         try IERC721CreatorCoreVersion(creatorContractAddress).VERSION() returns(uint256 version) {
@@ -127,7 +124,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         RedeemToken memory token = _redeemTokens[creatorContractAddress][tokenId];
         BurnRedeem memory _burnRedeem;
         uint256 mintNumber;
-        if (token.burnRedeemIndex != 0) {
+        if (token.burnRedeemIndex == 0) {
             // No claim, try to retrieve from tokenData
             uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
             uint56 burnRedeemIndex = uint56(tokenData >> 24);

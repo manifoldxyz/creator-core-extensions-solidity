@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// solhint-disable reason-string
 pragma solidity ^0.8.0;
 
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
@@ -9,10 +8,8 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import "./LazyPayableClaim.sol";
 import "./IERC721LazyPayableClaim.sol";
+import "../../libraries/IERC721CreatorCoreVersion.sol";
 
-interface IERC721CreatorCoreVersion {
-    function VERSION() external view returns(uint256);
-}
 
 /**
  * @title Lazy Payable Claim
@@ -55,7 +52,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         ClaimParameters calldata claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
         // Max uint56 for claimIndex
-        require(claimIndex <= MAX_UINT_56, "Invalid claimIndex");
+        require(claimIndex > 0 && claimIndex <= MAX_UINT_56, "Invalid claimIndex");
         // Revert if claim at claimIndex already exists
         require(_claims[creatorContractAddress][claimIndex].storageProtocol == StorageProtocol.INVALID, "Claim already initialized");
 
