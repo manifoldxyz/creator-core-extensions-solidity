@@ -173,6 +173,8 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
             claimIndex = uint56(tokenData >> 24);
             require(claimIndex != 0, "Claim not initialized");
+        } else {
+            claimIndex = tokenClaim.claimIndex;
         }
         return _getClaim(creatorContractAddress, claimIndex);
     }
