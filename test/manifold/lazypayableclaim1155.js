@@ -839,6 +839,17 @@ contract('LazyPayableClaim', function ([...accounts]) {
       claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.total, 1);
 
+      // ClaimByToken should have expected info
+      let claimInfo = await lazyClaim.getClaimForToken(creator.address, 1);
+      assert.equal(claimInfo[0], 1);
+      let claimByToken = claimInfo[1];
+      assert.equal(claimByToken.merkleRoot, merkleTree.getHexRoot());
+      assert.equal(claimByToken.location, 'arweaveHash1');
+      assert.equal(claimByToken.totalMax, 3);
+      assert.equal(claimByToken.walletMax, 0);
+      assert.equal(claimByToken.startDate, start);
+      assert.equal(claimByToken.endDate, end + 1);
+
       const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
       const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
       await lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone2, {from:anyone2, value: ethers.BigNumber.from('1').add(merkleFee)});
@@ -886,6 +897,14 @@ contract('LazyPayableClaim', function ([...accounts]) {
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 2]));
       const merkleProof3 = merkleTree.getHexProof(merkleLeaf3);
       truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)}), "Claim inactive");
+
+      const ownerBalanceBefore = await web3.eth.getBalance(lazyClaimOwner);
+
+      // Passes with valid withdrawal amount from owner
+      const tx = await lazyClaim.withdraw(lazyClaimOwner, fee, {from:lazyClaimOwner});
+      const ownerBalanceAfter = await web3.eth.getBalance(lazyClaimOwner);
+      const gasFee = tx.receipt.gasUsed * (await web3.eth.getTransaction(tx.tx)).gasPrice
+      assert.equal(ethers.BigNumber.from(ownerBalanceBefore).add(fee).sub(gasFee).toString(), ownerBalanceAfter);
     });
 
     it('airdrop test', async function () {

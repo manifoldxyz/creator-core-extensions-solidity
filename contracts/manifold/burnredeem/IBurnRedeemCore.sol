@@ -90,6 +90,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint32 redeemedCount;
         uint16 redeemAmount;
         uint32 totalSupply;
+        uint8 contractVersion;
         uint48 startDate;
         uint48 endDate;
         uint160 cost;
@@ -113,44 +114,48 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         bytes32[] merkleProof;
     }
 
-    event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed index, address initializer);
-    event BurnRedeemUpdated(address indexed creatorContract, uint256 indexed index);
-    event BurnRedeemMint(address indexed creatorContract, uint256 indexed index, uint256 indexed tokenId, uint32 redeemedCount);
-
     /**
-     * @notice get a burn redeem corresponding to a creator contract and index
+     * @notice get a burn redeem corresponding to a creator contract and instanceId
      * @param creatorContractAddress    the address of the creator contract
-     * @param index                     the index of the burn redeem
+     * @param instanceId                the instanceId of the burn redeem for the creator contract
      * @return BurnRedeem               the burn redeem object
      */
-    function getBurnRedeem(address creatorContractAddress, uint256 index) external view returns(BurnRedeem memory);
+    function getBurnRedeem(address creatorContractAddress, uint256 instanceId) external view returns(BurnRedeem memory);
     
+    /**
+     * @notice get a burn redeem corresponding to a creator contract and tokenId
+     * @param creatorContractAddress    the address of the creator contract
+     * @param tokenId                   the token to retrieve the burn redeem for
+     * @return                          the burn redeem instanceId and burn redeem object
+     */
+    function getBurnRedeemForToken(address creatorContractAddress, uint256 tokenId) external view returns(uint256, BurnRedeem memory);
+
     /**
      * @notice burn tokens and mint a redeem token
      * @param creatorContractAddress    the address of the creator contract
-     * @param index                     the index of the burn redeem
+     * @param instanceId                the instanceId of the burn redeem for the creator contract
      * @param burnRedeemCount           the number of burn redeems we want to do
      * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
      */
-    function burnRedeem(address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable;
+    function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable;
 
     /**
      * @notice burn tokens and mint redeem tokens multiple times in a single transaction
      * @param creatorContractAddresses  the addresses of the creator contracts
-     * @param indexes                   the indexes of the burn redeems
+     * @param instanceIds               the instanceIds of the burn redeems for the corresponding creator contract
      * @param burnRedeemCounts          the burn redeem counts for each burn
      * @param burnTokens                the tokens to burn for each burn redeem with pointers to the corresponding BurnItem requirement
      */
-    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable;
+    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata instanceIds, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable;
 
     /**
      * @notice allow admin to airdrop arbitrary tokens 
      * @param creatorContractAddress    the creator contract to mint tokens for
-     * @param index                     the index of the burn redeem in the list of creatorContractAddress' _burnRedeems
+     * @param instanceId                the instanceId of the burn redeem for the creator contract
      * @param recipients                addresses to airdrop to
      * @param amounts                   number of redeems to perform for each address in recipients
      */
-    function airdrop(address creatorContractAddress, uint256 index, address[] calldata recipients, uint32[] calldata amounts) external;
+    function airdrop(address creatorContractAddress, uint256 instanceId, address[] calldata recipients, uint32[] calldata amounts) external;
 
     /**
      * @notice recover a token that was sent to the contract without safeTransferFrom

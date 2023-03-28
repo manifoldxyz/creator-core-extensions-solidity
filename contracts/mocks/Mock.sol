@@ -17,11 +17,11 @@ import "../enumerable/ERC721/ERC721OwnerEnumerableSingleCreatorExtension.sol";
 import "../redeem/ERC721/ERC721RedeemBase.sol";
 
 contract MockERC721Creator is ERC721Creator {
-     constructor (string memory _name, string memory _symbol) ERC721Creator(_name, _symbol) {}
+    constructor (string memory _name, string memory _symbol) ERC721Creator(_name, _symbol) {}
 }
 
 contract MockERC1155Creator is ERC1155Creator {
-     constructor (string memory _name, string memory _symbol) ERC1155Creator(_name, _symbol) {}
+    constructor (string memory _name, string memory _symbol) ERC1155Creator(_name, _symbol) {}
 }
 
 contract MockERC721OwnerEnumerableExtension is ERC721OwnerEnumerableExtension {

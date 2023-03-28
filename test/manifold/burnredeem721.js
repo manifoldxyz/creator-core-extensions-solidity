@@ -930,6 +930,14 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         "Invalid burn count"
       );
 
+      await truffleAssert.reverts(
+        burnRedeem.getBurnRedeemForToken(
+          creator.address,
+          1
+        ),
+        "Token does not exist"
+      )
+
       // Passes with met requirements - range
       await burnRedeem.burnRedeem(
         creator.address,
@@ -953,6 +961,12 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         ],
         {from:anyone1, value: MULTI_BURN_FEE}
       );
+
+      // Get burn redeem for token, should succeed
+      const burnRedeemInfo = await burnRedeem.getBurnRedeemForToken(creator.address, 1)
+      assert.equal(burnRedeemInfo[0], 1);
+      const burnRedeemForToken = burnRedeemInfo[1];
+      assert.equal(burnRedeemForToken.contractVersion, 3);
 
       // Grab gas cost
       let tx = await burnRedeem.burnRedeem(
@@ -1739,7 +1753,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone2, value: BURN_FEE}
         ),
-        "ERC1155: caller is not token owner nor approved."
+        "ERC1155: caller is not token owner or approved."
       );
       // 1155 with burn
       await truffleAssert.reverts(
@@ -1758,7 +1772,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone2, value: BURN_FEE}
         ),
-        "Caller is not owner nor approved."
+        "Caller is not owner or approved."
       );
     });
 

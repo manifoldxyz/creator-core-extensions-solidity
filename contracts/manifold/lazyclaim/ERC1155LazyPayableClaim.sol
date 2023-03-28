@@ -18,11 +18,11 @@ import "./IERC1155LazyPayableClaim.sol";
 contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorExtensionTokenURI, LazyPayableClaim {
     using Strings for uint256;
 
-    // stores mapping from contractAddress/claimIndex to the claim it represents
-    // { contractAddress => { claimIndex => Claim } }
+    // stores mapping from contractAddress/instanceId to the claim it represents
+    // { contractAddress => { instanceId => Claim } }
     mapping(address => mapping(uint256 => Claim)) private _claims;
 
-    // { contractAddress => { tokenId => { claimIndex } }
+    // { contractAddress => { tokenId => { instanceId } }
     mapping(address => mapping(uint256 => uint256)) private _claimTokenIds;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, AdminControl) returns (bool) {
@@ -40,11 +40,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
      */
     function initializeClaim(
         address creatorContractAddress,
-        uint256 claimIndex,
+        uint256 instanceId,
         ClaimParameters calldata claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        // Revert if claim at claimIndex already exists
-        require(_claims[creatorContractAddress][claimIndex].storageProtocol == StorageProtocol.INVALID, "Claim already initialized");
+        // Revert if claim at instanceId already exists
+        require(_claims[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID, "Claim already initialized");
 
         // Sanity checks
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot initialize with invalid storage protocol");
@@ -58,7 +58,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
 
          // Create the claim
-        _claims[creatorContractAddress][claimIndex] = Claim({
+        _claims[creatorContractAddress][instanceId] = Claim({
             total: 0,
             totalMax: claimParameters.totalMax,
             walletMax: claimParameters.walletMax,
@@ -72,9 +72,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             paymentReceiver: claimParameters.paymentReceiver,
             erc20: claimParameters.erc20
         });
-        _claimTokenIds[creatorContractAddress][newTokenIds[0]] = claimIndex;
+        _claimTokenIds[creatorContractAddress][newTokenIds[0]] = instanceId;
         
-        emit ClaimInitialized(creatorContractAddress, claimIndex, msg.sender);
+        emit ClaimInitialized(creatorContractAddress, instanceId, msg.sender);
     }
 
     /**
@@ -82,10 +82,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
      */
     function updateClaim(
         address creatorContractAddress,
-        uint256 claimIndex,
+        uint256 instanceId,
         ClaimParameters memory claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        Claim memory claim = _claims[creatorContractAddress][claimIndex];
+        Claim memory claim = _claims[creatorContractAddress][instanceId];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
@@ -95,7 +95,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         }
 
         // Overwrite the existing claim
-        _claims[creatorContractAddress][claimIndex] = Claim({
+        _claims[creatorContractAddress][instanceId] = Claim({
             total: claim.total,
             totalMax: claimParameters.totalMax,
             walletMax: claimParameters.walletMax,
@@ -109,34 +109,34 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             paymentReceiver: claimParameters.paymentReceiver,
             erc20: claimParameters.erc20
         });
-        emit ClaimUpdated(creatorContractAddress, claimIndex);
+        emit ClaimUpdated(creatorContractAddress, instanceId);
     }
 
     /**
      * See {IERC1155LazyClaim-updateTokenURIParams}.
      */
     function updateTokenURIParams(
-        address creatorContractAddress, uint256 claimIndex,
+        address creatorContractAddress, uint256 instanceId,
         StorageProtocol storageProtocol,
         string calldata location
     ) external override creatorAdminRequired(creatorContractAddress) {
-        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        Claim storage claim = _claims[creatorContractAddress][instanceId];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
         require(storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
 
         claim.storageProtocol = storageProtocol;
         claim.location = location;
-        emit ClaimUpdated(creatorContractAddress, claimIndex);
+        emit ClaimUpdated(creatorContractAddress, instanceId);
     }
 
     /**
      * See {IERC1155LazyClaim-extendTokenURI}.
      */
     function extendTokenURI(
-        address creatorContractAddress, uint256 claimIndex,
+        address creatorContractAddress, uint256 instanceId,
         string calldata locationChunk
     ) external override creatorAdminRequired(creatorContractAddress) {
-        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        Claim storage claim = _claims[creatorContractAddress][instanceId];
         require(claim.storageProtocol == StorageProtocol.NONE, "Invalid storage protocol");
         claim.location = string(abi.encodePacked(claim.location, locationChunk));
     }
@@ -144,32 +144,40 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {IERC1155LazyClaim-getClaim}.
      */
-    function getClaim(address creatorContractAddress, uint256 claimIndex) public override view returns(Claim memory claim) {
-        return _getClaim(creatorContractAddress, claimIndex);
+    function getClaim(address creatorContractAddress, uint256 instanceId) public override view returns(Claim memory claim) {
+        return _getClaim(creatorContractAddress, instanceId);
     }
 
-    function _getClaim(address creatorContractAddress, uint256 claimIndex) private view returns(Claim storage claim) {
-        claim = _claims[creatorContractAddress][claimIndex];
+    /**
+     * See {IERC1155LazyClaim-getClaimForToken}.
+     */
+    function getClaimForToken(address creatorContractAddress, uint256 tokenId) external override view returns(uint256 instanceId, Claim memory claim) {
+        instanceId = _claimTokenIds[creatorContractAddress][tokenId];
+        claim = _getClaim(creatorContractAddress, instanceId);
+    }
+
+    function _getClaim(address creatorContractAddress, uint256 instanceId) private view returns(Claim storage claim) {
+        claim = _claims[creatorContractAddress][instanceId];
         require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
     }
 
     /**
      * See {ILazyPayableClaim-checkMintIndex}.
      */
-    function checkMintIndex(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex) external override view returns(bool) {
-        Claim memory claim = getClaim(creatorContractAddress, claimIndex);
-        return _checkMintIndex(creatorContractAddress, claimIndex, claim.merkleRoot, mintIndex);
+    function checkMintIndex(address creatorContractAddress, uint256 instanceId, uint32 mintIndex) external override view returns(bool) {
+        Claim memory claim = getClaim(creatorContractAddress, instanceId);
+        return _checkMintIndex(creatorContractAddress, instanceId, claim.merkleRoot, mintIndex);
     }
 
     /**
      * See {ILazyPayableClaim-checkMintIndices}.
      */
-    function checkMintIndices(address creatorContractAddress, uint256 claimIndex, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
-        Claim memory claim = getClaim(creatorContractAddress, claimIndex);
+    function checkMintIndices(address creatorContractAddress, uint256 instanceId, uint32[] calldata mintIndices) external override view returns(bool[] memory minted) {
+        Claim memory claim = getClaim(creatorContractAddress, instanceId);
         uint256 mintIndicesLength = mintIndices.length;
         minted = new bool[](mintIndices.length);
         for (uint256 i; i < mintIndicesLength;) {
-            minted[i] = _checkMintIndex(creatorContractAddress, claimIndex, claim.merkleRoot, mintIndices[i]);
+            minted[i] = _checkMintIndex(creatorContractAddress, instanceId, claim.merkleRoot, mintIndices[i]);
             unchecked{ ++i; }
         }
     }
@@ -177,22 +185,22 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {ILazyPayableClaim-getTotalMints}.
      */
-    function getTotalMints(address minter, address creatorContractAddress, uint256 claimIndex) external override view returns(uint32) {
-        Claim memory claim = getClaim(creatorContractAddress, claimIndex);
-        return _getTotalMints(claim.walletMax, minter, creatorContractAddress, claimIndex);
+    function getTotalMints(address minter, address creatorContractAddress, uint256 instanceId) external override view returns(uint32) {
+        Claim memory claim = getClaim(creatorContractAddress, instanceId);
+        return _getTotalMints(claim.walletMax, minter, creatorContractAddress, instanceId);
     }
 
     /**
      * See {ILazyPayableClaim-mint}.
      */
-    function mint(address creatorContractAddress, uint256 claimIndex, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
-        Claim storage claim = _getClaim(creatorContractAddress, claimIndex);
+    function mint(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
         require(++claim.total <= claim.totalMax || claim.totalMax == 0, "Maximum tokens already minted for this claim");
 
         // Validate mint
-        _validateMint(creatorContractAddress, claimIndex, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
+        _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "");
@@ -204,21 +212,21 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         amounts[0] = 1;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
 
-        emit ClaimMint(creatorContractAddress, claimIndex);
+        emit ClaimMint(creatorContractAddress, instanceId);
     }
 
     /**
      * See {ILazyPayableClaim-mintBatch}.
      */
-    function mintBatch(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
-        Claim storage claim = _getClaim(creatorContractAddress, claimIndex);
+    function mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
         claim.total += mintCount;
         require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
         // Validate mint
-        _validateMint(creatorContractAddress, claimIndex, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
+        _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
@@ -230,21 +238,21 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         amounts[0] = mintCount;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
 
-        emit ClaimMintBatch(creatorContractAddress, claimIndex, mintCount);
+        emit ClaimMintBatch(creatorContractAddress, instanceId, mintCount);
     }
 
     /**
      * See {ILazyPayableClaim-mintProxy}.
      */
-    function mintProxy(address creatorContractAddress, uint256 claimIndex, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
-        Claim storage claim = _getClaim(creatorContractAddress, claimIndex);
+    function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
         claim.total += mintCount;
         require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
         // Validate mint
-        _validateMintProxy(creatorContractAddress, claimIndex, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
+        _validateMintProxy(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
         _transferFundsProxy(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "");
@@ -256,18 +264,18 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         amounts[0] = mintCount;
         _mintClaim(creatorContractAddress, claim, recipients, amounts);
 
-        emit ClaimMintProxy(creatorContractAddress, claimIndex, mintCount, msg.sender, mintFor);
+        emit ClaimMintProxy(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor);
     }
 
     /**
      * See {IERC1155LazyPayableClaim-airdrop}.
      */
-    function airdrop(address creatorContractAddress, uint256 claimIndex, address[] calldata recipients,
+    function airdrop(address creatorContractAddress, uint256 instanceId, address[] calldata recipients,
         uint256[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {
         require(recipients.length == amounts.length, "Unequal number of recipients and amounts provided");
 
         // Fetch the claim
-        Claim storage claim = _claims[creatorContractAddress][claimIndex];
+        Claim storage claim = _claims[creatorContractAddress][instanceId];
 
         uint256 totalAmount;
         for (uint256 i; i < amounts.length;) {

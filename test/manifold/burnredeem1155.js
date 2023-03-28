@@ -270,6 +270,14 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       balance = await burnable1155.balanceOf(anyone1, 1);
       assert.equal(10, balance);
 
+      await truffleAssert.reverts(
+        burnRedeem.getBurnRedeemForToken(
+          creator.address,
+          1
+        ),
+        "Token does not exist"
+      )
+
       await burnRedeem.initializeBurnRedeem(
         creator.address,
         1,
@@ -302,6 +310,12 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
         },
         {from:owner}
       );
+
+      // Get burn redeem for token, should succeed
+      const burnRedeemInfo = await burnRedeem.getBurnRedeemForToken(creator.address, 1)
+      assert.equal(burnRedeemInfo[0], 1);
+      const burnRedeemForToken = burnRedeemInfo[1];
+      assert.equal(burnRedeemForToken.contractVersion, 0);
 
       // Receiver functions require membership
       await manifoldMembership.setMember(anyone1, true, {from:owner});
