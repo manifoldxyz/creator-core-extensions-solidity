@@ -206,7 +206,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             unchecked{ ++i; }
         }
 
-        BurnRedeemLib.maybeUpdateTotalSupply(burnRedeemInstance);
+        BurnRedeemLib.syncTotalSupply(burnRedeemInstance);
     }
 
     function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {

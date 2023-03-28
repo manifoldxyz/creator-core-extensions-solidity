@@ -160,10 +160,10 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             // No claim, try to retrieve from tokenData
             uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
             instanceId = uint56(tokenData >> 24);
-            require(instanceId != 0, "Token does not exist");
         } else {
             instanceId = token.instanceId;
         }
+        require(instanceId != 0, "Token does not exist");
         burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
     }
 }

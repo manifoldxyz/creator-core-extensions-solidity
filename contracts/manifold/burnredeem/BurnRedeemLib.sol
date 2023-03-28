@@ -94,14 +94,14 @@ library BurnRedeemLib {
         // Overwrite the existing burnRedeem
         _setParameters(burnRedeemInstance, burnRedeemParameters);
         _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
-        maybeUpdateTotalSupply(burnRedeemInstance);
+        syncTotalSupply(burnRedeemInstance);
         emit BurnRedeemUpdated(creatorContractAddress, instanceId);
     }
 
     /**
      * Helper to update total supply if redeemedCount exceeds totalSupply after airdrop or instance update.
      */
-    function maybeUpdateTotalSupply(IBurnRedeemCore.BurnRedeem storage burnRedeemInstance) public {
+    function syncTotalSupply(IBurnRedeemCore.BurnRedeem storage burnRedeemInstance) public {
         if (
             burnRedeemInstance.totalSupply != 0 &&
             burnRedeemInstance.redeemedCount > burnRedeemInstance.totalSupply
