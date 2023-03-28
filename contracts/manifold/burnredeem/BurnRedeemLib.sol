@@ -50,9 +50,9 @@ import "./IBurnRedeemCore.sol";
  */
 library BurnRedeemLib {
 
-    event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed index, address initializer);
-    event BurnRedeemUpdated(address indexed creatorContract, uint256 indexed index);
-    event BurnRedeemMint(address indexed creatorContract, uint256 indexed index, uint256 indexed tokenId, uint32 redeemedCount);
+    event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
+    event BurnRedeemUpdated(address indexed creatorContract, uint256 indexed instanceId);
+    event BurnRedeemMint(address indexed creatorContract, uint256 indexed instanceId, uint256 indexed tokenId, uint32 redeemedCount);
 
     /**
      * Initialiazes a burn redeem with base parameters
@@ -60,7 +60,7 @@ library BurnRedeemLib {
     function initialize(
         address creatorContractAddress,
         uint8 creatorContractVersion,
-        uint256 index,
+        uint256 instanceId,
         IBurnRedeemCore.BurnRedeem storage burnRedeemInstance,
         IBurnRedeemCore.BurnRedeemParameters calldata burnRedeemParameters
     ) public {
@@ -73,7 +73,7 @@ library BurnRedeemLib {
         _setParameters(burnRedeemInstance, burnRedeemParameters);
         _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
 
-        emit BurnRedeemInitialized(creatorContractAddress, index, msg.sender);
+        emit BurnRedeemInitialized(creatorContractAddress, instanceId, msg.sender);
     }
 
     /**
@@ -81,7 +81,7 @@ library BurnRedeemLib {
      */
     function update(
         address creatorContractAddress,
-        uint256 index,
+        uint256 instanceId,
         IBurnRedeemCore.BurnRedeem storage burnRedeemInstance,
         IBurnRedeemCore.BurnRedeemParameters calldata burnRedeemParameters
     ) public {
@@ -95,7 +95,7 @@ library BurnRedeemLib {
         _setParameters(burnRedeemInstance, burnRedeemParameters);
         _setBurnGroups(burnRedeemInstance, burnRedeemParameters.burnSet);
         maybeUpdateTotalSupply(burnRedeemInstance);
-        emit BurnRedeemUpdated(creatorContractAddress, index);
+        emit BurnRedeemUpdated(creatorContractAddress, instanceId);
     }
 
     /**

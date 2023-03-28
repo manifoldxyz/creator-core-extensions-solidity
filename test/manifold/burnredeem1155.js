@@ -312,7 +312,9 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       );
 
       // Get burn redeem for token, should succeed
-      const burnRedeemForToken = await burnRedeem.getBurnRedeemForToken(creator.address, 1)
+      const burnRedeemInfo = await burnRedeem.getBurnRedeemForToken(creator.address, 1)
+      assert.equal(burnRedeemInfo[0], 1);
+      const burnRedeemForToken = burnRedeemInfo[1];
       assert.equal(burnRedeemForToken.contractVersion, 0);
 
       // Receiver functions require membership

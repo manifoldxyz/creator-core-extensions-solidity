@@ -76,7 +76,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
     uint256 internal constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
-    // { creatorContractAddress => { index => BurnRedeem } }
+    // { creatorContractAddress => { instanceId => BurnRedeem } }
     mapping(address => mapping(uint256 => BurnRedeem)) internal _burnRedeems;
 
     address public manifoldMembershipContract;
@@ -105,10 +105,10 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     function _initialize(
         address creatorContractAddress,
         uint8 creatorContractVersion,
-        uint256 index,
+        uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters
     ) internal {
-        BurnRedeemLib.initialize(creatorContractAddress, creatorContractVersion, index, _burnRedeems[creatorContractAddress][index], burnRedeemParameters);
+        BurnRedeemLib.initialize(creatorContractAddress, creatorContractVersion, instanceId, _burnRedeems[creatorContractAddress][instanceId], burnRedeemParameters);
     }
 
     /**
@@ -116,32 +116,32 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      */
     function _update(
         address creatorContractAddress,
-        uint256 index,
+        uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters
     ) internal {
-        BurnRedeemLib.update(creatorContractAddress, index, _getBurnRedeem(creatorContractAddress, index), burnRedeemParameters);
+        BurnRedeemLib.update(creatorContractAddress, instanceId, _getBurnRedeem(creatorContractAddress, instanceId), burnRedeemParameters);
     }
 
     /**
      * See {IBurnRedeemCore-getBurnRedeem}.
      */
-    function getBurnRedeem(address creatorContractAddress, uint256 index) external override view returns(BurnRedeem memory) {
-        return _getBurnRedeem(creatorContractAddress, index);
+    function getBurnRedeem(address creatorContractAddress, uint256 instanceId) external override view returns(BurnRedeem memory) {
+        return _getBurnRedeem(creatorContractAddress, instanceId);
     }
 
     /**
      * Helper to get burn redeem instance
      */
-    function _getBurnRedeem(address creatorContractAddress, uint256 index) internal view returns(BurnRedeem storage burnRedeemInstance) {
-        burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
+    function _getBurnRedeem(address creatorContractAddress, uint256 instanceId) internal view returns(BurnRedeem storage burnRedeemInstance) {
+        burnRedeemInstance = _burnRedeems[creatorContractAddress][instanceId];
         require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
     }
 
     /**
      * Helper to get active burn redeem instance
      */
-    function _getActiveBurnRedeem(address creatorContractAddress, uint256 index) private view returns(BurnRedeem storage burnRedeemInstance) {
-        burnRedeemInstance = _burnRedeems[creatorContractAddress][index];
+    function _getActiveBurnRedeem(address creatorContractAddress, uint256 instanceId) private view returns(BurnRedeem storage burnRedeemInstance) {
+        burnRedeemInstance = _burnRedeems[creatorContractAddress][instanceId];
         require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
         require(
             burnRedeemInstance.startDate <= block.timestamp && 
@@ -153,8 +153,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * See {IBurnRedeemCore-burnRedeem}.
      */
-    function burnRedeem(address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable override nonReentrant {
-        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, index, burnRedeemCount, burnTokens, _isActiveMember(msg.sender), true);
+    function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable override nonReentrant {
+        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, instanceId, burnRedeemCount, burnTokens, _isActiveMember(msg.sender), true);
         if (msg.value > payableCost) {
             _forwardValue(payable(msg.sender), msg.value - payableCost);
         }
@@ -163,9 +163,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * (Batch overload) see {IBurnRedeemCore-burnRedeem}.
      */
-    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata indexes, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable override nonReentrant {
+    function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata instanceIds, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable override nonReentrant {
         require(
-            creatorContractAddresses.length == indexes.length &&
+            creatorContractAddresses.length == instanceIds.length &&
             creatorContractAddresses.length == burnRedeemCounts.length &&
             creatorContractAddresses.length == burnTokens.length,
             "Invalid calldata"
@@ -174,7 +174,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         bool isActiveMember = _isActiveMember(msg.sender);
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < creatorContractAddresses.length;) {
-            msgValueRemaining -= _burnRedeem(msgValueRemaining, creatorContractAddresses[i], indexes[i], burnRedeemCounts[i], burnTokens[i], isActiveMember, false);
+            msgValueRemaining -= _burnRedeem(msgValueRemaining, creatorContractAddresses[i], instanceIds[i], burnRedeemCounts[i], burnTokens[i], isActiveMember, false);
             unchecked { ++i; }
         }
 
@@ -186,9 +186,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * See {IBurnRedeemCore-airdrop}.
      */
-    function airdrop(address creatorContractAddress, uint256 index, address[] calldata recipients, uint32[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {
+    function airdrop(address creatorContractAddress, uint256 instanceId, address[] calldata recipients, uint32[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {
         require(recipients.length == amounts.length, "Invalid calldata");
-        BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, index);
+        BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, instanceId);
 
         uint256 totalAmount;
         for (uint256 i; i < amounts.length;) {
@@ -202,15 +202,15 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Airdrop the tokens
         for (uint256 i; i < recipients.length;) {
-            _redeem(creatorContractAddress, index, burnRedeemInstance, recipients[i], amounts[i]);
+            _redeem(creatorContractAddress, instanceId, burnRedeemInstance, recipients[i], amounts[i]);
             unchecked{ ++i; }
         }
 
         BurnRedeemLib.maybeUpdateTotalSupply(burnRedeemInstance);
     }
 
-    function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 index, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {
-        BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, index);
+    function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {
+        BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, instanceId);
 
         // Get the amount that can be burned
         burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
@@ -235,7 +235,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Do burn redeem
         _burnTokens(burnRedeemInstance, burnTokens, burnRedeemCount, msg.sender);
-        _redeem(creatorContractAddress, index, burnRedeemInstance, msg.sender, burnRedeemCount);
+        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, msg.sender, burnRedeemCount);
 
         return payableCost;
     }
@@ -289,14 +289,14 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         require(data.length % 32 == 0, "Invalid data");
 
         address creatorContractAddress;
-        uint256 burnRedeemIndex;
+        uint256 instanceId;
         uint32 burnRedeemCount;
         uint256 burnItemIndex;
         bytes32[] memory merkleProof;
-        (creatorContractAddress, burnRedeemIndex, burnRedeemCount, burnItemIndex, merkleProof) = abi.decode(data, (address, uint256, uint32, uint256, bytes32[]));
+        (creatorContractAddress, instanceId, burnRedeemCount, burnItemIndex, merkleProof) = abi.decode(data, (address, uint256, uint32, uint256, bytes32[]));
 
         // Do burn redeem
-        _onERC1155Received(from, id, value, creatorContractAddress, burnRedeemIndex, burnRedeemCount, burnItemIndex, merkleProof);
+        _onERC1155Received(from, id, value, creatorContractAddress, instanceId, burnRedeemCount, burnItemIndex, merkleProof);
 
         return this.onERC1155Received.selector;
     }
@@ -315,13 +315,13 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         require(data.length % 32 == 0, "Invalid data");
 
         address creatorContractAddress;
-        uint256 burnRedeemIndex;
+        uint256 instanceId;
         uint32 burnRedeemCount;
         BurnToken[] memory burnTokens;
-        (creatorContractAddress, burnRedeemIndex, burnRedeemCount, burnTokens) = abi.decode(data, (address, uint256, uint32, BurnToken[]));
+        (creatorContractAddress, instanceId, burnRedeemCount, burnTokens) = abi.decode(data, (address, uint256, uint32, BurnToken[]));
 
         // Do burn redeem
-        _onERC1155BatchReceived(from, ids, values, creatorContractAddress, burnRedeemIndex, burnRedeemCount, burnTokens);
+        _onERC1155BatchReceived(from, ids, values, creatorContractAddress, instanceId, burnRedeemCount, burnTokens);
 
         return this.onERC1155BatchReceived.selector;
     }
@@ -341,12 +341,12 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         require(data.length % 32 == 0, "Invalid data");
 
         address creatorContractAddress;
-        uint256 burnRedeemIndex;
+        uint256 instanceId;
         uint256 burnItemIndex;
         bytes32[] memory merkleProof;
-        (creatorContractAddress, burnRedeemIndex, burnItemIndex, merkleProof) = abi.decode(data, (address, uint256, uint256, bytes32[]));
+        (creatorContractAddress, instanceId, burnItemIndex, merkleProof) = abi.decode(data, (address, uint256, uint256, bytes32[]));
 
-        BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, burnRedeemIndex);
+        BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, instanceId);
 
         // A single ERC721 can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
@@ -372,14 +372,14 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Do burn and redeem
         _burn(burnItem, address(this), msg.sender, id, 1);
-        _redeem(creatorContractAddress, burnRedeemIndex, burnRedeemInstance, from, 1);
+        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, 1);
     }
 
     /**
      * Execute onERC1155Received burn/redeem
      */
-    function _onERC1155Received(address from, uint256 tokenId, uint256 value, address creatorContractAddress, uint256 burnRedeemIndex, uint32 burnRedeemCount, uint256 burnItemIndex, bytes32[] memory merkleProof) private {
-        BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, burnRedeemIndex);
+    function _onERC1155Received(address from, uint256 tokenId, uint256 value, address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, uint256 burnItemIndex, bytes32[] memory merkleProof) private {
+        BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, instanceId);
 
         // A single 1155 can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
@@ -402,7 +402,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount);
-        _redeem(creatorContractAddress, burnRedeemIndex, burnRedeemInstance, from, availableBurnRedeemCount);
+        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, availableBurnRedeemCount);
 
         // Return excess amount
         if (availableBurnRedeemCount != burnRedeemCount) {
@@ -413,8 +413,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Execute onERC1155BatchReceived burn/redeem
      */
-    function _onERC1155BatchReceived(address from, uint256[] memory tokenIds, uint256[] memory values, address creatorContractAddress, uint256 burnRedeemIndex, uint32 burnRedeemCount, BurnToken[] memory burnTokens) private {
-        BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, burnRedeemIndex);
+    function _onERC1155BatchReceived(address from, uint256[] memory tokenIds, uint256[] memory values, address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] memory burnTokens) private {
+        BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, instanceId);
 
         // A single 1155 can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
@@ -444,7 +444,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Do burn redeem
         _burnTokens(burnRedeemInstance, burnTokens, availableBurnRedeemCount, address(this));
-        _redeem(creatorContractAddress, burnRedeemIndex, burnRedeemInstance, from, availableBurnRedeemCount);
+        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, availableBurnRedeemCount);
 
         // Return excess amount
         if (availableBurnRedeemCount != burnRedeemCount) {
@@ -520,7 +520,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /** 
      * Abstract helper to mint multiple redeem tokens. To be implemented by inheriting contracts.
      */
-    function _redeem(address creatorContractAddress, uint256 index, BurnRedeem storage burnRedeemInstance, address to, uint32 count) internal virtual;
+    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count) internal virtual;
 
     /**
      * Helper to burn token

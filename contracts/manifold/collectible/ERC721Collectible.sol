@@ -314,12 +314,12 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
             uint32 tokenStart = instance.purchaseCount + 1;
             instance.purchaseCount += amount;
             if (instance.contractVersion >= 3) {
-                uint80[] memory tokenData = new uint80[](amount);
+                uint80[] memory tokenDatas = new uint80[](amount);
                 for (uint256 i; i < amount;) {
-                    tokenData[i] = uint56(instanceId) << 24 | uint24(tokenStart + i);
+                    tokenDatas[i] = uint56(instanceId) << 24 | uint24(tokenStart + i);
                     unchecked { ++i; }
                 }
-                uint256[] memory tokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, tokenData);
+                uint256[] memory tokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, tokenDatas);
                 for (uint32 i = 0; i < amount; ) {
                     emit Unveil(creatorContractAddress, instanceId, tokenStart + i, tokenIds[i]);
                     unchecked { ++i; }

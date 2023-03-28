@@ -1276,7 +1276,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       assert.equal(claim.total, 1);
 
       // claim by tokenId should have expected info
-      let claimByToken = await lazyClaim.getClaimForToken(creator.address, 1);
+      let claimInfo = await lazyClaim.getClaimForToken(creator.address, 1);
+      assert.equal(claimInfo[0], 1);
+      let claimByToken = claimInfo[1];
       assert.equal(claimByToken.merkleRoot, merkleTree.getHexRoot());
       assert.equal(claimByToken.location, 'arweaveHash1');
       assert.equal(claimByToken.totalMax, 3);
