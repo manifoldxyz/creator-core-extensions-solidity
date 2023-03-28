@@ -10,7 +10,6 @@ import "./LazyPayableClaim.sol";
 import "./IERC721LazyPayableClaim.sol";
 import "../../libraries/IERC721CreatorCoreVersion.sol";
 
-
 /**
  * @title Lazy Payable Claim
  * @author manifold.xyz
