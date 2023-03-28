@@ -1345,6 +1345,14 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       const merkleLeaf3 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 2]));
       const merkleProof3 = merkleTree.getHexProof(merkleLeaf3);
       truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 2, merkleProof3, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)}), "Claim inactive");
+
+      const ownerBalanceBefore = await web3.eth.getBalance(lazyClaimOwner);
+
+      // Passes with valid withdrawal amount from owner
+      const tx = await lazyClaim.withdraw(lazyClaimOwner, fee, {from:lazyClaimOwner});
+      const ownerBalanceAfter = await web3.eth.getBalance(lazyClaimOwner);
+      const gasFee = tx.receipt.gasUsed * (await web3.eth.getTransaction(tx.tx)).gasPrice
+      assert.equal(ethers.BigNumber.from(ownerBalanceBefore).add(fee).sub(gasFee).toString(), ownerBalanceAfter);
     });
 
     it('airdrop test', async function () {
