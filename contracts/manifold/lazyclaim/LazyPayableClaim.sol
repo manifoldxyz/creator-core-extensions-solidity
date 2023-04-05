@@ -91,7 +91,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
          * 2. No membership address set OR
          * 3. Not an active member
         */
-        if (!allowMembership || MEMBERSHIP_ADDRESS == ADDRESS_ZERO || !IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
+        if (MEMBERSHIP_ADDRESS == ADDRESS_ZERO || !allowMembership || !IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
             payableCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
         }
         if (mintCount > 1) {
