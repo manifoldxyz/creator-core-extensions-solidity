@@ -77,38 +77,21 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         MEMBERSHIP_ADDRESS = membershipAddress;
     }
 
-    /**
-     * See {ILazyPayableClaim-addMintProxyAddresses}.
-     */
-    function addMintProxyAddresses(address[] calldata proxyAddresses) external override adminRequired {
-        for (uint256 i; i < proxyAddresses.length;) {
-            _proxyAddresses.add(proxyAddresses[i]);
-            unchecked { ++i; }
-        }
-    }
-
-    /**
-     * See {ILazyPayableClaim-removeMintProxyAddresses}.
-     */
-    function removeMintProxyAddresses(address[] calldata proxyAddresses) external override adminRequired {
-        for (uint256 i; i < proxyAddresses.length;) {
-            _proxyAddresses.remove(proxyAddresses[i]);
-            unchecked { ++i; }
-        }
-    }
-
-    function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
+    function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle, bool allowMembership) internal {
         uint256 payableCost;
         if (erc20 != ADDRESS_ZERO) {
             require(IERC20(erc20).transferFrom(msg.sender, recipient, cost*mintCount), "Insufficient funds");
         } else {
             payableCost = cost;
         }
-        if (MEMBERSHIP_ADDRESS != ADDRESS_ZERO) {
-            if (!IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
-                payableCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
-            }
-        } else {
+
+        /**
+         * Add mint fee if:
+         * 1. Not allowing memberships OR
+         * 2. No membership address set OR
+         * 3. Not an active member
+        */
+        if (!allowMembership || MEMBERSHIP_ADDRESS == ADDRESS_ZERO || !IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
             payableCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
         }
         if (mintCount > 1) {
@@ -119,22 +102,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         // Check price
         require(msg.value >= payableCost, "Invalid amount");
         if (erc20 == ADDRESS_ZERO && cost != 0) {
-            // solhint-disable-next-line
-            (bool sent, ) = recipient.call{value: cost}("");
-            require(sent, "Failed to transfer to receiver");
-        }
-    }
-
-    function _transferFundsProxy(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle) internal {
-        require(erc20 == address(0) && _proxyAddresses.contains(msg.sender), "Not approved");
-        uint256 payableCost = cost + (merkle ? MINT_FEE_MERKLE : MINT_FEE);
-        if (mintCount > 1) {
-            payableCost *= mintCount;
-            cost *= mintCount;
-        }
-        // Check price
-        require(msg.value == payableCost, "Invalid amount");
-        if (cost != 0) {
             // solhint-disable-next-line
             (bool sent, ) = recipient.call{value: cost}("");
             require(sent, "Failed to transfer to receiver");

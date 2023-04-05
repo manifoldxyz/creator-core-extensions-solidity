@@ -27,16 +27,6 @@ interface ILazyPayableClaim {
     function setMembershipAddress(address membershipAddress) external;
 
     /**
-     * @notice Add mint proxy addresses
-     */
-    function addMintProxyAddresses(address[] calldata proxyAddresses) external;
-
-    /**
-     * @notice Remove mint proxy addresses
-     */
-    function removeMintProxyAddresses(address[] calldata proxyAddresses) external;
-
-    /**
      * @notice check if a mint index has been consumed or not (only for merkle claims)
      *
      * @param creatorContractAddress    the address of the creator contract for the claim

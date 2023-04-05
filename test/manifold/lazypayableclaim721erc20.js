@@ -10,7 +10,7 @@ const keccak256 = require('keccak256');
 const ethers = require('ethers');
 
 contract('LazyPayableClaim721', function ([...accounts]) {
-  const [owner, lazyClaimOwner, anyone1] = accounts;
+  const [owner, lazyClaimOwner, anyone1, anyone2] = accounts;
   describe('LazyPayableClaim721 ERC20', function () {
     let creator, lazyClaim;
     let fee, merkleFee;
@@ -194,6 +194,85 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       assert.equal(900, await mockERC20.balanceOf(anyone1));
       assert.equal(100, await mockERC20.balanceOf(owner));
       assert.equal(1, await creator.balanceOf(anyone1));
+    });
+
+    it('proxy mint', async function () {
+      let now = (await web3.eth.getBlock('latest')).timestamp-30;
+      let later = now + 1000;
+  
+      // Initialize the claim
+      await lazyClaim.initializeClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: ethers.utils.formatBytes32String(""),
+          location: "XXX",
+          totalMax: 10,
+          walletMax: 10,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: 100,
+          paymentReceiver: owner,
+          erc20: mockERC20.address,
+        },
+        {from:owner}
+      );
+
+      const merkleElements = [];
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
+      merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
+      // Initialize the claim (merkle)
+      await lazyClaim.initializeClaim(
+        creator.address,
+        3,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: true,
+          cost: 100,
+          paymentReceiver: owner,
+          erc20: mockERC20.address,
+        },
+        {from:owner}
+      );
+
+      // The sender is a member, but proxy minting will ignore the fact they are a member
+      await manifoldMembership.setMember(anyone1, true, {from:owner});
+
+      // Mint erc20 tokens
+      await mockERC20.approve(lazyClaim.address, 1000, {from: anyone1});
+      await mockERC20.testMint(anyone1, 1000);
+
+      // Perform a mint on the claim
+      const startingBalance = await web3.eth.getBalance(anyone1);
+      const tx = await lazyClaim.mintProxy(creator.address, 1, 3, [], [], anyone2, {from:anyone1, value: fee.mul(3)})
+      const gasPrice = (await web3.eth.getTransaction(tx.tx)).gasPrice;
+      assert.equal(3, await creator.balanceOf(anyone2));
+      // Ensure funds taken from message sender
+      assert.deepEqual(ethers.BigNumber.from(startingBalance).sub(ethers.BigNumber.from(gasPrice).mul(tx.receipt.gasUsed)).sub(fee.mul(3)), ethers.BigNumber.from(await web3.eth.getBalance(anyone1)));
+      assert.equal(700, await mockERC20.balanceOf(anyone1));
+      assert.equal(300, await mockERC20.balanceOf(owner));
+
+      // Mint merkle claims
+      const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
+      const merkleProof1 = merkleTree.getHexProof(merkleLeaf1);
+      const merkleLeaf2 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 1]));
+      const merkleProof2 = merkleTree.getHexProof(merkleLeaf2);
+      // Should fail if standard fee is provided
+      await truffleAssert.reverts(lazyClaim.mintProxy(creator.address, 3, 2, [0, 1], [merkleProof1, merkleProof2], anyone2, {from:anyone1, value: fee.mul(2)}), "Invalid amount");
+      await lazyClaim.mintProxy(creator.address, 3, 2, [0, 1], [merkleProof1, merkleProof2], anyone2, {from:anyone1, value: merkleFee.mul(2)});
+      assert.equal(5, await creator.balanceOf(anyone2));
+      // Ensure funds taken from message sender
+      assert.equal(500, await mockERC20.balanceOf(anyone1));
+      assert.equal(500, await mockERC20.balanceOf(owner));
     });
 
   });
