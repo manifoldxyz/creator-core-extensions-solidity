@@ -284,10 +284,16 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
         if (from == address(0)) {
             return true;
         }
-        
-        uint256 instanceId = _tokenIdToTokenClaimMap[msg.sender][tokenId].instanceId;
-        require(instanceId != 0, "Token not found");
-
+        TokenClaim memory tokenClaim = _tokenIdToTokenClaimMap[msg.sender][tokenId];
+        uint256 instanceId;
+        if (tokenClaim.instanceId != 0) {
+            // No claim, try to retrieve from tokenData
+            uint80 tokenData = IERC721CreatorCore(msg.sender).tokenData(tokenId);
+            instanceId = uint56(tokenData >> 24);
+            require(instanceId != 0, "Token not found");
+        } else {
+            instanceId = tokenClaim.instanceId;
+        }
         CollectibleInstance storage instance = _getInstance(msg.sender, instanceId);
 
         return !instance.isTransferLocked;
