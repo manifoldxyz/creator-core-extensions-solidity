@@ -93,7 +93,7 @@ contract("Collectible721", function (accounts) {
         "Wallet is not an administrator for contract"
       );
       await truffleAssert.reverts(
-        collectible.modifyInitializationParameters(creator.address, INSTANCE_ID, initializationParameters, {
+        collectible.updateInitializationParameters(creator.address, INSTANCE_ID, initializationParameters, {
           from: another,
         }),
         "Wallet is not an administrator for contract"
@@ -676,7 +676,7 @@ contract("Collectible721", function (accounts) {
         { from: owner }
       );
       await truffleAssert.reverts(
-        collectible.modifyInitializationParameters(
+        collectible.updateInitializationParameters(
           creator.address,
           INSTANCE_ID,
           {
@@ -695,7 +695,7 @@ contract("Collectible721", function (accounts) {
         "Already active"
       );
       await collectible.deactivate(creator.address, INSTANCE_ID, { from: owner });
-      await collectible.modifyInitializationParameters(
+      await collectible.updateInitializationParameters(
         creator.address,
         INSTANCE_ID,
         {
