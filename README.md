@@ -190,12 +190,12 @@ contracts/edition/nifty/NiftyGatewayERC721NumberedEditionTemplate.sol and referr
 
 **Goerli**
 ```
-0x6A81c04269274c173999FE52Aa99e0cd66E9eEFd
+0x546B820779ceC2337380cE15E2Ff62BDb96ABa4E
 ```
 
 **Mainnet**
 ```
-0x60B6c13d62bE7cB135Dd626273f4CC09f4C95BBA
+0xDb707aF289d5a63Bd72E6761f0E91B414485D42A
 ```
 
 
