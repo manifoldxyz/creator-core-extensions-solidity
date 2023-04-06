@@ -245,7 +245,7 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
         TokenClaim memory tokenClaim = _tokenIdToTokenClaimMap[creatorContractAddress][tokenId];
         uint256 mintOrder;
         CollectibleInstance memory instance;
-        if (tokenClaim.instanceId != 0) {
+        if (tokenClaim.instanceId == 0) {
             // No claim, try to retrieve from tokenData
             uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
             uint56 instanceId = uint56(tokenData >> 24);
@@ -286,7 +286,7 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
         }
         TokenClaim memory tokenClaim = _tokenIdToTokenClaimMap[msg.sender][tokenId];
         uint256 instanceId;
-        if (tokenClaim.instanceId != 0) {
+        if (tokenClaim.instanceId == 0) {
             // No claim, try to retrieve from tokenData
             uint80 tokenData = IERC721CreatorCore(msg.sender).tokenData(tokenId);
             instanceId = uint56(tokenData >> 24);

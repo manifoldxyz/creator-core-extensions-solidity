@@ -250,7 +250,6 @@ contract("Collectible721", function (accounts) {
         }),
         "Too many requested"
       );
-
       // Transfers are locked so this reverts
       await truffleAssert.reverts(
         creator.safeTransferFrom(anyone1, anyone4, TOKEN_ID, { from: anyone1 }),
