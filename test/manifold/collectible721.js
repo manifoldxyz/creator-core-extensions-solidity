@@ -1,6 +1,6 @@
 const helper = require("../helpers/truffleTestHelper");
 const truffleAssert = require("truffle-assertions");
-const ERC721Creator = artifacts.require("@manifoldxyz/creator-core-collectibles-solidity/ERC721Creator");
+const ERC721Creator = artifacts.require("@manifoldxyz/creator-core-solidity/ERC721Creator");
 const ERC721Collectible = artifacts.require("ERC721Collectible");
 const { BigNumber } = require("ethers");
 const MockManifoldMembership = artifacts.require("MockManifoldMembership");
@@ -718,6 +718,51 @@ contract("Collectible721", function (accounts) {
       assert.equal(state.presalePurchasePrice, presalePurchasePrice);
       assert.equal(state.presalePurchaseLimit, presalePurchaseLimit);
       assert.equal(state.useDynamicPresalePurchaseLimit, useDynamicPresalePurchaseLimit);
+    });
+
+    it("token URI tests", async function () {
+      await collectible.initializeCollectible(creator.address, INSTANCE_ID, initializationParameters, {
+        from: owner,
+      });
+
+      // Start sale at future date
+      var startTime = (await web3.eth.getBlock("latest")).timestamp + 100;
+      await collectible.activate(
+        creator.address,
+        INSTANCE_ID,
+        {
+          ...activationParameters,
+          startTime,
+        },
+        { from: owner }
+      );
+      await helper.advanceTimeAndBlock(100);
+      let amount = 2;
+      let nonce = web3.utils.padLeft("0x24356e65", 64);
+      let { message, signature } = await signTransaction(anyone3, nonce, signer);
+      await collectible.purchase(creator.address, INSTANCE_ID, amount, message, signature, nonce, {
+        from: anyone3,
+        value: MINT_FEE.add(tokenPrice).mul(amount),
+      });
+
+      await collectible.setTokenURIPrefix(creator.address, INSTANCE_ID, "collectible-extension-prefix/", { from: owner });
+
+      assert.equal(await creator.tokenURI(1), `collectible-extension-prefix/1`);
+      assert.equal(await creator.tokenURI(2), `collectible-extension-prefix/2`);
+      await creator.mintBase(anyone1, { from: owner });
+      await creator.mintBase(anyone1, { from: owner });
+      await creator.mintBase(anyone1, { from: owner });
+      assert.equal(await creator.tokenURI(3), `3`);
+      assert.equal(await creator.tokenURI(4), `4`);
+      assert.equal(await creator.tokenURI(5), `5`);
+      nonce = web3.utils.padLeft("0x24356e66", 64);
+      ({ message, signature } = await signTransaction(anyone3, nonce, signer));
+      await collectible.purchase(creator.address, INSTANCE_ID, amount, message, signature, nonce, {
+        from: anyone3,
+        value: MINT_FEE.add(tokenPrice).mul(amount),
+      });
+      assert.equal(await creator.tokenURI(6), `collectible-extension-prefix/3`);
+      assert.equal(await creator.tokenURI(7), `collectible-extension-prefix/4`);
     });
   });
 });
