@@ -1375,7 +1375,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
           startDate: now,
           endDate: later,
           storageProtocol: 1,
-          identical: true,
+          identical: false,
           cost: ethers.BigNumber.from('1'),
           paymentReceiver: owner,
           erc20: '0x0000000000000000000000000000000000000000',
@@ -1389,6 +1389,9 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       // Make sure totalMax has not changed
       let claim = await lazyClaim.getClaim(creator.address, 1);
       assert.equal(claim.totalMax, 0);
+
+      // Check tokenURI
+      assert.equal(await creator.tokenURI(1), "XXX/1");
 
       // Mint
       const merkleLeaf1 = keccak256(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
