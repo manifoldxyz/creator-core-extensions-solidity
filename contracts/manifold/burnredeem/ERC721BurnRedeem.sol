@@ -99,7 +99,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             if (burnRedeemInstance.contractVersion >= 3) {
                 uint80[] memory tokenDatas = new uint80[](totalCount);
                 for (uint256 i; i < totalCount;) {
-                    tokenDatas[i] = uint56(totalCount) << 24 | uint24(startingCount+i);
+                    tokenDatas[i] = uint56(instanceId) << 24 | uint24(startingCount+i);
                     unchecked { ++i; }
                 }
                 uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, tokenDatas);

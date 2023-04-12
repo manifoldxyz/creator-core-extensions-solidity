@@ -3059,6 +3059,10 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal(burnRedeemInstance.redeemedCount, 4);
       assert.equal(burnRedeemInstance.totalSupply, 10);
 
+      // Check tokenURI
+      assert.equal(await creator.tokenURI(1), "XXX/1");
+      assert.equal(await creator.tokenURI(2), "XXX/2");
+
       // Tokens minted
       let balance = await creator.balanceOf(anyone1);
       assert.equal(balance, 2);
