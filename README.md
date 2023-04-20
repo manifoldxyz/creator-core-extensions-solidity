@@ -45,63 +45,27 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 0xc68afc6A3B47b108Db5e48fB53a10D2D9c11b094
 ```
 
-#### Manifold Lazy Claim
-These are ERC721 and ERC1155 Lazy Claim extensions.
+#### Manifold  Lazy Claim
+These are the latest Claim Page extensions.
 
-**ERC721 Goerli**
-```
-0xC3Ba6907a64d63A28E5BE8bFF9c6c1EaD7Ce7EA7
-```
+| Network     | Spec        | Address                                    |
+| ----------- | ----------- | ------------------------------------------ |
+| 1 (Mainnet) | ERC721      | 0x3B8C2fEb0F4953870F825Df64322eC967Aa26B8c |
+| 2 (Goerli)  | ERC721      | 0x5294d02a23b193A7DcCF8435859E7749BC9456aA |
+| 1 (Mainnet) | ERC1155     | 0xDb8d79C775452a3929b86ac5DEaB3e9d38e1c006 |
+| 2 (Goerli)  | ERC1155     | 0x73CA7420625d312d1792Cea60Ced7B35D009322c |
 
-**ERC721 Mainnet**
-```
-0xa46f952645D4DeEc07A7Cd98D1Ec9EC888d4b61E
-```
-
-**ERC1155 Goerli**
-```
-0xa402f5e27b5da8D6593f6bEDE97BE5820529D64a
-```
-
-**ERC1155 Mainnet**
-```
-0x44e94034AFcE2Dd3CD5Eb62528f239686Fc8f162
-```
 
 #### Manifold Burn Redeem
+These are the latest Burn Redeem extensions.
 
-```
-'0xfa1B15dF09c2944a91A2F9F10A6133090d4119BD': {
-  spec: 'erc1155',
-  version: '2.0',
-  network: 1, // mainnet
-},
-'0x22822100c2cA8DB1E35dd090E1226f2b8a8e736E': {
-  spec: 'erc1155',
-  version: '2.0',
-  network: 5,
-},
-'0xa4fb4bfbd70Ae8C81eCe9E0FCCefFa9953e120cB': {
-  spec: 'erc1155',
-  version: '1.0',
-  network: 1, 
-},
-'0xB52Dd65595bdB875B88e25F8cC63229E78205C2e': {
-  spec: 'erc1155',
-  version: '1.0',
-  network: 5, 
-},
-'0x23A553a150Ab2f5f88C01C0449b672d9f7EFEB36': {
-  spec: 'erc721',
-  version: '2.0',
-  network: 1, 
-},
-'0x2d7F13F594624170e30eE81d2b7E86c5Ebc3Df60': {
-  spec: 'erc721',
-  version: '2.0',
-  network: 5, 
-}
-```
+| Network     | Output Token Spec        | Address                                    |
+| ----------- | ------------------------ | ------------------------------------------ |
+| 1 (Mainnet) | ERC721                   | 0xd391032fec8877953C51399C7c77fBcc93eE3E2A |
+| 2 (Goerli)  | ERC721                   | 0x1aebd9fb121f33c37bbc6054ca50862249a39f66 |
+| 1 (Mainnet) | ERC1155                  | 0xde659726CfD166aCa4867994d396EFeF386EAD68 |
+| 2 (Goerli)  | ERC1155                  | 0x193bFD86F329508351ae899A92a963d5bfC77190 |
+
 
 #### OperatorFilterer
 Shared extension to support OpenSea's Operator Filter Registry
