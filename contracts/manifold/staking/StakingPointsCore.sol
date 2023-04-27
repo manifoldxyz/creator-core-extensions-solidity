@@ -10,15 +10,13 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "./IStakingPoints.sol";
-
+import "./IStakingPointsCore.sol";
 /**
  * @title Staking Points Core
  * @author manifold.xyz
  * @notice Core logic for Staking Points shared extensions.
  */
-
-abstract contract StakingPoints is ReentrancyGuard, AdminControl, IStakingPoints, ICreatorExtensionTokenURI {
+abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IStakingPointsCore, ICreatorExtensionTokenURI {
   using Strings for uint256;
 
   string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
@@ -35,24 +33,20 @@ abstract contract StakingPoints is ReentrancyGuard, AdminControl, IStakingPoints
   // { creatorContractAddress => { instanceId => StakingPoints } }
   mapping(address => mapping(uint256 => StakingPoints)) internal _stakingPointsInstances;
 
-  // { walletAddress => tokenAddress[]}
-  mapping(address => address[]) walletsStakedContracts;
-  // { tokenAddress => { StakedToken[] } }
-  mapping(address => StakedToken[]) internal stakedTokens;
-  mapping(uint256 => uint256) private tokenIndexMapping;
+  address public manifoldMembershipContract;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165, AdminControl) returns (bool) {
     return
-      interfaceId == type(IStakingPoints).interfaceId ||
+      interfaceId == type(IStakingPointsCore).interfaceId ||
       interfaceId == type(IERC721Receiver).interfaceId ||
-      interfaceId == type(IERC1155Receiver).interfaceId ||
+      // interfaceId == type(IERC1155Receiver).interfaceId ||
       interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
       super.supportsInterface(interfaceId);
   }
 
   /**
    * @notice This extension is shared, not single-creator. So we must ensure
-   * that a claim's initializer is an admin on the creator contract
+   * that a staking points's initializer is an admin on the creator contract
    * @param creatorContractAddress    the address of the creator contract to check the admin against
    */
   modifier creatorAdminRequired(address creatorContractAddress) {
@@ -69,16 +63,14 @@ abstract contract StakingPoints is ReentrancyGuard, AdminControl, IStakingPoints
     uint256 instanceId,
     StakingPointsParams calldata stakingPointsParams
   ) internal {
-    StakingPoints storage stakingPointsInstance = _getStakingPointsInstance(creatorContractAddress, instanceId);
-    require(
-      stakingPointsInstance.storageProtocol == StakingPoints.StorageProtocol.INVALID,
-      "StakingPoints already initialized"
-    );
+    StakingPoints storage stakingPointsInstance = _stakingPointsInstances[creatorContractAddress][instanceId];
+    require(stakingPointsInstance.storageProtocol == StorageProtocol.INVALID, "StakingPoints already initialized");
     _validateStakingPointsParams(stakingPointsParams);
     stakingPointsInstance.paymentReceiver = stakingPointsParams.paymentReceiver;
     stakingPointsInstance.storageProtocol = stakingPointsParams.storageProtocol;
     stakingPointsInstance.contractVersion = creatorContractVersion;
     stakingPointsInstance.location = stakingPointsParams.location;
+    require(stakingPointsParams.stakingRules.length > 0, "Needs at least one stakingRule");
     _setStakingRules(stakingPointsInstance, stakingPointsParams.stakingRules);
 
     emit StakingPointsInitialized(creatorContractAddress, instanceId, msg.sender);
@@ -92,7 +84,7 @@ abstract contract StakingPoints is ReentrancyGuard, AdminControl, IStakingPoints
 
   /** STAKING */
 
-  function stakeTokens() external override adminRequired {
+  function stakeTokens() external nonReentrant {
     // TODO
     // emit TokensStaked()
   }
@@ -102,7 +94,7 @@ abstract contract StakingPoints is ReentrancyGuard, AdminControl, IStakingPoints
   }
 
   /** UNSTAKING */
-  function unstakeTokens() external override adminRequired {
+  function unstakeTokens() external nonReentrant {
     // TODO
     // emit TokensUnstaked()
   }
@@ -111,10 +103,12 @@ abstract contract StakingPoints is ReentrancyGuard, AdminControl, IStakingPoints
     // TODO
   }
 
+  function updateTokenURI() public view virtual {}
+
   /** HELPERS */
 
   /**
-   * See {IStakingPoints-getStakingPointsInstance}.
+   * See {IStakingPointsCore-getStakingPointsInstance}.
    */
   function getStakingPointsInstance(
     address creatorContractAddress,
@@ -135,7 +129,7 @@ abstract contract StakingPoints is ReentrancyGuard, AdminControl, IStakingPoints
   }
 
   /**
-   * @dev See {IStakingPoints-recoverERC721}.
+   * @dev See {IStakingPointsCore-recoverERC721}.
    */
   function recoverERC721(address tokenAddress, uint256 tokenId, address destination) external override adminRequired {
     IERC721(tokenAddress).transferFrom(address(this), destination, tokenId);
@@ -156,20 +150,29 @@ abstract contract StakingPoints is ReentrancyGuard, AdminControl, IStakingPoints
 
   function _onERC721Received(address from, uint256 id, bytes calldata data) private {}
 
+  /**
+   * @dev See {IstakingPointsCore-setManifoldMembership}.
+   */
+  function setMembershipAddress(address addr) external override adminRequired {
+    manifoldMembershipContract = addr;
+  }
+
   function _validateStakingPointsParams(StakingPointsParams calldata stakingPointsParams) internal pure {
-    require(stakingPointsParams.storageProtocol != StakingPoints.StorageProtocol.INVALID, "Storage protocol invalid");
+    require(stakingPointsParams.storageProtocol != StorageProtocol.INVALID, "Storage protocol invalid");
     require(stakingPointsParams.paymentReceiver != address(0), "Payment receiver required");
   }
 
   function _setStakingRules(StakingPoints storage stakingPointsInstance, StakingRule[] calldata stakingRules) private {
     delete stakingPointsInstance.stakingRules;
+    StakingRule[] storage rules = stakingPointsInstance.stakingRules;
     for (uint256 i; i < stakingRules.length; ) {
-      StakingRule storage stakingRule = stakingRules[i];
-      require(stakingRule.tokenSpec == TokenSpec.ERC721, "Only supports ERC721 at this time");
-      require((stakingRule.endTime == 0) || (stakingRule.startTime < stakingRule.endTime), "Invalid start or end time");
-      //check for timeUnit
-      require(stakingRule.pointsRate > 0, "Invalid points rate");
-      stakingPointsInstance.stakingRules.push(stakingRules[i]);
+      StakingRule memory rule = stakingRules[i];
+      require(rule.tokenAddress != address(0), "Staking rule: Contract address required");
+      require(rule.tokenSpec == TokenSpec.ERC721, "Staking rule: Only supports ERC721 at this time");
+      require((rule.endTime == 0) || (rule.startTime < rule.endTime), "Staking rule: Invalid time range");
+      require(rule.timeUnit > 0, "Staking rule: Invalid timeUnit");
+      require(rule.pointsRate > 0, "Staking rule: Invalid points rate");
+      rules.push(rule);
       unchecked {
         ++i;
       }

@@ -7,12 +7,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+
+// import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
 /**
- * StakingPoints interface
+ * StakingPointsCore interface
  */
-interface IStakingPoints is IERC165, IERC721Receiver, IERC1155Receiver {
+interface IStakingPointsCore is IERC165, IERC721Receiver {
   enum StorageProtocol {
     INVALID,
     NONE,
@@ -30,17 +31,30 @@ interface IStakingPoints is IERC165, IERC721Receiver, IERC1155Receiver {
   struct StakedToken {
     uint256 id;
     uint256 tokenId;
-    address tokenAddress;
-    uint256 timeStamp;
+    address contractAddress;
+    uint48 groupIndex;
+    uint48 itemIndex;
+    uint256 timeStaked;
   }
+
+  struct StakedItem {
+    address contractAddress;
+    uint256 tokenId;
+  }
+
+  // struct StakingTokenContract {
+  //   address tokenAddress;
+  //   TokenSpec tokenSpec;
+  //   StakedItem[] items;
+  // }
 
   struct StakingRule {
     address tokenAddress;
-    TokenSpec tokenSpec;
     uint256 pointsRate;
     uint256 timeUnit;
     uint256 startTime;
     uint256 endTime;
+    TokenSpec tokenSpec;
   }
 
   struct StakingPoints {
@@ -58,10 +72,10 @@ interface IStakingPoints is IERC165, IERC721Receiver, IERC1155Receiver {
     StakingRule[] stakingRules;
   }
 
-  struct StakingTokenParam {
-    address tokenAddress;
-    uint256 tokenId;
-  }
+  // struct StakingItemParam {
+  //   address tokenAddress;
+  //   uint256 tokenId;
+  // }
 
   //** TODO: EVENTS */
 
@@ -76,14 +90,14 @@ interface IStakingPoints is IERC165, IERC721Receiver, IERC1155Receiver {
    * @param owner                     the address of the token owner
    * @param stakingTokens             a list of tokenIds with token contract addresses
    */
-  function stakeTokens(address owner, StakingTokenParam[] calldata stakingTokens) external payable;
+  // function stakeTokens(address owner, StakingItemParam[] calldata stakingTokens) external payable;
 
   /**
    * @notice unstake tokens
    * @param owner                     the address of the token owner
    * @param unstakingTokens           a list of tokenIds with token contract addresses
    */
-  function unstakeTokens(address owner, StakingTokenParam[] calldata unstakingTokens) external payable;
+  // function unstakeTokens(address owner, StakingItemParam[] calldata unstakingTokens) external payable;
 
   /**
    * @notice get a staking points instance corresponding to a creator contract and instanceId
@@ -103,4 +117,10 @@ interface IStakingPoints is IERC165, IERC721Receiver, IERC1155Receiver {
    * @param destination               the address to send the token to
    */
   function recoverERC721(address tokenAddress, uint256 tokenId, address destination) external;
+
+  /**
+   * @notice set the Manifold Membership contract address
+   * @param addr                      the address of the Manifold Membership contract
+   */
+  function setMembershipAddress(address addr) external;
 }
