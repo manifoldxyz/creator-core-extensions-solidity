@@ -14,39 +14,27 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
  * StakingPointsCore interface
  */
 interface IStakingPointsCore is IERC165, IERC721Receiver {
-  enum StorageProtocol {
-    INVALID,
-    NONE,
-    ARWEAVE,
-    IPFS
-  }
-
-  enum TokenSpec {
-    INVALID,
-    ERC721,
-    ERC1155
-  }
-
   /** TODO: CONFIRM STRUCTS */
+
   struct StakedToken {
-    uint256 id;
     uint256 tokenId;
     address contractAddress;
-    uint48 groupIndex;
-    uint48 itemIndex;
+    address stakerAddress;
     uint256 timeStaked;
+    uint256 timeUnstaked;
+    uint256 stakerTokenIdx;
   }
 
-  struct StakedItem {
-    address contractAddress;
+  struct StakedTokenParams {
+    address tokenAddress;
     uint256 tokenId;
   }
 
-  // struct StakingTokenContract {
-  //   address tokenAddress;
-  //   TokenSpec tokenSpec;
-  //   StakedItem[] items;
-  // }
+  struct Staker {
+    uint256 pointsRedeemed;
+    uint256 stakerTokenIdx;
+    StakedToken[] stakersTokens;
+  }
 
   struct StakingRule {
     address tokenAddress;
@@ -54,35 +42,23 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
     uint256 timeUnit;
     uint256 startTime;
     uint256 endTime;
-    TokenSpec tokenSpec;
   }
 
   struct StakingPoints {
     address payable paymentReceiver;
-    StorageProtocol storageProtocol;
     uint8 contractVersion;
-    string location;
     StakingRule[] stakingRules;
   }
 
   struct StakingPointsParams {
     address payable paymentReceiver;
-    StorageProtocol storageProtocol;
-    string location;
     StakingRule[] stakingRules;
   }
 
-  // struct StakingItemParam {
-  //   address tokenAddress;
-  //   uint256 tokenId;
-  // }
-
-  //** TODO: EVENTS */
-
   event StakingPointsInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
   event StakingPointsUpdated(address indexed creatorContract, uint256 indexed instanceId);
-  event TokensStaked();
-  event TokensUnstaked();
+  event TokensStaked(uint256 indexed instanceId, StakedToken[] stakedTokens, address owner);
+  event TokensUnstaked(uint256 indexed instanceId, StakedToken[] stakedTokens, address owner);
   event PointsDistributed();
 
   /**
@@ -90,14 +66,14 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
    * @param owner                     the address of the token owner
    * @param stakingTokens             a list of tokenIds with token contract addresses
    */
-  // function stakeTokens(address owner, StakingItemParam[] calldata stakingTokens) external payable;
+  // function stakeTokens(address owner, StakedTokenParams[] calldata stakingTokens) external;
 
   /**
    * @notice unstake tokens
    * @param owner                     the address of the token owner
    * @param unstakingTokens           a list of tokenIds with token contract addresses
    */
-  // function unstakeTokens(address owner, StakingItemParam[] calldata unstakingTokens) external payable;
+  // function unstakeTokens(address owner, StakedTokenParams[] calldata unstakingTokens) external;
 
   /**
    * @notice get a staking points instance corresponding to a creator contract and instanceId

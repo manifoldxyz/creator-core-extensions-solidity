@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "../../libraries/IERC721CreatorCoreVersion.sol";
 import "./IERC721StakingPoints.sol";
@@ -18,9 +19,6 @@ import "./IStakingPointsCore.sol";
 contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
   using Strings for uint256;
 
-  // { creatorContractAddress => { instanceId =>  bool } }
-  mapping(address => mapping(uint256 => bool)) private _identicalTokenURI;
-
   function supportsInterface(bytes4 interfaceId) public view virtual override(StakingPointsCore, IERC165) returns (bool) {
     return interfaceId == type(IERC721StakingPoints).interfaceId || super.supportsInterface(interfaceId);
   }
@@ -28,15 +26,11 @@ contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
   function initializeStakingPoints(
     address creatorContractAddress,
     uint256 instanceId,
-    bool identicalTokenURI,
     StakingPointsParams calldata stakingPointsParams
   ) external creatorAdminRequired(creatorContractAddress) nonReentrant {
     // Max uint56 for instanceId
     require(instanceId > 0 && instanceId <= MAX_UINT_56, "Invalid instanceId");
-    require(
-      stakingPointsParams.storageProtocol != StorageProtocol.INVALID,
-      "Cannot initialize with invalid storage protocol"
-    );
+    require(stakingPointsParams.paymentReceiver != address(0), "Cannot initialize without payment receiver");
 
     uint8 creatorContractVersion;
     try IERC721CreatorCoreVersion(creatorContractAddress).VERSION() returns (uint256 version) {
@@ -45,50 +39,29 @@ contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
     } catch {}
 
     _initialize(creatorContractAddress, creatorContractVersion, instanceId, stakingPointsParams);
-    _identicalTokenURI[creatorContractAddress][instanceId] = identicalTokenURI;
 
     emit StakingPointsInitialized(creatorContractAddress, instanceId, msg.sender);
   }
 
   /**
-   * See {ICreatorExtensionTokenURI-tokenURI}.
+   * @dev was originally using safeTransferFrom but was getting a reentrancy error
    */
-    function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-
-    }
-
-  /**
-   * See {ICreatorExtensionTokenURI-updateTokenURIParams}.
-   */
-  function updateTokenURIParams(
-    address creatorContractAddress,
-    uint256 instanceId,
-    StorageProtocol storageProtocol,
-    string calldata location
-  ) external creatorAdminRequired(creatorContractAddress) {
-    StakingPoints storage stakingPoint = _stakingPointsInstances[creatorContractAddress][instanceId];
-    require(stakingPoint.storageProtocol != StorageProtocol.INVALID, "Staking points not initialized");
-    require(storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
-
-    stakingPoint.storageProtocol = storageProtocol;
-    stakingPoint.location = location;
-    emit StakingPointsUpdated(creatorContractAddress, instanceId);
+  function _transfer(address contractAddress, uint256 tokenId, address from, address to) internal override {
+    require(
+      IERC721(contractAddress).ownerOf(tokenId) == from &&
+        (IERC721(contractAddress).getApproved(tokenId) == address(this) ||
+          IERC721(contractAddress).isApprovedForAll(from, address(this))),
+      "Token not owned or not approved"
+    );
+    require(IERC721(contractAddress).ownerOf(tokenId) == from, "Token not in sender possesion");
+    IERC721(contractAddress).transferFrom(from, to, tokenId);
   }
 
   /**
-   * See {IERC721StakingPoints-updateTokenURI}
+   * @dev was originally using safeTransferFrom but was getting a reentrancy error
    */
-  function updateTokenURI(
-    address creatorContractAddress,
-    uint256 instanceId,
-    StorageProtocol storageProtocol,
-    bool identicalTokenURI,
-    string calldata location
-  ) external creatorAdminRequired(creatorContractAddress) {
-    StakingPoints storage stakingPointsInstance = _getStakingPointsInstance(creatorContractAddress, instanceId);
-    stakingPointsInstance.storageProtocol = storageProtocol;
-    stakingPointsInstance.location = location;
-    _identicalTokenURI[creatorContractAddress][instanceId] = identicalTokenURI;
-    emit StakingPointsUpdated(creatorContractAddress, instanceId);
+  function _transferBack(address contractAddress, uint256 tokenId, address from, address to) internal override {
+    require(IERC721(contractAddress).ownerOf(tokenId) == from, "Token not in sender possesion");
+    IERC721(contractAddress).transferFrom(from, to, tokenId);
   }
 }
