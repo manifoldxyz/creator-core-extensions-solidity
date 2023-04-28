@@ -7,18 +7,19 @@ import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "./IStakingPointsCore.sol";
 
 /**
  * @title Staking Points Core
  * @author manifold.xyz
- * @notice Core logic for Staking Points shared extensions.
+ * @notice Core logic for Staking Points shared extensions. Currently only handles ERC721, next steps could include
+ * implementing batch fns, ERC1155 support, using a ERC20 token to represent points, and explore more point dynamics
  */
 abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IStakingPointsCore {
-  using Strings for uint256;
-
+  using SafeMath for uint256;
   uint256 internal constant MAX_UINT_24 = 0xffffff;
   uint256 internal constant MAX_UINT_32 = 0xffffffff;
   uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
@@ -81,6 +82,7 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
 
     emit StakingPointsInitialized(creatorContractAddress, instanceId, msg.sender);
   }
+  
 
   /**
    * Abstract helper to transfer tokens. To be implemented by inheriting contracts.
@@ -137,16 +139,19 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
   }
 
   /** UNSTAKING */
-  function unstakeTokens(uint256 instanceId, StakedTokenParams[] calldata stakingTokens) external nonReentrant {
-    _unstakeTokens(instanceId, stakingTokens);
+
+  function unstakeTokens(uint256 instanceId, StakedTokenParams[] calldata unstakingTokens) external nonReentrant {
+    _unstakeTokens(instanceId, unstakingTokens);
   }
 
-  function _unstakeTokens(uint256 instanceId, StakedTokenParams[] calldata stakingTokens) private {
-    require(stakingTokens.length != 0, "Cannot unstake 0 tokens");
+  function _unstakeTokens(uint256 instanceId, StakedTokenParams[] calldata unstakingTokens) private {
+    require(unstakingTokens.length != 0, "Cannot unstake 0 tokens");
 
-    StakedToken[] memory unstakedTokens = new StakedToken[](stakingTokens.length);
-    for (uint256 i = 0; i < stakingTokens.length; ++i) {
-      StakedToken storage currToken = userStakedTokens[msg.sender][stakingTokens[i].tokenAddress][stakingTokens[i].tokenId];
+    StakedToken[] memory unstakedTokens = new StakedToken[](unstakingTokens.length);
+    for (uint256 i = 0; i < unstakingTokens.length; ++i) {
+      StakedToken storage currToken = userStakedTokens[msg.sender][unstakingTokens[i].tokenAddress][
+        unstakingTokens[i].tokenId
+      ];
       require(
         msg.sender != address(0) && msg.sender == currToken.stakerAddress,
         "No sender address or not the original staker"
@@ -154,7 +159,7 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
       currToken.timeUnstaked = block.timestamp;
       stakers[instanceId][msg.sender].stakersTokens[currToken.stakerTokenIdx] = currToken;
       unstakedTokens[i] = currToken;
-      _unstakeToken(stakingTokens[i].tokenAddress, stakingTokens[i].tokenId);
+      _unstakeToken(unstakingTokens[i].tokenAddress, unstakingTokens[i].tokenId);
     }
 
     emit TokensUnstaked(instanceId, unstakedTokens, msg.sender);
@@ -169,26 +174,54 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     _transferBack(tokenAddress, tokenId, address(this), msg.sender);
   }
 
-  // function redeemPoints() external nonReentrant {
-  //   // guard against more than calculated
-  //   // update Staker with redeemed points
-  // }
+  /**
+   * Abstract helper to redeem points. To be implemented by inheriting contracts.
+   */
+  function _redeem(uint256 instanceId, uint256 pointsAmount, address redeemer) internal virtual;
 
-  // function _calculatePoints(address _staker, StakedToken[] stakingTokens) private view returns (uint256 memory points) {
-  //   uint256 length = stakingTokens.length;
-  //   for (uint256 i = 0; i < length; ) {
-  //     unchecked {
-  //       ++i;
-  //     }
-  //   }
-  //   // get the tokenRule for each
-  //   // get the balance from the user
-  //   // add
-  //   // safe multiply
-  //   // check for overflow
-  // }
+  function redeemPoints(uint256 instanceId) external nonReentrant {
+    // guard against more than calculated
+    Staker storage staker = stakers[instanceId][msg.sender];
+    uint256 totalQualifyingPoints = _calculatePoints(instanceId, staker.stakersTokens);
+    uint256 diff = SafeMath.sub(totalQualifyingPoints, staker.pointsRedeemed);
+    require(totalQualifyingPoints != 0 && diff >= 0, "Need more than zero points");
+    // compare with pointsRedeemd
+    staker.pointsRedeemed = totalQualifyingPoints;
+    _redeem(instanceId, diff, msg.sender);
+  }
+
+  function getPoints(uint256 instanceId) external view returns (uint256 totalPoints, uint256 diff) {
+    Staker storage staker = stakers[instanceId][msg.sender];
+    totalPoints = _calculatePoints(instanceId, staker.stakersTokens);
+    diff = SafeMath.sub(totalPoints, staker.pointsRedeemed);
+  }
+
+  /**
+   * @notice assumes points
+   */
+  function _calculatePoints(uint256 instanceId, StakedToken[] memory stakingTokens) private view returns (uint256 points) {
+    uint256 length = stakingTokens.length;
+    for (uint256 i = 0; i < length; ) {
+      StakingRule storage rule = _stakingRules[instanceId][stakingTokens[i].contractAddress];
+      require(rule.startTime >= 0 && rule.endTime >= 0, "Invalid rule values");
+      uint256 tokenEnd = stakingTokens[i].timeUnstaked == 0 ? block.timestamp : stakingTokens[i].timeUnstaked;
+      uint256 start = Math.max(rule.startTime, stakingTokens[i].timeStaked);
+      uint256 end = Math.min(tokenEnd, rule.endTime);
+      uint256 diff = start - end;
+      uint256 qualified = _calculateQualifiedPoints(diff, rule.pointsRatePerDay, 86400);
+      points = points + qualified;
+
+      unchecked {
+        ++i;
+      }
+    }
+  }
 
   /** VIEW HELPERS */
+
+  function _calculateQualifiedPoints(uint256 diff, uint256 rate, uint256 div) private pure returns (uint256) {
+    return (diff * rate) / div;
+  }
 
   function getStakerDetails(uint256 instanceId, address staker) external view returns (Staker memory) {
     return stakers[instanceId][staker];
@@ -272,7 +305,7 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
   function _setStakingRules(
     StakingPoints storage stakingPointsInstance,
     uint256 instanceId,
-    StakingRule[] calldata stakingRules
+    StakingRule[] calldata newStakingRules
   ) private {
     // delete old rules in map
     StakingRule[] memory oldRules = stakingPointsInstance.stakingRules;
@@ -281,13 +314,12 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     }
     delete stakingPointsInstance.stakingRules;
     StakingRule[] storage rules = stakingPointsInstance.stakingRules;
-    uint256 length = stakingRules.length;
+    uint256 length = newStakingRules.length;
     for (uint256 i; i < length; ) {
-      StakingRule memory rule = stakingRules[i];
+      StakingRule memory rule = newStakingRules[i];
       require(rule.tokenAddress != address(0), "Staking rule: Contract address required");
       require((rule.endTime == 0) || (rule.startTime < rule.endTime), "Staking rule: Invalid time range");
-      require(rule.timeUnit > 0, "Staking rule: Invalid timeUnit");
-      require(rule.pointsRate > 0, "Staking rule: Invalid points rate");
+      require(rule.pointsRatePerDay > 0, "Staking rule: Invalid points rate");
       rules.push(rule);
       _stakingRules[instanceId][rule.tokenAddress] = rule;
       unchecked {

@@ -17,7 +17,11 @@ import "./IStakingPointsCore.sol";
  * @notice logic for Staking Points for ERC721 extension.
  */
 contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
-  using Strings for uint256;
+
+  uint256 public totalPointsCirculation;
+
+  // { instanceId => { walletAddress => points } }
+  mapping(uint256 => mapping(address => uint256)) public stakerPoints;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(StakingPointsCore, IERC165) returns (bool) {
     return interfaceId == type(IERC721StakingPoints).interfaceId || super.supportsInterface(interfaceId);
@@ -63,5 +67,13 @@ contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
   function _transferBack(address contractAddress, uint256 tokenId, address from, address to) internal override {
     require(IERC721(contractAddress).ownerOf(tokenId) == from, "Token not in sender possesion");
     IERC721(contractAddress).transferFrom(from, to, tokenId);
+  }
+
+  /**
+   * @dev
+   */
+  function _redeem(uint256 instanceId, uint256 pointsAmount, address redeemer) internal override {
+    totalPointsCirculation = SafeMath.add(totalPointsCirculation, pointsAmount);
+    stakerPoints[instanceId][redeemer];
   }
 }

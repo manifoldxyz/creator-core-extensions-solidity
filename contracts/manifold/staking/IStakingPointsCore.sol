@@ -38,8 +38,7 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
 
   struct StakingRule {
     address tokenAddress;
-    uint256 pointsRate;
-    uint256 timeUnit;
+    uint256 pointsRatePerDay;
     uint256 startTime;
     uint256 endTime;
   }
@@ -63,17 +62,17 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
 
   /**
    * @notice stake tokens
-   * @param owner                     the address of the token owner
+   * @param instanceId                the instanceId of the staking points for the creator contract
    * @param stakingTokens             a list of tokenIds with token contract addresses
    */
-  // function stakeTokens(address owner, StakedTokenParams[] calldata stakingTokens) external;
+  function stakeTokens(uint256 instanceId, StakedTokenParams[] calldata stakingTokens) external;
 
   /**
    * @notice unstake tokens
-   * @param owner                     the address of the token owner
+   * @param instanceId                the instanceId of the staking points for the creator contract
    * @param unstakingTokens           a list of tokenIds with token contract addresses
    */
-  // function unstakeTokens(address owner, StakedTokenParams[] calldata unstakingTokens) external;
+  function unstakeTokens(uint256 instanceId, StakedTokenParams[] calldata unstakingTokens) external;
 
   /**
    * @notice get a staking points instance corresponding to a creator contract and instanceId

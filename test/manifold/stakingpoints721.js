@@ -2,20 +2,13 @@ const truffleAssert = require("truffle-assertions");
 const ERC721Creator = artifacts.require("@manifoldxyz/creator-core-extensions-solidity/ERC721Creator");
 const ERC721StakingPoints = artifacts.require("ERC721StakingPoints");
 const ERC1155Creator = artifacts.require("@manifoldxyz/creator-core-extensions-solidity/ERC1155Creator");
-const keccak256 = require("keccak256");
-const ethers = require("ethers");
 const MockManifoldMembership = artifacts.require("MockManifoldMembership");
-const ERC721 = artifacts.require("MockERC721");
-const ERC1155 = artifacts.require("MockERC1155");
-
-const STAKE_FEE = ethers.BigNumber.from("690000000000000");
-const MULTI_STAKE_FEE = ethers.BigNumber.from("990000000000000");
 
 contract("ERC721StakingPoints", function ([...accounts]) {
   const [owner, anotherOwner, anyone1, anyone2] = accounts;
 
   describe("StakingPoints", function () {
-    let creator, fee;
+    let creator;
 
     beforeEach(async function () {
       creator = await ERC721Creator.new("Test", "TEST", { from: owner });
@@ -52,8 +45,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             stakingRules: [
               {
                 tokenAddress: manifoldMembership.address,
-                pointsRate: 1234,
-                timeUnit: 100000,
+                pointsRatePerDay: 1234,
                 startTime: 1674768875,
                 endTime: 1682541275,
               },
@@ -63,7 +55,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         ),
         "Wallet is not an admin"
       );
-      // has invalid staking rule (missing pointsRate value)
+      // has invalid staking rule (missing pointsRatePerDay value)
       await truffleAssert.reverts(
         stakingPoints721.initializeStakingPoints(
           creator.address,
@@ -73,8 +65,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             stakingRules: [
               {
                 tokenAddress: manifoldMembership.address,
-                pointsRate: 0,
-                timeUnit: 100000,
+                pointsRatePerDay: 0,
                 startTime: 1674768875,
                 endTime: 1682541275,
               },
@@ -83,27 +74,6 @@ contract("ERC721StakingPoints", function ([...accounts]) {
           { from: owner }
         ),
         "Staking rule: Invalid points rate"
-      );
-      // has invalid staking rule (missing timeUnit value)
-      await truffleAssert.reverts(
-        stakingPoints721.initializeStakingPoints(
-          creator.address,
-          1,
-          {
-            paymentReceiver: owner,
-            stakingRules: [
-              {
-                tokenAddress: manifoldMembership.address,
-                pointsRate: 1234,
-                timeUnit: 0,
-                startTime: 1674768875,
-                endTime: 1682541275,
-              },
-            ],
-          },
-          { from: owner }
-        ),
-        "Staking rule: Invalid timeUnit"
       );
       // has invalid staking rule (endTime is less than startTime)
       await truffleAssert.reverts(
@@ -115,8 +85,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             stakingRules: [
               {
                 tokenAddress: manifoldMembership.address,
-                pointsRate: 1234,
-                timeUnit: 100000,
+                pointsRatePerDay: 1234,
                 startTime: 1682541275,
                 endTime: 1674768875,
               },
@@ -136,8 +105,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
           stakingRules: [
             {
               tokenAddress: manifoldMembership.address,
-              pointsRate: 1234,
-              timeUnit: 100000,
+              pointsRatePerDay: 1234,
               startTime: 1674768875,
               endTime: 1682541275,
             },
@@ -148,9 +116,6 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       stakingPointsInstance = await stakingPoints721.getStakingPointsInstance(creator.address, 1);
       assert.equal(stakingPointsInstance.stakingRules.length, 1);
     });
-    // TODO:
-    // it("Admin creates new stakingpoints with intial rate, updates rate", function () {});
-    // it("Can get stakers", function () {});
 
     it("Will not stake if not owned or approved", async function () {
       await stakingPoints721.initializeStakingPoints(
@@ -161,15 +126,13 @@ contract("ERC721StakingPoints", function ([...accounts]) {
           stakingRules: [
             {
               tokenAddress: manifoldMembership.address,
-              pointsRate: 1234,
-              timeUnit: 100000,
+              pointsRatePerDay: 1234,
               startTime: 1674768875,
               endTime: 1682541275,
             },
             {
               tokenAddress: mock721.address,
-              pointsRate: 125,
-              timeUnit: 100000,
+              pointsRatePerDay: 125,
               startTime: 1674768875,
               endTime: 1682541275,
             },
@@ -200,22 +163,19 @@ contract("ERC721StakingPoints", function ([...accounts]) {
           stakingRules: [
             {
               tokenAddress: manifoldMembership.address,
-              pointsRate: 1234,
-              timeUnit: 100000,
+              pointsRatePerDay: 1234,
               startTime: 1674768875,
               endTime: 1682541275,
             },
             {
               tokenAddress: mock721.address,
-              pointsRate: 125,
-              timeUnit: 100000,
+              pointsRatePerDay: 125,
               startTime: 1674768875,
               endTime: 1682541275,
             },
             {
               tokenAddress: mock721_2.address,
-              pointsRate: 125,
-              timeUnit: 100000,
+              pointsRatePerDay: 125,
               startTime: 1674768875,
               endTime: 1682541275,
             },
@@ -262,22 +222,19 @@ contract("ERC721StakingPoints", function ([...accounts]) {
           stakingRules: [
             {
               tokenAddress: manifoldMembership.address,
-              pointsRate: 1234,
-              timeUnit: 100000,
+              pointsRatePerDay: 1234,
               startTime: 1674768875,
               endTime: 1682541275,
             },
             {
               tokenAddress: mock721.address,
-              pointsRate: 125,
-              timeUnit: 100000,
+              pointsRatePerDay: 125,
               startTime: 1674768875,
               endTime: 1682541275,
             },
             {
               tokenAddress: mock721_2.address,
-              pointsRate: 125,
-              timeUnit: 100000,
+              pointsRatePerDay: 125,
               startTime: 1674768875,
               endTime: 1682541275,
             },
@@ -366,58 +323,107 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       assert.equal(stakerDetails.stakersTokens[2].timeUnstaked, token3.timeUnstaked);
     });
 
-    // it("Redeems points", async function () {
-    //   await stakingPoints721.initializeStakingPoints(
-    //     creator.address,
-    //     1,
-    //     {
-    //       paymentReceiver: owner,
-    //       stakingRules: [
-    //         {
-    //           tokenAddress: manifoldMembership.address,
-    //           pointsRate: 1234,
-    //           timeUnit: 100000,
-    //           startTime: 1674768875,
-    //           endTime: 1682541275,
-    //         },
-    //         {
-    //           tokenAddress: mock721.address,
-    //           pointsRate: 125,
-    //           timeUnit: 100000,
-    //           startTime: 1674768875,
-    //           endTime: 1682541275,
-    //         },
-    //         {
-    //           tokenAddress: mock721_2.address,
-    //           pointsRate: 125,
-    //           timeUnit: 100000,
-    //           startTime: 1674768875,
-    //           endTime: 1682541275,
-    //         },
-    //       ],
-    //     },
-    //     { from: owner }
-    //   );
-    //   await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
-    //   await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
-    //   await stakingPoints721.stakeTokens(
-    //     1,
-    //     [
-    //       {
-    //         tokenAddress: mock721.address,
-    //         tokenId: 2,
-    //       },
-    //       {
-    //         tokenAddress: mock721.address,
-    //         tokenId: 3,
-    //       },
-    //       {
-    //         tokenAddress: mock721_2.address,
-    //         tokenId: 2,
-    //       },
-    //     ],
-    //     { from: anyone2 }
-    //   );
-    // });
+    it("Redeems points", async function () {
+      await stakingPoints721.initializeStakingPoints(
+        creator.address,
+        1,
+        {
+          paymentReceiver: owner,
+          stakingRules: [
+            {
+              tokenAddress: manifoldMembership.address,
+              pointsRatePerDay: 1234,
+              startTime: 1674768875,
+              endTime: 1682541275,
+            },
+            {
+              tokenAddress: mock721.address,
+              pointsRatePerDay: 125,
+              startTime: 1674768875,
+              endTime: 1682541275,
+            },
+            {
+              tokenAddress: mock721_2.address,
+              pointsRatePerDay: 120,
+              startTime: 1674768875,
+              endTime: 1682541275,
+            },
+          ],
+        },
+        { from: owner }
+      );
+      await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
+      await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
+      await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anotherOwner });
+      await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anyone1 });
+      await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone1 });
+      await stakingPoints721.stakeTokens(
+        1,
+        [
+          {
+            tokenAddress: mock721.address,
+            tokenId: 2,
+          },
+          {
+            tokenAddress: mock721.address,
+            tokenId: 3,
+          },
+          {
+            tokenAddress: mock721_2.address,
+            tokenId: 2,
+          },
+        ],
+        { from: anyone2 }
+      );
+
+      await stakingPoints721.stakeTokens(
+        1,
+        [
+          {
+            tokenAddress: mock721_2.address,
+            tokenId: 3,
+          },
+        ],
+        { from: anotherOwner }
+      );
+      await stakingPoints721.stakeTokens(
+        1,
+        [
+          {
+            tokenAddress: mock721.address,
+            tokenId: 1,
+          },
+          {
+            tokenAddress: mock721_2.address,
+            tokenId: 1,
+          },
+        ],
+        { from: anyone1 }
+      );
+
+      await stakingPoints721.unstakeTokens(
+        1,
+        [
+          {
+            tokenAddress: mock721_2.address,
+            tokenId: 2,
+          },
+        ],
+        { from: anyone2 }
+      );
+
+      let user1 = await stakingPoints721.getStakerDetails(1, anyone1);
+      let user2 = await stakingPoints721.getStakerDetails(1, anyone2);
+      assert.equal(0, user1.pointsRedeemed);
+      assert.equal(0, user2.pointsRedeemed);
+
+      await stakingPoints721.redeemPoints(1, { from: anyone1 });
+      await stakingPoints721.redeemPoints(1, { from: anyone2 });
+
+      let user1Updated = await stakingPoints721.getStakerDetails(1, anyone1);
+      let user2Updated = await stakingPoints721.getStakerDetails(1, anyone2);
+      assert.equal(true, user1Updated.pointsRedeemed != 0);
+      assert.equal(true, user2Updated.pointsRedeemed != 0);
+    });
   });
 });

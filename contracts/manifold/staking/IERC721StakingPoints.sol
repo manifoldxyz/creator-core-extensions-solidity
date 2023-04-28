@@ -11,9 +11,9 @@ interface IERC721StakingPoints is IStakingPointsCore {
 
   /**
    * @notice initialize a new staking points, emit initialize event
-   * @param creatorContractAddress    t
-   * @param instanceId                t
-   * @param stakingPointsParams       t
+   * @param creatorContractAddress    the address of the creator contract
+   * @param instanceId                the instanceId of the staking points for the creator contract
+   * @param stakingPointsParams       the stakingPointsParams object
    */
   function initializeStakingPoints(
     address creatorContractAddress,
