@@ -22,7 +22,12 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
     address stakerAddress;
     uint256 timeStaked;
     uint256 timeUnstaked;
-    uint256 stakerTokenIdx;
+    uint256 tokenIdx;
+  }
+
+  struct StakedTokenIdx {
+    uint256 tokenIdx;
+    address stakerAddress;
   }
 
   struct StakedTokenParams {
@@ -32,7 +37,7 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
 
   struct Staker {
     uint256 pointsRedeemed;
-    uint256 stakerTokenIdx;
+    uint256 stakerIdx;
     StakedToken[] stakersTokens;
   }
 
@@ -47,6 +52,7 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
     address payable paymentReceiver;
     uint8 contractVersion;
     StakingRule[] stakingRules;
+    Staker[] stakers;
   }
 
   struct StakingPointsParams {
@@ -55,29 +61,39 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
   }
 
   event StakingPointsInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
-  event StakingPointsUpdated(address indexed creatorContract, uint256 indexed instanceId);
-  event TokensStaked(uint256 indexed instanceId, StakedToken[] stakedTokens, address owner);
-  event TokensUnstaked(uint256 indexed instanceId, StakedToken[] stakedTokens, address owner);
-  event PointsDistributed();
+  event StakingPointsUpdated(address indexed creatorContract, uint256 indexed instanceId, address updater);
+  event TokensStaked(address indexed creatorContract, uint256 indexed instanceId, StakedToken[] stakedTokens, address owner);
+  event TokensUnstaked(address indexed creatorContract, uint256 indexed instanceId, StakedToken[] stakedTokens, address owner);
+  event PointsDistributed(address indexed creatorContract, uint256 indexed instanceId, address user, uint256 amount);
 
   /**
    * @notice stake tokens
-   * @param instanceId                the instanceId of the staking points for the creator contract
+   * @param creatorContractAddress    the address of the creator contract
+   * @param instanceId                the staking points instanceId for the creator contract
    * @param stakingTokens             a list of tokenIds with token contract addresses
    */
-  function stakeTokens(uint256 instanceId, StakedTokenParams[] calldata stakingTokens) external;
+  function stakeTokens(
+    address creatorContractAddress,
+    uint256 instanceId,
+    StakedTokenParams[] calldata stakingTokens
+  ) external;
 
   /**
    * @notice unstake tokens
-   * @param instanceId                the instanceId of the staking points for the creator contract
+   * @param creatorContractAddress    the address of the creator contract
+   * @param instanceId                the staking points instanceId for the creator contract
    * @param unstakingTokens           a list of tokenIds with token contract addresses
    */
-  function unstakeTokens(uint256 instanceId, StakedTokenParams[] calldata unstakingTokens) external;
+  function unstakeTokens(
+    address creatorContractAddress,
+    uint256 instanceId,
+    StakedTokenParams[] calldata unstakingTokens
+  ) external;
 
   /**
    * @notice get a staking points instance corresponding to a creator contract and instanceId
    * @param creatorContractAddress    the address of the creator contract
-   * @param instanceId                the instanceId of the staking points for the creator contract
+   * @param instanceId                the staking points instanceId for the creator contract
    * @return StakingPoints            the staking points object
    */
   function getStakingPointsInstance(

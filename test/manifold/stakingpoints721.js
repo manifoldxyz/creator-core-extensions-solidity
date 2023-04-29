@@ -30,9 +30,6 @@ contract("ERC721StakingPoints", function ([...accounts]) {
 
       await creator.registerExtension(stakingPoints721.address, { from: owner });
     });
-    // edge cases - can user withdraw points without unstaking?
-    // non-creator or owner cannot change rules
-    // can admin update the rules / rates while there is an affected token(?)
 
     it("Admin creates new stakingpoints with rate", async function () {
       // must be an admin
@@ -117,6 +114,121 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       assert.equal(stakingPointsInstance.stakingRules.length, 1);
     });
 
+    it("Will update a staking points instance if there are not any stakers", async function () {
+      await stakingPoints721.initializeStakingPoints(
+        creator.address,
+        1,
+        {
+          paymentReceiver: owner,
+          stakingRules: [
+            {
+              tokenAddress: manifoldMembership.address,
+              pointsRatePerDay: 2222,
+              startTime: 1674768875,
+              endTime: 1682541275,
+            },
+            {
+              tokenAddress: mock721.address,
+              pointsRatePerDay: 1111,
+              startTime: 1674768875,
+              endTime: 1682541275,
+            },
+          ],
+        },
+        { from: owner }
+      );
+
+      await truffleAssert.reverts(
+        stakingPoints721.updateStakingPoints(
+          creator.address,
+          1,
+          {
+            paymentReceiver: owner,
+            stakingRules: [
+              {
+                tokenAddress: manifoldMembership.address,
+                pointsRatePerDay: 3333,
+                startTime: 1674768875,
+                endTime: 1682541275,
+              },
+              {
+                tokenAddress: mock721.address,
+                pointsRatePerDay: 4444,
+                startTime: 1674768875,
+                endTime: 1682541275,
+              },
+            ],
+          },
+          { from: anyone2 }
+        ),
+        "Wallet is not an admin"
+      );
+
+      //update
+      await stakingPoints721.updateStakingPoints(
+        creator.address,
+        1,
+        {
+          paymentReceiver: owner,
+          stakingRules: [
+            {
+              tokenAddress: manifoldMembership.address,
+              pointsRatePerDay: 1234,
+              startTime: 1674768875,
+              endTime: 1682541275,
+            },
+            {
+              tokenAddress: mock721.address,
+              pointsRatePerDay: 125,
+              startTime: 1674768875,
+              endTime: 1682541275,
+            },
+          ],
+        },
+        { from: owner }
+      );
+
+      // someone stakes
+      await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
+      await stakingPoints721.stakeTokens(
+        creator.address,
+        1,
+        [
+          {
+            tokenAddress: mock721.address,
+            tokenId: 2,
+          },
+        ],
+        { from: anyone2 }
+      );
+
+      // unable to update
+      await truffleAssert.reverts(
+        stakingPoints721.updateStakingPoints(
+          creator.address,
+          1,
+          {
+            paymentReceiver: owner,
+            stakingRules: [
+              {
+                tokenAddress: manifoldMembership.address,
+                pointsRatePerDay: 3333,
+                startTime: 1674768875,
+                endTime: 1682541275,
+              },
+              {
+                tokenAddress: mock721.address,
+                pointsRatePerDay: 4444,
+                startTime: 1674768875,
+                endTime: 1682541275,
+              },
+            ],
+          },
+          { from: owner }
+        ),
+        "StakingPoints cannot be updated when 1 or more wallets have staked"
+      );
+    });
     it("Will not stake if not owned or approved", async function () {
       await stakingPoints721.initializeStakingPoints(
         creator.address,
@@ -142,6 +254,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       );
       await truffleAssert.reverts(
         stakingPoints721.stakeTokens(
+          creator.address,
           1,
           [
             {
@@ -186,6 +299,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
       await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
       await stakingPoints721.stakeTokens(
+        creator.address,
         1,
         [
           {
@@ -204,14 +318,14 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         { from: anyone2 }
       );
 
-      let stakerDetails1 = await stakingPoints721.getStakerDetails(1, anyone2);
+      let staker = await stakingPoints721.getStaker(creator.address, 1, anyone2);
 
-      assert.equal(stakerDetails1.stakersTokens.length, 3);
-      assert.equal(stakerDetails1.stakersTokens[0].tokenId, 2);
-      assert.equal(stakerDetails1.stakersTokens[1].tokenId, 3);
-      assert.equal(stakerDetails1.stakersTokens[1].contractAddress, mock721.address);
-      assert.equal(stakerDetails1.stakersTokens[2].tokenId, 2);
-      assert.equal(stakerDetails1.stakersTokens[2].contractAddress, mock721_2.address);
+      assert.equal(staker.stakersTokens.length, 3);
+      assert.equal(staker.stakersTokens[0].tokenId, 2);
+      assert.equal(staker.stakersTokens[1].tokenId, 3);
+      assert.equal(staker.stakersTokens[1].contractAddress, mock721.address);
+      assert.equal(staker.stakersTokens[2].tokenId, 2);
+      assert.equal(staker.stakersTokens[2].contractAddress, mock721_2.address);
     });
     it("Stakes and unstakes", async function () {
       await stakingPoints721.initializeStakingPoints(
@@ -245,6 +359,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
       await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
       await stakingPoints721.stakeTokens(
+        creator.address,
         1,
         [
           {
@@ -263,18 +378,23 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         { from: anyone2 }
       );
 
-      let stakerDetails1 = await stakingPoints721.getStakerDetails(1, anyone2);
+      let staker = await stakingPoints721.getStaker(creator.address, 1, anyone2);
 
-      assert.equal(stakerDetails1.stakersTokens.length, 3);
-      assert.equal(stakerDetails1.stakersTokens[0].tokenId, 2);
-      assert.equal(stakerDetails1.stakersTokens[1].tokenId, 3);
-      assert.equal(stakerDetails1.stakersTokens[1].contractAddress, mock721.address);
-      assert.equal(stakerDetails1.stakersTokens[2].tokenId, 2);
-      assert.equal(stakerDetails1.stakersTokens[2].contractAddress, mock721_2.address);
+      assert.equal(staker.stakersTokens.length, 3);
+      assert.equal(staker.stakersTokens[0].tokenId, 2);
+      assert.equal(staker.stakersTokens[0].timeUnstaked, 0);
+      assert.equal(staker.stakersTokens[1].tokenId, 3);
+      assert.equal(staker.stakersTokens[1].contractAddress, mock721.address);
+      assert.equal(staker.stakersTokens[1].timeUnstaked, 0);
+      assert.equal(staker.stakersTokens[2].tokenId, 2);
+      assert.equal(staker.stakersTokens[2].contractAddress, mock721_2.address);
+      assert.equal(staker.stakersTokens[2].timeUnstaked, 0);
+      assert.equal(staker.pointsRedeemed, 0);
 
       // unstake #1
       await truffleAssert.reverts(
         stakingPoints721.unstakeTokens(
+          creator.address,
           1,
           [
             {
@@ -296,6 +416,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       );
 
       await stakingPoints721.unstakeTokens(
+        creator.address,
         1,
         [
           {
@@ -310,17 +431,12 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         { from: anyone2 }
       );
 
-      let stakerDetails = await stakingPoints721.getStakerDetails(1, anyone2);
-      assert.equal(stakerDetails.stakersTokens.length, 3);
-      let token = await stakingPoints721.getUserStakedToken(anyone2, mock721.address, 2);
-      assert.equal(token.timeUnstaked !== 0, true);
-      let token2 = await stakingPoints721.getUserStakedToken(anyone2, mock721.address, 3);
-      assert.equal(token2.timeUnstaked, 0);
-      let token3 = await stakingPoints721.getUserStakedToken(anyone2, mock721_2.address, 2);
-      assert.equal(token3.timeUnstaked !== 0, true);
-      assert.equal(stakerDetails.stakersTokens[0].timeUnstaked, token.timeUnstaked);
-      assert.equal(stakerDetails.stakersTokens[1].timeUnstaked, token2.timeUnstaked);
-      assert.equal(stakerDetails.stakersTokens[2].timeUnstaked, token3.timeUnstaked);
+      let staker_again = await stakingPoints721.getStaker(creator.address, 1, anyone2);
+      assert.equal(staker_again.stakersTokens.length, 3);
+      assert.equal(staker_again.stakersTokens[0].timeUnstaked != 0, true);
+      assert.equal(staker_again.stakersTokens[1].timeUnstaked, 0);
+      assert.equal(staker_again.stakersTokens[2].timeUnstaked != 0, true);
+      assert.equal(staker_again.pointsRedeemed !== 0, true);
     });
 
     it("Redeems points", async function () {
@@ -358,6 +474,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anyone1 });
       await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone1 });
       await stakingPoints721.stakeTokens(
+        creator.address,
         1,
         [
           {
@@ -377,6 +494,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       );
 
       await stakingPoints721.stakeTokens(
+        creator.address,
         1,
         [
           {
@@ -387,6 +505,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         { from: anotherOwner }
       );
       await stakingPoints721.stakeTokens(
+        creator.address,
         1,
         [
           {
@@ -402,6 +521,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       );
 
       await stakingPoints721.unstakeTokens(
+        creator.address,
         1,
         [
           {
@@ -412,18 +532,20 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         { from: anyone2 }
       );
 
-      let user1 = await stakingPoints721.getStakerDetails(1, anyone1);
-      let user2 = await stakingPoints721.getStakerDetails(1, anyone2);
+      let user1 = await stakingPoints721.getStaker(creator.address, 1, anyone1);
+      let user2 = await stakingPoints721.getStaker(creator.address, 1, anyone2);
       assert.equal(0, user1.pointsRedeemed);
       assert.equal(0, user2.pointsRedeemed);
 
-      await stakingPoints721.redeemPoints(1, { from: anyone1 });
-      await stakingPoints721.redeemPoints(1, { from: anyone2 });
+      await stakingPoints721.redeemPoints(creator.address, 1, { from: anyone1 });
+      await stakingPoints721.redeemPoints(creator.address, 1, { from: anyone2 });
 
-      let user1Updated = await stakingPoints721.getStakerDetails(1, anyone1);
-      let user2Updated = await stakingPoints721.getStakerDetails(1, anyone2);
+      let user1Updated = await stakingPoints721.getStaker(creator.address, 1, anyone1);
+      let user2Updated = await stakingPoints721.getStaker(creator.address, 1, anyone2);
       assert.equal(true, user1Updated.pointsRedeemed != 0);
       assert.equal(true, user2Updated.pointsRedeemed != 0);
+      console.log("user1", user1Updated);
+      console.log("user2", user2Updated);
     });
   });
 });

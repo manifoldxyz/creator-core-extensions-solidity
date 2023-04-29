@@ -17,11 +17,8 @@ import "./IStakingPointsCore.sol";
  * @notice logic for Staking Points for ERC721 extension.
  */
 contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
-
-  uint256 public totalPointsCirculation;
-
-  // { instanceId => { walletAddress => points } }
-  mapping(uint256 => mapping(address => uint256)) public stakerPoints;
+  // { creatorContractAddress => {instanceId => uint256 } }
+  mapping(address => mapping(uint256 => uint256)) public totalPointsClaimed;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(StakingPointsCore, IERC165) returns (bool) {
     return interfaceId == type(IERC721StakingPoints).interfaceId || super.supportsInterface(interfaceId);
@@ -41,10 +38,32 @@ contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
       require(version <= 255, "Unsupported contract version");
       creatorContractVersion = uint8(version);
     } catch {}
-
+    StakingPoints storage instance = _stakingPointsInstances[creatorContractAddress][instanceId];
+    require(instance.paymentReceiver == address(0), "StakingPoints already initialized");
     _initialize(creatorContractAddress, creatorContractVersion, instanceId, stakingPointsParams);
 
     emit StakingPointsInitialized(creatorContractAddress, instanceId, msg.sender);
+  }
+
+  function updateStakingPoints(
+    address creatorContractAddress,
+    uint256 instanceId,
+    StakingPointsParams calldata stakingPointsParams
+  ) external creatorAdminRequired(creatorContractAddress) nonReentrant {
+    // Max uint56 for instanceId
+    require(instanceId > 0 && instanceId <= MAX_UINT_56, "Invalid instanceId");
+    require(stakingPointsParams.paymentReceiver != address(0), "Cannot update without payment receiver");
+
+    uint8 creatorContractVersion;
+    try IERC721CreatorCoreVersion(creatorContractAddress).VERSION() returns (uint256 version) {
+      require(version <= 255, "Unsupported contract version");
+      creatorContractVersion = uint8(version);
+    } catch {}
+    StakingPoints storage instance = _stakingPointsInstances[creatorContractAddress][instanceId];
+    require(instance.stakers.length == (0), "StakingPoints cannot be updated when 1 or more wallets have staked");
+    _update(creatorContractAddress, creatorContractVersion, instanceId, stakingPointsParams);
+
+    emit StakingPointsUpdated(creatorContractAddress, instanceId, msg.sender);
   }
 
   /**
@@ -72,8 +91,12 @@ contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
   /**
    * @dev
    */
-  function _redeem(uint256 instanceId, uint256 pointsAmount, address redeemer) internal override {
-    totalPointsCirculation = SafeMath.add(totalPointsCirculation, pointsAmount);
-    stakerPoints[instanceId][redeemer];
+  function _redeem(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint256 pointsAmount
+  ) internal override {
+    uint256 currTotal = totalPointsClaimed[creatorContractAddress][instanceId];
+    totalPointsClaimed[creatorContractAddress][instanceId] = currTotal + pointsAmount;
   }
 }
