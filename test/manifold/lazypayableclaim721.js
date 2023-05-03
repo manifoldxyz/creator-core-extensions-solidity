@@ -1504,7 +1504,7 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       );
 
       // Perform an airdrop
-      await lazyClaim.airdrop(creator.address, 1, [anyone1, anyone1], [1, 1], { from: owner });
+      await lazyClaim.airdrop(creator.address, 1, [anyone1], [1], { from: owner });
 
       // Make sure totalMax has not changed
       let claim = await lazyClaim.getClaim(creator.address, 1);
@@ -1512,17 +1512,25 @@ contract('LazyPayableClaim721', function ([...accounts]) {
 
       // Check tokenURI
       assert.equal(await creator.tokenURI(1), "XXX/1");
+
+      // Perform another airdrop
+      await lazyClaim.airdrop(creator.address, 1, [anyone1], [1], { from: owner });
       assert.equal(await creator.tokenURI(2), "XXX/2");
 
-      // Perform an airdrop
+      // Perform another airdrop
       await lazyClaim.airdrop(creator.address, 1, [anyone1, anyone1], [1, 1], { from: owner });
       assert.equal(await creator.tokenURI(3), "XXX/3");
       assert.equal(await creator.tokenURI(4), "XXX/4");
 
-      // Perform another aidrop
-      await lazyClaim.airdrop(creator.address, 1, [anyone2], [2], { from: owner });
+      // Perform another airdrop
+      await lazyClaim.airdrop(creator.address, 1, [anyone1, anyone1], [1, 1], { from: owner });
       assert.equal(await creator.tokenURI(5), "XXX/5");
       assert.equal(await creator.tokenURI(6), "XXX/6");
+
+      // Perform another aidrop
+      await lazyClaim.airdrop(creator.address, 1, [anyone2], [2], { from: owner });
+      assert.equal(await creator.tokenURI(7), "XXX/7");
+      assert.equal(await creator.tokenURI(8), "XXX/8");
     });
 
     it('delegate minting test', async function () {
