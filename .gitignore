@@ -18,3 +18,5 @@ yarn.*
 coverage/**/*
 .coverage_artifacts
 .coverage_contracts
+cache
+out
