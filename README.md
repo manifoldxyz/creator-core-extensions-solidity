@@ -45,13 +45,13 @@ Provides a more efficient way to batch mint NFTs to one or many addresses
 0xc68afc6A3B47b108Db5e48fB53a10D2D9c11b094
 ```
 
-#### Manifold  Lazy Claim
+#### Manifold Lazy Claim
 These are the latest Claim Page extensions.
 
 | Network     | Spec        | Address                                    |
 | ----------- | ----------- | ------------------------------------------ |
-| 1 (Mainnet) | ERC721      | 0x3B8C2fEb0F4953870F825Df64322eC967Aa26B8c |
-| 2 (Goerli)  | ERC721      | 0x5294d02a23b193A7DcCF8435859E7749BC9456aA |
+| 1 (Mainnet) | ERC721      | 0x074eaee8fc3e4e2b361762253f83d9a94aec6fd4 |
+| 2 (Goerli)  | ERC721      | 0x074eaee8fc3e4e2b361762253f83d9a94aec6fd4 |
 | 1 (Mainnet) | ERC1155     | 0xDb8d79C775452a3929b86ac5DEaB3e9d38e1c006 |
 | 2 (Goerli)  | ERC1155     | 0x73CA7420625d312d1792Cea60Ced7B35D009322c |
 
