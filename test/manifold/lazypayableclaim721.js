@@ -1475,6 +1475,56 @@ contract('LazyPayableClaim721', function ([...accounts]) {
       truffleAssert.reverts(creator.tokenURI(10));
     });
 
+    it('airdrop uri test', async function () {
+      const merkleElements = [];
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
+      merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));
+      merkleTree = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
+
+      let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let later = now + 1000;
+
+      const initializeTx = await lazyClaim.initializeClaim(
+        creator.address,
+        1,
+        {
+          merkleRoot: merkleTree.getHexRoot(),
+          location: "XXX",
+          totalMax: 0,
+          walletMax: 0,
+          startDate: now,
+          endDate: later,
+          storageProtocol: 1,
+          identical: false,
+          cost: ethers.BigNumber.from('1'),
+          paymentReceiver: owner,
+          erc20: '0x0000000000000000000000000000000000000000',
+        },
+        {from:owner}
+      );
+
+      // Perform an airdrop
+      await lazyClaim.airdrop(creator.address, 1, [anyone1, anyone1], [1, 1], { from: owner });
+
+      // Make sure totalMax has not changed
+      let claim = await lazyClaim.getClaim(creator.address, 1);
+      assert.equal(claim.totalMax, 0);
+
+      // Check tokenURI
+      assert.equal(await creator.tokenURI(1), "XXX/1");
+      assert.equal(await creator.tokenURI(2), "XXX/2");
+
+      // Perform an airdrop
+      await lazyClaim.airdrop(creator.address, 1, [anyone1, anyone1], [1, 1], { from: owner });
+      assert.equal(await creator.tokenURI(3), "XXX/3");
+      assert.equal(await creator.tokenURI(4), "XXX/4");
+
+      // Perform another aidrop
+      await lazyClaim.airdrop(creator.address, 1, [anyone2], [2], { from: owner });
+      assert.equal(await creator.tokenURI(5), "XXX/5");
+      assert.equal(await creator.tokenURI(6), "XXX/6");
+    });
+
     it('delegate minting test', async function () {
       const merkleElements = [];
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
