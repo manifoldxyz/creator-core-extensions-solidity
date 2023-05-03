@@ -325,7 +325,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
                 uint16 mintCount = amounts[i];
                 uint80[] memory tokenDatas = new uint80[](mintCount);
                 for (uint256 j; j < mintCount;) {
-                    tokenDatas[j] = uint56(instanceId) << 24 | uint24(newMintIndex+i);
+                    tokenDatas[j] = uint56(instanceId) << 24 | uint24(newMintIndex+j);
                     unchecked { ++j; }
                 }
                 // Airdrop the tokens

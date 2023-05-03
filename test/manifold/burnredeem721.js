@@ -3072,6 +3072,10 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       // Second airdrop
       await burnRedeem.airdrop(creator.address, 1, [anyone1, anyone2], [9, 9], {from:owner});
 
+      // Check tokenURI
+      assert.equal(await creator.tokenURI(3), "XXX/3");
+      assert.equal(await creator.tokenURI(4), "XXX/4");
+
       // Total supply updated to redeemedCount
       burnRedeemInstance = await burnRedeem.getBurnRedeem(creator.address, 1);
       assert.equal(burnRedeemInstance.redeemedCount, 40);
