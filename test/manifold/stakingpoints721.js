@@ -43,8 +43,8 @@ contract("ERC721StakingPoints", function ([...accounts]) {
               {
                 tokenAddress: manifoldMembership.address,
                 pointsRatePerDay: 1234,
-                startTime: 1674768875,
-                endTime: 1682541275,
+                startTime: 1680680461,
+                endTime: 95625733261,
               },
             ],
           },
@@ -63,8 +63,8 @@ contract("ERC721StakingPoints", function ([...accounts]) {
               {
                 tokenAddress: manifoldMembership.address,
                 pointsRatePerDay: 0,
-                startTime: 1674768875,
-                endTime: 1682541275,
+                startTime: 1680680461,
+                endTime: 95625733261,
               },
             ],
           },
@@ -83,8 +83,8 @@ contract("ERC721StakingPoints", function ([...accounts]) {
               {
                 tokenAddress: manifoldMembership.address,
                 pointsRatePerDay: 1234,
-                startTime: 1682541275,
-                endTime: 1674768875,
+                startTime: 1680680461,
+                endTime: 1582541275,
               },
             ],
           },
@@ -103,8 +103,8 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             {
               tokenAddress: manifoldMembership.address,
               pointsRatePerDay: 1234,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
           ],
         },
@@ -124,14 +124,14 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             {
               tokenAddress: manifoldMembership.address,
               pointsRatePerDay: 2222,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721.address,
               pointsRatePerDay: 1111,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
           ],
         },
@@ -148,14 +148,14 @@ contract("ERC721StakingPoints", function ([...accounts]) {
               {
                 tokenAddress: manifoldMembership.address,
                 pointsRatePerDay: 3333,
-                startTime: 1674768875,
-                endTime: 1682541275,
+                startTime: 1680680461,
+                endTime: 95625733261,
               },
               {
                 tokenAddress: mock721.address,
                 pointsRatePerDay: 4444,
-                startTime: 1674768875,
-                endTime: 1682541275,
+                startTime: 1680680461,
+                endTime: 95625733261,
               },
             ],
           },
@@ -174,14 +174,14 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             {
               tokenAddress: manifoldMembership.address,
               pointsRatePerDay: 1234,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721.address,
               pointsRatePerDay: 125,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
           ],
         },
@@ -213,14 +213,14 @@ contract("ERC721StakingPoints", function ([...accounts]) {
               {
                 tokenAddress: manifoldMembership.address,
                 pointsRatePerDay: 3333,
-                startTime: 1674768875,
-                endTime: 1682541275,
+                startTime: 1680680461,
+                endTime: 95625733261,
               },
               {
                 tokenAddress: mock721.address,
                 pointsRatePerDay: 4444,
-                startTime: 1674768875,
-                endTime: 1682541275,
+                startTime: 1680680461,
+                endTime: 95625733261,
               },
             ],
           },
@@ -239,14 +239,14 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             {
               tokenAddress: manifoldMembership.address,
               pointsRatePerDay: 1234,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721.address,
               pointsRatePerDay: 125,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
           ],
         },
@@ -277,20 +277,20 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             {
               tokenAddress: manifoldMembership.address,
               pointsRatePerDay: 1234,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721.address,
               pointsRatePerDay: 125,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721_2.address,
               pointsRatePerDay: 125,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
           ],
         },
@@ -318,14 +318,17 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         { from: anyone2 }
       );
 
-      let staker = await stakingPoints721.getStaker(creator.address, 1, anyone2);
+      let staker1 = await stakingPoints721.getStaker(creator.address, 1, anyone2);
 
-      assert.equal(staker.stakersTokens.length, 3);
-      assert.equal(staker.stakersTokens[0].tokenId, 2);
-      assert.equal(staker.stakersTokens[1].tokenId, 3);
-      assert.equal(staker.stakersTokens[1].contractAddress, mock721.address);
-      assert.equal(staker.stakersTokens[2].tokenId, 2);
-      assert.equal(staker.stakersTokens[2].contractAddress, mock721_2.address);
+      assert.equal(staker1.stakersTokens.length, 3);
+      assert.equal(staker1.stakersTokens[0].tokenId, 2);
+      assert.equal(staker1.stakersTokens[1].tokenId, 3);
+      assert.equal(staker1.stakersTokens[1].contractAddress, mock721.address);
+      assert.equal(staker1.stakersTokens[2].tokenId, 2);
+      assert.equal(staker1.stakersTokens[2].contractAddress, mock721_2.address);
+
+      let staker2 = await stakingPoints721.getStaker(creator.address, 1, anyone1);
+      assert.equal(staker2.stakersTokens.length, 0);
     });
     it("Stakes and unstakes", async function () {
       await stakingPoints721.initializeStakingPoints(
@@ -337,20 +340,20 @@ contract("ERC721StakingPoints", function ([...accounts]) {
             {
               tokenAddress: manifoldMembership.address,
               pointsRatePerDay: 1234,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721.address,
               pointsRatePerDay: 125,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721_2.address,
               pointsRatePerDay: 125,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
           ],
         },
@@ -412,7 +415,7 @@ contract("ERC721StakingPoints", function ([...accounts]) {
           ],
           { from: anyone1 }
         ),
-        "No sender address or not the original staker"
+        "Cannot unstake tokens for someone who has not staked"
       );
 
       await stakingPoints721.unstakeTokens(
@@ -448,21 +451,21 @@ contract("ERC721StakingPoints", function ([...accounts]) {
           stakingRules: [
             {
               tokenAddress: manifoldMembership.address,
-              pointsRatePerDay: 1234,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              pointsRatePerDay: 1234000,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721.address,
-              pointsRatePerDay: 125,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              pointsRatePerDay: 12500000,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
             {
               tokenAddress: mock721_2.address,
-              pointsRatePerDay: 120,
-              startTime: 1674768875,
-              endTime: 1682541275,
+              pointsRatePerDay: 12000000,
+              startTime: 1680680461,
+              endTime: 95625733261,
             },
           ],
         },
@@ -520,6 +523,120 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         { from: anyone1 }
       );
 
+      let user1 = await stakingPoints721.getStaker(creator.address, 1, anyone1);
+      let user2 = await stakingPoints721.getStaker(creator.address, 1, anyone2);
+      assert.equal(0, user1.pointsRedeemed);
+      assert.equal(0, user2.pointsRedeemed);
+
+      function timeout(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      await timeout(1000);
+
+      await stakingPoints721.redeemPoints(creator.address, 1, { from: anyone1 });
+      await stakingPoints721.redeemPoints(creator.address, 1, { from: anyone2 });
+
+      let user1Updated = await stakingPoints721.getStaker(creator.address, 1, anyone1);
+      let user2Updated = await stakingPoints721.getStaker(creator.address, 1, anyone2);
+      assert.equal(true, user1Updated.pointsRedeemed != 0);
+      assert.equal(true, user2Updated.pointsRedeemed != 0);
+    });
+    it("Redeems points at unstaking", async function () {
+      await stakingPoints721.initializeStakingPoints(
+        creator.address,
+        1,
+        {
+          paymentReceiver: owner,
+          stakingRules: [
+            {
+              tokenAddress: manifoldMembership.address,
+              pointsRatePerDay: 1234000,
+              startTime: 1680680461,
+              endTime: 95625733261,
+            },
+            {
+              tokenAddress: mock721.address,
+              pointsRatePerDay: 12500000,
+              startTime: 1680680461,
+              endTime: 95625733261,
+            },
+            {
+              tokenAddress: mock721_2.address,
+              pointsRatePerDay: 12000000,
+              startTime: 1680680461,
+              endTime: 95625733261,
+            },
+          ],
+        },
+        { from: owner }
+      );
+      await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
+      await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anyone2 });
+      await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anotherOwner });
+      await mock721_2.setApprovalForAll(stakingPoints721.address, true, { from: anyone1 });
+      await mock721.setApprovalForAll(stakingPoints721.address, true, { from: anyone1 });
+      await stakingPoints721.stakeTokens(
+        creator.address,
+        1,
+        [
+          {
+            tokenAddress: mock721.address,
+            tokenId: 2,
+          },
+          {
+            tokenAddress: mock721.address,
+            tokenId: 3,
+          },
+          {
+            tokenAddress: mock721_2.address,
+            tokenId: 2,
+          },
+        ],
+        { from: anyone2 }
+      );
+
+      await stakingPoints721.stakeTokens(
+        creator.address,
+        1,
+        [
+          {
+            tokenAddress: mock721_2.address,
+            tokenId: 3,
+          },
+        ],
+        { from: anotherOwner }
+      );
+      await stakingPoints721.stakeTokens(
+        creator.address,
+        1,
+        [
+          {
+            tokenAddress: mock721.address,
+            tokenId: 1,
+          },
+          {
+            tokenAddress: mock721_2.address,
+            tokenId: 1,
+          },
+        ],
+        { from: anyone1 }
+      );
+
+      let user1 = await stakingPoints721.getStaker(creator.address, 1, anyone1);
+      let user2 = await stakingPoints721.getStaker(creator.address, 1, anyone2);
+      assert.equal(0, user1.pointsRedeemed);
+      assert.equal(0, user2.pointsRedeemed);
+
+      function timeout(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      await timeout(1000);
+
+      let points1 = await stakingPoints721.getPointsForWallet(creator.address, 1, anyone2);
+      assert.equal(points1 > 0, true);
+
       await stakingPoints721.unstakeTokens(
         creator.address,
         1,
@@ -531,21 +648,34 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         ],
         { from: anyone2 }
       );
-
-      let user1 = await stakingPoints721.getStaker(creator.address, 1, anyone1);
-      let user2 = await stakingPoints721.getStaker(creator.address, 1, anyone2);
-      assert.equal(0, user1.pointsRedeemed);
-      assert.equal(0, user2.pointsRedeemed);
-
-      await stakingPoints721.redeemPoints(creator.address, 1, { from: anyone1 });
-      await stakingPoints721.redeemPoints(creator.address, 1, { from: anyone2 });
-
+      await stakingPoints721.unstakeTokens(
+        creator.address,
+        1,
+        [
+          {
+            tokenAddress: mock721_2.address,
+            tokenId: 1,
+          },
+        ],
+        { from: anyone1 }
+      );
+      await stakingPoints721.unstakeTokens(
+        creator.address,
+        1,
+        [
+          {
+            tokenAddress: mock721.address,
+            tokenId: 2,
+          },
+        ],
+        { from: anyone2 }
+      );
+      let points = await stakingPoints721.getPointsForWallet(creator.address, 1, anyone2);
       let user1Updated = await stakingPoints721.getStaker(creator.address, 1, anyone1);
       let user2Updated = await stakingPoints721.getStaker(creator.address, 1, anyone2);
+      assert.equal(points, user2Updated.pointsRedeemed);
       assert.equal(true, user1Updated.pointsRedeemed != 0);
       assert.equal(true, user2Updated.pointsRedeemed != 0);
-      console.log("user1", user1Updated);
-      console.log("user2", user2Updated);
     });
   });
 });

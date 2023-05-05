@@ -17,6 +17,7 @@ import "./IStakingPointsCore.sol";
  * @notice logic for Staking Points for ERC721 extension.
  */
 contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
+  using SafeMath for uint256;
   // { creatorContractAddress => {instanceId => uint256 } }
   mapping(address => mapping(uint256 => uint256)) public totalPointsClaimed;
 
@@ -91,12 +92,8 @@ contract ERC721StakingPoints is StakingPointsCore, IERC721StakingPoints {
   /**
    * @dev
    */
-  function _redeem(
-    address creatorContractAddress,
-    uint256 instanceId,
-    uint256 pointsAmount
-  ) internal override {
+  function _redeem(address creatorContractAddress, uint256 instanceId, uint256 pointsAmount) internal override {
     uint256 currTotal = totalPointsClaimed[creatorContractAddress][instanceId];
-    totalPointsClaimed[creatorContractAddress][instanceId] = currTotal + pointsAmount;
+    totalPointsClaimed[creatorContractAddress][instanceId] = currTotal.add(pointsAmount);
   }
 }

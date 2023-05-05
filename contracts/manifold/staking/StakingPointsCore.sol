@@ -102,11 +102,7 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
   /**
    * Abstract helper to redeem points. To be implemented by inheriting contracts.
    */
-  function _redeem(
-    address creatorContractAddress,
-    uint256 instanceId,
-    uint256 pointsAmount
-  ) internal virtual;
+  function _redeem(address creatorContractAddress, uint256 instanceId, uint256 pointsAmount) internal virtual;
 
   /** STAKING */
 
@@ -129,6 +125,7 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     if (!isIndexed) {
       uint256 newStakerIdx = instance.stakers.length;
       instance.stakers.push();
+      instance.stakers[newStakerIdx].stakerAddress = msg.sender;
       instance.stakers[newStakerIdx].stakerIdx = newStakerIdx;
       // add staker to index map
       _stakerIdxs[creatorContractAddress][instanceId][msg.sender] = newStakerIdx;
@@ -136,8 +133,9 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     }
 
     StakedToken[] memory newlyStaked = new StakedToken[](stakingTokens.length);
-    uint256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, msg.sender);
-    StakedToken[] storage userTokens = instance.stakers[stakerIdx].stakersTokens;
+    int256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, msg.sender);
+    require(stakerIdx > -1, "Error with staker idx");
+    StakedToken[] storage userTokens = instance.stakers[uint256(stakerIdx)].stakersTokens;
     uint256 length = stakingTokens.length;
     for (uint256 i = 0; i < length; ) {
       StakedTokenIdx storage currStakedTokenIdx = _stakedTokenIdxs[msg.sender][stakingTokens[i].tokenAddress][
@@ -175,7 +173,10 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
   ) private {
     StakingRule memory ruleExists = _getTokenRule(creatorContractAddress, instanceId, stakingPointsInstance, tokenAddress);
     require(ruleExists.tokenAddress == tokenAddress, "Token does not match existing rule");
-
+    require(
+      block.timestamp > ruleExists.startTime && block.timestamp < ruleExists.endTime,
+      "Outside staking rule time limit"
+    );
     _transfer(tokenAddress, tokenId, msg.sender, address(this));
   }
 
@@ -198,13 +199,15 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
 
     StakingPoints storage instance = _getStakingPointsInstance(creatorContractAddress, instanceId);
     StakedToken[] memory unstakedTokens = new StakedToken[](unstakingTokens.length);
-    uint256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, msg.sender);
+
+    int256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, msg.sender);
+    require(stakerIdx > -1, "Cannot unstake tokens for someone who has not staked");
 
     for (uint256 i = 0; i < unstakingTokens.length; ++i) {
       StakedTokenIdx storage currStakedTokenIdx = _stakedTokenIdxs[msg.sender][unstakingTokens[i].tokenAddress][
         unstakingTokens[i].tokenId
       ];
-      StakedToken storage currToken = instance.stakers[stakerIdx].stakersTokens[currStakedTokenIdx.tokenIdx];
+      StakedToken storage currToken = instance.stakers[uint256(stakerIdx)].stakersTokens[currStakedTokenIdx.tokenIdx];
       require(
         msg.sender != address(0) && msg.sender == currToken.stakerAddress,
         "No sender address or not the original staker"
@@ -217,12 +220,12 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
 
     // add redeem functionality if staker has not redeemed past qualifying amount for unstaking tokens
     // ensure that staker is coming from right place
-    Staker storage staker = instance.stakers[stakerIdx];
-    uint256 totalUnstakingTokensPoints = _calculateTotalQualifyingPoints(creatorContractAddress, instanceId, unstakedTokens);
-    uint256 diffRedeemed = totalUnstakingTokensPoints - staker.pointsRedeemed;
+    Staker storage staker = instance.stakers[uint256(stakerIdx)];
+    uint256 totalUnstakingTokensPoints = _calculateTotalQualifyingPoints(creatorContractAddress, instanceId, staker.stakersTokens);
+    uint256 diffRedeemed = totalUnstakingTokensPoints.sub(staker.pointsRedeemed);
 
     if (diffRedeemed > 0) {
-      _redeemPointsAmount(creatorContractAddress, instanceId, diffRedeemed);
+      _redeemPoints(creatorContractAddress, instanceId, msg.sender);
     }
     emit TokensUnstaked(creatorContractAddress, instanceId, unstakedTokens, msg.sender);
   }
@@ -235,40 +238,33 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
   }
 
   function redeemPoints(address creatorContractAddress, uint256 instanceId) external nonReentrant {
-    _redeemPoints(creatorContractAddress, instanceId);
+    _redeemPoints(creatorContractAddress, instanceId, msg.sender);
   }
 
-  function _redeemPoints(address creatorContractAddress, uint256 instanceId) private {
+  function _redeemPoints(address creatorContractAddress, uint256 instanceId, address sender) private {
     StakingPoints storage instance = _getStakingPointsInstance(creatorContractAddress, instanceId);
-    uint256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, msg.sender);
+    int256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, sender);
+    require(stakerIdx > -1, "Cannot redeem points for someone who has not staked");
 
-    Staker storage staker = instance.stakers[stakerIdx];
+    Staker storage staker = instance.stakers[uint256(stakerIdx)];
     uint256 totalQualifyingPoints = _calculateTotalQualifyingPoints(
       creatorContractAddress,
       instanceId,
       staker.stakersTokens
     );
-    uint256 diff = totalQualifyingPoints - staker.pointsRedeemed;
+    uint256 diff = totalQualifyingPoints.sub(staker.pointsRedeemed);
     require(totalQualifyingPoints != 0 && diff >= 0, "Need more than zero points");
-    // compare with pointsRedeemd
+    // compare with pointsRedeemed
     staker.pointsRedeemed = totalQualifyingPoints;
     _redeem(creatorContractAddress, instanceId, diff);
     emit PointsDistributed(creatorContractAddress, instanceId, msg.sender, diff);
-  }
-
-  /**
-   * @dev assumes that the sender is qualified to redeem amount and not in excess of points already redeemed
-   */
-  function _redeemPointsAmount(address creatorContractAddress, uint256 instanceId, uint256 amount) private {
-    _redeem(creatorContractAddress, instanceId, amount);
-    emit PointsDistributed(creatorContractAddress, instanceId, msg.sender, amount);
   }
 
   function getPointsForWallet(
     address creatorContractAddress,
     uint256 instanceId,
     address walletAddress
-  ) external view returns (uint256 totalPoints, uint256 diff) {
+  ) external view returns (uint256) {
     return _getPointsForWallet(creatorContractAddress, instanceId, walletAddress);
   }
 
@@ -276,12 +272,13 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     address creatorContractAddress,
     uint256 instanceId,
     address walletAddress
-  ) private view returns (uint256 totalPoints, uint256 diff) {
+  ) private view returns (uint256 walletPoints) {
     StakingPoints storage instance = _getStakingPointsInstance(creatorContractAddress, instanceId);
-    uint256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, walletAddress);
-    Staker storage staker = instance.stakers[stakerIdx];
-    totalPoints = _calculateTotalQualifyingPoints(creatorContractAddress, instanceId, staker.stakersTokens);
-    diff = totalPoints - staker.pointsRedeemed;
+    int256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, walletAddress);
+    require(stakerIdx > -1, "Cannot get points for someone who has not staked");
+
+    Staker storage staker = instance.stakers[uint256(stakerIdx)];
+    walletPoints = _calculateTotalQualifyingPoints(creatorContractAddress, instanceId, staker.stakersTokens);
   }
 
   /**
@@ -298,13 +295,13 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     for (uint256 i = 0; i < length; ) {
       uint256 ruleIdx = _stakingRulesIdxs[creatorContractAddress][instanceId][stakingTokens[i].contractAddress];
       StakingRule storage rule = rules[ruleIdx];
-      require(rule.startTime >= 0 && rule.endTime >= 0, "Invalid rule values");
-      uint256 tokenEnd = stakingTokens[i].timeUnstaked == 0 ? block.timestamp : stakingTokens[i].timeUnstaked;
+      require(rule.startTime > 0 && rule.endTime > 0, "Invalid rule values");
+      uint256 tokenEnd = stakingTokens[i].timeUnstaked > 0 ? stakingTokens[i].timeUnstaked : block.timestamp;
       uint256 start = Math.max(rule.startTime, stakingTokens[i].timeStaked);
       uint256 end = Math.min(tokenEnd, rule.endTime);
-      uint256 diff = start - end;
+      uint256 diff = end.sub(start);
       uint256 qualified = _calculateTotalPoints(diff, rule.pointsRatePerDay, 86400);
-      points = points + qualified;
+      points = points.add(qualified);
 
       unchecked {
         ++i;
@@ -319,9 +316,11 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     uint256 instanceId,
     address stakerAddress
   ) external view returns (Staker memory) {
-    uint256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, stakerAddress);
+    int256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, stakerAddress);
+    StakedToken[] memory emptyStakedTokens;
+    if (stakerIdx < 0) return Staker(0, 0, emptyStakedTokens, ADDRESS_ZERO);
     StakingPoints storage instance = _getStakingPointsInstance(creatorContractAddress, instanceId);
-    return instance.stakers[stakerIdx];
+    return instance.stakers[uint256(stakerIdx)];
   }
 
   function _getTokenRule(
@@ -346,13 +345,15 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
 
   /**
    * Helper to get Staker
+   * returns the index if staker is indexed otherwise -1
    */
   function _getStakerIdx(
     address creatorContractAddress,
     uint256 instanceId,
     address walletAddress
-  ) internal view returns (uint256) {
-    return _stakerIdxs[creatorContractAddress][instanceId][walletAddress];
+  ) internal view returns (int256) {
+    bool isIndexed = _isStakerIndexed[creatorContractAddress][instanceId][walletAddress];
+    return isIndexed ? int256(_stakerIdxs[creatorContractAddress][instanceId][walletAddress]) : -1;
   }
 
   /**
@@ -369,7 +370,7 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
   /** HELPERS */
 
   function _calculateTotalPoints(uint256 diff, uint256 rate, uint256 div) private pure returns (uint256) {
-    return (diff * rate) / div;
+    return diff.mul(rate).div(div);
   }
 
   /**
@@ -424,10 +425,11 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     delete stakingPointsInstance.stakingRules;
     StakingRule[] storage rules = stakingPointsInstance.stakingRules;
     uint256 length = newStakingRules.length;
+    uint256 timestamp = block.timestamp;
     for (uint256 i; i < length; ) {
       StakingRule memory rule = newStakingRules[i];
       require(rule.tokenAddress != address(0), "Staking rule: Contract address required");
-      require((rule.endTime == 0) || (rule.startTime < rule.endTime), "Staking rule: Invalid time range");
+      require((rule.endTime > timestamp) && (rule.startTime < rule.endTime), "Staking rule: Invalid time range");
       require(rule.pointsRatePerDay > 0, "Staking rule: Invalid points rate");
       _stakingRulesIdxs[creatorContractAddress][instanceId][rule.tokenAddress] = rules.length;
       rules.push(rule);

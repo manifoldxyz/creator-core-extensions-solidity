@@ -39,6 +39,7 @@ interface IStakingPointsCore is IERC165, IERC721Receiver {
     uint256 pointsRedeemed;
     uint256 stakerIdx;
     StakedToken[] stakersTokens;
+    address stakerAddress;
   }
 
   struct StakingRule {
