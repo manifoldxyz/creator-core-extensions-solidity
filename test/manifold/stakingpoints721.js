@@ -632,10 +632,10 @@ contract("ERC721StakingPoints", function ([...accounts]) {
         return new Promise((resolve) => setTimeout(resolve, ms));
       }
 
-      await timeout(1000);
+      await timeout(5000);
 
       let points1 = await stakingPoints721.getPointsForWallet(creator.address, 1, anyone2);
-      assert.equal(points1 > 0, true);
+      assert.strictEqual(points1.gt(0), true);
 
       await stakingPoints721.unstakeTokens(
         creator.address,
@@ -673,9 +673,9 @@ contract("ERC721StakingPoints", function ([...accounts]) {
       let points = await stakingPoints721.getPointsForWallet(creator.address, 1, anyone2);
       let user1Updated = await stakingPoints721.getStaker(creator.address, 1, anyone1);
       let user2Updated = await stakingPoints721.getStaker(creator.address, 1, anyone2);
-      assert.equal(points, user2Updated.pointsRedeemed);
-      assert.equal(true, user1Updated.pointsRedeemed != 0);
-      assert.equal(true, user2Updated.pointsRedeemed != 0);
+      assert.strictEqual(points.gt(points1), true);
+      assert.strictEqual(true, user1Updated.pointsRedeemed != 0);
+      assert.strictEqual(true, user2Updated.pointsRedeemed != 0);
     });
   });
 });

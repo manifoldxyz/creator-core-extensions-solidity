@@ -225,7 +225,8 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     uint256 diffRedeemed = totalUnstakingTokensPoints.sub(staker.pointsRedeemed);
 
     if (diffRedeemed > 0) {
-      _redeemPoints(creatorContractAddress, instanceId, msg.sender);
+      staker.pointsRedeemed = totalUnstakingTokensPoints;
+      _redeemPointsAmount(creatorContractAddress, instanceId, diffRedeemed);
     }
     emit TokensUnstaked(creatorContractAddress, instanceId, unstakedTokens, msg.sender);
   }
@@ -238,12 +239,12 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
   }
 
   function redeemPoints(address creatorContractAddress, uint256 instanceId) external nonReentrant {
-    _redeemPoints(creatorContractAddress, instanceId, msg.sender);
+    _redeemPoints(creatorContractAddress, instanceId);
   }
 
-  function _redeemPoints(address creatorContractAddress, uint256 instanceId, address sender) private {
+  function _redeemPoints(address creatorContractAddress, uint256 instanceId) private {
     StakingPoints storage instance = _getStakingPointsInstance(creatorContractAddress, instanceId);
-    int256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, sender);
+    int256 stakerIdx = _getStakerIdx(creatorContractAddress, instanceId, msg.sender);
     require(stakerIdx > -1, "Cannot redeem points for someone who has not staked");
 
     Staker storage staker = instance.stakers[uint256(stakerIdx)];
@@ -258,6 +259,14 @@ abstract contract StakingPointsCore is ReentrancyGuard, ERC165, AdminControl, IS
     staker.pointsRedeemed = totalQualifyingPoints;
     _redeem(creatorContractAddress, instanceId, diff);
     emit PointsDistributed(creatorContractAddress, instanceId, msg.sender, diff);
+  }
+
+   /**
+   * @dev assumes that the sender is qualified to redeem amount and not in excess of points already redeemed
+   */
+  function _redeemPointsAmount(address creatorContractAddress, uint256 instanceId, uint256 amount) private {
+    _redeem(creatorContractAddress, instanceId, amount);
+    emit PointsDistributed(creatorContractAddress, instanceId, msg.sender, amount);
   }
 
   function getPointsForWallet(
