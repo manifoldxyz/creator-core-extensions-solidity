@@ -44,20 +44,59 @@ abstract contract ERC721OwnerEnumerableExtension is ERC721CreatorExtensionApprov
     }
 
     function approveTransfer(address, address from, address to, uint256 tokenId) external override returns (bool) {
+        // No need to increment on mint because it is handled by _mintExtension already
+        if (from == address(0)) return true;
         if (from != address(0) && from != to) {
             _removeTokenFromOwnerEnumeration(from, tokenId);
         }
         if (to != address(0) && to != from) {
-            _addTokenToOwnerEnumeration(to, tokenId);
+            _addTokenToOwnerEnumeration(msg.sender, to, tokenId);
         }
         return true;
     }
 
-    function _addTokenToOwnerEnumeration(address to, uint256 tokenId) private {
-        uint256 length = _creatorOwnerBalance[msg.sender][to];
-        _creatorTokensByOwner[msg.sender][to][length] = tokenId;
-        _creatorTokensIndex[msg.sender][tokenId] = length;
-        _creatorOwnerBalance[msg.sender][to] += 1;
+    function _mintExtension(address creator, address to) internal virtual {
+        _addTokenToOwnerEnumeration(creator, to, IERC721CreatorCore(creator).mintExtension(to));
+    }
+
+    function _mintExtension(address creator, address to, string calldata uri) internal virtual {
+        _addTokenToOwnerEnumeration(creator, to, IERC721CreatorCore(creator).mintExtension(to, uri));
+    }
+
+
+    function _mintExtension(address creator, address to, uint80 data) internal virtual {
+        _addTokenToOwnerEnumeration(creator, to, IERC721CreatorCore(creator).mintExtension(to, data));
+    }
+
+    function _mintExtensionBatch(address creator, address to, uint16 count) internal virtual {
+        uint256[] memory tokenIds = IERC721CreatorCore(creator).mintExtensionBatch(to, count);
+        for (uint i; i < count;) {
+            _addTokenToOwnerEnumeration(creator, to, tokenIds[i]);
+            unchecked { ++i; }
+        }
+    }
+
+    function _mintExtensionBatch(address creator, address to, string[] calldata uris) internal virtual {
+        uint256[] memory tokenIds = IERC721CreatorCore(creator).mintExtensionBatch(to, uris);
+        for (uint i; i < tokenIds.length;) {
+            _addTokenToOwnerEnumeration(creator, to, tokenIds[i]);
+            unchecked { ++i; }
+        }
+    }
+
+    function _mintExtensionBatch(address creator, address to, uint80[] calldata data) internal virtual {
+        uint256[] memory tokenIds = IERC721CreatorCore(creator).mintExtensionBatch(to, data);
+        for (uint i; i < tokenIds.length;) {
+            _addTokenToOwnerEnumeration(creator, to, tokenIds[i]);
+            unchecked { ++i; }
+        }
+    }
+
+    function _addTokenToOwnerEnumeration(address creator, address to, uint256 tokenId) private {
+        uint256 length = _creatorOwnerBalance[creator][to];
+        _creatorTokensByOwner[creator][to][length] = tokenId;
+        _creatorTokensIndex[creator][tokenId] = length;
+        _creatorOwnerBalance[creator][to] += 1;
     }
 
     function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId) private {

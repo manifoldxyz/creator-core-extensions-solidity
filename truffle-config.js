@@ -34,7 +34,6 @@ module.exports = {
    *
    * $ truffle test --network <network-name>
    */
-  plugins: ["solidity-coverage"],
   networks: {
     development: {
         host: "127.0.0.1",     // Localhost (default: none)

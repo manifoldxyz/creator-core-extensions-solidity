@@ -40,7 +40,7 @@ contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
 
         it('ERC721 recovery test', async function () {
             var tokenId = 721;
-            await mock721.testMint(another, tokenId);
+            await mock721.mint(another, tokenId);
             assert.equal(await mock721.balanceOf(another), 1);
             
             await mock721.transferFrom(another, redeem.address, tokenId, {from:another});
@@ -110,15 +110,15 @@ contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
             var tokenId8 = 8;
             var tokenId9 = 9;
 
-            await mock721.testMint(another, tokenId1);
-            await mock721.testMint(another, tokenId2);
-            await mock721.testMint(another, tokenId3);
-            await mock721.testMint(another, tokenId4);
-            await mock721.testMint(another, tokenId5);
-            await mock721.testMint(another, tokenId6);
-            await mock721.testMint(another, tokenId7);
-            await mock721.testMint(another, tokenId8);
-            await mock721.testMint(another, tokenId9);
+            await mock721.mint(another, tokenId1);
+            await mock721.mint(another, tokenId2);
+            await mock721.mint(another, tokenId3);
+            await mock721.mint(another, tokenId4);
+            await mock721.mint(another, tokenId5);
+            await mock721.mint(another, tokenId6);
+            await mock721.mint(another, tokenId7);
+            await mock721.mint(another, tokenId8);
+            await mock721.mint(another, tokenId9);
 
             // Test Redemption
             await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2,tokenId3], [true,false,true], {from:owner});
@@ -163,8 +163,8 @@ contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
             var tokenId1 = 1;
             var tokenId2 = 2;
 
-            await mock1155.testMint(another, tokenId1, 9, "0x0");
-            await mock1155.testMint(another, tokenId2, 6, "0x0");
+            await mock1155.mint(another, tokenId1, 9);
+            await mock1155.mint(another, tokenId2, 6);
 
             // Test Redemption
             await redeem.updateApprovedTokens(mock1155.address, [tokenId1,tokenId2], [true,false], {from:owner});
@@ -197,9 +197,9 @@ contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
             var tokenId2 = 2;
             var tokenId3 = 3;
 
-            await mock721.testMint(another, tokenId1);
-            await mock721.testMint(another, tokenId2);
-            await mock721.testMint(another, tokenId3);
+            await mock721.mint(another, tokenId1);
+            await mock721.mint(another, tokenId2);
+            await mock721.mint(another, tokenId3);
 
             // Test Redemption
             await redeem.updateApprovedTokens(mock721.address, [tokenId1,tokenId2], [true,false], {from:owner});
