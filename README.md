@@ -169,14 +169,14 @@ Visit the [github repo](https://github.com/manifoldxyz/creator-core-extensions-s
 
 Install both:
 ```
-npm install -g truffle
-npm install -g ganache-cli
+yarn global add truffle
+yarn global add ganache-cli
 ```
 
 Then:
 ```
 ### install dependencies
-npm install
+yarn
 
 ### Compile
 truffle compile

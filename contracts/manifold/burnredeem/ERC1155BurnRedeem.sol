@@ -108,4 +108,12 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         require(instanceId > 0, "Token does not exist");
         burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
     }
+
+    /**
+     * See {IBurnRedeemCore-getBurnRedeemToken}.
+     */
+    function getBurnRedeemToken(address creatorContractAddress, uint256 instanceId) external override view returns(uint256 tokenId) {
+        tokenId = _redeemTokenIds[creatorContractAddress][instanceId];
+        require(tokenId > 0, "Burn redeem does not exist");
+    }
 }

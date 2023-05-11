@@ -49,6 +49,8 @@ abstract contract ERC721OwnerEnumerableSingleCreatorBase is ERC721SingleCreatorE
 
     function approveTransfer(address, address from, address to, uint256 tokenId) external override returns (bool) {
         require(msg.sender == _creator, "Invalid caller");
+        // No need to increment on mint because it is handled by _mintExtension already
+        if (from == address(0)) return true;
         if (from != address(0) && from != to) {
             _removeTokenFromOwnerEnumeration(from, tokenId);
         }
@@ -56,6 +58,43 @@ abstract contract ERC721OwnerEnumerableSingleCreatorBase is ERC721SingleCreatorE
             _addTokenToOwnerEnumeration(to, tokenId);
         }
         return true;
+    }
+
+    function _mintExtension(address to) internal virtual {
+        _addTokenToOwnerEnumeration(to, IERC721CreatorCore(_creator).mintExtension(to));
+    }
+
+    function _mintExtension(address to, string calldata uri) internal virtual {
+        _addTokenToOwnerEnumeration(to, IERC721CreatorCore(_creator).mintExtension(to, uri));
+    }
+
+
+    function _mintExtension(address to, uint80 data) internal virtual {
+        _addTokenToOwnerEnumeration(to, IERC721CreatorCore(_creator).mintExtension(to, data));
+    }
+
+    function _mintExtensionBatch(address to, uint16 count) internal virtual {
+        uint256[] memory tokenIds = IERC721CreatorCore(_creator).mintExtensionBatch(to, count);
+        for (uint i; i < count;) {
+            _addTokenToOwnerEnumeration(to, tokenIds[i]);
+            unchecked { ++i; }
+        }
+    }
+
+    function _mintExtensionBatch(address to, string[] calldata uris) internal virtual {
+        uint256[] memory tokenIds = IERC721CreatorCore(_creator).mintExtensionBatch(to, uris);
+        for (uint i; i < tokenIds.length;) {
+            _addTokenToOwnerEnumeration(to, tokenIds[i]);
+            unchecked { ++i; }
+        }
+    }
+
+    function _mintExtensionBatch(address to, uint80[] calldata data) internal virtual {
+        uint256[] memory tokenIds = IERC721CreatorCore(_creator).mintExtensionBatch(to, data);
+        for (uint i; i < tokenIds.length;) {
+            _addTokenToOwnerEnumeration(to, tokenIds[i]);
+            unchecked { ++i; }
+        }
     }
 
     function _addTokenToOwnerEnumeration(address to, uint256 tokenId) private {

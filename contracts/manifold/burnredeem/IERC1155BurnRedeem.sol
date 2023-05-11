@@ -35,4 +35,9 @@ interface IERC1155BurnRedeem is IBurnRedeemCore {
      * @param location                  the location of the metadata
      */
     function updateURI(address creatorContractAddress, uint256 instanceId, StorageProtocol storageProtocol, string calldata location) external;
+
+    /**
+     * @notice get the redeem token ID for a burn redeem
+     */
+    function getBurnRedeemToken(address creatorContractAddress, uint256 instanceId) external view returns (uint256);
 }

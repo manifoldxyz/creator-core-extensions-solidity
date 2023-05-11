@@ -26,7 +26,7 @@ contract MockERC1155Creator is ERC1155Creator {
 
 contract MockERC721OwnerEnumerableExtension is ERC721OwnerEnumerableExtension {
     function testMint(address creator, address to) public {
-        ERC721Creator(creator).mintExtension(to);
+        super._mintExtension(creator, to);
     }
 }
 
@@ -34,7 +34,7 @@ contract MockERC721OwnerEnumerableSingleCreatorExtension is ERC721OwnerEnumerabl
     constructor(address creator) ERC721OwnerEnumerableSingleCreatorExtension(creator) {}
 
     function testMint(address to) public {
-        ERC721Creator(_creator).mintExtension(to);
+        super._mintExtension(to);
     }
 }
 
