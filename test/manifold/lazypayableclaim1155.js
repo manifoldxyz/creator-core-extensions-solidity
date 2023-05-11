@@ -16,7 +16,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
     beforeEach(async function () {
       creator = await ERC1155Creator.new("Test", "TEST", {from:owner});
       delegationRegistry = await DelegationRegistry.new();
-      lazyClaim = await ERC1155LazyPayableClaim.new(delegationRegistry.address, {from:lazyClaimOwner});
+      lazyClaim = await ERC1155LazyPayableClaim.new(lazyClaimOwner, delegationRegistry.address, {from:owner});
       manifoldMembership = await MockManifoldMembership.new({from:owner});
       lazyClaim.setMembershipAddress(manifoldMembership.address, {from:lazyClaimOwner});
       fee = ethers.BigNumber.from((await lazyClaim.MINT_FEE()).toString());
@@ -1056,7 +1056,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
     });
 
     it('delegate registry address test', async function () {
-      lazyClaim = await ERC1155LazyPayableClaim.new('0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', {from:owner});
+      lazyClaim = await ERC1155LazyPayableClaim.new(lazyClaimOwner, '0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', {from:owner});
       
       const onChainRegistryAddress = await lazyClaim.DELEGATION_REGISTRY();
       assert.equal('0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', onChainRegistryAddress);

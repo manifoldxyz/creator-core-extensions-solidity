@@ -58,7 +58,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         _;
     }
 
-    constructor(address delegationRegistry) {
+    constructor(address initialOwner, address delegationRegistry) {
+        _transferOwnership(initialOwner);
         DELEGATION_REGISTRY = delegationRegistry;
     }
 

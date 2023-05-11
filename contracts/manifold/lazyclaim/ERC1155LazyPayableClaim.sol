@@ -33,7 +33,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             interfaceId == type(IERC165).interfaceId;
     }
 
-    constructor(address delegationRegistry) LazyPayableClaim(delegationRegistry) {}
+    constructor(address initialOwner, address delegationRegistry) LazyPayableClaim(initialOwner, delegationRegistry) {}
 
     /**
      * See {IERC1155LazyClaim-initializeClaim}.
