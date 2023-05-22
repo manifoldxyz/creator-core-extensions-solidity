@@ -15,12 +15,12 @@ const BURN_FEE = ethers.BigNumber.from('690000000000000');
 const MULTI_BURN_FEE = ethers.BigNumber.from('990000000000000');
 
 contract('ERC721BurnRedeem', function ([...accounts]) {
-  const [owner, anyone1, anyone2] = accounts;
+  const [owner, burnRedeemOwner, anyone1, anyone2] = accounts;
   describe('BurnRedeem', function () {
     let creator, burnRedeem, burnable721, burnable721_2, burnable1155, burnable1155_2;
     beforeEach(async function () {
       creator = await ERC721Creator.new("Test", "TEST", {from:owner});
-      burnRedeem = await ERC721BurnRedeem.new({from:owner});
+      burnRedeem = await ERC721BurnRedeem.new(burnRedeemOwner, {from:owner});
       manifoldMembership = await MockManifoldMembership.new({from:owner});
       await burnRedeem.setMembershipAddress(manifoldMembership.address);
       burnable721 = await ERC721Creator.new("Test", "TEST", {from:owner});

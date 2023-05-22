@@ -9,6 +9,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -18,7 +19,7 @@ import "./IManifoldERC721Edition.sol";
 /**
  * Manifold ERC721 Edition Controller Implementation
  */
-contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, IManifoldERC721Edition, ReentrancyGuard {
+contract ManifoldERC721Edition is Ownable, CreatorExtension, ICreatorExtensionTokenURI, IManifoldERC721Edition, ReentrancyGuard {
     using Strings for uint256;
 
     struct IndexRange {
@@ -31,6 +32,10 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
     mapping(address => mapping(uint256 => uint256)) _totalSupply;
     mapping(address => mapping(uint256 => IndexRange[])) _indexRanges;
     mapping(address => uint256) _currentSeries;
+
+    constructor(address initialOwner) {
+        _transferOwnership(initialOwner);
+    }
     
     /**
      * @dev Only allows approved admins to call the specified function

@@ -8,12 +8,12 @@ const MockManifoldMembership = artifacts.require('MockManifoldMembership');
 const BURN_FEE = ethers.BigNumber.from('690000000000000');
 
 contract('ERC1155BurnRedeem', function ([...accounts]) {
-  const [owner, anyone1] = accounts;
+  const [owner, burnRedeemOwner, anyone1] = accounts;
   describe('BurnRedeem', function () {
     let creator, burnRedeem, burnable1155;
     beforeEach(async function () {
       creator = await ERC1155Creator.new("Test", "TEST", {from:owner});
-      burnRedeem = await ERC1155BurnRedeem.new("Test", "TEST", {from:owner});
+      burnRedeem = await ERC1155BurnRedeem.new(burnRedeemOwner, {from:owner});
       manifoldMembership = await MockManifoldMembership.new({from:owner});
       await burnRedeem.setMembershipAddress(manifoldMembership.address);
       burnable1155 = await ERC1155Creator.new("Test", "TEST", {from:owner});

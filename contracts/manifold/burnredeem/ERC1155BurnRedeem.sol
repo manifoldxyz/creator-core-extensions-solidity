@@ -16,6 +16,8 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
     // { creatorContractAddress => { tokenId =>  instanceId } }
     mapping(address => mapping(uint256 => uint256)) private _redeemInstanceIds;
 
+    constructor(address initialOwner) BurnRedeemCore(initialOwner) {}
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(BurnRedeemCore, IERC165) returns (bool) {
         return interfaceId == type(IERC1155BurnRedeem).interfaceId || super.supportsInterface(interfaceId);
     }

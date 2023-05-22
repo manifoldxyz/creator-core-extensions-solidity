@@ -81,6 +81,10 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
     address public manifoldMembershipContract;
 
+    constructor(address initialOwner) {
+        _transferOwnership(initialOwner);
+    }
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165, AdminControl) returns (bool) {
         return interfaceId == type(IBurnRedeemCore).interfaceId ||
             interfaceId == type(IERC721Receiver).interfaceId ||

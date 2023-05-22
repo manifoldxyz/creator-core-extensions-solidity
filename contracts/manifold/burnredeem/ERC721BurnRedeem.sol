@@ -21,6 +21,8 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     // { creatorContractAddress => { instanceId =>  bool } }
     mapping(address => mapping(uint256 => bool)) private _identicalTokenURI;
 
+    constructor(address initialOwner) BurnRedeemCore(initialOwner) {}
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(BurnRedeemCore, IERC165) returns (bool) {
         return interfaceId == type(IERC721BurnRedeem).interfaceId || super.supportsInterface(interfaceId);
     }
