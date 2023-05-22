@@ -17,3 +17,6 @@
 [submodule "lib/libraries-solidity"]
 	path = lib/libraries-solidity
 	url = https://github.com/manifoldxyz/libraries-solidity
+[submodule "lib/operator-filter-registry"]
+	path = lib/operator-filter-registry
+	url = https://github.com/ProjectOpenSea/operator-filter-registry
