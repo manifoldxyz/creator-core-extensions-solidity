@@ -5,3 +5,6 @@
 [submodule "lib/creator-core-extensions-solidity"]
 	path = lib/creator-core-extensions-solidity
 	url = https://github.com/manifoldxyz/creator-core-extensions-solidity
+[submodule "lib/creator-core-solidity"]
+	path = lib/creator-core-solidity
+	url = https://github.com/manifoldxyz/creator-core-solidity
