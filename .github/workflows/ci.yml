@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: '16'
 
+      - name: Install forge
+        run: curl -L https://foundry.paradigm.xyz | bash
+
       - name: Install dependencies
         run: |
             echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
