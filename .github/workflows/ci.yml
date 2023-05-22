@@ -1,0 +1,43 @@
+name: Build
+on:
+  pull_request: {}
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Set Node to v16
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: |
+            echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+            yarn install
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Forge install
+        run: |
+            forge install OpenZeppelin/openzeppelin-contracts
+            forge install OpenZeppelin/openzeppelin-contracts-upgradeable
+            forge install manifoldxyz/libraries-solidity
+            forge install manifoldxyz/creator-core-solidity
+            forge install ProjectOpenSea/operator-filter-registry
+
+      - name: Build
+        run: forge build
+      
+      - name: Test
+        run: forge test
