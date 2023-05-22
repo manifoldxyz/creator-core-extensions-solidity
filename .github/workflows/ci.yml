@@ -30,11 +30,11 @@ jobs:
 
       - name: Forge install
         run: |
-            forge install OpenZeppelin/openzeppelin-contracts
-            forge install OpenZeppelin/openzeppelin-contracts-upgradeable
-            forge install manifoldxyz/libraries-solidity
-            forge install manifoldxyz/creator-core-solidity
-            forge install ProjectOpenSea/operator-filter-registry
+            forge install OpenZeppelin/openzeppelin-contracts --no-commit
+            forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
+            forge install manifoldxyz/libraries-solidity --no-commit
+            forge install manifoldxyz/creator-core-solidity --no-commit
+            forge install ProjectOpenSea/operator-filter-registry --no-commit
 
       - name: Build
         run: forge build
