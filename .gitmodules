@@ -2,3 +2,6 @@
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
 	branch = v1.5.5
+[submodule "lib/creator-core-extensions-solidity"]
+	path = lib/creator-core-extensions-solidity
+	url = https://github.com/manifoldxyz/creator-core-extensions-solidity
