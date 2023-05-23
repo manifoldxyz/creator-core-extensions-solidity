@@ -22,14 +22,6 @@ contract MockERC1155Creator is ERC1155Creator {
     constructor (string memory _name, string memory _symbol) ERC1155Creator(_name, _symbol) {}
 }
 
-contract MockERC721RedeemEnumerable is ERC721OwnerEnumerableSingleCreatorBase, ERC721RedeemBase {
-    constructor(address creator, uint16 redemptionRate_, uint16 redemptionMax_) ERC721RedeemBase(creator, redemptionRate_, redemptionMax_) {}
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721RedeemBase, ERC721CreatorExtensionApproveTransfer) returns (bool) {
-        return ERC721RedeemBase.supportsInterface(interfaceId) || ERC721CreatorExtensionApproveTransfer.supportsInterface(interfaceId);
-    }
-}
-
 contract MockETHReceiver {
     fallback() external payable {
         // Transfer caps gas at 2300. This function needs to consume more gas than that.
