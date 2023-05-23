@@ -9,6 +9,7 @@ const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
 
+
 contract('LazyPayableClaim', function ([...accounts]) {
   const [owner, lazyClaimOwner, anotherOwner, anyone1, anyone2, anyone3, anyone4, anyone5, anyone6, anyone7] = accounts;
   describe('LazyPayableClaim', function () {
