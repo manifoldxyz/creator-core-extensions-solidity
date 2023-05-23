@@ -44,6 +44,12 @@ jobs:
         run: truffle compile
         working-directory: packages/${{ matrix.folder }}
 
+      - name: Start ganache and run tests
+        run: |
+          ganache-cli -l 20000000 &
+          truffle migrate &&
+          truffle test
+
   build-forge:
     runs-on: ubuntu-latest
     timeout-minutes: 60
