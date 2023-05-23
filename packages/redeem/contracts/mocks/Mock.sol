@@ -12,9 +12,9 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 
-import "../packages/enumerable/contracts/ERC721/ERC721OwnerEnumerableExtension.sol";
-import "../packages/enumerable/contracts/ERC721/ERC721OwnerEnumerableSingleCreatorExtension.sol";
-import "../packages/redeem/contracts/ERC721/ERC721RedeemBase.sol";
+import "../../packages/enumerable/contracts/ERC721/ERC721OwnerEnumerableExtension.sol";
+import "../../packages/enumerable/contracts/ERC721/ERC721OwnerEnumerableSingleCreatorExtension.sol";
+import "../../packages/redeem/contracts/ERC721/ERC721RedeemBase.sol";
 
 contract MockERC721Creator is ERC721Creator {
     constructor (string memory _name, string memory _symbol) ERC721Creator(_name, _symbol) {}
