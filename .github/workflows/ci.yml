@@ -35,7 +35,7 @@ jobs:
             yarn install
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        working-directory: ${{ matrix.folder }}
+        working-directory: packages/${{ matrix.folder }}
 
       - name: Forge install
         run: |
@@ -48,4 +48,4 @@ jobs:
 
       - name: Forge build
         run: forge build
-        working-directory: ${{ matrix.folder }}
+        working-directory: packages/${{ matrix.folder }}
