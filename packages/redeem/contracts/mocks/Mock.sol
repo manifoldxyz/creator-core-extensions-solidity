@@ -13,7 +13,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 
 import "../ERC721/ERC721RedeemBase.sol";
-import "../enumerable/ERC721/ERC721OwnerEnumerableSingleCreatorExtension.sol";
 
 contract MockERC721Creator is ERC721Creator {
     constructor (string memory _name, string memory _symbol) ERC721Creator(_name, _symbol) {}
