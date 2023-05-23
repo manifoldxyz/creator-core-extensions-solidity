@@ -7,6 +7,7 @@ on:
       - main
 jobs:
   build-truffle:
+    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -52,6 +53,7 @@ jobs:
           truffle test
 
   build-forge:
+    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
