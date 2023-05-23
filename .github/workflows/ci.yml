@@ -45,6 +45,7 @@ jobs:
         working-directory: packages/${{ matrix.folder }}
 
       - name: Start ganache and run tests
+        working-directory: packages/${{ matrix.folder }}
         run: |
           ganache-cli -l 20000000 &
           truffle migrate &&
