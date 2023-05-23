@@ -10,8 +10,8 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/ERC721CreatorExtensionApproveTransfer.sol";
 
-import "../../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
-import "../../libraries/single-creator/ERC721/ERC721SingleCreatorExtensionBase.sol";
+import ".././libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
+import ".././libraries/single-creator/ERC721/ERC721SingleCreatorExtensionBase.sol";
 
 /**
  * Provide token enumeration functionality (Base Class. Use if you are using multiple inheritance where other contracts

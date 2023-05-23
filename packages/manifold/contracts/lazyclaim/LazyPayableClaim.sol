@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "../../libraries/delegation-registry/IDelegationRegistry.sol";
-import "../../libraries/manifold-membership/IManifoldMembership.sol";
+import ".././libraries/delegation-registry/IDelegationRegistry.sol";
+import ".././libraries/manifold-membership/IManifoldMembership.sol";
 
 import "./ILazyPayableClaim.sol";
 

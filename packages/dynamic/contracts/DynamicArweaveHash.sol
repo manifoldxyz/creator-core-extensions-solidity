@@ -11,7 +11,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
-import "../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
+import "./libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
 
 /**
  * Extension which allows for the creation of NFTs with dynamically changing image/animation metadata 

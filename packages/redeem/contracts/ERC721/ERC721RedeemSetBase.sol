@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 
-import "../../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
+import ".././libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
 
 import "../RedeemSetBase.sol";
 import "./IERC721RedeemSetBase.sol";

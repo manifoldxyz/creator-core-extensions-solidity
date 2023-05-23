@@ -8,8 +8,8 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
-import "../libraries/ABDKMath64x64.sol";
-import "../libraries/single-creator/ERC721/ERC721SingleCreatorExtensionBase.sol";
+import "./libraries/ABDKMath64x64.sol";
+import "./libraries/single-creator/ERC721/ERC721SingleCreatorExtensionBase.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";

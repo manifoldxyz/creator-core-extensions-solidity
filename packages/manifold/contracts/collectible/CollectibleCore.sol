@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 /// @author: manifold.xyz
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../../libraries/manifold-membership/IManifoldMembership.sol";
+import ".././libraries/manifold-membership/IManifoldMembership.sol";
 
 import "./ICollectibleCore.sol";
 

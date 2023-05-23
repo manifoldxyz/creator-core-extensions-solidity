@@ -9,7 +9,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "./BurnRedeemCore.sol";
 import "./BurnRedeemLib.sol";
 import "./IERC721BurnRedeem.sol";
-import "../../libraries/IERC721CreatorCoreVersion.sol";
+import ".././libraries/IERC721CreatorCoreVersion.sol";
 
 contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     using Strings for uint256;

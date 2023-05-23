@@ -13,8 +13,8 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC721/IERC721CreatorExtensionApproveTransfer.sol";
 
-import "../libraries/ABDKMath64x64.sol";
-import "../libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
+import "./libraries/ABDKMath64x64.sol";
+import "./libraries/single-creator/ERC721/ERC721SingleCreatorExtension.sol";
 
 contract DynamicSVGExample is ERC721SingleCreatorExtension, CreatorExtension, Ownable, ICreatorExtensionTokenURI, IERC721CreatorExtensionApproveTransfer {
 

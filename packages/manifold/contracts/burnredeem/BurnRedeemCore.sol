@@ -51,7 +51,7 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-import "../../libraries/manifold-membership/IManifoldMembership.sol";
+import ".././libraries/manifold-membership/IManifoldMembership.sol";
 import "./BurnRedeemLib.sol";
 import "./IBurnRedeemCore.sol";
 import "./Interfaces.sol";

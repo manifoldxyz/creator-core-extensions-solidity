@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./IERC721Collectible.sol";
 import "./CollectibleCore.sol";
-import "../../libraries/IERC721CreatorCoreVersion.sol";
+import ".././libraries/IERC721CreatorCoreVersion.sol";
 
 contract ERC721Collectible is CollectibleCore, IERC721Collectible {
     struct TokenClaim {
