@@ -1,0 +1,51 @@
+name: Test!
+on:
+  pull_request: {}
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        folder: ["dynamic", "edition"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Set Node to v16
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      # For each package, run the following steps
+
+      - name: Install dependencies
+        run: |
+            echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+            yarn install
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        working-directory: ${{ matrix.folder }}
+
+      - name: Forge install
+        run: |
+            forge install OpenZeppelin/openzeppelin-contracts --no-commit
+            forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
+            forge install manifoldxyz/libraries-solidity --no-commit
+            forge install manifoldxyz/creator-core-solidity --no-commit
+            forge install ProjectOpenSea/operator-filter-registry --no-commit
+        working-directory: ${{ matrix.folder }}
+
+      - name: Forge build
+        run: forge build
+        working-directory: ${{ matrix.folder }}
