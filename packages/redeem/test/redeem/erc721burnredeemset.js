@@ -37,7 +37,7 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
 
         it('ERC721 recovery test', async function () {
             var tokenId = 721;
-            await mock721.mint(another, tokenId);
+            await mock721.testMint(another, tokenId);
             assert.equal(await mock721.balanceOf(another), 1);
             
             await mock721.transferFrom(another, redeem.address, tokenId, {from:another});
@@ -69,12 +69,12 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
             var tokenId4 = 12;
             var tokenId5 = 3;
             var tokenId6 = 13;
-            await mock721.mint(another, tokenId1);
-            await mock721.mint(another, tokenId2);
-            await mock721.mint(another, tokenId3);
-            await mock721.mint(another, tokenId4);
-            await mock721.mint(another, tokenId5);
-            await mock721.mint(another, tokenId6);
+            await mock721.testMint(another, tokenId1);
+            await mock721.testMint(another, tokenId2);
+            await mock721.testMint(another, tokenId3);
+            await mock721.testMint(another, tokenId4);
+            await mock721.testMint(another, tokenId5);
+            await mock721.testMint(another, tokenId6);
 
             // Check failure cases
             await truffleAssert.reverts(redeem.redeemERC721([mock721.address], [tokenId1, tokenId2]), "BurnRedeem: Invalid parameters"); 
@@ -113,9 +113,9 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
             var tokenId2 = 2;
             var tokenId3 = 11;
 
-            await mock1155.mint(another, tokenId1, 9);
-            await mock1155.mint(another, tokenId2, 6);
-            await mock1155.mint(another, tokenId3, 6);
+            await mock1155.testMint(another, tokenId1, 9);
+            await mock1155.testMint(another, tokenId2, 6);
+            await mock1155.testMint(another, tokenId3, 6);
 
             // Check failure cases
             await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 1, "0x0", {from:another}), "BurnRedeem: Incomplete set"); 
