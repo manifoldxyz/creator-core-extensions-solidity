@@ -163,8 +163,8 @@ contract('ERC721BurnRedeem', function ([creator, ...accounts]) {
             var tokenId1 = 1;
             var tokenId2 = 2;
 
-            await mock1155.testMint(another, tokenId1, 9);
-            await mock1155.testMint(another, tokenId2, 6);
+            await mock1155.testMint(another, tokenId1, 9, "");
+            await mock1155.testMint(another, tokenId2, 6, "");
 
             // Test Redemption
             await redeem.updateApprovedTokens(mock1155.address, [tokenId1,tokenId2], [true,false], {from:owner});
