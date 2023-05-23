@@ -27,6 +27,12 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
+      - name: Install truffle
+        run: |
+          yarn global add truffle
+          yarn global add ganache-cli
+
+
       # For each package, run the following steps
 
       - name: Install dependencies
@@ -48,4 +54,8 @@ jobs:
 
       - name: Forge build
         run: forge build
+        working-directory: packages/${{ matrix.folder }}
+
+      - name: Truffle compile
+        run: truffle compile
         working-directory: packages/${{ matrix.folder }}
