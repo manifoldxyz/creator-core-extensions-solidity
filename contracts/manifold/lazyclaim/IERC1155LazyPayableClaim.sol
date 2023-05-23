@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "./IERC721LazyPayableClaim.sol";
+import "./ILazyPayableClaim.sol";
 
 /**
  * Lazy Claim interface
