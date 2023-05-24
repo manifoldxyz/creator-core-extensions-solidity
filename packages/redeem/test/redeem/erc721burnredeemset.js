@@ -113,9 +113,9 @@ contract('ERC721BurnRedeemSet', function ([creator, ...accounts]) {
             var tokenId2 = 2;
             var tokenId3 = 11;
 
-            await mock1155.testMint(another, tokenId1, 9, "");
-            await mock1155.testMint(another, tokenId2, 6, "");
-            await mock1155.testMint(another, tokenId3, 6, "");
+            await mock1155.testMint(another, tokenId1, 9, "0x0");
+            await mock1155.testMint(another, tokenId2, 6, "0x0");
+            await mock1155.testMint(another, tokenId3, 6, "0x0");
 
             // Check failure cases
             await truffleAssert.reverts(mock1155.safeTransferFrom(another, redeem.address, tokenId1, 1, "0x0", {from:another}), "BurnRedeem: Incomplete set"); 
