@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
-import "../../../contracts/manifold/lazyclaim/ERC721LazyPayableClaim.sol";
+import "../contracts/lazyclaim/ERC721LazyPayableClaim.sol";
 
 contract DeployERC721LazyPayableClaim is Script {
     function run() external {

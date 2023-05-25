@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
-import "../../../contracts/manifold/burnredeem/ERC721BurnRedeem.sol";
+import "../contracts/burnredeem/ERC721BurnRedeem.sol";
 
 contract DeployERC721BurnRedeem is Script {
     function run() external {
