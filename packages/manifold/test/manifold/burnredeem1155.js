@@ -15,7 +15,7 @@ contract('ERC1155BurnRedeem', function ([...accounts]) {
       creator = await ERC1155Creator.new("Test", "TEST", {from:owner});
       burnRedeem = await ERC1155BurnRedeem.new(burnRedeemOwner, {from:owner});
       manifoldMembership = await MockManifoldMembership.new({from:owner});
-      await burnRedeem.setMembershipAddress(manifoldMembership.address, {from:owner});
+      await burnRedeem.setMembershipAddress(manifoldMembership.address, {from:burnRedeemOwner});
       burnable1155 = await ERC1155Creator.new("Test", "TEST", {from:owner});
       burnable1155_2 = await ERC1155Creator.new("Test", "TEST", {from:owner});
       burnable721 = await ERC721Creator.new("Test", "TEST", {from:owner});
