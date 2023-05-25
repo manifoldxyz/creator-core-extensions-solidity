@@ -2888,7 +2888,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await truffleAssert.reverts(burnRedeem.withdraw(anyone1, BURN_FEE.mul(10), {from:anyone1}), "AdminControl: Must be owner or admin");
 
       // Reverts with too large of a withdrawal
-      await truffleAssert.reverts(burnRedeem.withdraw(owner, BURN_FEE.mul(200), {from:owner}), "Failed to transfer to recipient");
+      await truffleAssert.reverts(burnRedeem.withdraw(owner, BURN_FEE.mul(200), {from:burnRedeemOwner}), "Failed to transfer to recipient");
 
       const ownerBalanceBefore = await web3.eth.getBalance(owner);
 
