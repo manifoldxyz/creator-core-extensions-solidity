@@ -10,7 +10,6 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./IManifoldERC721Edition.sol";
