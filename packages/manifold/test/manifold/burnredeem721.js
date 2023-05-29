@@ -2893,10 +2893,9 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       const ownerBalanceBefore = await web3.eth.getBalance(owner);
 
       // Passes with valid withdrawal amount from owner
-      const tx = await burnRedeem.withdraw(owner, BURN_FEE.mul(10), {from:burnRedeemOwner});
+      await burnRedeem.withdraw(owner, BURN_FEE.mul(10), {from:burnRedeemOwner});
       const ownerBalanceAfter = await web3.eth.getBalance(owner);
-      const gasFee = tx.receipt.gasUsed * (await web3.eth.getTransaction(tx.tx)).gasPrice
-      assert.equal(ethers.BigNumber.from(ownerBalanceBefore).add(BURN_FEE.mul(10)).sub(gasFee).toString(), ownerBalanceAfter);
+      assert.equal(ethers.BigNumber.from(ownerBalanceBefore).add(BURN_FEE.mul(10)).toString(), ownerBalanceAfter);
     });
 
     it('misconfiguration - onERC721Received test', async function() {
