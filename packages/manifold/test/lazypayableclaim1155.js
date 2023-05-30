@@ -320,8 +320,6 @@ contract('LazyPayableClaim', function ([...accounts]) {
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 3]));
       merkleTreeWithValues = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
 
-
-      console.log('hey', merkleElements)
       await lazyClaim.initializeClaim(
         creator.address,
         1,
