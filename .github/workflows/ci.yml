@@ -91,6 +91,7 @@ jobs:
             forge install manifoldxyz/libraries-solidity --no-commit
             forge install manifoldxyz/creator-core-solidity --no-commit
             forge install ProjectOpenSea/operator-filter-registry --no-commit
+            forge install dmfxyz/murky --no-commit
         working-directory: packages/${{ matrix.folder }}
 
       - name: Forge build

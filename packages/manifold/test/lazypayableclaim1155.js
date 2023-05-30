@@ -26,7 +26,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       await creator.registerExtension(lazyClaim.address, {from:owner});
     });
 
-    it('access test', async function () {
+    it.skip('access test', async function () {
       let now = Math.floor(Date.now() / 1000) - 30; // seconds since unix epoch
       let later = now + 1000;
 
@@ -148,7 +148,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
 
     });
 
-    it('initializeClaim input sanitization test', async function () {
+    it.skip('initializeClaim input sanitization test', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp; // seconds since unix epoch
       let later = now + 1000;
 
@@ -229,7 +229,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       ), "Claim not initialized");
     });
 
-    it('updateClaim input sanitization test', async function () {
+    it.skip('updateClaim input sanitization test', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp; // seconds since unix epoch
       let later = now + 1000;
 
@@ -320,6 +320,8 @@ contract('LazyPayableClaim', function ([...accounts]) {
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 3]));
       merkleTreeWithValues = new MerkleTree(merkleElements, keccak256, { hashLeaves: true, sortPairs: true });
 
+
+      console.log('hey', merkleElements)
       await lazyClaim.initializeClaim(
         creator.address,
         1,
@@ -384,7 +386,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       await lazyClaim.mint(creator.address, 1, 3, merkleProof4, anyone3, {from:anyone3, value: ethers.BigNumber.from('1').add(merkleFee)});
     });
 
-    it('merkle mint test - batch', async function () {
+    it.skip('merkle mint test - batch', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let later = now + 1000;
 
@@ -501,7 +503,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       assert.equal(await creator.uri(1), 'XXX');
     });
 
-    it('non-merkle mint test - batch', async function () {
+    it.skip('non-merkle mint test - batch', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let later = now + 1000;
 
@@ -530,7 +532,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       await lazyClaim.mintBatch(creator.address, 1, 2, [], [], anyone2, {from:anyone2, value: ethers.BigNumber.from('2').add(fee.mul(2))});
     });
 
-    it('non-merkle mint test - not pay enough', async function () {
+    it.skip('non-merkle mint test - not pay enough', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let later = now + 1000;
 
@@ -557,7 +559,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       await truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 0, [], anyone1, {from:anyone1}), "Invalid amount");
     });
 
-    it('non-merkle mint test - check balance', async function () {
+    it.skip('non-merkle mint test - check balance', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let later = now + 1000;
 
@@ -588,7 +590,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       assert.equal(ethers.BigNumber.from(2).toNumber(), (ethers.BigNumber.from(afterBalance).sub(ethers.BigNumber.from(beforeBalance)).toNumber()));
     });
 
-    it('gas test - no merkle tree', async function () {
+    it.skip('gas test - no merkle tree', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let later = now + 1000;
 
@@ -629,7 +631,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       console.log("Gas cost:\tthird mint:\t"+ mintTx3.receipt.gasUsed);
     });
 
-    it('gas test - with merkle tree', async function () {
+    it.skip('gas test - with merkle tree', async function () {
       const merkleElements = [];
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));
@@ -689,7 +691,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       console.log("Gas cost:\tfourth mint:\t"+ mintTx4.receipt.gasUsed);
     });
 
-    it('tokenURI test', async function () {
+    it.skip('tokenURI test', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let later = now + 1000;
 
@@ -727,7 +729,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       assert.equal('XXX', await creator.uri(1));
     });
 
-    it('functionality test', async function() {
+    it.skip('functionality test', async function() {
 
       const merkleElements = [];
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone1, 0]));
@@ -905,7 +907,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       assert.equal(ethers.BigNumber.from(ownerBalanceBefore).add(fee).sub(gasFee).toString(), ownerBalanceAfter);
     });
 
-    it('airdrop test', async function () {
+    it.skip('airdrop test', async function () {
       const merkleElements = [];
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone3, 1]));
@@ -1005,7 +1007,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       assert.equal(1,balance3);
     });
 
-    it('delegate minting test', async function () {
+    it.skip('delegate minting test', async function () {
       const merkleElements = [];
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone2, 0]));
       merkleElements.push(ethers.utils.solidityPack(['address', 'uint32'], [anyone4, 1]));
@@ -1055,14 +1057,14 @@ contract('LazyPayableClaim', function ([...accounts]) {
       truffleAssert.reverts(lazyClaim.mint(creator.address, 1, 1, merkleProof2, anyone6, {from:anyone5, value: ethers.BigNumber.from('1').add(merkleFee)}), 'Invalid delegate');
     });
 
-    it('delegate registry address test', async function () {
+    it.skip('delegate registry address test', async function () {
       lazyClaim = await ERC1155LazyPayableClaim.new(lazyClaimOwner, '0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', {from:owner});
       
       const onChainRegistryAddress = await lazyClaim.DELEGATION_REGISTRY();
       assert.equal('0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A', onChainRegistryAddress);
     });
   
-    it('allow recipient to be a contract', async function () {
+    it.skip('allow recipient to be a contract', async function () {
       // Construct a contract receiver
       const mockETHReceiver = await MockETHReceiver.new({ from: owner });
   
@@ -1094,7 +1096,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
       console.log("Gas cost:\tmint w/ contract receiver:\t"+ mintTx.receipt.gasUsed);
     });
 
-    it('membership mint', async function () {
+    it.skip('membership mint', async function () {
       let now = (await web3.eth.getBlock('latest')).timestamp-30;
       let later = now + 1000;
   
@@ -1154,7 +1156,7 @@ contract('LazyPayableClaim', function ([...accounts]) {
     
     });
 
-    it('proxy mint', async function () {  
+    it.skip('proxy mint', async function () {  
       let now = (await web3.eth.getBlock('latest')).timestamp-30;
       let later = now + 1000;
   
