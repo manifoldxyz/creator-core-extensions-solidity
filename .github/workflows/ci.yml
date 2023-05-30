@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        folder: ["edition", "enumerable", "lazywhitelist", "manifold", "redeem"]
+        folder: ["edition", "lazywhitelist", "manifold", "redeem"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -58,7 +58,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        folder: ["dynamic"]
+        folder: ["dynamic", "enumerable"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
