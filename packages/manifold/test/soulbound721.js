@@ -1,4 +1,4 @@
-const helper = require("../helpers/truffleTestHelper");
+const helper = require("./helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC721Creator = artifacts.require('@manifoldxyz/creator-core-extensions-solidity/ERC721Creator');
 const ERC721Soulbound = artifacts.require('ERC721Soulbound');

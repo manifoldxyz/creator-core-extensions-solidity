@@ -1,4 +1,4 @@
-const helper = require("../helpers/truffleTestHelper");
+const helper = require("./helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const OperatorFilter = artifacts.require("CreatorOperatorFilterer");
 const ERC721Creator = artifacts.require('MockERC721Creator');

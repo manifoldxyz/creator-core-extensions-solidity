@@ -1,4 +1,4 @@
-const helper = require("../helpers/truffleTestHelper");
+const helper = require("./helpers/truffleTestHelper");
 const truffleAssert = require('truffle-assertions');
 const ERC1155Creator = artifacts.require('MockERC1155Creator');
 const ERC1155FrozenMetadata = artifacts.require("ERC1155FrozenMetadata");

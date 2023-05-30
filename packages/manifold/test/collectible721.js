@@ -1,11 +1,11 @@
-const helper = require("../helpers/truffleTestHelper");
+const helper = require("./helpers/truffleTestHelper");
 const truffleAssert = require("truffle-assertions");
 const ERC721Creator = artifacts.require("@manifoldxyz/creator-core-solidity/ERC721Creator");
 const ERC721Collectible = artifacts.require("ERC721Collectible");
 const { BigNumber } = require("ethers");
 const MockManifoldMembership = artifacts.require("MockManifoldMembership");
 
-const { signTransactionWithAmount, signTransaction } = require("../helpers/signatureHelpers");
+const { signTransactionWithAmount, signTransaction } = require("./helpers/signatureHelpers");
 const MINT_FEE = BigNumber.from("690000000000000");
 
 contract("Collectible721", function (accounts) {
