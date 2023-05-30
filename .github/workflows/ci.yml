@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        folder: ["edition", "dynamic", "enumerable", "lazywhitelist", "manifold", "redeem"]
+        folder: ["edition", "enumerable", "lazywhitelist", "manifold", "redeem"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -95,4 +95,8 @@ jobs:
 
       - name: Forge build
         run: forge build
+        working-directory: packages/${{ matrix.folder }}
+
+      - name: Forge test
+        run: forge test
         working-directory: packages/${{ matrix.folder }}
