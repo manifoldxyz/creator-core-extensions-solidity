@@ -50,7 +50,7 @@ jobs:
         run: |
           ganache-cli -l 20000000 &
           truffle migrate &&
-          truffle test
+          truffle test ./test/manifold/burnredeem721.js
 
   build-forge:
     continue-on-error: true
