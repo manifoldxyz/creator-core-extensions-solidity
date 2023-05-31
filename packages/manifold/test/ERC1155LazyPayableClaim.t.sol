@@ -413,6 +413,114 @@ contract ERC1155LazyPayableClaimTest is Test {
       example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
 
 
+      bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
+      bytes32[] memory merkleProof3 = merkle.getProof(allowListTuples, uint32(2));
+      bytes32[] memory merkleProof4 = merkle.getProof(allowListTuples, uint32(3));
+      bytes32[] memory merkleProof5 = merkle.getProof(allowListTuples, uint32(4));
+
+      amountsInput = new uint32[](2);
+      amountsInput[0] = 1;
+      amountsInput[1] = 3;
+
+      proofsInput = new bytes32[][](2);
+      proofsInput[0] = merkleProof2;
+      proofsInput[1] = merkleProof4;
+
+      vm.stopPrank();
+      vm.startPrank(other2);
+      vm.expectRevert("Could not verify merkle proof");
+      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other2);
+
+      proofsInput[1] = merkleProof3;
+      amountsInput[1] = 2;
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, amountsInput, proofsInput, other2);
+
+
+      vm.stopPrank();
+      vm.startPrank(owner);
+
+      address[] memory recipientsInput = new address[](1);
+      recipientsInput[0] = other3;
+
+      uint[] memory mintsInput = new uint[](1);
+      mintsInput[0] = 1;
+
+      string[] memory urisInput = new string[](1);
+      urisInput[0] = "";
+      // base mint something in between
+      creatorCore.mintBaseNew(recipientsInput, mintsInput, urisInput);
+
+      vm.stopPrank();
+      vm.startPrank(other3);
+
+      amountsInput = new uint32[](1);
+      amountsInput[0] = 3;
+
+      proofsInput = new bytes32[][](1);
+      proofsInput[0] = merkleProof4;
+      vm.expectRevert("Too many requested for this claim");
+      example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, other3);
+
+      vm.stopPrank();
+      vm.startPrank(owner);
+      claimP.totalMax = 4;
+      example.updateClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      vm.stopPrank();
+      vm.startPrank(other3);
+      amountsInput = new uint32[](2);
+      amountsInput[0] = 3;
+      amountsInput[1] = 4;
+
+      proofsInput = new bytes32[][](2);
+      proofsInput[0] = merkleProof4;
+      proofsInput[1] = merkleProof5;
+      vm.expectRevert("Too many requested for this claim");
+      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other3);
+
+
+      vm.stopPrank();
+      vm.startPrank(owner);
+      claimP.totalMax = 5;
+      example.updateClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+       // Cannot mint with same mintIndex again
+      vm.stopPrank();
+      vm.startPrank(other2);
+      vm.expectRevert("Already minted");
+      example.mint(address(creatorCore), 1, 1, merkleProof2, other2);
+      vm.expectRevert("Already minted");
+      example.mint(address(creatorCore), 1, 2, merkleProof3, other2);
+      
+      amountsInput[0] = 1;
+      amountsInput[1] = 2;
+      proofsInput[0] = merkleProof2;
+      proofsInput[1] = merkleProof3;
+      vm.expectRevert("Already minted");
+      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other2);
+      
+      vm.stopPrank();
+      vm.startPrank(other3);
+
+      amountsInput[0] = 3;
+      amountsInput[1] = 4;
+      proofsInput[0] = merkleProof4;
+      proofsInput[1] = merkleProof5;
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, amountsInput, proofsInput, other3);
+
+      assertEq(creatorCore.balanceOf(owner, 1), 1);
+      assertEq(creatorCore.balanceOf(other2, 1), 2);
+      assertEq(creatorCore.balanceOf(other3, 1), 2);
+      assertEq(creatorCore.uri(1), "https://arweave.net/arweaveHash1");
+
       vm.stopPrank();
     }
 }
