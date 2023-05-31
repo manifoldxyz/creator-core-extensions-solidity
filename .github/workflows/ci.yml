@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        folder: ["edition", "lazywhitelist", "redeem"]
+        folder: ["edition", "lazywhitelist", "redeem", "manifold"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -100,4 +100,8 @@ jobs:
 
       - name: Forge test
         run: forge test
+        working-directory: packages/${{ matrix.folder }}
+
+      - name: Forge coverage
+        run: forge coverage
         working-directory: packages/${{ matrix.folder }}
