@@ -523,4 +523,123 @@ contract ERC1155LazyPayableClaimTest is Test {
 
       vm.stopPrank();
     }
+
+    function testNonMerkleMintBatch() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE() + 1;
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: "",
+          location: "arweaveHash1",
+          totalMax: 5,
+          walletMax: 3,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(other),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      vm.stopPrank();
+      vm.startPrank(owner);
+      vm.expectRevert("Too many requested for this wallet");
+      example.mintBatch{value: mintFee*4}(address(creatorCore), 1, 4, new uint32[](0), new bytes32[][](0), owner);
+      
+      example.mintBatch{value: mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+
+      vm.expectRevert("Too many requested for this wallet");
+      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
+      
+      vm.stopPrank();
+      vm.startPrank(other2);
+      vm.expectRevert("Too many requested for this claim");
+      example.mintBatch{value: mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other2);
+
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), other2);
+
+      vm.stopPrank();
+    }
+
+    function testNonMerkleMintNotEnoughMoney() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE() + 1;
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: "",
+          location: "arweaveHash1",
+          totalMax: 5,
+          walletMax: 3,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(other),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      vm.stopPrank();
+      vm.startPrank(owner);
+      vm.expectRevert("Invalid amount");
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+
+      vm.expectRevert("Invalid amount");
+      example.mintBatch{value: 2}(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), owner);
+
+      vm.expectRevert("Invalid amount");
+      example.mint(address(creatorCore), 1, 0, new bytes32[](0), owner);
+
+      vm.stopPrank();
+    }
+
+    function testNonMerkleMintCheckBalance() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE() + 1;
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: "",
+          location: "arweaveHash1",
+          totalMax: 5,
+          walletMax: 3,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(owner),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      uint beforeBalance = owner.balance;
+      vm.stopPrank();
+      vm.startPrank(other2);
+      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), other2);
+      example.mint{value: mintFee}(address(creatorCore), 1, 0, new bytes32[](0), other2);
+      uint afterBalance = owner.balance;
+      assertEq(2, afterBalance-beforeBalance);
+      vm.stopPrank();
+    }
 }
