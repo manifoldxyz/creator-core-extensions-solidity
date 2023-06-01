@@ -640,6 +640,524 @@ contract ERC1155LazyPayableClaimTest is Test {
       example.mint{value: mintFee}(address(creatorCore), 1, 0, new bytes32[](0), other2);
       uint afterBalance = owner.balance;
       assertEq(2, afterBalance-beforeBalance);
+      vm.stopPrank();      
+    }
+
+    function testTokenURI() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE() + 1;
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: "",
+          location: "XXX",
+          totalMax: 11,
+          walletMax: 3,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(owner),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      address[] memory recipientsInput = new address[](1);
+      recipientsInput[0] = other;
+      uint[] memory amountsInput = new uint[](1);
+      amountsInput[0] = 1;
+      string[] memory urisInput = new string[](1);
+      urisInput[0] = "";
+      // Mint a token using creator contract, to test breaking up extension's indexRange
+      creatorCore.mintBaseNew(recipientsInput, amountsInput, urisInput);
+
+      vm.stopPrank();
+      vm.startPrank(other);
+      // Mint 2 tokens using the extension
+      example.mint{value: mintFee}(
+        address(creatorCore),
+        1,
+        0,
+        new bytes32[](0),
+        other
+      );
+      vm.stopPrank();
+      vm.startPrank(other2);
+      example.mint{value: mintFee}(
+        address(creatorCore),
+        1,
+        0,
+        new bytes32[](0),
+        other2
+      );
+      // Mint a token using creator contract, to test breaking up extension's indexRange
+      vm.stopPrank();
+      vm.startPrank(owner);
+      creatorCore.mintBaseNew(recipientsInput, amountsInput, urisInput);
+      // Mint 1 token using the extension
+      vm.stopPrank();
+      vm.startPrank(other3);
+      example.mint{value: mintFee}(
+        address(creatorCore),
+        1,
+        0,
+        new bytes32[](0),
+        other3
+      );
+      assertEq("https://arweave.net/XXX", creatorCore.uri(1));
+
+      vm.stopPrank();
+    }
+
+    function testFunctionality() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE();
+
+      bytes32[] memory allowListTuples = new bytes32[](3);
+      allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+      allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
+      allowListTuples[2] = keccak256(abi.encodePacked(other2, uint32(2)));
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: merkle.getRoot(allowListTuples),
+          location: "arweaveHash",
+          totalMax: 3,
+          walletMax: 0,
+          startDate: nowC+500,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(other),
+          erc20: zeroAddress
+      });
+
+      // Should fail to initialize if non-admin wallet is used
+      vm.stopPrank();
+      vm.startPrank(other);
+      vm.expectRevert("Wallet is not an administrator for contract");
+      example.initializeClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      // Cannot claim before initialization
+      vm.stopPrank();
+      vm.startPrank(owner);
+      bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
+      vm.expectRevert("Claim not initialized");
+      example.mint(address(creatorCore), 1, 0, merkleProof1, owner);
+
+      example.initializeClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      // Overwrite the claim with parameters changed
+      claimP.location = "arweaveHash1";
+      claimP.walletMax = 0;
+      example.updateClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      // Initialize a second claim - with optional parameters disabled
+      claimP.location = "arweaveHash2";
+      claimP.totalMax = 0;
+      claimP.startDate = 0;
+      claimP.endDate = 0;
+      claimP.walletMax = 0;
+      claimP.merkleRoot = "";
+      example.initializeClaim(
+        address(creatorCore),
+        2,
+        claimP
+      );
+
+      // Claim should have expected info
+      IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
+      assertEq(claim.merkleRoot, merkle.getRoot(allowListTuples));
+      assertEq(claim.location, "arweaveHash1");
+      assertEq(claim.totalMax, 3);
+      assertEq(claim.walletMax, 0);
+      assertEq(claim.startDate, nowC+500);
+      assertEq(claim.endDate, later);
+
+      // Test minting
+      // Mint a token to random wallet
+      vm.stopPrank();
+      vm.startPrank(owner);
+      vm.expectRevert("Claim inactive");
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner);
+
+      vm.warp(nowC+501);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner);
+
+      claim = example.getClaim(address(creatorCore), 1);
+      assertEq(claim.total, 1);
+
+      // ClaimByToken should have expected info
+      (uint instanceId, IERC1155LazyPayableClaim.Claim memory claimInfo) = example.getClaimForToken(address(creatorCore), 1);
+      assertEq(instanceId, 1);
+      assertEq(claimInfo.merkleRoot, merkle.getRoot(allowListTuples));
+      assertEq(claimInfo.location, "arweaveHash1");
+      assertEq(claimInfo.totalMax, 3);
+      assertEq(claimInfo.walletMax, 0);
+      assertEq(claimInfo.startDate, nowC + 500);
+      assertEq(claimInfo.endDate, later);
+
+      bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
+      vm.stopPrank();
+      vm.startPrank(other2);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2);
+
+      // Now ensure that the creator contract state is what we expect after mints
+      assertEq(creatorCore.balanceOf(owner, 1), 1);
+      assertEq(creatorCore.balanceOf(other2, 1), 1);
+      assertEq("https://arweave.net/arweaveHash1", creatorCore.uri(1));
+
+      // Additionally test that tokenURIs are dynamic
+      vm.stopPrank();
+      vm.startPrank(owner);
+
+      claimP.location = "test.com";
+      claimP.endDate = later;
+      example.updateClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+
+      assertEq("https://arweave.net/test.com", creatorCore.uri(1));
+
+      // Optional parameters - using claim 2
+      // Cannot mint for someone else
+      vm.expectRevert("Invalid input");
+      example.mint{value: mintFee}(address(creatorCore), 2, 0, new bytes32[](0), other);
+
+      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), owner);
+      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), owner);
+      vm.stopPrank();
+      vm.startPrank(other);
+      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), other);
+
+      // end claim period
+      vm.warp(later*2);
+      // Reverts due to end of mint period
+      bytes32[] memory merkleProof3 = merkle.getProof(allowListTuples, uint32(2));
+
+      vm.stopPrank();
+      vm.startPrank(other2);
+      vm.expectRevert("Claim inactive");
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 2, merkleProof3, other2);
+
+      // Passes with valid withdrawal amount from owner
+      vm.stopPrank();
+      vm.startPrank(owner);
+      uint balanceBefore = owner.balance;
+      example.withdraw(payable(owner), mintFee);
+      uint balanceAfter = owner.balance;
+      assertEq(balanceAfter, balanceBefore + mintFee);
+
+      vm.stopPrank();
+    }
+
+    function testAirdrop() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE();
+
+      bytes32[] memory allowListTuples = new bytes32[](2);
+      allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+      allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: merkle.getRoot(allowListTuples),
+          location: "XXX",
+          totalMax: 0,
+          walletMax: 0,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(other),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(address(creatorCore), 1, claimP);
+
+      address[] memory receivers = new address[](1);
+      receivers[0] = other;
+      uint[] memory amounts = new uint[](1);
+      amounts[0] = 1;
+      // Perform an airdrop
+      example.airdrop(address(creatorCore), 1, receivers, amounts);
+
+      IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
+      assertEq(claim.total, 1);
+      assertEq(claim.totalMax, 0);
+
+      // Mint
+      bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
+
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner);
+
+      // Update totalMax to 1, will actually set to 2 because there are two
+      claimP.totalMax = 1;
+      example.updateClaim(address(creatorCore), 1, claimP);
+      claim = example.getClaim(address(creatorCore), 1);
+      assertEq(claim.totalMax, 2);
+
+      // Perform another airdrop after minting
+      receivers = new address[](2);
+      receivers[0] = other2;
+      receivers[1] = other3;
+      amounts = new uint[](2);
+      amounts[0] = 1;
+      amounts[1] = 5;
+      example.airdrop(address(creatorCore), 1, receivers, amounts);
+      claim = example.getClaim(address(creatorCore), 1);
+      assertEq(claim.total, 8);
+      assertEq(claim.totalMax, 8);
+
+      // Update totalMax back to 0
+      claimP.totalMax = 0;
+      example.updateClaim(address(creatorCore), 1, claimP);
+      claim = example.getClaim(address(creatorCore), 1);
+      assertEq(claim.totalMax, 0);
+
+      // Mint again after second airdrop
+      bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
+      vm.stopPrank();
+      vm.startPrank(other2);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2);
+
+      assertEq(1, creatorCore.balanceOf(owner, 1));
+      assertEq(1, creatorCore.balanceOf(other, 1));
+      assertEq(2, creatorCore.balanceOf(other2, 1));
+      assertEq(5, creatorCore.balanceOf(other3, 1));
+
+      vm.stopPrank();
+    }
+
+    function testDelegateMinting() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE();
+
+      bytes32[] memory allowListTuples = new bytes32[](3);
+      allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+      allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
+      allowListTuples[2] = keccak256(abi.encodePacked(other3, uint32(2)));
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: merkle.getRoot(allowListTuples),
+          location: "XXX",
+          totalMax: 0,
+          walletMax: 0,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(other),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(address(creatorCore), 1, claimP);
+
+      // Set delegations
+      delegationRegistry.delegateForAll(other, true);
+
+      vm.stopPrank();
+      vm.startPrank(other2);
+      delegationRegistry.delegateForContract(other, address(example), true);
+
+      // Mint with wallet-level delegate
+      bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
+      vm.stopPrank();
+      vm.startPrank(other);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner);
+      assertEq(creatorCore.balanceOf(owner, 1), 0);
+      assertEq(creatorCore.balanceOf(other, 1), 1);
+      
+      // Mint with contract-level delegate
+      bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2);
+
+      // Fail to mint when no delegate is set
+      bytes32[] memory merkleProof3 = merkle.getProof(allowListTuples, uint32(2));
+      vm.expectRevert("Invalid delegate");
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 2, merkleProof3, other3);
+
+      vm.stopPrank();
+    }
+
+    function testDelegateRegistryAddress() public {
+      vm.startPrank(owner);
+
+      ERC1155LazyPayableClaim claim = new ERC1155LazyPayableClaim(address(creatorCore), address(0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A));
+      address onChainAddress = claim.DELEGATION_REGISTRY();
+      assertEq(0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A, onChainAddress);
+
+      vm.stopPrank();
+    }
+
+    function testAllowReceipientContract() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE();
+
+      // Construct a contract receiver
+      MockETHReceiver mockETHReceiver = new MockETHReceiver();
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: "",
+          location: "XXX",
+          totalMax: 5,
+          walletMax: 3,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(address(mockETHReceiver)),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(address(creatorCore), 1, claimP);
+      // Perform a mint on the claim
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, new bytes32[](0), owner);
+      
+      vm.stopPrank();
+    }
+
+    function testMembershipMint() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE();
+
+      bytes32[] memory allowListTuples = new bytes32[](2);
+      allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+      allowListTuples[1] = keccak256(abi.encodePacked(owner, uint32(1)));
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: "",
+          location: "XXX",
+          totalMax: 10,
+          walletMax: 10,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(other),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(address(creatorCore), 1, claimP);
+
+      claimP.merkleRoot = merkle.getRoot(allowListTuples);
+      claimP.totalMax = 5;
+      claimP.walletMax = 0;
+      example.initializeClaim(address(creatorCore), 2, claimP);
+
+      manifoldMembership.setMember(owner, true);
+      // Perform a mint on the claim
+      example.mintBatch{value: 3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+
+      bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
+      bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
+
+      uint32[] memory amountsInput = new uint32[](2);
+      amountsInput[0] = 0;
+      amountsInput[1] = 1;
+
+      bytes32[][] memory proofsInput = new bytes32[][](2);
+      proofsInput[0] = merkleProof1;
+      proofsInput[1] = merkleProof2;
+
+      example.mintBatch{value: 2}(address(creatorCore), 2, 2, amountsInput, proofsInput, owner);
+
+      vm.stopPrank();
+    }
+
+    function testProxyMint() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE();
+      uint mintFeeNon = example.MINT_FEE();
+
+      bytes32[] memory allowListTuples = new bytes32[](2);
+      allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+      allowListTuples[1] = keccak256(abi.encodePacked(owner, uint32(1)));
+
+      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+          merkleRoot: "",
+          location: "XXX",
+          totalMax: 10,
+          walletMax: 10,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 1,
+          paymentReceiver: payable(owner),
+          erc20: zeroAddress
+      });
+
+      example.initializeClaim(address(creatorCore), 1, claimP);
+
+      claimP.merkleRoot = merkle.getRoot(allowListTuples);
+      claimP.totalMax = 5;
+      claimP.walletMax = 0;
+      example.initializeClaim(address(creatorCore), 3, claimP);
+
+      // The sender is a member, but proxy minting will ignore the fact they are a member
+      manifoldMembership.setMember(other, true);
+      // Perform a mint on the claim
+      uint balance = other.balance;
+      uint ownerBalance = owner.balance;
+
+      vm.stopPrank();
+      vm.startPrank(other);
+      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+
+      assertEq(3, creatorCore.balanceOf(owner, 1));
+
+      // Ensure funds taken from message sender
+      assertEq(other.balance, balance - mintFee*3 - 3);
+
+      // Ensure seller got funds
+      assertEq(owner.balance, ownerBalance + 3);
+
+      // Mint merkle claims
+      bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
+      bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
+
+      uint32[] memory amountsInput = new uint32[](2);
+      amountsInput[0] = 0;
+      amountsInput[1] = 1;
+
+      bytes32[][] memory proofsInput = new bytes32[][](2);
+      proofsInput[0] = merkleProof1;
+      proofsInput[1] = merkleProof2;
+
+      vm.expectRevert("Invalid amount");
+      example.mintProxy{value: mintFeeNon*2+2}(address(creatorCore), 3, 2, amountsInput, proofsInput, owner);
+      example.mintProxy{value: mintFee*2+2}(address(creatorCore), 3, 2, amountsInput, proofsInput, owner);
+      assertEq(2, creatorCore.balanceOf(owner, 2));
       vm.stopPrank();
     }
 }
