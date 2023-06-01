@@ -202,8 +202,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         // Check totalMax
         require(++claim.total <= claim.totalMax || claim.totalMax == 0, "Maximum tokens already minted for this claim");
 
+        // Validate is active
+        _validateActive(claim.startDate, claim.endDate);
         // Validate mint
-        _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
+        _validateMint(creatorContractAddress, instanceId, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "", true);
@@ -228,8 +230,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         claim.total += mintCount;
         require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
+        // Validate is active
+        _validateActive(claim.startDate, claim.endDate);
         // Validate mint
-        _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
+        _validateMint(creatorContractAddress, instanceId, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", true);
@@ -254,8 +258,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         claim.total += mintCount;
         require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
+        // Validate is active
+        _validateActive(claim.startDate, claim.endDate);
         // Validate mint
-        _validateMintProxy(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
+        _validateMintProxy(creatorContractAddress, instanceId, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", false);
@@ -273,11 +279,28 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {ILazyPayableClaim-mintSignature}.
      */
-    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes calldata signature, address mintFor) external payable override {
+    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
-    
-        emit ClaimMintProxy(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor);
+        // Check totalMax
+        claim.total += mintCount;
+        require((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24, "Too many requested for this claim");
+        // Validate is active
+        _validateActive(claim.startDate, claim.endDate);
+        // Validate mint
+        _validateMintSignature(creatorContractAddress, instanceId, claim.walletMax, signature, message, nonce, mintCount, claim.signingAddress, mintFor);
+
+        // Transfer funds
+        _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", false);
+
+        // Do mint
+        address[] memory recipients = new address[](1);
+        recipients[0] = mintFor;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = mintCount;
+        _mintClaim(creatorContractAddress, claim, recipients, amounts);
+
+        emit ClaimMintSignature(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor);
     }
 
     /**

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import ".././libraries/delegation-registry/IDelegationRegistry.sol";
 import ".././libraries/manifold-membership/IManifoldMembership.sol";
 
@@ -19,6 +20,7 @@ import "./ILazyPayableClaim.sol";
  */
 abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using ECDSA for bytes32;
 
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
@@ -44,6 +46,9 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     // ONLY USED FOR MERKLE MINTS: stores mapping from claim to indices minted
     // { contractAddress => {instanceId => { instanceIdOffset => index } } }
     mapping(address => mapping(uint256 => mapping(uint256 => uint256))) internal _claimMintIndices;
+
+    // { creatorContractAddress => { instanceId => nonce => t/f  } }
+    mapping(address => mapping(uint256 => mapping(bytes32 => bool))) internal _usedNonces;
 
     EnumerableSet.AddressSet private _proxyAddresses;
 
@@ -117,14 +122,16 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         return mintBitmask & claimMintTracking != 0;
     }
 
-    function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
+    function _validateActive(uint48 startDate, uint48 endDate) internal view {
         // Check timestamps
         require(
             (startDate <= block.timestamp) &&
             (endDate == 0 || endDate >= block.timestamp),
             "Claim inactive"
         );
+    }
 
+    function _validateMint(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
         if (merkleRoot != "") {
             // Merkle mint
             _checkMerkleAndUpdate(msg.sender, creatorContractAddress, instanceId, merkleRoot, mintIndex, merkleProof, mintFor);
@@ -137,14 +144,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
-        // Check timestamps
-        require(
-            (startDate <= block.timestamp) &&
-            (endDate == 0 || endDate >= block.timestamp),
-            "Claim inactive"
-        );
-
+    function _validateMint(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         if (merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
@@ -162,14 +162,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintProxy(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
-        // Check timestamps
-        require(
-            (startDate <= block.timestamp) &&
-            (endDate == 0 || endDate >= block.timestamp),
-            "Claim inactive"
-        );
-
+    function _validateMintProxy(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         if (merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
@@ -180,6 +173,20 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
             }
         } else {
             // Non-merkle mint
+            if (walletMax != 0) {
+                _mintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
+                require(_mintsPerWallet[creatorContractAddress][instanceId][mintFor] <= walletMax, "Too many requested for this wallet");
+            }
+        }
+    }
+
+    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes calldata signature, bytes32 message, bytes32 nonce, uint16 mintCount, address mintFor, address signingAddress) internal {
+        if (signingAddress != address(0)) {
+            require(signature.length > 0, "Invalid input");
+            // Signature mint
+            _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, mintCount, signingAddress);
+        } else {
+            // Non-signature mint
             if (walletMax != 0) {
                 _mintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
                 require(_mintsPerWallet[creatorContractAddress][instanceId][mintFor] <= walletMax, "Too many requested for this wallet");
@@ -206,6 +213,19 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
         require(mintBitmask & claimMintTracking == 0, "Already minted");
         _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex] = claimMintTracking | mintBitmask;
+    }
+
+    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, uint16 mintCount, address signingAddress) private {
+        // Verify nonce usage/re-use
+        require(!_usedNonces[creatorContractAddress][instanceId][nonce], "Cannot replay transaction");
+        // Verify valid message based on input variables
+        bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n54", msg.sender, nonce, mintCount));
+        require(message == expectedMessage, "Malformed message");
+        // Verify signature was performed by the expected signing address
+        address signer = message.recover(signature);
+        require(signer == signingAddress, "Invalid signature");
+
+        _usedNonces[creatorContractAddress][instanceId][nonce] = true;
     }
 
     function _getTotalMints(uint32 walletMax, address minter, address creatorContractAddress, uint256 instanceId) internal view returns(uint32) {

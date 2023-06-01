@@ -15,6 +15,7 @@ interface ILazyPayableClaim {
     event ClaimMint(address indexed creatorContract, uint256 indexed instanceId);
     event ClaimMintBatch(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount);
     event ClaimMintProxy(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor);
+    event ClaimMintSignature(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor);
 
     /**
      * @notice Withdraw funds
@@ -93,10 +94,11 @@ interface ILazyPayableClaim {
      * @param creatorContractAddress    the creator contract address
      * @param instanceId                the claim instanceId for the creator contract
      * @param mintCount                 the number of claims to mint
-     * @param mintIndices               the mint index (only needed for merkle claims)
      * @param signature                 if the claim has a signerAddress, verifying signatures were signed by it
+     * @param message                   the message that was signed
+     * @param nonce                     the nonce that was signed
      * @param mintFor                   the address to mint for
      */
-    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes calldata signature, address mintFor) external payable;
+    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor) external payable;
 
 }
