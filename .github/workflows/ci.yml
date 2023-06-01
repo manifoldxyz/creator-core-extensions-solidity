@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        folder: ["edition", "lazywhitelist", "redeem"]
+        folder: ["edition", "lazywhitelist", "redeem", "manifold"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
