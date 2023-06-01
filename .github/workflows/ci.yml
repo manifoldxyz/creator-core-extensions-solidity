@@ -49,7 +49,7 @@ jobs:
         working-directory: packages/${{ matrix.folder }}
         run: |
           ganache-cli -l 20000000 &
-          truffle migrate &&
+          truffle migrate --contracts_directory contracts &&
           truffle test
 
   build-forge:
