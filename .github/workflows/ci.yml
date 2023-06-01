@@ -45,11 +45,15 @@ jobs:
         run: truffle compile --contracts_directory contracts
         working-directory: packages/${{ matrix.folder }}
 
+      - name: Remove forge test sol files
+        run: rm -rf test/*.t.sol
+        working-directory: packages/${{ matrix.folder }}
+
       - name: Start ganache and run tests
         working-directory: packages/${{ matrix.folder }}
         run: |
           ganache-cli -l 20000000 &
-          truffle migrate --contracts_directory contracts &&
+          truffle migrate &&
           truffle test
 
   build-forge:
