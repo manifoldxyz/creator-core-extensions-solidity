@@ -64,7 +64,7 @@ interface ILazyPayableClaim {
      * @param merkleProof               if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
      * @param mintFor                   mintFor must be the msg.sender or a delegate wallet address (in the case of merkle based mints)
      */
-    function mint(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor, bytes memory signature) external payable;
+    function mint(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable;
 
     /**
      * @notice allow a wallet to lazily claim a token according to parameters
@@ -75,7 +75,7 @@ interface ILazyPayableClaim {
      * @param merkleProofs              if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
      * @param mintFor                   mintFor must be the msg.sender or a delegate wallet address (in the case of merkle based mints)
      */
-    function mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor, bytes[] calldata signatures) external payable;
+    function mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable;
 
     /**
      * @notice allow a proxy to mint a token for another address
@@ -86,6 +86,17 @@ interface ILazyPayableClaim {
      * @param merkleProofs              if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
      * @param mintFor                   the address to mint for
      */
-    function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor, bytes[] calldata signatures) external payable;
+    function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable;
+
+    /**
+     * @notice allowlist minting based on signatures
+     * @param creatorContractAddress    the creator contract address
+     * @param instanceId                the claim instanceId for the creator contract
+     * @param mintCount                 the number of claims to mint
+     * @param mintIndices               the mint index (only needed for merkle claims)
+     * @param signature                 if the claim has a signerAddress, verifying signatures were signed by it
+     * @param mintFor                   the address to mint for
+     */
+    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes calldata signature, address mintFor) external payable;
 
 }

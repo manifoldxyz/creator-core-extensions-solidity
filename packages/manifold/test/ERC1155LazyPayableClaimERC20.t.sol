@@ -103,31 +103,29 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       vm.startPrank(other);
       // Cannot mint with no approvals
       vm.expectRevert("ERC20: insufficient allowance");
-      example.mint(address(creatorCore), 1, 0, merkleProof1, other, "");
+      example.mint(address(creatorCore), 1, 0, merkleProof1, other);
 
       uint32[] memory amounts = new uint32[](1);
       amounts[0] = 0;
       bytes32[][] memory merkleProofs = new bytes32[][](1);
       merkleProofs[0] = merkleProof1;
-      bytes[] memory signatures = new bytes[](1);
-      signatures[0] = "0x";
 
       vm.expectRevert("ERC20: insufficient allowance");
-      example.mintBatch(address(creatorCore), 1, 1, amounts, merkleProofs, other, signatures);
+      example.mintBatch(address(creatorCore), 1, 1, amounts, merkleProofs, other);
       
       mockERC20.approve(address(example), 1000);
 
       // Cannot mint with no erc20 balance
       vm.expectRevert("ERC20: transfer amount exceeds balance");
-      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, other, "");
+      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, other);
       vm.expectRevert("ERC20: transfer amount exceeds balance");
-      example.mintBatch(address(creatorCore), 1, 1, amounts, merkleProofs, other, signatures);
+      example.mintBatch(address(creatorCore), 1, 1, amounts, merkleProofs, other);
       
       // Mint erc20 tokens
       mockERC20.fakeMint(other, 1000);
 
       // Mint a token (merkle)
-      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, other, "");
+      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, other);
 
       IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
       assertEq(claim.total, 1);
@@ -143,14 +141,11 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       merkleProofs = new bytes32[][](2);
       merkleProofs[0] = merkleProof2;
       merkleProofs[1] = merkleProof3;
-      signatures = new bytes[](2);
-      signatures[0] = "0x";
-      signatures[1] = "0x";
       vm.expectRevert("Invalid amount");
-      example.mintBatch{value: mintFee}(address(creatorCore), 1, 2, amounts, merkleProofs, other, signatures);
+      example.mintBatch{value: mintFee}(address(creatorCore), 1, 2, amounts, merkleProofs, other);
       vm.expectRevert("Invalid amount");
-      example.mintBatch{value: mintFeeNon*2}(address(creatorCore), 1, 2, amounts, merkleProofs, other, signatures);
-      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, amounts, merkleProofs, other, signatures);
+      example.mintBatch{value: mintFeeNon*2}(address(creatorCore), 1, 2, amounts, merkleProofs, other);
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, amounts, merkleProofs, other);
 
       assertEq(700, mockERC20.balanceOf(other));
       assertEq(300, mockERC20.balanceOf(owner));
@@ -158,7 +153,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
 
       // Mint a token
       bytes32[] memory blankProof = new bytes32[](0);
-      example.mint{value: mintFee}(address(creatorCore), 2, 0, blankProof, other, "");
+      example.mint{value: mintFee}(address(creatorCore), 2, 0, blankProof, other);
       claim = example.getClaim(address(creatorCore), 2);
       assertEq(claim.total, 1);
       assertEq(500, mockERC20.balanceOf(other));
@@ -167,11 +162,10 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
 
       bytes32[][] memory blankProofs = new bytes32[][](0);
       uint32[] memory blankAmounts = new uint32[](0);
-      bytes[] memory blankSignatures = new bytes[](0);
 
       vm.expectRevert("Invalid amount");
-      example.mintBatch{value: mintFee}(address(creatorCore), 2, 2, blankAmounts, blankProofs, other, blankSignatures);
-      example.mintBatch{value: mintFee*2}(address(creatorCore), 2, 2, blankAmounts, blankProofs, other, blankSignatures);
+      example.mintBatch{value: mintFee}(address(creatorCore), 2, 2, blankAmounts, blankProofs, other);
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 2, 2, blankAmounts, blankProofs, other);
       assertEq(100, mockERC20.balanceOf(other));
       assertEq(900, mockERC20.balanceOf(owner));
       assertEq(3, creatorCore.balanceOf(other, 2));
@@ -232,7 +226,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       mockERC20.fakeMint(other, 1000);
 
       // Mint a token (merkle)
-      example.mint(address(creatorCore), 1, 0, merkleProof1, other, "");
+      example.mint(address(creatorCore), 1, 0, merkleProof1, other);
 
       IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
       assertEq(claim.total, 1);
@@ -290,12 +284,11 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
 
       uint32[] memory amounts = new uint32[](0);
       bytes32[][] memory merkleProofs = new bytes32[][](0);
-      bytes[] memory signatures = new bytes[](0);
 
       // Perform a mint on the claim
       uint startingBalance = other.balance;
       uint gasBefore = gasleft();
-      example.mintProxy{value: mintFee*3}(address(creatorCore), 1, 3, amounts, merkleProofs, other2, signatures);
+      example.mintProxy{value: mintFee*3}(address(creatorCore), 1, 3, amounts, merkleProofs, other2);
       uint gasAfter = gasleft();
       assertEq(3, creatorCore.balanceOf(other2, 1));
       // Ensure funds taken from message sender
@@ -316,13 +309,10 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       merkleProofs[0] = merkleProof1;
       merkleProofs[1] = merkleProof2;
 
-      signatures = new bytes[](2);
-      signatures[0] = "0x";
-      signatures[1] = "0x";
       vm.expectRevert("Invalid amount");
-      example.mintProxy{value: mintFeeNon*2}(address(creatorCore), 3, 2, amounts, merkleProofs, other2, signatures);
+      example.mintProxy{value: mintFeeNon*2}(address(creatorCore), 3, 2, amounts, merkleProofs, other2);
 
-      example.mintProxy{value: mintFee*2}(address(creatorCore), 3, 2, amounts, merkleProofs, other2, signatures);
+      example.mintProxy{value: mintFee*2}(address(creatorCore), 3, 2, amounts, merkleProofs, other2);
       assertEq(2, creatorCore.balanceOf(other2, 2));
       // Ensure funds taken from message sender
       assertEq(500, mockERC20.balanceOf(other));

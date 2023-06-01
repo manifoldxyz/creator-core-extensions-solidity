@@ -99,13 +99,13 @@ jobs:
         working-directory: packages/${{ matrix.folder }}
 
       - name: Forge build
-        run: forge build --via-ir
+        run: forge build
         working-directory: packages/${{ matrix.folder }}
 
       - name: Forge test
-        run: forge test --via-ir
+        run: forge test
         working-directory: packages/${{ matrix.folder }}
 
       - name: Forge coverage
-        run: forge coverage --via-ir
+        run: forge coverage
         working-directory: packages/${{ matrix.folder }}
