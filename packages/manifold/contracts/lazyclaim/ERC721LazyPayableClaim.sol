@@ -220,8 +220,8 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
-        require((++claim.total <= claim.totalMax || claim.totalMax == 0) && claim.total <= MAX_UINT_24, "Maximum tokens already minted for this claim");
-
+        _validateTotalMax(1, claim.total, claim.totalMax, true);
+        claim.total++;
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
         // Validate mint
@@ -250,8 +250,8 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
+        _validateTotalMax(mintCount, claim.total, claim.totalMax, true);
         claim.total += mintCount;
-        require((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24, "Too many requested for this claim");
 
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
@@ -287,8 +287,8 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
+        _validateTotalMax(mintCount, claim.total, claim.totalMax, true);
         claim.total += mintCount;
-        require((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24, "Too many requested for this claim");
 
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
@@ -324,8 +324,8 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
+        _validateTotalMax(mintCount, claim.total, claim.totalMax, true);
         claim.total += mintCount;
-        require((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24, "Too many requested for this claim");
 
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);

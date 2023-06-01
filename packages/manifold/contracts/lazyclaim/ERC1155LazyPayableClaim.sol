@@ -200,7 +200,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
-        require(++claim.total <= claim.totalMax || claim.totalMax == 0, "Maximum tokens already minted for this claim");
+        _validateTotalMax(1, claim.total, claim.totalMax, false);
+        claim.total++;
 
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
@@ -227,8 +228,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
+        _validateTotalMax(mintCount, claim.total, claim.totalMax, false);
         claim.total += mintCount;
-        require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
@@ -255,8 +256,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
+        _validateTotalMax(mintCount, claim.total, claim.totalMax, false);
         claim.total += mintCount;
-        require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
@@ -283,8 +284,9 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
+        _validateTotalMax(mintCount, claim.total, claim.totalMax, false);
         claim.total += mintCount;
-        require((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24, "Too many requested for this claim");
+
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
         // Validate mint
