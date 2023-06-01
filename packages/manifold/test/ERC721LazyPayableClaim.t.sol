@@ -22,6 +22,7 @@ contract ERC721LazyPayableClaimTest is Test {
     address public other2 = 0x80AAC46bbd3C2FcE33681541a52CacBEd14bF425;
     address public other3 = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
 
+    address public signingAddress = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
     address public zeroAddress = address(0);
 
     function setUp() public {
@@ -69,7 +70,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
       // Must be admin
       vm.expectRevert();
@@ -136,7 +138,7 @@ contract ERC721LazyPayableClaimTest is Test {
       assertEq(claim.paymentReceiver, owner);
 
       // Mint one so token exists...
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, new bytes32[](0), owner);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, new bytes32[](0), owner, "");
 
       assertEq("https://arweave.net/arweaveHash1", creatorCore.tokenURI(1));
 
@@ -169,7 +171,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       vm.expectRevert("Cannot initialize with invalid storage protocol");
@@ -224,7 +227,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(
@@ -284,7 +288,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(
@@ -302,40 +307,40 @@ contract ERC721LazyPayableClaimTest is Test {
       vm.startPrank(other);
 
       vm.expectRevert("Could not verify merkle proof");
-      example.mint(address(creatorCore), 1, 1, merkleProof1, other);
+      example.mint(address(creatorCore), 1, 1, merkleProof1, other, "");
 
       vm.stopPrank();
       vm.startPrank(other2);
       vm.expectRevert("Could not verify merkle proof");
-      example.mint(address(creatorCore), 1, 0, merkleProof1, other2);
+      example.mint(address(creatorCore), 1, 0, merkleProof1, other2, "");
 
       vm.stopPrank();
       vm.startPrank(owner);
 
       uint mintFee = example.MINT_FEE_MERKLE() + 1;
 
-      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, owner);
+      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, owner, "");
 
       vm.roll(block.number + 1);
       vm.expectRevert("Already minted");
-      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, owner);
+      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, owner, "");
 
       vm.stopPrank();
       vm.startPrank(other2);
 
       bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
 
-      example.mint{value: mintFee}(address(creatorCore), 1, 1, merkleProof2, other2);
+      example.mint{value: mintFee}(address(creatorCore), 1, 1, merkleProof2, other2, "");
       bytes32[] memory merkleProof3 = merkle.getProof(allowListTuples, uint32(2));
 
-      example.mint{value: mintFee}(address(creatorCore), 1, 2, merkleProof3, other2);
+      example.mint{value: mintFee}(address(creatorCore), 1, 2, merkleProof3, other2, "");
 
       vm.stopPrank();
       vm.startPrank(other3);
       bytes32[] memory merkleProof4 = merkle.getProof(allowListTuples, uint32(3));
 
       vm.expectRevert("Maximum tokens already minted for this claim");
-      example.mint{value: mintFee}(address(creatorCore), 1, 3, merkleProof4, other3);
+      example.mint{value: mintFee}(address(creatorCore), 1, 3, merkleProof4, other3, "");
 
       claimP.totalMax = 4;
       vm.stopPrank();
@@ -347,7 +352,7 @@ contract ERC721LazyPayableClaimTest is Test {
       );
       vm.stopPrank();
       vm.startPrank(other3);
-      example.mint{value: mintFee}(address(creatorCore), 1, 3, merkleProof4, other3);
+      example.mint{value: mintFee}(address(creatorCore), 1, 3, merkleProof4, other3, "");
 
       vm.stopPrank();
     }
@@ -376,7 +381,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(
@@ -396,32 +402,41 @@ contract ERC721LazyPayableClaimTest is Test {
       bytes32[][] memory proofsInput = new bytes32[][](1);
       proofsInput[0] = merkleProof1;
 
+      bytes[] memory signatures = new bytes[](1);
+      signatures[0] = "";
+
       vm.expectRevert("Invalid input");
-      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, owner);
+      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, owner, signatures);
 
       amountsInput = new uint32[](2);
       amountsInput[0] = 0;
       amountsInput[1] = 0;
 
       vm.expectRevert("Invalid input");
-      example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
+      example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, owner, signatures);
 
       amountsInput = new uint32[](1);
       amountsInput[0] = 0;
       proofsInput = new bytes32[][](2);
       proofsInput[0] = merkleProof1;
       proofsInput[1] = merkleProof1;
+
+      signatures = new bytes[](2);
+      signatures[0] = "";
+      signatures[1] = "";
       vm.expectRevert("Invalid input");
-      example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
+      example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, owner, signatures);
 
       proofsInput = new bytes32[][](1);
       proofsInput[0] = merkleProof1;
-      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
+      signatures = new bytes[](1);
+      signatures[0] = "";
+      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, amountsInput, proofsInput, owner, signatures);
 
       vm.expectRevert("Already minted");
-      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, owner);
+      example.mint{value: mintFee}(address(creatorCore), 1, 0, merkleProof1, owner, "");
       vm.expectRevert("Already minted");
-      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
+      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, amountsInput, proofsInput, owner, signatures);
 
 
       bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
@@ -437,14 +452,18 @@ contract ERC721LazyPayableClaimTest is Test {
       proofsInput[0] = merkleProof2;
       proofsInput[1] = merkleProof4;
 
+      signatures = new bytes[](2);
+      signatures[0] = "";
+      signatures[1] = "";
+
       vm.stopPrank();
       vm.startPrank(other2);
       vm.expectRevert("Could not verify merkle proof");
-      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other2);
+      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other2, signatures);
 
       proofsInput[1] = merkleProof3;
       amountsInput[1] = 2;
-      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, amountsInput, proofsInput, other2);
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, amountsInput, proofsInput, other2, signatures);
 
 
       vm.stopPrank();
@@ -469,8 +488,11 @@ contract ERC721LazyPayableClaimTest is Test {
 
       proofsInput = new bytes32[][](1);
       proofsInput[0] = merkleProof4;
+
+      signatures = new bytes[](1);
+      signatures[0] = "";
       vm.expectRevert("Too many requested for this claim");
-      example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, other3);
+      example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, other3, signatures);
 
       vm.stopPrank();
       vm.startPrank(owner);
@@ -490,8 +512,12 @@ contract ERC721LazyPayableClaimTest is Test {
       proofsInput = new bytes32[][](2);
       proofsInput[0] = merkleProof4;
       proofsInput[1] = merkleProof5;
+
+      signatures = new bytes[](2);
+      signatures[0] = "";
+      signatures[1] = "";
       vm.expectRevert("Too many requested for this claim");
-      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other3);
+      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other3, signatures);
 
 
       vm.stopPrank();
@@ -507,16 +533,16 @@ contract ERC721LazyPayableClaimTest is Test {
       vm.stopPrank();
       vm.startPrank(other2);
       vm.expectRevert("Already minted");
-      example.mint(address(creatorCore), 1, 1, merkleProof2, other2);
+      example.mint(address(creatorCore), 1, 1, merkleProof2, other2, "");
       vm.expectRevert("Already minted");
-      example.mint(address(creatorCore), 1, 2, merkleProof3, other2);
+      example.mint(address(creatorCore), 1, 2, merkleProof3, other2, "");
       
       amountsInput[0] = 1;
       amountsInput[1] = 2;
       proofsInput[0] = merkleProof2;
       proofsInput[1] = merkleProof3;
       vm.expectRevert("Already minted");
-      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other2);
+      example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other2, signatures);
       
       vm.stopPrank();
       vm.startPrank(other3);
@@ -525,7 +551,7 @@ contract ERC721LazyPayableClaimTest is Test {
       amountsInput[1] = 4;
       proofsInput[0] = merkleProof4;
       proofsInput[1] = merkleProof5;
-      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, amountsInput, proofsInput, other3);
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, amountsInput, proofsInput, other3, signatures);
 
       assertEq(creatorCore.balanceOf(owner), 1);
       assertEq(creatorCore.balanceOf(other2), 2);
@@ -552,7 +578,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(
@@ -564,19 +591,19 @@ contract ERC721LazyPayableClaimTest is Test {
       vm.stopPrank();
       vm.startPrank(owner);
       vm.expectRevert("Too many requested for this wallet");
-      example.mintBatch{value: mintFee*4}(address(creatorCore), 1, 4, new uint32[](0), new bytes32[][](0), owner);
+      example.mintBatch{value: mintFee*4}(address(creatorCore), 1, 4, new uint32[](0), new bytes32[][](0), owner, new bytes[](0));
       
-      example.mintBatch{value: mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+      example.mintBatch{value: mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner, new bytes[](0));
 
       vm.expectRevert("Too many requested for this wallet");
-      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
+      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner, new bytes[](0));
       
       vm.stopPrank();
       vm.startPrank(other2);
       vm.expectRevert("Too many requested for this claim");
-      example.mintBatch{value: mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other2);
+      example.mintBatch{value: mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other2, new bytes[](0));
 
-      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), other2);
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), other2, new bytes[](0));
 
       vm.stopPrank();
     }
@@ -598,7 +625,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(
@@ -610,13 +638,13 @@ contract ERC721LazyPayableClaimTest is Test {
       vm.stopPrank();
       vm.startPrank(owner);
       vm.expectRevert("Invalid amount");
-      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+      example.mintBatch{value: mintFee*2}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner, new bytes[](0));
 
       vm.expectRevert("Invalid amount");
-      example.mintBatch{value: 2}(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), owner);
+      example.mintBatch{value: 2}(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), owner, new bytes[](0));
 
       vm.expectRevert("Invalid amount");
-      example.mint(address(creatorCore), 1, 0, new bytes32[](0), owner);
+      example.mint(address(creatorCore), 1, 0, new bytes32[](0), owner, "");
 
       vm.stopPrank();
     }
@@ -638,7 +666,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(owner),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(
@@ -650,8 +679,8 @@ contract ERC721LazyPayableClaimTest is Test {
       uint beforeBalance = owner.balance;
       vm.stopPrank();
       vm.startPrank(other2);
-      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), other2);
-      example.mint{value: mintFee}(address(creatorCore), 1, 0, new bytes32[](0), other2);
+      example.mintBatch{value: mintFee}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), other2, new bytes[](0));
+      example.mint{value: mintFee}(address(creatorCore), 1, 0, new bytes32[](0), other2, "");
       uint afterBalance = owner.balance;
       assertEq(2, afterBalance-beforeBalance);
       vm.stopPrank();      
@@ -674,7 +703,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(owner),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(
@@ -700,7 +730,8 @@ contract ERC721LazyPayableClaimTest is Test {
         1,
         0,
         new bytes32[](0),
-        other
+        other,
+        ""
       );
       vm.stopPrank();
       vm.startPrank(other2);
@@ -709,7 +740,8 @@ contract ERC721LazyPayableClaimTest is Test {
         1,
         0,
         new bytes32[](0),
-        other2
+        other2,
+        ""
       );
       // Mint a token using creator contract, to test breaking up extension's indexRange
       vm.stopPrank();
@@ -723,7 +755,8 @@ contract ERC721LazyPayableClaimTest is Test {
         1,
         0,
         new bytes32[](0),
-        other3
+        other3,
+        ""
       );
       assertEq("1", creatorCore.tokenURI(1));
 
@@ -752,7 +785,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       // Should fail to initialize if non-admin wallet is used
@@ -770,7 +804,7 @@ contract ERC721LazyPayableClaimTest is Test {
       vm.startPrank(owner);
       bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
       vm.expectRevert("Claim not initialized");
-      example.mint(address(creatorCore), 1, 0, merkleProof1, owner);
+      example.mint(address(creatorCore), 1, 0, merkleProof1, owner, "");
 
       example.initializeClaim(
         address(creatorCore),
@@ -814,10 +848,10 @@ contract ERC721LazyPayableClaimTest is Test {
       vm.stopPrank();
       vm.startPrank(owner);
       vm.expectRevert("Claim inactive");
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner, "");
 
       vm.warp(nowC+501);
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner, "");
 
       claim = example.getClaim(address(creatorCore), 1);
       assertEq(claim.total, 1);
@@ -829,13 +863,13 @@ contract ERC721LazyPayableClaimTest is Test {
       assertEq(claimInfo.location, "arweaveHash1");
       assertEq(claimInfo.totalMax, 3);
       assertEq(claimInfo.walletMax, 0);
-      assertEq(claimInfo.startDate, nowC + 500);
+      assertEq(claimInfo.startDate, nowC - 1);
       assertEq(claimInfo.endDate, later);
 
       bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
       vm.stopPrank();
       vm.startPrank(other2);
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2, "");
 
       // Now ensure that the creator contract state is what we expect after mints
       assertEq(creatorCore.balanceOf(owner), 1);
@@ -859,13 +893,13 @@ contract ERC721LazyPayableClaimTest is Test {
       // Optional parameters - using claim 2
       // Cannot mint for someone else
       vm.expectRevert("Invalid input");
-      example.mint{value: mintFee}(address(creatorCore), 2, 0, new bytes32[](0), other);
+      example.mint{value: mintFee}(address(creatorCore), 2, 0, new bytes32[](0), other, "");
 
-      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), owner);
-      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), owner);
+      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), owner, "");
+      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), owner, "");
       vm.stopPrank();
       vm.startPrank(other);
-      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), other);
+      example.mint{value: mintFee+1}(address(creatorCore), 2, 0, new bytes32[](0), other, "");
 
       // end claim period
       vm.warp(later*2);
@@ -875,7 +909,7 @@ contract ERC721LazyPayableClaimTest is Test {
       vm.stopPrank();
       vm.startPrank(other2);
       vm.expectRevert("Claim inactive");
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 2, merkleProof3, other2);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 2, merkleProof3, other2, "");
 
       // Passes with valid withdrawal amount from owner
       vm.stopPrank();
@@ -909,7 +943,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(address(creatorCore), 1, claimP);
@@ -928,7 +963,7 @@ contract ERC721LazyPayableClaimTest is Test {
       // Mint
       bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
 
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner, "");
 
       // Update totalMax to 1, will actually set to 2 because there are two
       claimP.totalMax = 1;
@@ -958,7 +993,7 @@ contract ERC721LazyPayableClaimTest is Test {
       bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
       vm.stopPrank();
       vm.startPrank(other2);
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2, "");
 
       assertEq(1, creatorCore.balanceOf(owner));
       assertEq(1, creatorCore.balanceOf(other));
@@ -990,7 +1025,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(address(creatorCore), 1, claimP);
@@ -1006,18 +1042,18 @@ contract ERC721LazyPayableClaimTest is Test {
       bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
       vm.stopPrank();
       vm.startPrank(other);
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, merkleProof1, owner, "");
       assertEq(creatorCore.balanceOf(owner), 0);
       assertEq(creatorCore.balanceOf(other), 1);
       
       // Mint with contract-level delegate
       bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 1, merkleProof2, other2, "");
 
       // Fail to mint when no delegate is set
       bytes32[] memory merkleProof3 = merkle.getProof(allowListTuples, uint32(2));
       vm.expectRevert("Invalid delegate");
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 2, merkleProof3, other3);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 2, merkleProof3, other3, "");
 
       vm.stopPrank();
     }
@@ -1052,12 +1088,13 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(address(mockETHReceiver)),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(address(creatorCore), 1, claimP);
       // Perform a mint on the claim
-      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, new bytes32[](0), owner);
+      example.mint{value: mintFee+1}(address(creatorCore), 1, 0, new bytes32[](0), owner, "");
       
       vm.stopPrank();
     }
@@ -1083,7 +1120,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(other),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(address(creatorCore), 1, claimP);
@@ -1095,7 +1133,7 @@ contract ERC721LazyPayableClaimTest is Test {
 
       manifoldMembership.setMember(owner, true);
       // Perform a mint on the claim
-      example.mintBatch{value: 3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+      example.mintBatch{value: 3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner, new bytes[](0));
 
       bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
       bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
@@ -1108,7 +1146,11 @@ contract ERC721LazyPayableClaimTest is Test {
       proofsInput[0] = merkleProof1;
       proofsInput[1] = merkleProof2;
 
-      example.mintBatch{value: 2}(address(creatorCore), 2, 2, amountsInput, proofsInput, owner);
+      bytes[] memory signatures = new bytes[](2);
+      signatures[0] = "0x";
+      signatures[1] = "0x";
+
+      example.mintBatch{value: 2}(address(creatorCore), 2, 2, amountsInput, proofsInput, owner, signatures);
 
       vm.stopPrank();
     }
@@ -1135,7 +1177,8 @@ contract ERC721LazyPayableClaimTest is Test {
           identical: true,
           cost: 1,
           paymentReceiver: payable(owner),
-          erc20: zeroAddress
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
       example.initializeClaim(address(creatorCore), 1, claimP);
@@ -1153,7 +1196,7 @@ contract ERC721LazyPayableClaimTest is Test {
 
       vm.stopPrank();
       vm.startPrank(other);
-      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner, new bytes[](0));
 
       assertEq(3, creatorCore.balanceOf(owner));
 
@@ -1175,9 +1218,13 @@ contract ERC721LazyPayableClaimTest is Test {
       proofsInput[0] = merkleProof1;
       proofsInput[1] = merkleProof2;
 
+      bytes[] memory signatures = new bytes[](2);
+      signatures[0] = "0x";
+      signatures[1] = "0x";
+
       vm.expectRevert("Invalid amount");
-      example.mintProxy{value: mintFeeNon*2+2}(address(creatorCore), 3, 2, amountsInput, proofsInput, owner);
-      example.mintProxy{value: mintFee*2+2}(address(creatorCore), 3, 2, amountsInput, proofsInput, owner);
+      example.mintProxy{value: mintFeeNon*2+2}(address(creatorCore), 3, 2, amountsInput, proofsInput, owner, signatures);
+      example.mintProxy{value: mintFee*2+2}(address(creatorCore), 3, 2, amountsInput, proofsInput, owner, signatures);
       assertEq(5, creatorCore.balanceOf(owner));
       vm.stopPrank();
     }

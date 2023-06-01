@@ -25,6 +25,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     // { contractAddress => { tokenId => { instanceId } }
     mapping(address => mapping(uint256 => uint256)) private _claimTokenIds;
 
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, AdminControl) returns (bool) {
         return interfaceId == type(IERC1155LazyPayableClaim).interfaceId ||
             interfaceId == type(ILazyPayableClaim).interfaceId ||
@@ -70,7 +71,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             tokenId: newTokenIds[0],
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver,
-            erc20: claimParameters.erc20
+            erc20: claimParameters.erc20,
+            signingAddress: claimParameters.signingAddress
         });
         _claimTokenIds[creatorContractAddress][newTokenIds[0]] = instanceId;
         
@@ -107,7 +109,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             tokenId: claim.tokenId,
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver,
-            erc20: claimParameters.erc20
+            erc20: claimParameters.erc20,
+            signingAddress: claimParameters.signingAddress
         });
         emit ClaimUpdated(creatorContractAddress, instanceId);
     }
@@ -193,7 +196,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {ILazyPayableClaim-mint}.
      */
-    function mint(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
+    function mint(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor, bytes calldata signature) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
@@ -218,7 +221,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {ILazyPayableClaim-mintBatch}.
      */
-    function mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
+    function mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor, bytes[] calldata signatures) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
@@ -244,7 +247,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {ILazyPayableClaim-mintProxy}.
      */
-    function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
+    function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor, bytes[] calldata signatures) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax

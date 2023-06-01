@@ -32,6 +32,7 @@ contract ERC721Collectible is CollectibleCore, IERC721Collectible {
             interfaceId == type(IAdminControl).interfaceId ||
             interfaceId == type(IERC165).interfaceId);
     }
+    
 
     /**
     * See {ICollectibleCore-initializeCollectible}.

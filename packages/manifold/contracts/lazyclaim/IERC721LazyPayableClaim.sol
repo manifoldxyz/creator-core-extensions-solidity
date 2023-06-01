@@ -22,6 +22,7 @@ interface IERC721LazyPayableClaim is ILazyPayableClaim {
         uint256 cost;
         address payable paymentReceiver;
         address erc20;
+        address signingAddress;
     }
 
     struct Claim {
@@ -38,6 +39,7 @@ interface IERC721LazyPayableClaim is ILazyPayableClaim {
         uint256 cost;
         address payable paymentReceiver;
         address erc20;
+        address signingAddress;
     }
 
     /**
