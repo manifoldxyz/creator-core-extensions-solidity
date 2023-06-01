@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        folder: ["edition", "lazywhitelist", "manifold", "redeem"]
+        folder: ["edition", "lazywhitelist", "redeem", "manifold"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -42,7 +42,11 @@ jobs:
         working-directory: packages/${{ matrix.folder }}
 
       - name: Truffle compile
-        run: truffle compile
+        run: truffle compile --contracts_directory contracts
+        working-directory: packages/${{ matrix.folder }}
+
+      - name: Remove forge test sol files
+        run: rm -rf test/*.t.sol
         working-directory: packages/${{ matrix.folder }}
 
       - name: Start ganache and run tests
@@ -58,7 +62,7 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        folder: ["dynamic", "enumerable"]
+        folder: ["dynamic", "enumerable", "manifold"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -91,6 +95,7 @@ jobs:
             forge install manifoldxyz/libraries-solidity --no-commit
             forge install manifoldxyz/creator-core-solidity --no-commit
             forge install ProjectOpenSea/operator-filter-registry --no-commit
+            forge install dmfxyz/murky --no-commit
         working-directory: packages/${{ matrix.folder }}
 
       - name: Forge build
@@ -99,4 +104,8 @@ jobs:
 
       - name: Forge test
         run: forge test
+        working-directory: packages/${{ matrix.folder }}
+
+      - name: Forge coverage
+        run: forge coverage
         working-directory: packages/${{ matrix.folder }}
