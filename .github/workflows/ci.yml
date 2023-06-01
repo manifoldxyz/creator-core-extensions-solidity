@@ -42,7 +42,7 @@ jobs:
         working-directory: packages/${{ matrix.folder }}
 
       - name: Truffle compile
-        run: truffle compile
+        run: truffle compile --contracts_directory contracts
         working-directory: packages/${{ matrix.folder }}
 
       - name: Start ganache and run tests
