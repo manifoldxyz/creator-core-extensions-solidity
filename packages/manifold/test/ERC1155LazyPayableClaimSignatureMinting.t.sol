@@ -154,14 +154,18 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       // Still only owns 3
       assertEq(3, creatorCore.balanceOf(other2, 1));
 
-      // bug: bypass mintSignature
-      vm.stopPrank();
-      address alice = address(0xa11ce);
-      vm.startPrank(alice);
-      vm.deal(alice, mintFee * 3);
-      example.mint{ value: mintFee * 3 }(address(creatorCore), 1, uint16(3), new bytes32[](0), alice);
-      assertEq(1, creatorCore.balanceOf(alice, 1));
-  
+      // Cannot mint other ways when signature is non-zero
+      vm.expectRevert("Must use signature minting");
+      example.mint{ value: mintFee * 3 }(address(creatorCore), 1, uint16(3), new bytes32[](0), other);
+
+      vm.expectRevert("Must use signature minting");
+      example.mintBatch{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
+
+      vm.expectRevert("Must use signature minting");
+      example.mintProxy{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
+
+      // Other owns none because all mints with other methods failed
+      assertEq(0, creatorCore.balanceOf(other, 1));
     }
 
 }

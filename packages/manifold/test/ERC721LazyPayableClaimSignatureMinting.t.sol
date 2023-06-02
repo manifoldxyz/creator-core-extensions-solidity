@@ -155,7 +155,18 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       // Still only owns 3
       assertEq(3, creatorCore.balanceOf(other2));
 
-  
+      // Cannot mint other ways when signature is non-zero
+      vm.expectRevert("Must use signature minting");
+      example.mint{ value: mintFee * 3 }(address(creatorCore), 1, uint16(3), new bytes32[](0), other);
+
+      vm.expectRevert("Must use signature minting");
+      example.mintBatch{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
+
+      vm.expectRevert("Must use signature minting");
+      example.mintProxy{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
+
+      // Other owns none because all mints with other methods failed
+      assertEq(0, creatorCore.balanceOf(other));
     }
 
 }

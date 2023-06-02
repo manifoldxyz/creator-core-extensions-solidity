@@ -219,6 +219,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     function mint(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
+        require(claim.signingAddress == address(0), "Must use signature minting");
         // Check totalMax
         _validateTotalMax(1, claim.total, claim.totalMax, true);
         claim.total++;
@@ -249,6 +250,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     function mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
+        require(claim.signingAddress == address(0), "Must use signature minting");
         // Check totalMax
         _validateTotalMax(mintCount, claim.total, claim.totalMax, true);
         claim.total += mintCount;
@@ -286,6 +288,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
+        require(claim.signingAddress == address(0), "Must use signature minting");
         // Check totalMax
         _validateTotalMax(mintCount, claim.total, claim.totalMax, true);
         claim.total += mintCount;
