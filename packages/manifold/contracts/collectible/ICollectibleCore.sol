@@ -18,7 +18,6 @@ interface ICollectibleCore is IERC165 {
         uint48 claimEndTime;
     }
 
-
     struct InitializationParameters {
         bool useDynamicPresalePurchaseLimit;
         uint16 transactionLimit;

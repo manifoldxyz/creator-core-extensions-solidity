@@ -25,7 +25,6 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     // { contractAddress => { tokenId => { instanceId } }
     mapping(address => mapping(uint256 => uint256)) private _claimTokenIds;
 
-
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, AdminControl) returns (bool) {
         return interfaceId == type(IERC1155LazyPayableClaim).interfaceId ||
             interfaceId == type(ILazyPayableClaim).interfaceId ||
