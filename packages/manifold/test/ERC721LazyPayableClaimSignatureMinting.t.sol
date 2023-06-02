@@ -89,7 +89,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
 
       bytes32 nonce = "1";
 
-      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(other2), nonce, uint16(3)));
+      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), address(other2), nonce, uint16(3)));
 
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
       bytes memory signature = abi.encodePacked(r, s, v);
@@ -120,7 +120,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
 
       // Bad message signed
       nonce = "2";
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", nonce, uint16(3)));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, uint16(3)));
 
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
@@ -138,7 +138,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
 
       // Correct message, wrong signer
       nonce = "2";
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", other2, nonce, uint16(3)));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), other2, nonce, uint16(3)));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert("Incorrect signer");
@@ -180,7 +180,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       vm.stopPrank();
       vm.startPrank(other);
       nonce = "2";
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", other2, nonce, uint16(3)));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), other2, nonce, uint16(3)));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert("Must be signature mint");
