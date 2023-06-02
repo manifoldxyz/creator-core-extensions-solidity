@@ -330,7 +330,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
         // Validate mint
-        _validateMintSignature(creatorContractAddress, instanceId, claim.walletMax, signature, message, nonce, mintCount, claim.signingAddress, mintFor);
+        _validateMintSignature(creatorContractAddress, instanceId, claim.walletMax, signature, message, nonce, mintCount, mintFor, claim.signingAddress);
         uint256 newMintIndex = claim.total - mintCount + 1;
 
         // Transfer funds

@@ -22,7 +22,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     address public other2 = 0x80AAC46bbd3C2FcE33681541a52CacBEd14bF425;
     address public other3 = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
 
-    address public signingAddress = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
+    address public signingAddress = address(0);
 
     address public zeroAddress = address(0);
 

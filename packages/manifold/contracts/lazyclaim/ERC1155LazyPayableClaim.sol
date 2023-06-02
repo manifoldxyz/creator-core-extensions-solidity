@@ -290,7 +290,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         // Validate is active
         _validateActive(claim.startDate, claim.endDate);
         // Validate mint
-        _validateMintSignature(creatorContractAddress, instanceId, claim.walletMax, signature, message, nonce, mintCount, claim.signingAddress, mintFor);
+        _validateMintSignature(creatorContractAddress, instanceId, claim.walletMax, signature, message, nonce, mintCount, mintFor, claim.signingAddress);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", false);
