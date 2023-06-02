@@ -184,18 +184,11 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes calldata signature, bytes32 message, bytes32 nonce, uint16 mintCount, address mintFor, address signingAddress) internal {
-        if (signingAddress != address(0)) {
-            require(signature.length > 0, "Invalid input");
-            // Signature mint
-            _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, mintCount, signingAddress, mintFor);
-        } else {
-            // Non-signature mint
-            if (walletMax != 0) {
-                _mintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
-                require(_mintsPerWallet[creatorContractAddress][instanceId][mintFor] <= walletMax, "Too many requested for this wallet");
-            }
-        }
+    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, uint16 mintCount, address mintFor, address signingAddress) internal {
+        require(signingAddress != address(0), "Must be signature mint");
+        require(signature.length > 0, "Invalid input");
+        // Signature mint
+        _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, mintCount, signingAddress, mintFor);
     }
 
     function _checkMerkleAndUpdate(address sender, address creatorContractAddress, uint256 instanceId, bytes32 merkleRoot, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {

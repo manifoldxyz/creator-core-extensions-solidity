@@ -166,6 +166,33 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
 
       // Other owns none because all mints with other methods failed
       assertEq(0, creatorCore.balanceOf(other, 1));
+
+      // Cannot mintSignature for claim that isn't signature based
+      claimP.signingAddress = zeroAddress;
+      vm.stopPrank();
+      vm.startPrank(owner);
+      example.updateClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
+      vm.stopPrank();
+      vm.startPrank(other);
+      nonce = "2";
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", other2, nonce, uint16(3)));
+      (v, r, s) = vm.sign(privateKey, message);
+      signature = abi.encodePacked(r, s, v);
+      vm.expectRevert("Must be signature mint");
+      example.mintSignature{value: mintFee*3}(
+        address(creatorCore),
+        1,
+        uint16(3),
+        signature,
+        message,
+        nonce,
+        other2
+      );
+
     }
 
 }
