@@ -1203,4 +1203,70 @@ contract ERC721LazyPayableClaimTest is Test {
       assertEq(5, creatorCore.balanceOf(owner));
       vm.stopPrank();
     }
+
+    function testNonIdenticalURIs() public {
+      vm.startPrank(owner);
+      uint48 nowC = uint48(block.timestamp);
+      uint48 later = nowC + 1000;
+      uint mintFee = example.MINT_FEE_MERKLE();
+      uint mintFeeNon = example.MINT_FEE();
+
+      // Make non-identical claim
+      IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
+          merkleRoot: "",
+          location: "XXX",
+          totalMax: 10,
+          walletMax: 10,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          identical: false,
+          cost: 1,
+          paymentReceiver: payable(owner),
+          erc20: zeroAddress,
+          signingAddress: signingAddress
+      });
+
+      example.initializeClaim(address(creatorCore), 1, claimP);
+
+      // The sender is a member, but proxy minting will ignore the fact they are a member
+      manifoldMembership.setMember(other, true);
+      // Perform a mint on the claim
+      uint balance = other.balance;
+      uint ownerBalance = owner.balance;
+
+      vm.stopPrank();
+      vm.startPrank(other);
+      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+
+      assertEq(3, creatorCore.balanceOf(owner));
+
+      // Check the URI has the mint # appended.
+      assertEq("https://arweave.net/XXX/1", creatorCore.tokenURI(1));
+
+      // Mint another, and check
+      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+      assertEq("https://arweave.net/XXX/2", creatorCore.tokenURI(2));
+
+      // Change to identical claim
+      vm.stopPrank();
+      vm.startPrank(owner);
+
+      claimP.identical = true;
+      example.updateClaim(address(creatorCore), 1, claimP);
+
+      // Should not have mint # now
+      assertEq("https://arweave.net/XXX", creatorCore.tokenURI(1));
+      assertEq("https://arweave.net/XXX", creatorCore.tokenURI(2));
+
+      // Go back to numbered..
+      claimP.identical = false;
+      example.updateClaim(address(creatorCore), 1, claimP);
+
+      // Should have mint # now
+      assertEq("https://arweave.net/XXX/1", creatorCore.tokenURI(1));
+      assertEq("https://arweave.net/XXX/2", creatorCore.tokenURI(2));
+
+      vm.stopPrank();
+    }
 }
