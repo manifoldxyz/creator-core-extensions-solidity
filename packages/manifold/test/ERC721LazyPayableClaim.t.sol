@@ -1243,10 +1243,12 @@ contract ERC721LazyPayableClaimTest is Test {
 
       // Check the URI has the mint # appended.
       assertEq("https://arweave.net/XXX/1", creatorCore.tokenURI(1));
+      assertEq("https://arweave.net/XXX/2", creatorCore.tokenURI(2));
+      assertEq("https://arweave.net/XXX/3", creatorCore.tokenURI(3));
 
       // Mint another, and check
-      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
-      assertEq("https://arweave.net/XXX/2", creatorCore.tokenURI(2));
+      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
+      assertEq("https://arweave.net/XXX/4", creatorCore.tokenURI(4));
 
       // Change to identical claim
       vm.stopPrank();
@@ -1258,6 +1260,8 @@ contract ERC721LazyPayableClaimTest is Test {
       // Should not have mint # now
       assertEq("https://arweave.net/XXX", creatorCore.tokenURI(1));
       assertEq("https://arweave.net/XXX", creatorCore.tokenURI(2));
+      assertEq("https://arweave.net/XXX", creatorCore.tokenURI(3));
+      assertEq("https://arweave.net/XXX", creatorCore.tokenURI(4));
 
       // Go back to numbered..
       claimP.identical = false;
@@ -1266,15 +1270,22 @@ contract ERC721LazyPayableClaimTest is Test {
       // Should have mint # now
       assertEq("https://arweave.net/XXX/1", creatorCore.tokenURI(1));
       assertEq("https://arweave.net/XXX/2", creatorCore.tokenURI(2));
+      assertEq("https://arweave.net/XXX/3", creatorCore.tokenURI(3));
+      assertEq("https://arweave.net/XXX/4", creatorCore.tokenURI(4));
 
       // Mint base token
-      creatorCore.mintBase(owner);
+      creatorCore.mintBase(owner, "hiiii");
 
       // Mint another claim
-      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
 
       // Should have mint # now
+      assertEq("https://arweave.net/XXX/1", creatorCore.tokenURI(1));
+      assertEq("https://arweave.net/XXX/2", creatorCore.tokenURI(2));
       assertEq("https://arweave.net/XXX/3", creatorCore.tokenURI(3));
+      assertEq("https://arweave.net/XXX/4", creatorCore.tokenURI(4));
+      assertEq("hiiii", creatorCore.tokenURI(5));
+      assertEq("https://arweave.net/XXX/5", creatorCore.tokenURI(6));
 
       vm.stopPrank();
     }
