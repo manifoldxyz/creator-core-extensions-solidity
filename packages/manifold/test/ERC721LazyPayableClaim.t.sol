@@ -339,7 +339,7 @@ contract ERC721LazyPayableClaimTest is Test {
       vm.startPrank(other3);
       bytes32[] memory merkleProof4 = merkle.getProof(allowListTuples, uint32(3));
 
-      vm.expectRevert("Too many requested for this claim");
+      vm.expectRevert("Maximum tokens already minted for this claim");
       example.mint{value: mintFee}(address(creatorCore), 1, 3, merkleProof4, other3);
 
       claimP.totalMax = 4;

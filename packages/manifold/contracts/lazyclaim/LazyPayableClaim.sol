@@ -122,10 +122,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         return mintBitmask & claimMintTracking != 0;
     }
 
-    function _validateTotalMax(uint32 additional, uint32 total, uint32 totalMax, bool withMax) internal pure {
-        require((totalMax == 0 || total + additional <= totalMax) && (!withMax || total + additional <= MAX_UINT_24), "Too many requested for this claim");
-    }
-
     function _validateActive(uint48 startDate, uint48 endDate) internal view {
         // Check timestamps
         require(
