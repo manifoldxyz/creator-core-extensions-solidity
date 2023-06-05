@@ -202,14 +202,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         // Check totalMax
         require(++claim.total <= claim.totalMax || claim.totalMax == 0, "Maximum tokens already minted for this claim");
 
-        // Validate is active
-        require(
-            (claim.startDate <= block.timestamp) &&
-            (claim.endDate == 0 || claim.endDate >= block.timestamp),
-            "Claim inactive"
-        );
         // Validate mint
-        _validateMint(creatorContractAddress, instanceId, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
+        _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "", true);
@@ -235,14 +229,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         claim.total += mintCount;
         require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
-        // Validate is active
-        require(
-            (claim.startDate <= block.timestamp) &&
-            (claim.endDate == 0 || claim.endDate >= block.timestamp),
-            "Claim inactive"
-        );
         // Validate mint
-        _validateMint(creatorContractAddress, instanceId, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
+        _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", true);
@@ -268,14 +256,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         claim.total += mintCount;
         require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
 
-        // Validate is active
-        require(
-            (claim.startDate <= block.timestamp) &&
-            (claim.endDate == 0 || claim.endDate >= block.timestamp),
-            "Claim inactive"
-        );
         // Validate mint
-        _validateMintProxy(creatorContractAddress, instanceId, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
+        _validateMintProxy(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", false);
@@ -299,14 +281,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         // Check totalMax
         claim.total += mintCount;
         require((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24, "Too many requested for this claim");
-        // Validate is active
-        require(
-            (claim.startDate <= block.timestamp) &&
-            (claim.endDate == 0 || claim.endDate >= block.timestamp),
-            "Claim inactive"
-        );
         // Validate mint
-        _validateMintSignature(creatorContractAddress, instanceId, signature, message, nonce, claim.signingAddress);
+        _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", false);

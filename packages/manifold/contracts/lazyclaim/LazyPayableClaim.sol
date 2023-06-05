@@ -122,7 +122,14 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         return mintBitmask & claimMintTracking != 0;
     }
 
-    function _validateMint(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
+    function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
+        // Check timestamps
+        require(
+            (startDate <= block.timestamp) &&
+            (endDate == 0 || endDate >= block.timestamp),
+            "Claim inactive"
+        );
+        
         if (merkleRoot != "") {
             // Merkle mint
             _checkMerkleAndUpdate(msg.sender, creatorContractAddress, instanceId, merkleRoot, mintIndex, merkleProof, mintFor);
@@ -135,7 +142,14 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMint(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
+    function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
+        // Check timestamps
+        require(
+            (startDate <= block.timestamp) &&
+            (endDate == 0 || endDate >= block.timestamp),
+            "Claim inactive"
+        );
+        
         if (merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
@@ -153,7 +167,14 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintProxy(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
+    function _validateMintProxy(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
+        // Check timestamps
+        require(
+            (startDate <= block.timestamp) &&
+            (endDate == 0 || endDate >= block.timestamp),
+            "Claim inactive"
+        );
+        
         if (merkleRoot != "") {
             require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
             // Merkle mint
@@ -171,9 +192,16 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress) internal {
+    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress) internal {
         require(signingAddress != address(0), "Must be signature mint");
         require(signature.length > 0, "Invalid input");
+        // Check timestamps
+        require(
+            (startDate <= block.timestamp) &&
+            (endDate == 0 || endDate >= block.timestamp),
+            "Claim inactive"
+        );
+
         // Signature mint
         _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress);
     }
