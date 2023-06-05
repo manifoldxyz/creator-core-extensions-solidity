@@ -122,15 +122,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         return mintBitmask & claimMintTracking != 0;
     }
 
-    function _validateActive(uint48 startDate, uint48 endDate) internal view {
-        // Check timestamps
-        require(
-            (startDate <= block.timestamp) &&
-            (endDate == 0 || endDate >= block.timestamp),
-            "Claim inactive"
-        );
-    }
-
     function _validateMint(address creatorContractAddress, uint256 instanceId, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
         if (merkleRoot != "") {
             // Merkle mint
