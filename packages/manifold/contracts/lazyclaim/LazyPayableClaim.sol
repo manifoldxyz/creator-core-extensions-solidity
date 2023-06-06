@@ -48,7 +48,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     mapping(address => mapping(uint256 => mapping(uint256 => uint256))) internal _claimMintIndices;
 
     // { creatorContractAddress => { instanceId => nonce => t/f  } }
-    mapping(address => mapping(uint256 => mapping(bytes32 => bool))) internal _usedNonces;
+    mapping(address => mapping(uint256 => mapping(bytes32 => bool))) internal _usedMessages;
 
     EnumerableSet.AddressSet private _proxyAddresses;
 
@@ -231,13 +231,13 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         // Verify valid message based on input variables
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce));
         // Verify nonce usage/re-use
-        require(!_usedNonces[creatorContractAddress][instanceId][expectedMessage], "Cannot replay transaction");
+        require(!_usedMessages[creatorContractAddress][instanceId][expectedMessage], "Cannot replay transaction");
         require(message == expectedMessage, "Malformed message");
         // Verify signature was performed by the expected signing address
         address signer = message.recover(signature);
         require(signer == signingAddress, "Incorrect signer");
 
-        _usedNonces[creatorContractAddress][instanceId][expectedMessage] = true;
+        _usedMessages[creatorContractAddress][instanceId][expectedMessage] = true;
     }
 
     function _getTotalMints(uint32 walletMax, address minter, address creatorContractAddress, uint256 instanceId) internal view returns(uint32) {
