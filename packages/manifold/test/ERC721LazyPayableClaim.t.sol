@@ -1277,7 +1277,7 @@ contract ERC721LazyPayableClaimTest is Test {
       creatorCore.mintBase(owner, "hiiii");
 
       // Mint another claim
-      example.mintProxy{value: mintFee*3+3}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
+      example.mintBatch{value: mintFee*3+3}(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
 
       // Should have mint # now
       assertEq("https://arweave.net/XXX/1", creatorCore.tokenURI(1));
