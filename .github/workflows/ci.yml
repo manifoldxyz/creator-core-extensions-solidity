@@ -87,16 +87,6 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         working-directory: packages/${{ matrix.folder }}
 
-      - name: Forge install
-        run: |
-          forge install OpenZeppelin/openzeppelin-contracts --no-commit
-          forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
-          forge install manifoldxyz/libraries-solidity --no-commit
-          forge install manifoldxyz/creator-core-solidity --no-commit
-          forge install ProjectOpenSea/operator-filter-registry --no-commit
-          forge install dmfxyz/murky --no-commit
-        working-directory: packages/${{ matrix.folder }}
-
       - name: Forge build
         run: forge build
         working-directory: packages/${{ matrix.folder }}
