@@ -2,21 +2,21 @@
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
 	branch = v1.5.5
-[submodule "packages/manifold/lib/openzeppelin-contracts"]
-	path = packages/manifold/lib/openzeppelin-contracts
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
-[submodule "packages/manifold/lib/openzeppelin-contracts-upgradeable"]
-	path = packages/manifold/lib/openzeppelin-contracts-upgradeable
+[submodule "lib/openzeppelin-contracts-upgradeable"]
+	path = lib/openzeppelin-contracts-upgradeable
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
-[submodule "packages/manifold/lib/libraries-solidity"]
-	path = packages/manifold/lib/libraries-solidity
+[submodule "lib/libraries-solidity"]
+	path = lib/libraries-solidity
 	url = https://github.com/manifoldxyz/libraries-solidity
-[submodule "packages/manifold/lib/creator-core-solidity"]
-	path = packages/manifold/lib/creator-core-solidity
+[submodule "lib/creator-core-solidity"]
+	path = lib/creator-core-solidity
 	url = https://github.com/manifoldxyz/creator-core-solidity
-[submodule "packages/manifold/lib/operator-filter-registry"]
-	path = packages/manifold/lib/operator-filter-registry
+[submodule "lib/operator-filter-registry"]
+	path = lib/operator-filter-registry
 	url = https://github.com/ProjectOpenSea/operator-filter-registry
-[submodule "packages/manifold/lib/murky"]
-	path = packages/manifold/lib/murky
+[submodule "lib/murky"]
+	path = lib/murky
 	url = https://github.com/dmfxyz/murky
