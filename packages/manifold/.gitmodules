@@ -2,3 +2,21 @@
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
 	branch = v1.5.5
+[submodule "packages/manifold/lib/openzeppelin-contracts"]
+	path = packages/manifold/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "packages/manifold/lib/openzeppelin-contracts-upgradeable"]
+	path = packages/manifold/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
+[submodule "packages/manifold/lib/libraries-solidity"]
+	path = packages/manifold/lib/libraries-solidity
+	url = https://github.com/manifoldxyz/libraries-solidity
+[submodule "packages/manifold/lib/creator-core-solidity"]
+	path = packages/manifold/lib/creator-core-solidity
+	url = https://github.com/manifoldxyz/creator-core-solidity
+[submodule "packages/manifold/lib/operator-filter-registry"]
+	path = packages/manifold/lib/operator-filter-registry
+	url = https://github.com/ProjectOpenSea/operator-filter-registry
+[submodule "packages/manifold/lib/murky"]
+	path = packages/manifold/lib/murky
+	url = https://github.com/dmfxyz/murky
