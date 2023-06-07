@@ -16,3 +16,9 @@
 [submodule "packages/manifold/lib/murky"]
 	path = packages/manifold/lib/murky
 	url = https://github.com/dmfxyz/murky
+[submodule "packages/enumerable/lib/forge-std"]
+	path = packages/enumerable/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "packages/dynamic/lib/forge-std"]
+	path = packages/dynamic/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
