@@ -70,7 +70,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             tokenId: newTokenIds[0],
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver,
-            erc20: claimParameters.erc20
+            erc20: claimParameters.erc20,
+            refundGas: claimParameters.refundGas
         });
         _claimTokenIds[creatorContractAddress][newTokenIds[0]] = instanceId;
         
@@ -107,7 +108,8 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             tokenId: claim.tokenId,
             cost: claimParameters.cost,
             paymentReceiver: claimParameters.paymentReceiver,
-            erc20: claimParameters.erc20
+            erc20: claimParameters.erc20,
+            refundGas: claimParameters.refundGas
         });
         emit ClaimUpdated(creatorContractAddress, instanceId);
     }
@@ -266,6 +268,38 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         emit ClaimMintProxy(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor);
     }
+
+    /**
+     * See {ILazyPayableClaim-mintWithGasRefund}.
+     */
+
+    function mintWithGasRefund(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
+        uint256 gas = gasleft();
+
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
+
+        // Require claim to have refundGas enabled
+        require(claim.refundGas, "Gas refund not enabled for this claim");
+
+        // Check totalMax
+        require(++claim.total <= claim.totalMax || claim.totalMax == 0, "Maximum tokens already minted for this claim");
+
+        // Validate mint
+        _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
+
+        // Do mint
+        address[] memory recipients = new address[](1);
+        recipients[0] = msg.sender;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1;
+        _mintClaim(creatorContractAddress, claim, recipients, amounts);
+
+        emit ClaimMint(creatorContractAddress, instanceId);
+
+        // Transfer funds
+        _transferFundsWithGasRefund(claim.erc20, claim.cost, claim.paymentReceiver, 1, claim.merkleRoot != "", true, gas);
+    }
+
 
     /**
      * See {IERC1155LazyPayableClaim-airdrop}.

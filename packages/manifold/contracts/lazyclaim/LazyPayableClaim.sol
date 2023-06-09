@@ -78,6 +78,38 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         MEMBERSHIP_ADDRESS = membershipAddress;
     }
 
+    function _transferFundsWithGasRefund(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle, bool allowMembership, uint256 gas) internal {
+        uint256 payableCost;
+        /**
+         * Add mint fee if:
+         * 1. Not allowing memberships OR
+         * 2. No membership address set OR
+         * 3. Not an active member
+        */
+        if (MEMBERSHIP_ADDRESS == ADDRESS_ZERO || !allowMembership || !IManifoldMembership(MEMBERSHIP_ADDRESS).isActiveMember(msg.sender)) {
+            payableCost += merkle ? MINT_FEE_MERKLE : MINT_FEE; 
+        }
+        if (mintCount > 1) {
+            payableCost *= mintCount;
+            cost *= mintCount;
+        }
+
+        // Check price
+        require(msg.value >= payableCost, "Invalid amount");
+        if (erc20 == ADDRESS_ZERO && cost != 0) {
+            gas = gas - gasleft() + 42000; // +42000 for the transfers
+            require(gas <= cost, "Gas refund too high");
+
+            // solhint-disable-next-line
+            (bool sent, ) = msg.sender.call{value: gas}("");
+            require(sent, "Failed to transfer refund");
+
+            // solhint-disable-next-line
+            (sent, ) = recipient.call{value: cost - gas}("");
+            require(sent, "Failed to transfer to receiver");
+        }
+    }
+
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle, bool allowMembership) internal {
         uint256 payableCost;
         if (erc20 != ADDRESS_ZERO) {

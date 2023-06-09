@@ -310,6 +310,12 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     }
 
     /**
+     * See {ILazyPayableClaim-mintWithGasRefund}.
+     */
+    function mintWithGasRefund(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
+    }
+
+    /**
      * See {IERC721LazyClaim-airdrop}.
      */
     function airdrop(address creatorContractAddress, uint256 instanceId, address[] calldata recipients,

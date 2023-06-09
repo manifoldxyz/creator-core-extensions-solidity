@@ -88,4 +88,14 @@ interface ILazyPayableClaim {
      */
     function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable;
 
+    /**
+     * @notice allow a wallet to lazily claim a token according to parameters and get a gas refund
+     * @param creatorContractAddress    the creator contract address
+     * @param instanceId                the claim instanceId for the creator contract
+     * @param mintIndex                 the mint index (only needed for merkle claims)
+     * @param merkleProof               if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
+     * @param mintFor                   mintFor must be the msg.sender or a delegate wallet address (in the case of merkle based mints)
+     */
+    function mintWithGasRefund(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable;
+
 }
