@@ -282,7 +282,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         claim.total += mintCount;
         require((claim.totalMax == 0 || claim.total <= claim.totalMax), "Too many requested for this claim");
         // Validate mint
-        _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress);
+        _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress, mintFor);
 
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", false);
