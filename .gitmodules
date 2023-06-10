@@ -25,3 +25,24 @@
 [submodule "packages/manifold/lib/forge-std"]
 	path = packages/manifold/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "packages/dynamic/lib/creator-core-solidity"]
+	path = packages/dynamic/lib/creator-core-solidity
+	url = https://github.com/manifoldxyz/creator-core-solidity
+[submodule "packages/dynamic/lib/openzeppelin-contracts"]
+	path = packages/dynamic/lib/openzeppelin-contracts
+	url = https://github.com/Openzeppelin/openzeppelin-contracts
+[submodule "packages/enumerable/lib/creator-core-solidity"]
+	path = packages/enumerable/lib/creator-core-solidity
+	url = https://github.com/manifoldxyz/creator-core-solidity
+[submodule "packages/enumerable/lib/openzeppelin-contracts"]
+	path = packages/enumerable/lib/openzeppelin-contracts
+	url = https://github.com/Openzeppelin/openzeppelin-contracts
+[submodule "packages/enumerable/lib/libraries-solidity"]
+	path = packages/enumerable/lib/libraries-solidity
+	url = https://github.com/manifoldxyz/libraries-solidity
+[submodule "packages/enumerable/lib/openzeppelin-contracts-upgradeable"]
+	path = packages/enumerable/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/Openzeppelin/openzeppelin-contracts-upgradeable
+[submodule "packages/dynamic/lib/libraries-solidity"]
+	path = packages/dynamic/lib/libraries-solidity
+	url = https://github.com/manifoldxyz/libraries-solidity

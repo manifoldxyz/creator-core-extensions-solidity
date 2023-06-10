@@ -1,10 +1,12 @@
 [profile.default]
 src = 'contracts'
 out = 'out'
-libs = ["node_modules", "lib"]
+libs = ["lib"]
 remappings = [
-    '@manifoldxyz/=node_modules/@manifoldxyz/',
-    '@openzeppelin/=node_modules/@openzeppelin/',
+    '@manifoldxyz/creator-core-solidity=lib/creator-core-solidity',
+    '@manifoldxyz/libraries-solidity=lib/libraries-solidity',
+    '@openzeppelin/contracts=lib/openzeppelin-contracts/contracts',
+    '@openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts',
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
