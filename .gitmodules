@@ -13,3 +13,7 @@
 [submodule "packages/manifold/lib/forge-std"]
 	path = packages/manifold/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/operator-filter-registry"]
+	branch = v1.4.1
+[submodule "lib/forge-std"]
+	branch = v1.5.6
