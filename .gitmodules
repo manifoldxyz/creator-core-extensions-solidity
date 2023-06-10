@@ -1,9 +1,9 @@
 [submodule "packages/manifold/lib/openzeppelin-contracts"]
 	path = packages/manifold/lib/openzeppelin-contracts
-	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+	url = https://github.com/Openzeppelin/openzeppelin-contracts
 [submodule "packages/manifold/lib/openzeppelin-contracts-upgradeable"]
 	path = packages/manifold/lib/openzeppelin-contracts-upgradeable
-	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
+	url = https://github.com/Openzeppelin/openzeppelin-contracts-upgradeable
 [submodule "packages/manifold/lib/libraries-solidity"]
 	path = packages/manifold/lib/libraries-solidity
 	url = https://github.com/manifoldxyz/libraries-solidity
