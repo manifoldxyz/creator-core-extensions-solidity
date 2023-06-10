@@ -16,7 +16,11 @@ See the [developer documentation](https://docs.manifold.xyz/v/manifold-for-devel
 
 ## Running the package unit tests
 ### Compile
+```
 forge build
+```
 
 ### Run tests
+```
 forge test
+```

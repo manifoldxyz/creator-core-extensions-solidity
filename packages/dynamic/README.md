@@ -21,29 +21,12 @@ See the [developer documentation](https://docs.manifold.xyz/v/manifold-for-devel
 
 
 ## Running the package unit tests
-
-Visit the [github repo](https://github.com/manifoldxyz/creator-core-extensions-solidity) and clone the repo.  It uses the truffle framework and ganache-cli.
-
-Install both:
-```
-yarn global add truffle
-yarn global add ganache-cli
-```
-
-Then:
-```
-### install dependencies
-yarn
-
 ### Compile
-truffle compile
-
-### Start development server
-ganache-cli -l 20000000
-
-### Deploy migrations
-truffle migrate
+```
+forge build
+```
 
 ### Run tests
-truffle test
+```
+forge test
 ```

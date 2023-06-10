@@ -1,0 +1,7 @@
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+@manifoldxyz/creator-core-solidity/=lib/creator-core-solidity/
+@manifoldxyz/libraries-solidity/=lib/libraries-solidity/
+create2-scripts/=lib/create2-helpers/script/
+create2-helpers/=lib/create2-helpers/src/
+forge-std/=lib/forge-std/src/

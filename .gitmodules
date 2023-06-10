@@ -46,3 +46,6 @@
 [submodule "packages/dynamic/lib/libraries-solidity"]
 	path = packages/dynamic/lib/libraries-solidity
 	url = https://github.com/manifoldxyz/libraries-solidity
+[submodule "packages/dynamic/lib/openzeppelin-contracts-upgradeable"]
+	path = packages/dynamic/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/Openzeppelin/openzeppelin-contracts-upgradeable
