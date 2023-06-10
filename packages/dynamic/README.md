@@ -21,6 +21,11 @@ See the [developer documentation](https://docs.manifold.xyz/v/manifold-for-devel
 
 
 ## Running the package unit tests
+### Install dependencies
+```
+npm install
+```
+
 ### Compile
 ```
 forge build
