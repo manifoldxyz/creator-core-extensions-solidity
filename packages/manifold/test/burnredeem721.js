@@ -651,6 +651,110 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal('XXX/2', await creator.tokenURI(3));
     });
 
+    it.only('burnRedeem test - burn anything', async function() {
+      // Mint burnable tokens
+      await burnable721.mintBase(anyone1, { from: owner });
+      await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner });
+      await oz721.mint(anyone1, 1, { from: owner });
+      await oz1155.mint(anyone1, 1, 1, { from: owner });
+      await oz721Burnable.mint(anyone1, 1, { from: owner });
+      await oz1155Burnable.mint(anyone1, 1, 1, { from: owner });
+      
+      // Full config for burning anything
+      const burnContracts = [
+        {
+          contract: burnable721,
+          burnSpec: 1,
+          tokenSpec: 1,
+        },
+        {
+          contract: burnable1155,
+          burnSpec: 1,
+          tokenSpec: 2,
+        },
+        {
+          contract: oz721,
+          burnSpec: 0,
+          tokenSpec: 1,
+        },
+        {
+          contract: oz1155,
+          burnSpec: 0,
+          tokenSpec: 2,
+        },
+        {
+          contract: oz721Burnable,
+          burnSpec: 2,
+          tokenSpec: 1,
+        },
+        {
+          contract: oz1155Burnable,
+          burnSpec: 2,
+          tokenSpec: 2,
+        },
+      ]
+
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+      
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          redeemAmount: 1,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: burnContracts.map(({contract, burnSpec, tokenSpec}) => ({
+                validationType: 4,
+                contractAddress: contract.address,
+                tokenSpec,
+                burnSpec,
+                amount: tokenSpec == 1 ? 0 : 1,
+                minTokenId: 0,
+                maxTokenId: 0,
+                merkleRoot: ethers.utils.formatBytes32String("")
+              }))
+            }
+          ]
+        },
+        false,
+        {from:owner}
+      );
+
+      // Set approvals
+      burnContracts.forEach(async ({contract}, i) => {
+        await contract.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
+
+        await truffleAssert.passes(
+          burnRedeem.burnRedeem(
+            creator.address,
+            1,
+            1,
+            [
+              {
+                groupIndex: 0,
+                itemIndex: i,
+                contractAddress: contract.address,
+                id: 1,
+                merkleProof: [ethers.utils.formatBytes32String("")]
+              },
+            ],
+            {from:anyone1, value: BURN_FEE}
+          )
+        );
+  
+      }) 
+    });
+
+
     it('burnRedeem test - burn 721', async function() {
 
       // Test initializing a new burn redeem

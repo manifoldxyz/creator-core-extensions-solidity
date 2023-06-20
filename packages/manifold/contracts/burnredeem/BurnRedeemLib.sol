@@ -124,8 +124,9 @@ library BurnRedeemLib {
             bytes32 leaf = keccak256(abi.encodePacked(tokenId));
             require(MerkleProof.verify(merkleProof, burnItem.merkleRoot, leaf), "Invalid merkle proof");
             return;
+        } else if (burnItem.validationType != IBurnRedeemCore.ValidationType.ANY) {
+            revert("Invalid burn item");
         }
-        revert("Invalid burn item");
     }
 
         /**
