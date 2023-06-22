@@ -361,7 +361,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             burnRedeemInstance.burnSet.length == 1 &&
             burnRedeemInstance.burnSet[0].requiredCount == 1 &&
             _isActiveMember(from),
-            "Invalid input"
+            "Invalid input erc721 1"
         );
 
         uint256 burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1);
@@ -371,7 +371,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
 
         // Can only take in one burn item
-        require(burnItem.tokenSpec == TokenSpec.ERC721, "Invalid input");
+        require(burnItem.tokenSpec == TokenSpec.ERC721, "Invalid input erc721 2");
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, id, merkleProof);
 
         // Do burn and redeem
@@ -394,7 +394,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             burnRedeemInstance.burnSet.length == 1 &&
             burnRedeemInstance.burnSet[0].requiredCount == 1 &&
             _isActiveMember(from),
-            "Invalid input"
+            "Invalid input 1155 received"
         );
 
         uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
@@ -402,7 +402,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
-        require(value == burnItem.amount * burnRedeemCount, "Invalid input");
+        require(value == burnItem.amount * burnRedeemCount, "Invalid input count");
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount);
@@ -428,7 +428,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             burnRedeemInstance.cost == 0 &&
             burnTokens.length == tokenIds.length &&
             _isActiveMember(from),
-            "Invalid input"
+            "Invalid input batch 1"
         );
         uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
         require(availableBurnRedeemCount != 0, "No tokens available");
@@ -530,47 +530,82 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * Helper to burn token
      */
     function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount) private {
+        bool isUnknown = burnItem.burnSpec == BurnSpec.UNKNOWN;
+        bool tryTransferToDead = burnItem.burnSpec == BurnSpec.NONE || isUnknown;
+        bool tryManifold = burnItem.burnSpec == BurnSpec.MANIFOLD || isUnknown;
+        bool tryOpenZeppelin = burnItem.burnSpec == BurnSpec.OPENZEPPELIN || isUnknown;
+
         if (burnItem.tokenSpec == TokenSpec.ERC1155) {
             uint256 amount = burnItem.amount * burnRedeemCount;
-
-            if (burnItem.burnSpec == BurnSpec.NONE) {
-                // Send to 0xdEaD to burn if contract doesn't have burn function
-                IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "");
-
-            } else if (burnItem.burnSpec == BurnSpec.MANIFOLD) {
+            if (tryManifold) {
                 // Burn using the creator core's burn function
                 uint256[] memory tokenIds = new uint256[](1);
                 tokenIds[0] = tokenId;
                 uint256[] memory amounts = new uint256[](1);
                 amounts[0] = amount;
-                Manifold1155(contractAddress).burn(from, tokenIds, amounts);
+                try Manifold1155(contractAddress).burn(from, tokenIds, amounts) {
+                    return;
+                } catch Error(string memory reason) {
+                    if (!isUnknown) {
+                        revert(reason);
+                    }
+                }
 
-            } else if (burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
-                // Burn using OpenZeppelin's burn function
-                OZBurnable1155(contractAddress).burn(from, tokenId, amount);
-
-            } else {
-                revert("Invalid burn spec");
             }
+            if (tryOpenZeppelin) {
+                // Burn using OpenZeppelin's burn function
+                try OZBurnable1155(contractAddress).burn(from, tokenId, amount) {
+                    return;
+                } catch Error(string memory reason) {
+                    if (!isUnknown) {
+                        revert(reason);
+                    }
+                }
+            
+            }
+            if (tryTransferToDead) {
+                // Send to 0xdEaD to burn if contract doesn't have burn function
+                try IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "") {
+                    return;
+                } catch Error(string memory reason) {
+                    if (!isUnknown) {
+                        revert(reason);
+                    }
+                }
+            }
+            revert("Invalid burn spec");
         } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
             require(burnRedeemCount == 1, "Invalid burn count");
-            if (burnItem.burnSpec == BurnSpec.NONE) {
-                // Send to 0xdEaD to burn if contract doesn't have burn function
-                IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
-
-            } else if (burnItem.burnSpec == BurnSpec.MANIFOLD || burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
+            if (tryManifold || tryOpenZeppelin) {
                 if (from != address(this)) {
                     // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
                     require(IERC721(contractAddress).ownerOf(tokenId) == from, "Sender is not owner");
                 }
                 // Burn using the contract's burn function
-                Burnable721(contractAddress).burn(tokenId);
+                try Burnable721(contractAddress).burn(tokenId) {
+                    return;
+                } catch Error(string memory reason) {
+                    if (!isUnknown) {
+                        revert(reason);
+                    }
+                }
 
-            } else {
-                revert("Invalid burn spec");
             }
+            if (tryTransferToDead) {
+                // Send to 0xdEaD to burn if contract doesn't have burn function
+                try IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "") {
+                    return;
+                } catch Error(string memory reason) {
+                    if (!isUnknown) {
+                        revert(reason);
+                    }
+                }
+
+            }
+            revert("Invalid burn spec");
         } else {
             revert("Invalid token spec");
         }
     }
+
 }

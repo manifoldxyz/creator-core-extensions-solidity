@@ -651,7 +651,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal('XXX/2', await creator.tokenURI(3));
     });
 
-    it.only('burnRedeem test - burn anything', async function() {
+    it('burnRedeem test - burn anything', async function() {
       // Mint burnable tokens
       await burnable721.mintBase(anyone1, { from: owner });
       await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner });
@@ -664,32 +664,26 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       const burnContracts = [
         {
           contract: burnable721,
-          burnSpec: 1,
           tokenSpec: 1,
         },
         {
           contract: burnable1155,
-          burnSpec: 1,
           tokenSpec: 2,
         },
         {
           contract: oz721,
-          burnSpec: 0,
           tokenSpec: 1,
         },
         {
           contract: oz1155,
-          burnSpec: 0,
           tokenSpec: 2,
         },
         {
           contract: oz721Burnable,
-          burnSpec: 2,
           tokenSpec: 1,
         },
         {
           contract: oz1155Burnable,
-          burnSpec: 2,
           tokenSpec: 2,
         },
       ]
@@ -712,16 +706,30 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           burnSet: [
             {
               requiredCount: 1,
-              items: burnContracts.map(({contract, burnSpec, tokenSpec}) => ({
-                validationType: 4,
-                contractAddress: contract.address,
-                tokenSpec,
-                burnSpec,
-                amount: tokenSpec == 1 ? 0 : 1,
-                minTokenId: 0,
-                maxTokenId: 0,
-                merkleRoot: ethers.utils.formatBytes32String("")
-              }))
+              items:[
+                // ERC-721
+                {
+                  validationType: 4,
+                  contractAddress: "0x0000000000000000000000000000000000000000",
+                  tokenSpec: 1,
+                  burnSpec: 3,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                },
+                // ERC-1155
+                {
+                  validationType: 4,
+                  contractAddress: "0x0000000000000000000000000000000000000000",
+                  tokenSpec: 2,
+                  burnSpec: 3,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                },
+              ]
             }
           ]
         },
@@ -730,7 +738,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       );
 
       // Set approvals
-      burnContracts.forEach(async ({contract}, i) => {
+      burnContracts.forEach(async ({contract, tokenSpec}, i) => {
         await contract.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
 
         await truffleAssert.passes(
@@ -741,7 +749,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
             [
               {
                 groupIndex: 0,
-                itemIndex: i,
+                itemIndex: tokenSpec == 1 ? 0 : 1,
                 contractAddress: contract.address,
                 id: 1,
                 merkleProof: [ethers.utils.formatBytes32String("")]

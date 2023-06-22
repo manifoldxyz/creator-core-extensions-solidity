@@ -24,7 +24,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE, ANY }
 
     enum TokenSpec { INVALID, ERC721, ERC1155 }
-    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN }
+    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN, UNKNOWN }
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
