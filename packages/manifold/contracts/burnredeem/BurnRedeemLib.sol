@@ -117,9 +117,7 @@ library BurnRedeemLib {
         if (burnItem.validationType == IBurnRedeemCore.ValidationType.ANY) {
             return;
         }
-
         require(contractAddress == burnItem.contractAddress, "Invalid burn token");
-
         if (burnItem.validationType == IBurnRedeemCore.ValidationType.CONTRACT) {
             return;
         } else if (burnItem.validationType == IBurnRedeemCore.ValidationType.RANGE) {
@@ -130,7 +128,6 @@ library BurnRedeemLib {
             require(MerkleProof.verify(merkleProof, burnItem.merkleRoot, leaf), "Invalid merkle proof");
             return;
         }
-        
         revert("Invalid burn item");
     }
 

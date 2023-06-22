@@ -651,7 +651,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal('XXX/2', await creator.tokenURI(3));
     });
 
-    it.only('burnRedeem test - burn anything', async function() {
+    it('burnRedeem test - burn anything', async function() {
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
       
