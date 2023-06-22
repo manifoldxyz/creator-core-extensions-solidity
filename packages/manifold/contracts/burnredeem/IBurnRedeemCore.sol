@@ -19,6 +19,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * CONTRACT                 any token from a specific contract is valid
      * RANGE                    token IDs within a range (inclusive) are valid
      * MERKLE_TREE              various individual token IDs included in a merkle tree are valid
+     * ANY                      any token from any contract
      */
     enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE, ANY }
 
