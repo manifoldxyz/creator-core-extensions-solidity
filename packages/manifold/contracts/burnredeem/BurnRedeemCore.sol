@@ -545,9 +545,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 amounts[0] = amount;
                 try Manifold1155(contractAddress).burn(from, tokenIds, amounts) {
                     return;
-                } catch Error(string memory reason) {
+                } catch {
                     if (!isUnknown) {
-                        revert(reason);
+                        revert();
                     }
                 }
 
@@ -556,9 +556,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 // Burn using OpenZeppelin's burn function
                 try OZBurnable1155(contractAddress).burn(from, tokenId, amount) {
                     return;
-                } catch Error(string memory reason) {
+                } catch {
                     if (!isUnknown) {
-                        revert(reason);
+                        revert();
                     }
                 }
             
@@ -567,9 +567,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 // Send to 0xdEaD to burn if contract doesn't have burn function
                 try IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "") {
                     return;
-                } catch Error(string memory reason) {
+                } catch {
                     if (!isUnknown) {
-                        revert(reason);
+                        revert();
                     }
                 }
             }
@@ -584,9 +584,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 // Burn using the contract's burn function
                 try Burnable721(contractAddress).burn(tokenId) {
                     return;
-                } catch Error(string memory reason) {
+                } catch {
                     if (!isUnknown) {
-                        revert(reason);
+                        revert();
                     }
                 }
 
@@ -595,9 +595,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 // Send to 0xdEaD to burn if contract doesn't have burn function
                 try IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "") {
                     return;
-                } catch Error(string memory reason) {
+                } catch {
                     if (!isUnknown) {
-                        revert(reason);
+                        revert();
                     }
                 }
 

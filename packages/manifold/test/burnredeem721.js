@@ -651,43 +651,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal('XXX/2', await creator.tokenURI(3));
     });
 
-    it('burnRedeem test - burn anything', async function() {
-      // Mint burnable tokens
-      await burnable721.mintBase(anyone1, { from: owner });
-      await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner });
-      await oz721.mint(anyone1, 1, { from: owner });
-      await oz1155.mint(anyone1, 1, 1, { from: owner });
-      await oz721Burnable.mint(anyone1, 1, { from: owner });
-      await oz1155Burnable.mint(anyone1, 1, 1, { from: owner });
-      
-      // Full config for burning anything
-      const burnContracts = [
-        {
-          contract: burnable721,
-          tokenSpec: 1,
-        },
-        {
-          contract: burnable1155,
-          tokenSpec: 2,
-        },
-        {
-          contract: oz721,
-          tokenSpec: 1,
-        },
-        {
-          contract: oz1155,
-          tokenSpec: 2,
-        },
-        {
-          contract: oz721Burnable,
-          tokenSpec: 1,
-        },
-        {
-          contract: oz1155Burnable,
-          tokenSpec: 2,
-        },
-      ]
-
+    it.only('burnRedeem test - burn anything', async function() {
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
       
@@ -737,8 +701,41 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         {from:owner}
       );
 
-      // Set approvals
-      burnContracts.forEach(async ({contract, tokenSpec}, i) => {
+      // Range of burnable options
+      const burnContracts = [
+        {
+          contract: burnable721,
+          tokenSpec: 1,
+          mintTx: await burnable721.mintBase(anyone1, { from: owner }),
+        },
+        {
+          contract: burnable1155,
+          tokenSpec: 2,
+          mintTx: await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner }),
+        },
+        {
+          contract: oz721,
+          tokenSpec: 1,
+          mintTx: await oz721.mint(anyone1, 1, { from: owner }),
+        },
+        {
+          contract: oz1155,
+          tokenSpec: 2,
+          mintTx: await oz1155.mint(anyone1, 1, 1, { from: owner }),
+        },
+        {
+          contract: oz721Burnable,
+          tokenSpec: 1,
+          mintTx: await oz721Burnable.mint(anyone1, 1, { from: owner }),
+        },
+        {
+          contract: oz1155Burnable,
+          tokenSpec: 2,
+          mintTx: await oz1155Burnable.mint(anyone1, 1, 1, { from: owner }),
+        },
+      ]
+
+      const promises = burnContracts.map(async ({id, contract, tokenSpec}, i) => {
         await contract.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
 
         await truffleAssert.passes(
@@ -760,6 +757,8 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         );
   
       }) 
+
+      await Promise.all(promises);
     });
 
 

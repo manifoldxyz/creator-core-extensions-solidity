@@ -114,7 +114,12 @@ library BurnRedeemLib {
      * Helper to validate burn item
      */
     function validateBurnItem(IBurnRedeemCore.BurnItem memory burnItem, address contractAddress, uint256 tokenId, bytes32[] memory merkleProof) public pure {
+        if (burnItem.validationType == IBurnRedeemCore.ValidationType.ANY) {
+            return;
+        }
+
         require(contractAddress == burnItem.contractAddress, "Invalid burn token");
+
         if (burnItem.validationType == IBurnRedeemCore.ValidationType.CONTRACT) {
             return;
         } else if (burnItem.validationType == IBurnRedeemCore.ValidationType.RANGE) {
@@ -124,9 +129,9 @@ library BurnRedeemLib {
             bytes32 leaf = keccak256(abi.encodePacked(tokenId));
             require(MerkleProof.verify(merkleProof, burnItem.merkleRoot, leaf), "Invalid merkle proof");
             return;
-        } else if (burnItem.validationType != IBurnRedeemCore.ValidationType.ANY) {
-            revert("Invalid burn item");
         }
+        
+        revert("Invalid burn item");
     }
 
         /**
