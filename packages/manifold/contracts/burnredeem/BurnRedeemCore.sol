@@ -361,7 +361,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             burnRedeemInstance.burnSet.length == 1 &&
             burnRedeemInstance.burnSet[0].requiredCount == 1 &&
             _isActiveMember(from),
-            "Invalid input erc721 1"
+            "Invalid input"
         );
 
         uint256 burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1);
@@ -371,7 +371,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
 
         // Can only take in one burn item
-        require(burnItem.tokenSpec == TokenSpec.ERC721, "Invalid input erc721 2");
+        require(burnItem.tokenSpec == TokenSpec.ERC721, "Invalid input");
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, id, merkleProof);
 
         // Do burn and redeem
@@ -394,7 +394,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             burnRedeemInstance.burnSet.length == 1 &&
             burnRedeemInstance.burnSet[0].requiredCount == 1 &&
             _isActiveMember(from),
-            "Invalid input 1155 received"
+            "Invalid input"
         );
 
         uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
@@ -402,7 +402,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
-        require(value == burnItem.amount * burnRedeemCount, "Invalid input count");
+        require(value == burnItem.amount * burnRedeemCount, "Invalid input");
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount);
@@ -428,7 +428,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             burnRedeemInstance.cost == 0 &&
             burnTokens.length == tokenIds.length &&
             _isActiveMember(from),
-            "Invalid input batch 1"
+            "Invalid input"
         );
         uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
         require(availableBurnRedeemCount != 0, "No tokens available");
@@ -607,5 +607,4 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             revert("Invalid token spec");
         }
     }
-
 }
