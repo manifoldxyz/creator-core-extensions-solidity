@@ -653,7 +653,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       assert.equal('XXX/2', await creator.tokenURI(3));
     });
 
-    it.only('burnRedeem test - burn anything', async function() {
+    it('burnRedeem test - burn anything', async function() {
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
       
@@ -792,7 +792,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       await Promise.all(promises);
     });
 
-    it.only('burnRedeem test - contracts with fallbacks cant bypass burn requirements', async function() {
+    it('burnRedeem test - contracts with fallbacks cant bypass burn requirements', async function() {
       let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
       let end = start + 300;
 
@@ -1944,7 +1944,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone2, value: BURN_FEE}
         ),
-        "failed to burn token"
+        "ERC721: transfer from incorrect owner"
       );
       // 1155 with no burn
       await truffleAssert.reverts(
@@ -1963,7 +1963,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone2, value: BURN_FEE}
         ),
-        "failed to burn token"
+        "ERC1155: caller is not token owner or approved."
       );
       // 1155 with burn
       await truffleAssert.reverts(
@@ -1982,7 +1982,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           ],
           {from:anyone2, value: BURN_FEE}
         ),
-        "failed to burn token"
+        "Caller is not owner or approved."
       );
     });
 
