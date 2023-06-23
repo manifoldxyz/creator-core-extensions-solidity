@@ -530,79 +530,77 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * Helper to burn token
      */
     function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount) private {
-        bool isUnknown = burnItem.burnSpec == BurnSpec.UNKNOWN;
-        bool tryTransferToDead = burnItem.burnSpec == BurnSpec.NONE || isUnknown;
-        bool tryManifold = burnItem.burnSpec == BurnSpec.MANIFOLD || isUnknown;
-        bool tryOpenZeppelin = burnItem.burnSpec == BurnSpec.OPENZEPPELIN || isUnknown;
+        BurnSpec burnSpec = burnItem.burnSpec;
+        bool tryBurnNone = burnSpec == BurnSpec.NONE;
+        bool tryBurnManifold = burnSpec == BurnSpec.MANIFOLD;
+        bool tryBurnOpenZeppelin = burnSpec == BurnSpec.OPENZEPPELIN;
+        bool tryBurnUnknown = burnSpec == BurnSpec.UNKNOWN;
 
         if (burnItem.tokenSpec == TokenSpec.ERC1155) {
             uint256 amount = burnItem.amount * burnRedeemCount;
-            if (tryManifold) {
-                // Burn using the creator core's burn function
-                uint256[] memory tokenIds = new uint256[](1);
-                tokenIds[0] = tokenId;
-                uint256[] memory amounts = new uint256[](1);
-                amounts[0] = amount;
-                if (isUnknown) {
-                    try Manifold1155(contractAddress).burn(from, tokenIds, amounts) {
-                        return;
-                    } catch {}
-                } else {
-                    Manifold1155(contractAddress).burn(from, tokenIds, amounts);
-                    return;
-                }
-            }
-            if (tryOpenZeppelin) {
+
+            uint256[] memory tokenIds = new uint256[](1);
+            tokenIds[0] = tokenId;
+            uint256[] memory amounts = new uint256[](1);
+            amounts[0] = amount;
+
+            if (tryBurnManifold) {
+                // Burn using the creator core's burn function                
+                Manifold1155(contractAddress).burn(from, tokenIds, amounts);
+                return;
+            } else if (tryBurnOpenZeppelin) {
                 // Burn using OpenZeppelin's burn function
-                if (isUnknown) {
-                    try OZBurnable1155(contractAddress).burn(from, tokenId, amount) {
+                OZBurnable1155(contractAddress).burn(from, tokenId, amount);
+                return;
+            } else if (tryBurnUnknown) {
+                // Burn using various methods, falling back to 0xdEaD transfer
+                uint256 balance = IERC1155(contractAddress).balanceOf(from, tokenId);
+
+                try Manifold1155(contractAddress).burn(from, tokenIds, amounts) {
+                    if (balance - amount == IERC1155(contractAddress).balanceOf(from, tokenId)) {
                         return;
-                    } catch {}
-                } else {
-                    OZBurnable1155(contractAddress).burn(from, tokenId, amount);
-                    return;
-                }
-            }
-            if (tryTransferToDead) {
+                    }
+                } catch {}
+
+                try OZBurnable1155(contractAddress).burn(from, tokenId, amount) {
+                    if (balance - amount == IERC1155(contractAddress).balanceOf(from, tokenId)) {
+                        return;
+                    }
+                } catch {}
+            } 
+            
+            if (tryBurnNone || tryBurnUnknown) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
-                if (isUnknown) {
-                    try IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "") {
-                        return;
-                    } catch {}
-                } else {
-                    IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "");
-                    return;
-                }
-            }
+                IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "");
+                return;                
+            } 
+            
             revert("Invalid burn spec");
         } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
             require(burnRedeemCount == 1, "Invalid burn count");
-            if (tryManifold || tryOpenZeppelin) {
+            if (tryBurnManifold || tryBurnOpenZeppelin) {
                 if (from != address(this)) {
                     // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
                     require(IERC721(contractAddress).ownerOf(tokenId) == from, "Sender is not owner");
                 }
                 // Burn using the contract's burn function
-                if (isUnknown) {
-                    try Burnable721(contractAddress).burn(tokenId) {
+                Burnable721(contractAddress).burn(tokenId);
+                return;
+            } else if (tryBurnUnknown) {
+                // Burn using various methods, falling back to 0xdEaD transfer
+                try Burnable721(contractAddress).burn(tokenId) {
+                    try IERC721(contractAddress).ownerOf(tokenId) {} catch {
                         return;
-                    } catch {}
-                } else {
-                    Burnable721(contractAddress).burn(tokenId);
-                    return;
-                }
+                    }
+                } catch {}
             }
-            if (tryTransferToDead) {
+            
+            if (tryBurnNone || tryBurnUnknown) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
-                if (isUnknown) {
-                    try IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "") {
-                        return;
-                    } catch {}
-                } else {
-                    IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
-                    return;
-                }
+                IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
+                return;                
             }
+
             revert("Invalid burn spec");
         } else {
             revert("Invalid token spec");

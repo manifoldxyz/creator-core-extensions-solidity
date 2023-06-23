@@ -106,13 +106,17 @@ contract MockERC1155Burnable is ERC1155Burnable {
 }
 
 contract MockERC1155Fallback is MockERC1155 {
-    bool public fallbackCalled = false;
-
     constructor (string memory _uri) MockERC1155(_uri) {}
     
-    fallback() external payable {
-        fallbackCalled = true;
-    }
+    fallback() external payable {}
+
+    receive() external payable {}
+}
+
+contract MockERC1155FallbackBurnable is MockERC1155Burnable {
+    constructor (string memory _uri) MockERC1155Burnable(_uri) {}
+    
+    fallback() external payable {}
 
     receive() external payable {}
 }

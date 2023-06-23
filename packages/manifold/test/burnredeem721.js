@@ -7,6 +7,7 @@ const keccak256 = require('keccak256');
 const ethers = require('ethers');
 const MockManifoldMembership = artifacts.require('MockManifoldMembership');
 const MockERC1155Fallback = artifacts.require('MockERC1155Fallback');
+const MockERC1155FallbackBurnable = artifacts.require('MockERC1155FallbackBurnable');
 const ERC721 = artifacts.require('MockERC721');
 const ERC1155 = artifacts.require('MockERC1155');
 const ERC721Burnable = artifacts.require('MockERC721Burnable');
@@ -33,6 +34,7 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       oz721Burnable = await ERC721Burnable.new("Test", "TEST", {from:owner});
       oz1155Burnable = await ERC1155Burnable.new("test.com", {from:owner});
       fallback1155 = await MockERC1155Fallback.new("test.com", {from:owner});
+      fallback1155Burnable = await MockERC1155FallbackBurnable.new("test.com", {from:owner});
       
       // Must register with empty prefix in order to set per-token uri's
       await creator.registerExtension(burnRedeem.address, {from:owner});
@@ -743,7 +745,12 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
           contract: fallback1155,
           tokenSpec: 2,
           mintTx: await fallback1155.mint(anyone1, 1, 1, { from: owner }),
-          hasFallback: true,
+        },
+        {
+          contract: fallback1155Burnable,
+          tokenSpec: 2,
+          mintTx: await fallback1155Burnable.mint(anyone1, 1, 1, { from: owner }),
+          supportsBurn: true,
         }
       ]
 
@@ -777,11 +784,6 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
         } else {
           if (tokenSpec === 1) {
             assert.equal(await contract.ownerOf(1), "0x000000000000000000000000000000000000dEaD");
-          } else if (hasFallback) {
-            // Assert that fallback was called for token
-            assert.equal(await fallback1155.fallbackCalled(), true);
-            // Fallback contracts for validationType ANY and burnSpec UNKNOWN can bypass burn requirements
-            assert.equal(await contract.balanceOf("0x000000000000000000000000000000000000dEaD", 1), 0);
           } else {
             assert.equal(await contract.balanceOf("0x000000000000000000000000000000000000dEaD", 1), 1);
           }
@@ -855,9 +857,6 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
 
       // Assert balance change
       assert.equal(await fallback1155.balanceOf("0x000000000000000000000000000000000000dEaD", 1), 1);
-
-      // Assert that fallback was not called for token sent to 0xdEaD
-      assert.equal(await fallback1155.fallbackCalled(), false);
     });
 
 
