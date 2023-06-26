@@ -98,9 +98,10 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * that a burn redeems's initializer is an admin on the creator contract
      * @param creatorContractAddress    the address of the creator contract to check the admin against
      */
-    modifier creatorAdminRequired(address creatorContractAddress) {
-        require(IAdminControl(creatorContractAddress).isAdmin(msg.sender), "Wallet is not an admin");
-        _;
+    function _validateAdmin(address creatorContractAddress) internal view {
+        if (!IAdminControl(creatorContractAddress).isAdmin(msg.sender)) {
+            revert NotAdmin(creatorContractAddress);
+        }
     }
 
     /**
@@ -138,7 +139,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      */
     function _getBurnRedeem(address creatorContractAddress, uint256 instanceId) internal view returns(BurnRedeem storage burnRedeemInstance) {
         burnRedeemInstance = _burnRedeems[creatorContractAddress][instanceId];
-        require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
+        if (burnRedeemInstance.storageProtocol == StorageProtocol.INVALID) {
+            revert BurnRedeemDoesNotExist(instanceId);
+        }
     }
 
     /**
@@ -146,12 +149,12 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      */
     function _getActiveBurnRedeem(address creatorContractAddress, uint256 instanceId) private view returns(BurnRedeem storage burnRedeemInstance) {
         burnRedeemInstance = _burnRedeems[creatorContractAddress][instanceId];
-        require(burnRedeemInstance.storageProtocol != StorageProtocol.INVALID, "Burn redeem not initialized");
-        require(
-            burnRedeemInstance.startDate <= block.timestamp && 
-            (block.timestamp < burnRedeemInstance.endDate || burnRedeemInstance.endDate == 0),
-            "Burn redeem not active"
-        );
+        if (burnRedeemInstance.storageProtocol == StorageProtocol.INVALID) {
+            revert BurnRedeemDoesNotExist(instanceId);
+        }
+        if (burnRedeemInstance.startDate > block.timestamp || (block.timestamp >= burnRedeemInstance.endDate && burnRedeemInstance.endDate != 0)) {
+            revert BurnRedeemInactive(instanceId);
+        }
     }
 
     /**
@@ -168,12 +171,11 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * (Batch overload) see {IBurnRedeemCore-burnRedeem}.
      */
     function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata instanceIds, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable override nonReentrant {
-        require(
-            creatorContractAddresses.length == instanceIds.length &&
-            creatorContractAddresses.length == burnRedeemCounts.length &&
-            creatorContractAddresses.length == burnTokens.length,
-            "Invalid calldata"
-        );
+        if (creatorContractAddresses.length != instanceIds.length ||
+            creatorContractAddresses.length != burnRedeemCounts.length ||
+            creatorContractAddresses.length != burnTokens.length) {
+            revert InvalidInput();
+        }
 
         bool isActiveMember = _isActiveMember(msg.sender);
         uint256 msgValueRemaining = msg.value;
@@ -190,8 +192,11 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * See {IBurnRedeemCore-airdrop}.
      */
-    function airdrop(address creatorContractAddress, uint256 instanceId, address[] calldata recipients, uint32[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {
-        require(recipients.length == amounts.length, "Invalid calldata");
+    function airdrop(address creatorContractAddress, uint256 instanceId, address[] calldata recipients, uint32[] calldata amounts) external override {
+        _validateAdmin(creatorContractAddress);
+        if (recipients.length != amounts.length) {
+            revert InvalidInput();
+        }
         BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, instanceId);
 
         uint256 totalAmount;
@@ -199,10 +204,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             totalAmount += amounts[i] * burnRedeemInstance.redeemAmount;
             unchecked{ ++i; }
         }
-        require(
-            totalAmount + burnRedeemInstance.redeemedCount <= MAX_UINT_32,
-            "Invalid amount"
-        );
+        if (totalAmount + burnRedeemInstance.redeemedCount > MAX_UINT_32) {
+            revert InvalidRedeemAmount();
+        }
 
         // Airdrop the tokens
         for (uint256 i; i < recipients.length;) {
@@ -232,7 +236,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             payableCost *= burnRedeemCount;
             cost *= burnRedeemCount;
         }
-        require(msgValue >= payableCost, "Invalid amount");
+        if (payableCost > msgValue) {
+            revert InvalidPaymentAmount();
+        }
         if (cost > 0) {
             _forwardValue(burnRedeemInstance.paymentReceiver, cost);
         }
@@ -256,7 +262,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      */
     function withdraw(address payable recipient, uint256 amount) external override adminRequired {
         (bool sent, ) = recipient.call{value: amount}("");
-        require(sent, "Failed to transfer to recipient");
+        if (!sent) {
+            revert TransferFailure();
+        }
     }
 
     /**
@@ -290,7 +298,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         bytes calldata data
     ) external override nonReentrant returns(bytes4) {
         // Check calldata is valid
-        require(data.length % 32 == 0, "Invalid data");
+        if (data.length % 32 != 0) {
+            revert InvalidData();
+        }
 
         address creatorContractAddress;
         uint256 instanceId;
@@ -316,7 +326,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         bytes calldata data
     ) external override nonReentrant returns(bytes4) {
         // Check calldata is valid
-        require(data.length % 32 == 0, "Invalid data");
+        if (data.length % 32 != 0) {
+            revert InvalidData();
+        }
 
         address creatorContractAddress;
         uint256 instanceId;
@@ -342,7 +354,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         bytes calldata data
     ) private {
         // Check calldata is valid
-        require(data.length % 32 == 0, "Invalid data");
+        if (data.length % 32 != 0) {
+            revert InvalidData();
+        }
 
         address creatorContractAddress;
         uint256 instanceId;
@@ -356,22 +370,20 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
         // 2. The burn only requires one NFT (one burnSet element and one count)
         // 3. They are an active member (because no fee payment can be sent with a transfer)
-        require(
-            burnRedeemInstance.cost == 0 &&
-            burnRedeemInstance.burnSet.length == 1 &&
-            burnRedeemInstance.burnSet[0].requiredCount == 1 &&
-            _isActiveMember(from),
-            "Invalid input"
-        );
+        _validateReceivedInput(burnRedeemInstance.cost, burnRedeemInstance.burnSet.length, burnRedeemInstance.burnSet[0].requiredCount, from);
 
         uint256 burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1);
-        require(burnRedeemCount != 0, "No tokens available");
+        if (burnRedeemCount == 0) {
+            revert BurnRedeemInactive(instanceId);
+        }
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
 
         // Can only take in one burn item
-        require(burnItem.tokenSpec == TokenSpec.ERC721, "Invalid input");
+        if (burnItem.tokenSpec != TokenSpec.ERC721) {
+            revert InvalidInput();
+        }
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, id, merkleProof);
 
         // Do burn and redeem
@@ -389,20 +401,18 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
         // 2. The burn only requires one NFT (one burn set element and one required count in the set)
         // 3. They are an active member (because no fee payment can be sent with a transfer)
-        require(
-            burnRedeemInstance.cost == 0 &&
-            burnRedeemInstance.burnSet.length == 1 &&
-            burnRedeemInstance.burnSet[0].requiredCount == 1 &&
-            _isActiveMember(from),
-            "Invalid input"
-        );
+        _validateReceivedInput(burnRedeemInstance.cost, burnRedeemInstance.burnSet.length, burnRedeemInstance.burnSet[0].requiredCount, from);
 
         uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
-        require(availableBurnRedeemCount != 0, "No tokens available");
+        if (availableBurnRedeemCount == 0) {
+            revert BurnRedeemInactive(instanceId);
+        }
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
-        require(value == burnItem.amount * burnRedeemCount, "Invalid input");
+        if (value != burnItem.amount * burnRedeemCount) {
+            revert InvalidBurnAmount();
+        }
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount);
@@ -417,29 +427,32 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Execute onERC1155BatchReceived burn/redeem
      */
-    function _onERC1155BatchReceived(address from, uint256[] memory tokenIds, uint256[] memory values, address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] memory burnTokens) private {
+    function _onERC1155BatchReceived(address from, uint256[] calldata tokenIds, uint256[] calldata values, address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] memory burnTokens) private {
         BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, instanceId);
 
         // A single 1155 can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
         // 2. We have the right data length
         // 3. They are an active member (because no fee payment can be sent with a transfer)
-        require(
-            burnRedeemInstance.cost == 0 &&
-            burnTokens.length == tokenIds.length &&
-            _isActiveMember(from),
-            "Invalid input"
-        );
+        if (burnRedeemInstance.cost != 0 || burnTokens.length != tokenIds.length || !_isActiveMember(from)) {
+            revert InvalidInput();
+        }
         uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
-        require(availableBurnRedeemCount != 0, "No tokens available");
+        if (availableBurnRedeemCount == 0) {
+            revert BurnRedeemInactive(instanceId);
+        }
 
         // Verify the values match what is needed
         uint256[] memory returnValues = new uint256[](tokenIds.length);
         for (uint256 i; i < burnTokens.length;) {
             BurnToken memory burnToken = burnTokens[i];
             BurnItem memory burnItem = burnRedeemInstance.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
-            require(burnToken.id == tokenIds[i], "Invalid token");
-            require(burnItem.amount * burnRedeemCount == values[i], "Invalid amount");
+            if (burnToken.id != tokenIds[i]) {
+                revert InvalidToken(tokenIds[i]);
+            }
+            if (burnItem.amount * burnRedeemCount != values[i]) {
+                revert InvalidRedeemAmount();
+            }
             if (availableBurnRedeemCount != burnRedeemCount) {
                 returnValues[i] = values[i] - burnItem.amount * availableBurnRedeemCount;
             }
@@ -456,12 +469,20 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
     }
 
+    function _validateReceivedInput(uint256 cost, uint256 length, uint256 requiredCount, address from) private view {
+        if (cost != 0 || length != 1 || requiredCount != 1 || !_isActiveMember(from)) {
+            revert InvalidInput();
+        }
+    }
+
     /**
      * Send funds to receiver
      */
     function _forwardValue(address payable receiver, uint256 amount) private {
         (bool sent, ) = receiver.call{value: amount}("");
-        require(sent, "Failed to transfer to recipient");
+        if (!sent) {
+            revert TransferFailure();
+        }
     }
 
     /**
@@ -484,7 +505,9 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
 
         for (uint256 i; i < groupCounts.length;) {
-            require(groupCounts[i] == burnRedeemInstance.burnSet[i].requiredCount * burnRedeemCount, "Invalid number of tokens");
+            if (groupCounts[i] != burnRedeemInstance.burnSet[i].requiredCount * burnRedeemCount) {
+                revert InvalidBurnAmount();
+            }
             unchecked { ++i; }
         }
     }
@@ -577,11 +600,15 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             
             revert("Invalid burn spec");
         } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
-            require(burnRedeemCount == 1, "Invalid burn count");
+            if (burnRedeemCount != 1) {
+                revert InvalidBurnAmount();
+            } 
             if (tryBurnManifold || tryBurnOpenZeppelin) {
                 if (from != address(this)) {
                     // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
-                    require(IERC721(contractAddress).ownerOf(tokenId) == from, "Sender is not owner");
+                    if (IERC721(contractAddress).ownerOf(tokenId) != from) {
+                        revert TransferFailure();
+                    }
                 }
                 // Burn using the contract's burn function
                 Burnable721(contractAddress).burn(tokenId);

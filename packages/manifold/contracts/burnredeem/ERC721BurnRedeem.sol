@@ -35,13 +35,18 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters,
         bool identicalTokenURI
-    ) external creatorAdminRequired(creatorContractAddress) {
+    ) external  {
+        _validateAdmin(creatorContractAddress);
         // Max uint56 for instanceId
-        require(instanceId > 0 && instanceId <= MAX_UINT_56, "Invalid instanceId");
+        if (instanceId == 0 || instanceId > MAX_UINT_56) {
+            revert InvalidInput();
+        }
 
         uint8 creatorContractVersion;
         try IERC721CreatorCoreVersion(creatorContractAddress).VERSION() returns(uint256 version) {
-            require(version <= 255, "Unsupported contract version");
+            if (version > 255) {
+                revert UnsupportedContractVersion();
+            }
             creatorContractVersion = uint8(version);
         } catch {}
         _initialize(creatorContractAddress, creatorContractVersion, instanceId, burnRedeemParameters);
@@ -56,7 +61,8 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters,
         bool identicalTokenURI
-    ) external creatorAdminRequired(creatorContractAddress) {
+    ) external {
+        _validateAdmin(creatorContractAddress);
         _update(creatorContractAddress, instanceId, burnRedeemParameters);
         _identicalTokenURI[creatorContractAddress][instanceId] = identicalTokenURI;
     }
@@ -70,7 +76,8 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         StorageProtocol storageProtocol,
         string calldata location,
         bool identicalTokenURI
-    ) external override creatorAdminRequired(creatorContractAddress) {
+    ) external override  {
+        _validateAdmin(creatorContractAddress);
         BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, instanceId);
         burnRedeemInstance.storageProtocol = storageProtocol;
         burnRedeemInstance.location = location;
@@ -95,7 +102,9 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, instanceId, newTokenId, 1);
         } else {
             uint256 totalCount = burnRedeemInstance.redeemAmount * count;
-            require(totalCount <= MAX_UINT_16, "Invalid input");
+            if (totalCount > MAX_UINT_16) {
+                revert InvalidInput();
+            }
             uint256 startingCount = burnRedeemInstance.redeemedCount + 1;
             burnRedeemInstance.redeemedCount += uint32(totalCount);
             if (burnRedeemInstance.contractVersion >= 3) {
@@ -132,7 +141,9 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             // No claim, try to retrieve from tokenData
             uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
             instanceId = uint56(tokenData >> 24);
-            require(instanceId != 0, "Token does not exist");
+            if (instanceId == 0) {
+                revert InvalidToken(tokenId);
+            }
             mintNumber = uint24(tokenData & MAX_UINT_24);
         } else {
             instanceId = token.instanceId;
@@ -165,7 +176,9 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         } else {
             instanceId = token.instanceId;
         }
-        require(instanceId != 0, "Token does not exist");
+        if (instanceId == 0) {
+            revert InvalidToken(tokenId);
+        }
         burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
     }
 }
