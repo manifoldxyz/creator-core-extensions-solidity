@@ -6,6 +6,8 @@ const { MerkleTree } = require('merkletreejs');
 const keccak256 = require('keccak256');
 const ethers = require('ethers');
 const MockManifoldMembership = artifacts.require('MockManifoldMembership');
+const MockERC1155Fallback = artifacts.require('MockERC1155Fallback');
+const MockERC1155FallbackBurnable = artifacts.require('MockERC1155FallbackBurnable');
 const ERC721 = artifacts.require('MockERC721');
 const ERC1155 = artifacts.require('MockERC1155');
 const ERC721Burnable = artifacts.require('MockERC721Burnable');
@@ -31,6 +33,8 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
       oz1155 = await ERC1155.new("test.com", {from:owner});
       oz721Burnable = await ERC721Burnable.new("Test", "TEST", {from:owner});
       oz1155Burnable = await ERC1155Burnable.new("test.com", {from:owner});
+      fallback1155 = await MockERC1155Fallback.new("test.com", {from:owner});
+      fallback1155Burnable = await MockERC1155FallbackBurnable.new("test.com", {from:owner});
       
       // Must register with empty prefix in order to set per-token uri's
       await creator.registerExtension(burnRedeem.address, {from:owner});
@@ -650,6 +654,211 @@ contract('ERC721BurnRedeem', function ([...accounts]) {
 
       assert.equal('XXX/2', await creator.tokenURI(3));
     });
+
+    it('burnRedeem test - burn anything', async function() {
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+      
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          redeemAmount: 1,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items:[
+                // ERC-721
+                {
+                  validationType: 4,
+                  contractAddress: "0x0000000000000000000000000000000000000000",
+                  tokenSpec: 1,
+                  burnSpec: 3,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                },
+                // ERC-1155
+                {
+                  validationType: 4,
+                  contractAddress: "0x0000000000000000000000000000000000000000",
+                  tokenSpec: 2,
+                  burnSpec: 3,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                },
+              ]
+            }
+          ]
+        },
+        false,
+        {from:owner}
+      );
+
+      // Range of burnable options
+      const burnContracts = [
+        {
+          contract: burnable721,
+          tokenSpec: 1,
+          mintTx: await burnable721.mintBase(anyone1, { from: owner }),
+          supportsBurn: true,
+        },
+        {
+          contract: burnable1155,
+          tokenSpec: 2,
+          mintTx: await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner }),
+          supportsBurn: true,
+        },
+        {
+          contract: oz721Burnable,
+          tokenSpec: 1,
+          mintTx: await oz721Burnable.mint(anyone1, 1, { from: owner }),
+          supportsBurn: true,
+        },
+        {
+          contract: oz1155Burnable,
+          tokenSpec: 2,
+          mintTx: await oz1155Burnable.mint(anyone1, 1, 1, { from: owner }),
+          supportsBurn: true,
+        },
+        {
+          contract: oz721,
+          tokenSpec: 1,
+          mintTx: await oz721.mint(anyone1, 1, { from: owner }),
+        },
+        {
+          contract: oz1155,
+          tokenSpec: 2,
+          mintTx: await oz1155.mint(anyone1, 1, 1, { from: owner }),
+        },
+        {
+          contract: fallback1155,
+          tokenSpec: 2,
+          mintTx: await fallback1155.mint(anyone1, 1, 1, { from: owner }),
+        },
+        {
+          contract: fallback1155Burnable,
+          tokenSpec: 2,
+          mintTx: await fallback1155Burnable.mint(anyone1, 1, 1, { from: owner }),
+          supportsBurn: true,
+        }
+      ]
+
+      const promises = burnContracts.map(async ({contract, tokenSpec, supportsBurn, hasFallback}) => {
+        await contract.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
+
+        await truffleAssert.passes(
+          burnRedeem.burnRedeem(
+            creator.address,
+            1,
+            1,
+            [
+              {
+                groupIndex: 0,
+                itemIndex: tokenSpec == 1 ? 0 : 1,
+                contractAddress: contract.address,
+                id: 1,
+                merkleProof: [ethers.utils.formatBytes32String("")]
+              },
+            ],
+            {from:anyone1, value: BURN_FEE}
+          )
+        );
+        
+        if (supportsBurn) {
+          if (tokenSpec === 1) {
+            await truffleAssert.reverts(contract.ownerOf(1), "ERC721: invalid token ID");
+          } else {
+            assert.equal(await contract.balanceOf(owner, 1), 0);
+          }
+        } else {
+          if (tokenSpec === 1) {
+            assert.equal(await contract.ownerOf(1), "0x000000000000000000000000000000000000dEaD");
+          } else {
+            assert.equal(await contract.balanceOf("0x000000000000000000000000000000000000dEaD", 1), 1);
+          }
+        }
+  
+      }) 
+
+      await Promise.all(promises);
+    });
+
+    it('burnRedeem test - contracts with fallbacks cant bypass burn requirements', async function() {
+      let start = (await web3.eth.getBlock('latest')).timestamp-30; // seconds since unix epoch
+      let end = start + 300;
+
+      await fallback1155.mint(anyone1, 1, 1, { from: owner })
+      
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          redeemAmount: 1,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items:[
+                {
+                  validationType: 1,
+                  contractAddress: fallback1155.address,
+                  tokenSpec: 2,
+                  burnSpec: 0,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String("")
+                },
+              ]
+            }
+          ]
+        },
+        false,
+        {from:owner}
+      );
+
+      await fallback1155.setApprovalForAll(burnRedeem.address, true, {from:anyone1});
+
+      await truffleAssert.passes(
+        burnRedeem.burnRedeem(
+          creator.address,
+          1,
+          1,
+          [
+            {
+              groupIndex: 0,
+              itemIndex: 0,
+              contractAddress: fallback1155.address,
+              id: 1,
+              merkleProof: [ethers.utils.formatBytes32String("")]
+            },
+          ],
+          {from:anyone1, value: BURN_FEE}
+        )
+      );
+      
+
+      // Assert balance change
+      assert.equal(await fallback1155.balanceOf("0x000000000000000000000000000000000000dEaD", 1), 1);
+    });
+
 
     it('burnRedeem test - burn 721', async function() {
 

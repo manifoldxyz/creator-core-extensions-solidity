@@ -104,3 +104,19 @@ contract MockERC1155Burnable is ERC1155Burnable {
         _mint(to, id, amount, "");
     }
 }
+
+contract MockERC1155Fallback is MockERC1155 {
+    constructor (string memory _uri) MockERC1155(_uri) {}
+    
+    fallback() external payable {}
+
+    receive() external payable {}
+}
+
+contract MockERC1155FallbackBurnable is MockERC1155Burnable {
+    constructor (string memory _uri) MockERC1155Burnable(_uri) {}
+    
+    fallback() external payable {}
+
+    receive() external payable {}
+}

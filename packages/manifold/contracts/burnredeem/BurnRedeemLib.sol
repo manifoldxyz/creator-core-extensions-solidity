@@ -114,6 +114,9 @@ library BurnRedeemLib {
      * Helper to validate burn item
      */
     function validateBurnItem(IBurnRedeemCore.BurnItem memory burnItem, address contractAddress, uint256 tokenId, bytes32[] memory merkleProof) public pure {
+        if (burnItem.validationType == IBurnRedeemCore.ValidationType.ANY) {
+            return;
+        }
         require(contractAddress == burnItem.contractAddress, "Invalid burn token");
         if (burnItem.validationType == IBurnRedeemCore.ValidationType.CONTRACT) {
             return;
