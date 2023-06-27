@@ -226,7 +226,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         uint256 payableCost = burnRedeemInstance.cost;
         uint256 cost = burnRedeemInstance.cost;
         if (!isActiveMember) {
-            payableCost += _getManifoldFee(burnTokens.length);
+            payableCost += burnTokens.length <= 1 ? BURN_FEE : MULTI_BURN_FEE;
         }
         if (burnRedeemCount > 1) {
             payableCost *= burnRedeemCount;
@@ -365,7 +365,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // 3. They are an active member (because no fee payment can be sent with a transfer)
         _validateReceivedInput(burnRedeemInstance.cost, burnRedeemInstance.burnSet.length, burnRedeemInstance.burnSet[0].requiredCount, from);
 
-        uint256 burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1, true);
+        _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1, true);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
@@ -494,14 +494,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             }
             unchecked { ++i; }
         }
-    }
-
-
-    /**
-     * Helper to get the Manifold fee for the sender
-     */
-    function _getManifoldFee(uint256 burnTokenCount) private pure returns(uint256 fee) {
-        fee = burnTokenCount <= 1 ? BURN_FEE : MULTI_BURN_FEE;
     }
 
     /**

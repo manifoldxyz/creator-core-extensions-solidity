@@ -133,23 +133,8 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
      * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-        RedeemToken memory token = _redeemTokens[creatorContractAddress][tokenId];
-        BurnRedeem memory burnRedeem;
-        uint256 mintNumber;
-        uint256 instanceId;
-        if (token.instanceId == 0) {
-            // No claim, try to retrieve from tokenData
-            uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
-            instanceId = uint56(tokenData >> 24);
-            if (instanceId == 0) {
-                revert InvalidToken(tokenId);
-            }
-            mintNumber = uint24(tokenData & MAX_UINT_24);
-        } else {
-            instanceId = token.instanceId;
-            mintNumber = token.mintNumber;
-        }
-        burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
+        (uint256 instanceId, uint256 mintNumber) = _getInstanceIdAndMintNumber(creatorContractAddress, tokenId);
+        BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
 
         string memory prefix = "";
         if (burnRedeem.storageProtocol == StorageProtocol.ARWEAVE) {
@@ -168,17 +153,23 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
      * See {IBurnRedeemCore-getBurnRedeemForToken}.
      */
     function getBurnRedeemForToken(address creatorContractAddress, uint256 tokenId) external override view returns(uint256 instanceId, BurnRedeem memory burnRedeem) {
+        (instanceId, ) = _getInstanceIdAndMintNumber(creatorContractAddress, tokenId);
+        burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
+    }
+
+    function _getInstanceIdAndMintNumber(address creatorContractAddress, uint256 tokenId) internal view returns(uint256 instanceId, uint256 mintNumber) {
         RedeemToken memory token = _redeemTokens[creatorContractAddress][tokenId];
         if (token.instanceId == 0) {
             // No claim, try to retrieve from tokenData
             uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
             instanceId = uint56(tokenData >> 24);
+            if (instanceId == 0) {
+                revert InvalidToken(tokenId);
+            }
+            mintNumber = uint24(tokenData & MAX_UINT_24);
         } else {
             instanceId = token.instanceId;
+            mintNumber = token.mintNumber;
         }
-        if (instanceId == 0) {
-            revert InvalidToken(tokenId);
-        }
-        burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
     }
 }

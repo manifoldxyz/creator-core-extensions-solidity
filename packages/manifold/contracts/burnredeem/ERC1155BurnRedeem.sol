@@ -92,10 +92,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
      * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-        uint256 instanceId = _redeemInstanceIds[creatorContractAddress][tokenId];
-        if (instanceId == 0) {
-            revert InvalidToken(tokenId);
-        }
+        uint256 instanceId = _getRedeemInstanceId(creatorContractAddress, tokenId);
         BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
 
         string memory prefix = "";
@@ -111,10 +108,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
      * See {IBurnRedeemCore-getBurnRedeemForToken}.
      */
     function getBurnRedeemForToken(address creatorContractAddress, uint256 tokenId) external override view returns(uint256 instanceId, BurnRedeem memory burnRedeem) {
-        instanceId = _redeemInstanceIds[creatorContractAddress][tokenId];
-        if (instanceId == 0) {
-            revert InvalidToken(tokenId);
-        }
+        instanceId = _getRedeemInstanceId(creatorContractAddress, tokenId);
         burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
     }
 
@@ -125,6 +119,13 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         tokenId = _redeemTokenIds[creatorContractAddress][instanceId];
         if (tokenId == 0) {
             revert BurnRedeemDoesNotExist(instanceId);
+        }
+    }
+
+    function _getRedeemInstanceId(address creatorContractAddress, uint256 tokenId) internal view returns(uint256 instanceId) {
+        instanceId = _redeemInstanceIds[creatorContractAddress][tokenId];
+        if (instanceId == 0) {
+            revert InvalidToken(tokenId);
         }
     }
 }
