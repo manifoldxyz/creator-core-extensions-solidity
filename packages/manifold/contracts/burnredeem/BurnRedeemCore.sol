@@ -148,10 +148,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * Helper to get active burn redeem instance
      */
     function _getActiveBurnRedeem(address creatorContractAddress, uint256 instanceId) private view returns(BurnRedeem storage burnRedeemInstance) {
-        burnRedeemInstance = _burnRedeems[creatorContractAddress][instanceId];
-        if (burnRedeemInstance.storageProtocol == StorageProtocol.INVALID) {
-            revert BurnRedeemDoesNotExist(instanceId);
-        }
+        burnRedeemInstance = _getBurnRedeem(creatorContractAddress, instanceId);
         if (burnRedeemInstance.startDate > block.timestamp || (block.timestamp >= burnRedeemInstance.endDate && burnRedeemInstance.endDate != 0)) {
             revert BurnRedeemInactive(instanceId);
         }
@@ -221,9 +218,8 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, instanceId);
 
         // Get the amount that can be burned
-        burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
+        burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount, revertNoneRemaining);
         if (burnRedeemCount == 0) {
-            if (revertNoneRemaining) revert("No tokens available");
             return 0;
         }
 
@@ -261,10 +257,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * @dev See {IBurnRedeemCore-withdraw}.
      */
     function withdraw(address payable recipient, uint256 amount) external override adminRequired {
-        (bool sent, ) = recipient.call{value: amount}("");
-        if (!sent) {
-            revert TransferFailure();
-        }
+        _forwardValue(recipient, amount);
     }
 
     /**
@@ -372,10 +365,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // 3. They are an active member (because no fee payment can be sent with a transfer)
         _validateReceivedInput(burnRedeemInstance.cost, burnRedeemInstance.burnSet.length, burnRedeemInstance.burnSet[0].requiredCount, from);
 
-        uint256 burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1);
-        if (burnRedeemCount == 0) {
-            revert BurnRedeemInactive(instanceId);
-        }
+        uint256 burnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, 1, true);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
@@ -403,10 +393,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         // 3. They are an active member (because no fee payment can be sent with a transfer)
         _validateReceivedInput(burnRedeemInstance.cost, burnRedeemInstance.burnSet.length, burnRedeemInstance.burnSet[0].requiredCount, from);
 
-        uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
-        if (availableBurnRedeemCount == 0) {
-            revert BurnRedeemInactive(instanceId);
-        }
+        uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount, true);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
@@ -437,10 +424,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         if (burnRedeemInstance.cost != 0 || burnTokens.length != tokenIds.length || !_isActiveMember(from)) {
             revert InvalidInput();
         }
-        uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount);
-        if (availableBurnRedeemCount == 0) {
-            revert BurnRedeemInactive(instanceId);
-        }
+        uint32 availableBurnRedeemCount = _getAvailableBurnRedeemCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount, true);
 
         // Verify the values match what is needed
         uint256[] memory returnValues = new uint256[](tokenIds.length);
@@ -531,7 +515,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Helper to get the number of burn redeems the person can accomplish
      */
-    function _getAvailableBurnRedeemCount(uint32 totalSupply, uint32 redeemedCount, uint32 redeemAmount, uint32 desiredCount) internal pure returns(uint32 burnRedeemCount) {
+    function _getAvailableBurnRedeemCount(uint32 totalSupply, uint32 redeemedCount, uint32 redeemAmount, uint32 desiredCount, bool revertNoneRemaining) internal pure returns(uint32 burnRedeemCount) {
         if (totalSupply == 0) {
             burnRedeemCount = desiredCount;
         } else {
@@ -541,6 +525,10 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             } else {
                 burnRedeemCount = remainingCount;
             }
+        }
+
+        if (revertNoneRemaining && burnRedeemCount == 0) {
+            revert InvalidRedeemAmount();
         }
     }
 
@@ -597,8 +585,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "");
                 return;                
             } 
-            
-            revert("Invalid burn spec");
         } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
             if (burnRedeemCount != 1) {
                 revert InvalidBurnAmount();
@@ -627,10 +613,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
                 return;                
             }
-
-            revert("Invalid burn spec");
-        } else {
-            revert("Invalid token spec");
         }
+        revert InvalidInput();
     }
 }
