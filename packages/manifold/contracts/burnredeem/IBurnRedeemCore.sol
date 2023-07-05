@@ -12,6 +12,21 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  * Burn Redeem Core interface
  */
 interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
+    error NotAdmin(address);
+    error UnsupportedContractVersion();
+    error InvalidToken(uint256);
+    error InvalidInput();
+    error InvalidData();
+    error TransferFailure();
+    
+    error BurnRedeemDoesNotExist(uint256);
+    error BurnRedeemInactive(uint256);
+
+    error InvalidBurnAmount();
+    error InvalidRedeemAmount();
+    error InvalidPaymentAmount();
+
+
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
 
     /**
