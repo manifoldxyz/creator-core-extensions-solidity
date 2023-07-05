@@ -9,7 +9,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "./BurnRedeemCore.sol";
 import "./BurnRedeemLib.sol";
 import "./IERC721BurnRedeem.sol";
-import ".././libraries/IERC721CreatorCoreVersion.sol";
+import "../libraries/IERC721CreatorCoreVersion.sol";
 
 contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     using Strings for uint256;
@@ -35,13 +35,18 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters,
         bool identicalTokenURI
-    ) external creatorAdminRequired(creatorContractAddress) {
+    ) external  {
+        _validateAdmin(creatorContractAddress);
         // Max uint56 for instanceId
-        require(instanceId > 0 && instanceId <= MAX_UINT_56, "Invalid instanceId");
+        if (instanceId == 0 || instanceId > MAX_UINT_56) {
+            revert InvalidInput();
+        }
 
         uint8 creatorContractVersion;
         try IERC721CreatorCoreVersion(creatorContractAddress).VERSION() returns(uint256 version) {
-            require(version <= 255, "Unsupported contract version");
+            if (version > 255) {
+                revert UnsupportedContractVersion();
+            }
             creatorContractVersion = uint8(version);
         } catch {}
         _initialize(creatorContractAddress, creatorContractVersion, instanceId, burnRedeemParameters);
@@ -56,7 +61,8 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters,
         bool identicalTokenURI
-    ) external creatorAdminRequired(creatorContractAddress) {
+    ) external {
+        _validateAdmin(creatorContractAddress);
         _update(creatorContractAddress, instanceId, burnRedeemParameters);
         _identicalTokenURI[creatorContractAddress][instanceId] = identicalTokenURI;
     }
@@ -70,7 +76,8 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
         StorageProtocol storageProtocol,
         string calldata location,
         bool identicalTokenURI
-    ) external override creatorAdminRequired(creatorContractAddress) {
+    ) external override  {
+        _validateAdmin(creatorContractAddress);
         BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, instanceId);
         burnRedeemInstance.storageProtocol = storageProtocol;
         burnRedeemInstance.location = location;
@@ -95,7 +102,9 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
             emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, instanceId, newTokenId, 1);
         } else {
             uint256 totalCount = burnRedeemInstance.redeemAmount * count;
-            require(totalCount <= MAX_UINT_16, "Invalid input");
+            if (totalCount > MAX_UINT_16) {
+                revert InvalidInput();
+            }
             uint256 startingCount = burnRedeemInstance.redeemedCount + 1;
             burnRedeemInstance.redeemedCount += uint32(totalCount);
             if (burnRedeemInstance.contractVersion >= 3) {
@@ -124,21 +133,8 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
      * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-        RedeemToken memory token = _redeemTokens[creatorContractAddress][tokenId];
-        BurnRedeem memory burnRedeem;
-        uint256 mintNumber;
-        uint256 instanceId;
-        if (token.instanceId == 0) {
-            // No claim, try to retrieve from tokenData
-            uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
-            instanceId = uint56(tokenData >> 24);
-            require(instanceId != 0, "Token does not exist");
-            mintNumber = uint24(tokenData & MAX_UINT_24);
-        } else {
-            instanceId = token.instanceId;
-            mintNumber = token.mintNumber;
-        }
-        burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
+        (uint256 instanceId, uint256 mintNumber) = _getInstanceIdAndMintNumber(creatorContractAddress, tokenId);
+        BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
 
         string memory prefix = "";
         if (burnRedeem.storageProtocol == StorageProtocol.ARWEAVE) {
@@ -157,15 +153,23 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
      * See {IBurnRedeemCore-getBurnRedeemForToken}.
      */
     function getBurnRedeemForToken(address creatorContractAddress, uint256 tokenId) external override view returns(uint256 instanceId, BurnRedeem memory burnRedeem) {
+        (instanceId, ) = _getInstanceIdAndMintNumber(creatorContractAddress, tokenId);
+        burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
+    }
+
+    function _getInstanceIdAndMintNumber(address creatorContractAddress, uint256 tokenId) internal view returns(uint256 instanceId, uint256 mintNumber) {
         RedeemToken memory token = _redeemTokens[creatorContractAddress][tokenId];
         if (token.instanceId == 0) {
             // No claim, try to retrieve from tokenData
             uint80 tokenData = IERC721CreatorCore(creatorContractAddress).tokenData(tokenId);
             instanceId = uint56(tokenData >> 24);
+            if (instanceId == 0) {
+                revert InvalidToken(tokenId);
+            }
+            mintNumber = uint24(tokenData & MAX_UINT_24);
         } else {
             instanceId = token.instanceId;
+            mintNumber = token.mintNumber;
         }
-        require(instanceId != 0, "Token does not exist");
-        burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
     }
 }

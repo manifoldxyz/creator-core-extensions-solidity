@@ -54,6 +54,15 @@ library BurnRedeemLib {
     event BurnRedeemUpdated(address indexed creatorContract, uint256 indexed instanceId);
     event BurnRedeemMint(address indexed creatorContract, uint256 indexed instanceId, uint256 indexed tokenId, uint32 redeemedCount);
 
+    error BurnRedeemAlreadyInitialized();
+    error InvalidBurnItem();
+    error InvalidBurnToken();
+    error InvalidMerkleProof();
+    error InvalidStorageProtocol();
+    error InvalidPaymentReceiver();
+    error InvalidDates();
+    error InvalidInput();
+
     /**
      * Initialiazes a burn redeem with base parameters
      */
@@ -65,7 +74,9 @@ library BurnRedeemLib {
         IBurnRedeemCore.BurnRedeemParameters calldata burnRedeemParameters
     ) public {
         // Sanity checks
-        require(burnRedeemInstance.storageProtocol == IBurnRedeemCore.StorageProtocol.INVALID, "Burn redeem already initialized");
+        if (burnRedeemInstance.storageProtocol != IBurnRedeemCore.StorageProtocol.INVALID) {
+            revert BurnRedeemAlreadyInitialized();
+        }
         _validateParameters(burnRedeemParameters);
 
         // Create the burn redeem
@@ -86,10 +97,14 @@ library BurnRedeemLib {
         IBurnRedeemCore.BurnRedeemParameters calldata burnRedeemParameters
     ) public {
         // Sanity checks
-        require(burnRedeemInstance.storageProtocol != IBurnRedeemCore.StorageProtocol.INVALID, "Burn redeem not initialized");
+        if (burnRedeemInstance.storageProtocol == IBurnRedeemCore.StorageProtocol.INVALID) {
+            revert IBurnRedeemCore.BurnRedeemDoesNotExist(instanceId);
+        }
         _validateParameters(burnRedeemParameters);
         // The current redeemedCount must be divisible by redeemAmount
-        require(burnRedeemInstance.redeemedCount % burnRedeemParameters.redeemAmount == 0, "Invalid amount");
+        if (burnRedeemInstance.redeemedCount % burnRedeemParameters.redeemAmount != 0) {
+            revert IBurnRedeemCore.InvalidRedeemAmount();
+        }
 
         // Overwrite the existing burnRedeem
         _setParameters(burnRedeemInstance, burnRedeemParameters);
@@ -114,28 +129,45 @@ library BurnRedeemLib {
      * Helper to validate burn item
      */
     function validateBurnItem(IBurnRedeemCore.BurnItem memory burnItem, address contractAddress, uint256 tokenId, bytes32[] memory merkleProof) public pure {
-        require(contractAddress == burnItem.contractAddress, "Invalid burn token");
+        if (burnItem.validationType == IBurnRedeemCore.ValidationType.ANY) {
+            return;
+        }
+        if (contractAddress != burnItem.contractAddress) {
+            revert InvalidBurnToken();
+        }
         if (burnItem.validationType == IBurnRedeemCore.ValidationType.CONTRACT) {
             return;
         } else if (burnItem.validationType == IBurnRedeemCore.ValidationType.RANGE) {
-            require(tokenId >= burnItem.minTokenId && tokenId <= burnItem.maxTokenId, "Invalid token ID");
+            if (tokenId < burnItem.minTokenId || tokenId > burnItem.maxTokenId) {
+                revert IBurnRedeemCore.InvalidToken(tokenId);
+            }
             return;
         } else if (burnItem.validationType == IBurnRedeemCore.ValidationType.MERKLE_TREE) {
             bytes32 leaf = keccak256(abi.encodePacked(tokenId));
-            require(MerkleProof.verify(merkleProof, burnItem.merkleRoot, leaf), "Invalid merkle proof");
+            if (!MerkleProof.verify(merkleProof, burnItem.merkleRoot, leaf)) {
+                revert InvalidMerkleProof();
+            }
             return;
         }
-        revert("Invalid burn item");
+        revert InvalidBurnItem();
     }
 
         /**
      * Helper to validate the parameters for a burn redeem
      */
     function _validateParameters(IBurnRedeemCore.BurnRedeemParameters calldata burnRedeemParameters) internal pure {
-        require(burnRedeemParameters.storageProtocol != IBurnRedeemCore.StorageProtocol.INVALID, "Storage protocol invalid");
-        require(burnRedeemParameters.paymentReceiver != address(0), "Payment receiver required");
-        require(burnRedeemParameters.endDate == 0 || burnRedeemParameters.startDate < burnRedeemParameters.endDate, "startDate after endDate");
-        require(burnRedeemParameters.totalSupply % burnRedeemParameters.redeemAmount == 0, "Remainder left from totalSupply");
+        if (burnRedeemParameters.storageProtocol == IBurnRedeemCore.StorageProtocol.INVALID) {
+            revert InvalidStorageProtocol();
+        }
+        if (burnRedeemParameters.paymentReceiver == address(0)) {
+            revert InvalidPaymentReceiver();
+        }
+        if (burnRedeemParameters.endDate != 0 && burnRedeemParameters.startDate >= burnRedeemParameters.endDate) {
+            revert InvalidDates();
+        }
+        if (burnRedeemParameters.totalSupply % burnRedeemParameters.redeemAmount != 0) {
+            revert IBurnRedeemCore.InvalidRedeemAmount();
+        }
     }
 
     /**
@@ -160,21 +192,23 @@ library BurnRedeemLib {
         for (uint256 i; i < burnGroups.length;) {
             burnRedeemInstance.burnSet.push();
             IBurnRedeemCore.BurnGroup storage burnGroup = burnRedeemInstance.burnSet[i];
-            require(
-                burnGroups[i].requiredCount > 0 &&
-                burnGroups[i].requiredCount <= burnGroups[i].items.length,
-                "Invalid input"
-            );
+            if (burnGroups[i].requiredCount == 0 || burnGroups[i].requiredCount > burnGroups[i].items.length) {
+                revert InvalidInput();
+            }
             burnGroup.requiredCount = burnGroups[i].requiredCount;
             for (uint256 j; j < burnGroups[i].items.length;) {
                 IBurnRedeemCore.BurnItem memory burnItem = burnGroups[i].items[j];
-                require(
-                    (
-                        (burnItem.tokenSpec == IBurnRedeemCore.TokenSpec.ERC1155 && burnItem.amount > 0) ||
-                        (burnItem.tokenSpec == IBurnRedeemCore.TokenSpec.ERC721 && burnItem.amount == 0)
-                    ) &&
-                    burnItem.validationType != IBurnRedeemCore.ValidationType.INVALID,
-                    "Invalid input");
+                IBurnRedeemCore.TokenSpec tokenSpec = burnItem.tokenSpec;
+                uint256 amount = burnItem.amount;
+                if (
+                    !(
+                        (tokenSpec == IBurnRedeemCore.TokenSpec.ERC1155 && amount > 0) ||
+                        (tokenSpec == IBurnRedeemCore.TokenSpec.ERC721 && amount == 0)
+                    ) || 
+                    burnItem.validationType == IBurnRedeemCore.ValidationType.INVALID
+                ) {
+                    revert InvalidInput();
+                }
                 burnGroup.items.push(burnGroups[i].items[j]);
                 unchecked { ++j; }
             }

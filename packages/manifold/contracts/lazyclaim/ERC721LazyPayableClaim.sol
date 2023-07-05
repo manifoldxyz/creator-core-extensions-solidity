@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import "./LazyPayableClaim.sol";
 import "./IERC721LazyPayableClaim.sol";
-import ".././libraries/IERC721CreatorCoreVersion.sol";
+import "../libraries/IERC721CreatorCoreVersion.sol";
 
 /**
  * @title Lazy Payable Claim
