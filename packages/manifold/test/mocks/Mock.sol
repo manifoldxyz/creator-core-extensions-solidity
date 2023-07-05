@@ -120,3 +120,17 @@ contract MockERC1155FallbackBurnable is MockERC1155Burnable {
 
     receive() external payable {}
 }
+
+contract MockRedeemCallback {
+    event Redeem(address redeemer, address creatorContractAddress, uint256 tokenId, uint256 amount, bytes data);
+
+    function onRedeem(
+        address redeemer,
+        address creatorContractAddress,
+        uint256 tokenId,
+        uint256 amount,
+        bytes memory data
+    ) external {
+        emit Redeem(redeemer, creatorContractAddress, tokenId, amount, data);
+    }
+}

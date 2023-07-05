@@ -87,6 +87,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param cost              the cost for each burn redeem
      * @param location          used to construct the token URI (Arweave hash, full URI, etc.)
      * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
+     * @param redeemCallback    optional contract to call on redemption of a token to extend custom functionality
      */
     struct BurnRedeemParameters {
         address payable paymentReceiver;
@@ -98,6 +99,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint160 cost;
         string location;
         BurnGroup[] burnSet;
+        address redeemCallback;
     }
 
     struct BurnRedeem {
@@ -112,6 +114,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint160 cost;
         string location;
         BurnGroup[] burnSet;
+        address redeemCallback;
     }
 
     /**
@@ -154,6 +157,16 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
      */
     function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable;
+
+    /**
+     * @notice burn tokens and mint a redeem token
+     * @param creatorContractAddress    the address of the creator contract
+     * @param instanceId                the instanceId of the burn redeem for the creator contract
+     * @param burnRedeemCount           the number of burn redeems we want to do
+     * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
+     * @param data                      the data to pass to the redeem callback
+     */
+    function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bytes calldata data) external payable;
 
     /**
      * @notice burn tokens and mint redeem tokens multiple times in a single transaction

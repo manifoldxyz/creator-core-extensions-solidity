@@ -182,6 +182,7 @@ library BurnRedeemLib {
         burnRedeemInstance.location = burnRedeemParameters.location;
         burnRedeemInstance.cost = burnRedeemParameters.cost;
         burnRedeemInstance.paymentReceiver = burnRedeemParameters.paymentReceiver;
+        burnRedeemInstance.redeemCallback = burnRedeemParameters.redeemCallback;
     }
 
     /**

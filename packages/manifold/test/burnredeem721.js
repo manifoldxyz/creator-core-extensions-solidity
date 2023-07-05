@@ -12,6 +12,7 @@ const ERC721 = artifacts.require("MockERC721");
 const ERC1155 = artifacts.require("MockERC1155");
 const ERC721Burnable = artifacts.require("MockERC721Burnable");
 const ERC1155Burnable = artifacts.require("MockERC1155Burnable");
+const MockRedeemCallback = artifacts.require("MockRedeemCallback");
 
 const BURN_FEE = ethers.BigNumber.from("690000000000000");
 const MULTI_BURN_FEE = ethers.BigNumber.from("990000000000000");
@@ -35,6 +36,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
       oz1155Burnable = await ERC1155Burnable.new("test.com", { from: owner });
       fallback1155 = await MockERC1155Fallback.new("test.com", { from: owner });
       fallback1155Burnable = await MockERC1155FallbackBurnable.new("test.com", { from: owner });
+      redeemCallback = await MockRedeemCallback.new({ from: owner });
 
       // Must register with empty prefix in order to set per-token uri's
       await creator.registerExtension(burnRedeem.address, { from: owner });
@@ -55,6 +57,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -76,6 +79,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -97,6 +101,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -126,6 +131,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -147,6 +153,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 3,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -168,6 +175,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -189,6 +197,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -226,6 +235,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -263,6 +273,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -300,6 +311,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -337,6 +349,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -377,6 +390,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -397,6 +411,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 1,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -418,6 +433,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 3,
             totalSupply: 10,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -428,7 +444,10 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
         )
       );
 
-      await burnRedeem.burnRedeem(creator.address, 1, 2, [], { from: owner, value: BURN_FEE.mul(2) });
+      await burnRedeem.burnRedeem(creator.address, 1, 2, [], ethers.utils.formatBytes32String(""), {
+        from: owner,
+        value: BURN_FEE.mul(2),
+      });
 
       // Fails due to non-mod-0 redeemAmount after redemptions
       await truffleAssert.reverts(
@@ -441,6 +460,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             redeemAmount: 3,
             totalSupply: 9,
             storageProtocol: 1,
+            redeemCallback: "0x0000000000000000000000000000000000000000",
             location: "XXX",
             cost: 0,
             paymentReceiver: owner,
@@ -461,6 +481,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 1,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -482,6 +503,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 0,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -507,6 +529,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: anyone1,
@@ -549,6 +572,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             merkleProof: [ethers.utils.formatBytes32String("")],
           },
         ],
+        ethers.utils.formatBytes32String(""),
         { from: anyone1, value: BURN_FEE }
       );
 
@@ -563,6 +587,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -604,6 +629,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: anyone1,
@@ -648,6 +674,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             merkleProof: [ethers.utils.formatBytes32String("")],
           },
         ],
+        ethers.utils.formatBytes32String(""),
         { from: anyone1, value: BURN_FEE }
       );
 
@@ -670,6 +697,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             merkleProof: [ethers.utils.formatBytes32String("")],
           },
         ],
+        ethers.utils.formatBytes32String(""),
         { from: anyone1, value: BURN_FEE }
       );
 
@@ -689,6 +717,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -792,6 +821,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
                 merkleProof: [ethers.utils.formatBytes32String("")],
               },
             ],
+            ethers.utils.formatBytes32String(""),
             { from: anyone1, value: BURN_FEE }
           )
         );
@@ -814,6 +844,91 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
       await Promise.all(promises);
     });
 
+    it("redeem callback test", async function () {
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock("latest")).timestamp - 30; // seconds since unix epoch
+      let end = start + 300;
+
+      // Mint burnable tokens
+      for (let i = 0; i < 3; i++) {
+        await oz721.mint(anyone1, i + 1, { from: owner });
+      }
+
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1);
+      assert.equal(0, balance);
+      balance = await oz721.balanceOf(anyone1);
+      assert.equal(3, balance);
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          redeemAmount: 1,
+          totalSupply: 10,
+          storageProtocol: 1,
+          redeemCallback: redeemCallback.address,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: oz721.address,
+                  tokenSpec: 1,
+                  burnSpec: 0,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String(""),
+                },
+              ],
+            },
+          ],
+        },
+        false,
+        { from: owner }
+      );
+
+      // Set approvals
+      await oz721.setApprovalForAll(burnRedeem.address, true, { from: anyone1 });
+
+      const message = "hello";
+      // Passes
+      const tx = await burnRedeem.burnRedeem(
+        creator.address,
+        1,
+        1,
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: oz721.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")],
+          },
+        ],
+        ethers.utils.formatBytes32String(message),
+        { from: anyone1, value: BURN_FEE }
+      );
+
+      // Verify callback was executed
+      const event = tx.receipt.rawLogs.find((log) => log.address === redeemCallback.address);
+      const decodedEvent = web3.eth.abi.decodeParameters(["address", "address", "uint256", "uint256", "bytes"], event.data);
+      assert.equal(decodedEvent[4], ethers.utils.formatBytes32String(message));
+
+      // Ensure tokens are burned/minted
+      balance = await oz721.balanceOf(anyone1);
+      assert.equal(2, balance);
+      balance = await creator.balanceOf(anyone1);
+      assert.equal(1, balance);
+    });
+
     it("burnRedeem test - contracts with fallbacks cant bypass burn requirements", async function () {
       let start = (await web3.eth.getBlock("latest")).timestamp - 30; // seconds since unix epoch
       let end = start + 300;
@@ -829,6 +944,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -870,6 +986,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE }
         )
       );
@@ -913,6 +1030,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -982,6 +1100,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE }
         )
       );
@@ -1015,6 +1134,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: MULTI_BURN_FEE }
         )
       );
@@ -1041,6 +1161,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: MULTI_BURN_FEE }
         )
       );
@@ -1067,6 +1188,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: MULTI_BURN_FEE }
         )
       );
@@ -1093,6 +1215,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1 }
         )
       );
@@ -1119,6 +1242,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone2, value: MULTI_BURN_FEE }
         )
       );
@@ -1145,6 +1269,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: MULTI_BURN_FEE.mul(2) }
         )
       );
@@ -1172,6 +1297,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             merkleProof: [ethers.utils.formatBytes32String("")],
           },
         ],
+        ethers.utils.formatBytes32String(""),
         { from: anyone1, value: MULTI_BURN_FEE }
       );
 
@@ -1202,6 +1328,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             merkleProof: [ethers.utils.formatBytes32String("")],
           },
         ],
+        ethers.utils.formatBytes32String(""),
         { from: anyone1, value: MULTI_BURN_FEE }
       );
 
@@ -1230,6 +1357,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             merkleProof: merkleProof,
           },
         ],
+        ethers.utils.formatBytes32String(""),
         { from: anyone1, value: MULTI_BURN_FEE }
       );
 
@@ -1269,6 +1397,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1312,6 +1441,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE }
         )
       );
@@ -1348,6 +1478,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1391,6 +1522,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE }
         )
       );
@@ -1428,6 +1560,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1529,6 +1662,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: MULTI_BURN_FEE.mul(3) }
         )
       );
@@ -1561,6 +1695,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             merkleProof: merkleProof,
           },
         ],
+        ethers.utils.formatBytes32String(""),
         { from: anyone1, value: MULTI_BURN_FEE.mul(3) }
       );
 
@@ -1602,6 +1737,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1645,6 +1781,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE }
         )
       );
@@ -1679,6 +1816,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1722,6 +1860,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE }
         )
       );
@@ -1756,6 +1895,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 3,
           totalSupply: 9,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1799,6 +1939,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE }
         )
       );
@@ -1828,6 +1969,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1862,6 +2004,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1896,6 +2039,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -1941,6 +2085,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone2, value: BURN_FEE }
         )
       );
@@ -1959,6 +2104,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone2, value: BURN_FEE }
         )
       );
@@ -1977,6 +2123,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone2, value: BURN_FEE }
         )
       );
@@ -2000,6 +2147,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: cost,
           paymentReceiver: owner,
@@ -2054,6 +2202,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE }
         )
       );
@@ -2075,6 +2224,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE.add(cost) }
         )
       );
@@ -2100,6 +2250,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
               merkleProof: [ethers.utils.formatBytes32String("")],
             },
           ],
+          ethers.utils.formatBytes32String(""),
           { from: anyone1, value: BURN_FEE.mul(5).add(cost.mul(5)) }
         )
       );
@@ -2125,6 +2276,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -2169,6 +2321,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             merkleProof: [ethers.utils.formatBytes32String("")],
           },
         ],
+        ethers.utils.formatBytes32String(""),
         { from: anyone1 }
       );
 
@@ -2193,6 +2346,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -2227,6 +2381,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 1,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -2396,6 +2551,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -2492,6 +2648,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -2575,7 +2732,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
       assert.equal(1, balance);
     });
 
-    it.only("onERC1155Received test - multiple redemptions", async function () {
+    it("onERC1155Received test - multiple redemptions", async function () {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock("latest")).timestamp - 30; // seconds since unix epoch
       let end = start + 300;
@@ -2602,6 +2759,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 3,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -2744,6 +2902,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -2934,6 +3093,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: cost,
           paymentReceiver: owner,
@@ -2968,6 +3128,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: cost,
           paymentReceiver: owner,
@@ -3002,6 +3163,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: cost,
           paymentReceiver: owner,
@@ -3127,6 +3289,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -3201,6 +3364,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -3290,6 +3454,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -3386,6 +3551,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -3453,6 +3619,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 1,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: owner,
@@ -3507,6 +3674,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           redeemAmount: 2,
           totalSupply: 10,
           storageProtocol: 1,
+          redeemCallback: "0x0000000000000000000000000000000000000000",
           location: "XXX",
           cost: 0,
           paymentReceiver: anyone1,

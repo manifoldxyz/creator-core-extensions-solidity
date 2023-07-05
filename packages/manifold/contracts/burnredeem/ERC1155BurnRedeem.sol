@@ -7,6 +7,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.so
 import "./BurnRedeemCore.sol";
 import "./BurnRedeemLib.sol";
 import "./IERC1155BurnRedeem.sol";
+import { IRedeem } from "./Interfaces.sol";
 
 contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
     using Strings for uint256;
@@ -74,7 +75,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
     /**
      * Helper to mint multiple redeem tokens
      */
-    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count) internal override {
+    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count, bytes memory data) internal override {
         address[] memory addresses = new address[](1);
         addresses[0] = to;
         uint256[] memory tokenIds = new uint256[](1);
@@ -86,6 +87,10 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         burnRedeemInstance.redeemedCount += uint32(values[0]);
 
         emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, instanceId, tokenIds[0], uint32(values[0]));
+
+        if (burnRedeemInstance.redeemCallback != address(0)) {
+            IRedeem(burnRedeemInstance.redeemCallback).onRedeem(to, creatorContractAddress, tokenIds[0], values[0], data);
+        }
     }
 
     /**

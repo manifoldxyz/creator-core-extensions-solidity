@@ -10,6 +10,7 @@ import "./BurnRedeemCore.sol";
 import "./BurnRedeemLib.sol";
 import "./IERC721BurnRedeem.sol";
 import "../libraries/IERC721CreatorCoreVersion.sol";
+import { IRedeem } from "./Interfaces.sol";
 
 contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     using Strings for uint256;
@@ -88,7 +89,7 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
     /** 
      * Helper to mint multiple redeem tokens
      */
-    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count) internal override {
+    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count, bytes memory data) internal override {
         if (burnRedeemInstance.redeemAmount == 1 && count == 1) {
             ++burnRedeemInstance.redeemedCount;
             uint256 newTokenId;
@@ -100,6 +101,9 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
                 _redeemTokens[creatorContractAddress][newTokenId] = RedeemToken(uint224(instanceId), burnRedeemInstance.redeemedCount);
             }
             emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, instanceId, newTokenId, 1);
+            if (burnRedeemInstance.redeemCallback != address(0)) {
+                IRedeem(burnRedeemInstance.redeemCallback).onRedeem(to, creatorContractAddress, newTokenId, 1, data);
+            }
         } else {
             uint256 totalCount = burnRedeemInstance.redeemAmount * count;
             if (totalCount > MAX_UINT_16) {
@@ -116,6 +120,10 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
                 uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(to, tokenDatas);
                 for (uint256 i; i < totalCount;) {
                     emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, instanceId, newTokenIds[i], 1);
+                    if (burnRedeemInstance.redeemCallback != address(0)) {
+                        IRedeem(burnRedeemInstance.redeemCallback).onRedeem(to, creatorContractAddress, newTokenIds[i], 1, data);
+                    }
+
                     unchecked { i++; }
                 }
             } else {
@@ -123,6 +131,10 @@ contract ERC721BurnRedeem is BurnRedeemCore, IERC721BurnRedeem {
                 for (uint256 i; i < totalCount;) {
                     _redeemTokens[creatorContractAddress][newTokenIds[i]] = RedeemToken(uint224(instanceId), uint32(startingCount + i));
                     emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, instanceId, newTokenIds[i], 1);
+                    if (burnRedeemInstance.redeemCallback != address(0)) {
+                        IRedeem(burnRedeemInstance.redeemCallback).onRedeem(to, creatorContractAddress, newTokenIds[i], 1, data);
+                    }
+
                     unchecked { i++; }
                 }
             }

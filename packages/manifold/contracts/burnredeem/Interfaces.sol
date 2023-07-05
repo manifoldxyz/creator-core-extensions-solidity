@@ -13,3 +13,13 @@ interface OZBurnable1155 {
 interface Manifold1155 {
     function burn(address account, uint256[] memory tokenIds, uint256[] memory amounts) external;
 }
+
+interface IRedeem {
+  function onRedeem(
+    address redeeemer,
+    address creatorContractAddress,
+    uint256 tokenId,
+    uint256 amount,
+    bytes memory data
+  ) external;
+}
