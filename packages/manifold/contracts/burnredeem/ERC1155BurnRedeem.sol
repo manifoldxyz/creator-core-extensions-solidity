@@ -29,7 +29,8 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         address creatorContractAddress,
         uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters
-    ) external override creatorAdminRequired(creatorContractAddress) {
+    ) external override {
+        _validateAdmin(creatorContractAddress);
         _initialize(creatorContractAddress, 0, instanceId, burnRedeemParameters);
 
         // Mint a new token with amount '0' to the creator
@@ -49,7 +50,8 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         address creatorContractAddress,
         uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters
-    ) external override creatorAdminRequired(creatorContractAddress) {
+    ) external override {
+        _validateAdmin(creatorContractAddress);
         _update(creatorContractAddress, instanceId, burnRedeemParameters);
     }
 
@@ -61,7 +63,8 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         uint256 instanceId,
         StorageProtocol storageProtocol,
         string calldata location
-    ) external override creatorAdminRequired(creatorContractAddress) {
+    ) external override {
+        _validateAdmin(creatorContractAddress);
         BurnRedeem storage burnRedeemInstance = _getBurnRedeem(creatorContractAddress, instanceId);
         burnRedeemInstance.storageProtocol = storageProtocol;
         burnRedeemInstance.location = location;
@@ -89,8 +92,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
      * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-        uint256 instanceId = _redeemInstanceIds[creatorContractAddress][tokenId];
-        require(instanceId > 0, "Token does not exist");
+        uint256 instanceId = _getRedeemInstanceId(creatorContractAddress, tokenId);
         BurnRedeem memory burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
 
         string memory prefix = "";
@@ -106,8 +108,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
      * See {IBurnRedeemCore-getBurnRedeemForToken}.
      */
     function getBurnRedeemForToken(address creatorContractAddress, uint256 tokenId) external override view returns(uint256 instanceId, BurnRedeem memory burnRedeem) {
-        instanceId = _redeemInstanceIds[creatorContractAddress][tokenId];
-        require(instanceId > 0, "Token does not exist");
+        instanceId = _getRedeemInstanceId(creatorContractAddress, tokenId);
         burnRedeem = _burnRedeems[creatorContractAddress][instanceId];
     }
 
@@ -116,6 +117,15 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
      */
     function getBurnRedeemToken(address creatorContractAddress, uint256 instanceId) external override view returns(uint256 tokenId) {
         tokenId = _redeemTokenIds[creatorContractAddress][instanceId];
-        require(tokenId > 0, "Burn redeem does not exist");
+        if (tokenId == 0) {
+            revert BurnRedeemDoesNotExist(instanceId);
+        }
+    }
+
+    function _getRedeemInstanceId(address creatorContractAddress, uint256 tokenId) internal view returns(uint256 instanceId) {
+        instanceId = _redeemInstanceIds[creatorContractAddress][tokenId];
+        if (instanceId == 0) {
+            revert InvalidToken(tokenId);
+        }
     }
 }

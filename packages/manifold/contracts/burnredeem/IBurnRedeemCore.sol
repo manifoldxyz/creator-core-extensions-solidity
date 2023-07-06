@@ -12,6 +12,21 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  * Burn Redeem Core interface
  */
 interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
+    error NotAdmin(address);
+    error UnsupportedContractVersion();
+    error InvalidToken(uint256);
+    error InvalidInput();
+    error InvalidData();
+    error TransferFailure();
+    
+    error BurnRedeemDoesNotExist(uint256);
+    error BurnRedeemInactive(uint256);
+
+    error InvalidBurnAmount();
+    error InvalidRedeemAmount();
+    error InvalidPaymentAmount();
+
+
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
 
     /**
@@ -19,11 +34,12 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * CONTRACT                 any token from a specific contract is valid
      * RANGE                    token IDs within a range (inclusive) are valid
      * MERKLE_TREE              various individual token IDs included in a merkle tree are valid
+     * ANY                      any token from any contract
      */
-    enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE }
+    enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE, ANY }
 
     enum TokenSpec { INVALID, ERC721, ERC1155 }
-    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN }
+    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN, UNKNOWN }
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
