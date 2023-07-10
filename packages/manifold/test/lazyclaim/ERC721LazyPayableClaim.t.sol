@@ -181,7 +181,7 @@ contract ERC721LazyPayableClaimTest is Test {
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
-      signingAddress: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
