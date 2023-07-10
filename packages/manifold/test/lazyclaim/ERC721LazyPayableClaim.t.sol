@@ -66,7 +66,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
     // Must be admin
     vm.expectRevert();
@@ -139,7 +140,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     vm.expectRevert("Cannot initialize with invalid storage protocol");
@@ -222,7 +224,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -306,7 +309,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -467,7 +471,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -509,7 +514,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -545,7 +551,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(owner),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -577,7 +584,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(owner),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -633,7 +641,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     // Should fail to initialize if non-admin wallet is used
@@ -770,7 +779,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -851,7 +861,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -916,7 +927,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(address(mockETHReceiver)),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -946,7 +958,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -998,7 +1011,8 @@ contract ERC721LazyPayableClaimTest is Test {
       identical: true,
       cost: 1,
       paymentReceiver: payable(owner),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
