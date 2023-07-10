@@ -52,7 +52,7 @@ library BurnRedeemLib {
 
     event BurnRedeemInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
     event BurnRedeemUpdated(address indexed creatorContract, uint256 indexed instanceId);
-    event BurnRedeemMint(address indexed creatorContract, uint256 indexed instanceId, uint256 indexed tokenId, uint32 redeemedCount);
+    event BurnRedeemMint(address indexed creatorContract, uint256 indexed instanceId, uint256 indexed tokenId, uint32 redeemedCount, bytes data);
 
     error BurnRedeemAlreadyInitialized();
     error InvalidBurnItem();

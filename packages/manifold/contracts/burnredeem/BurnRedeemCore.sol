@@ -158,7 +158,17 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * See {IBurnRedeemCore-burnRedeem}.
      */
     function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable override nonReentrant {
-        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, instanceId, burnRedeemCount, burnTokens, _isActiveMember(msg.sender), true);
+        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, instanceId, burnRedeemCount, burnTokens, _isActiveMember(msg.sender), true, "");
+        if (msg.value > payableCost) {
+            _forwardValue(payable(msg.sender), msg.value - payableCost);
+        }
+    }
+
+    /**
+     * See {IBurnRedeemCore-burnRedeem}.
+     */
+    function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bytes calldata data) external payable override nonReentrant {
+        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, instanceId, burnRedeemCount, burnTokens, _isActiveMember(msg.sender), true, data);
         if (msg.value > payableCost) {
             _forwardValue(payable(msg.sender), msg.value - payableCost);
         }
@@ -177,7 +187,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         bool isActiveMember = _isActiveMember(msg.sender);
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < creatorContractAddresses.length;) {
-            msgValueRemaining -= _burnRedeem(msgValueRemaining, creatorContractAddresses[i], instanceIds[i], burnRedeemCounts[i], burnTokens[i], isActiveMember, false);
+            msgValueRemaining -= _burnRedeem(msgValueRemaining, creatorContractAddresses[i], instanceIds[i], burnRedeemCounts[i], burnTokens[i], isActiveMember, false, "");
             unchecked { ++i; }
         }
 
@@ -207,14 +217,14 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Airdrop the tokens
         for (uint256 i; i < recipients.length;) {
-            _redeem(creatorContractAddress, instanceId, burnRedeemInstance, recipients[i], amounts[i]);
+            _redeem(creatorContractAddress, instanceId, burnRedeemInstance, recipients[i], amounts[i], "");
             unchecked{ ++i; }
         }
 
         BurnRedeemLib.syncTotalSupply(burnRedeemInstance);
     }
 
-    function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining) private returns (uint256) {
+    function _burnRedeem(uint256 msgValue, address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bool isActiveMember, bool revertNoneRemaining, bytes memory data) private returns (uint256) {
         BurnRedeem storage burnRedeemInstance = _getActiveBurnRedeem(creatorContractAddress, instanceId);
 
         // Get the amount that can be burned
@@ -241,7 +251,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Do burn redeem
         _burnTokens(burnRedeemInstance, burnTokens, burnRedeemCount, msg.sender);
-        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, msg.sender, burnRedeemCount);
+        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, msg.sender, burnRedeemCount, data);
 
         return payableCost;
     }
@@ -378,7 +388,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Do burn and redeem
         _burn(burnItem, address(this), msg.sender, id, 1);
-        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, 1);
+        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, 1, "");
     }
 
     /**
@@ -403,7 +413,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount);
-        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, availableBurnRedeemCount);
+        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, availableBurnRedeemCount, "");
 
         // Return excess amount
         if (availableBurnRedeemCount != burnRedeemCount) {
@@ -445,7 +455,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         // Do burn redeem
         _burnTokens(burnRedeemInstance, burnTokens, availableBurnRedeemCount, address(this));
-        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, availableBurnRedeemCount);
+        _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, availableBurnRedeemCount, "");
 
         // Return excess amount
         if (availableBurnRedeemCount != burnRedeemCount) {
@@ -527,7 +537,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /** 
      * Abstract helper to mint multiple redeem tokens. To be implemented by inheriting contracts.
      */
-    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count) internal virtual;
+    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count, bytes memory data) internal virtual;
 
     /**
      * Helper to burn token

@@ -158,6 +158,16 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable;
 
     /**
+     * @notice burn tokens and mint a redeem token
+     * @param creatorContractAddress    the address of the creator contract
+     * @param instanceId                the instanceId of the burn redeem for the creator contract
+     * @param burnRedeemCount           the number of burn redeems we want to do
+     * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
+     * @param data                      the data to pass to the redeem callback
+     */
+    function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bytes calldata data) external payable;
+
+    /**
      * @notice burn tokens and mint redeem tokens multiple times in a single transaction
      * @param creatorContractAddresses  the addresses of the creator contracts
      * @param instanceIds               the instanceIds of the burn redeems for the corresponding creator contract
