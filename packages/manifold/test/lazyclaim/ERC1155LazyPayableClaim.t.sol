@@ -63,7 +63,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
     // Must be admin
     vm.expectRevert();
@@ -132,7 +133,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.INVALID,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     vm.expectRevert("Cannot initialize with invalid storage protocol");
@@ -170,7 +172,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -213,7 +216,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -296,7 +300,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -456,7 +461,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -497,7 +503,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -532,7 +539,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(owner),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -563,7 +571,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(owner),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -618,7 +627,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     // Should fail to initialize if non-admin wallet is used
@@ -754,7 +764,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -834,7 +845,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -898,7 +910,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(address(mockETHReceiver)),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -927,7 +940,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -978,7 +992,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(owner),
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
