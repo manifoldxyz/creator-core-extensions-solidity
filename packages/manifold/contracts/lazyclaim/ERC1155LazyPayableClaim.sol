@@ -198,7 +198,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     function mint(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
-        require(claim.signingAddress == address(0), "Must use signature minting");
+        if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
         // Check totalMax
         require(++claim.total <= claim.totalMax || claim.totalMax == 0, "Maximum tokens already minted for this claim");
 
@@ -224,10 +224,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     function mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
-        require(claim.signingAddress == address(0), "Must use signature minting");
+        if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
         // Check totalMax
         claim.total += mintCount;
-        require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
+        if (!(claim.totalMax == 0 || claim.total <= claim.totalMax)) revert TooManyRequested();
 
         // Validate mint
         _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
@@ -251,10 +251,10 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
-        require(claim.signingAddress == address(0), "Must use signature minting");
+        if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
         // Check totalMax
         claim.total += mintCount;
-        require(claim.totalMax == 0 || claim.total <= claim.totalMax, "Too many requested for this claim");
+        if (!(claim.totalMax == 0 || claim.total <= claim.totalMax)) revert TooManyRequested();
 
         // Validate mint
         _validateMintProxy(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
@@ -280,7 +280,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         // Check totalMax
         claim.total += mintCount;
-        require((claim.totalMax == 0 || claim.total <= claim.totalMax), "Too many requested for this claim");
+        if (!((claim.totalMax == 0 || claim.total <= claim.totalMax))) revert TooManyRequested();
         // Validate mint
         _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress, mintFor);
 
@@ -312,7 +312,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
             totalAmount += amounts[i];
             unchecked{ ++i; }
         }
-        require(totalAmount <= MAX_UINT_32, "Too many requested");
+        if (totalAmount > MAX_UINT_32) revert TooManyRequested();
         claim.total += uint32(totalAmount);
         if (claim.totalMax != 0 && claim.total > claim.totalMax) {
             claim.totalMax = claim.total;
