@@ -179,7 +179,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
             // Non-merkle mint
             if (walletMax != 0) {
                 _mintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
-                if (_mintsPerWallet[creatorContractAddress][instanceId][mintFor] <= walletMax) revert TooManyRequested();
+                if (_mintsPerWallet[creatorContractAddress][instanceId][mintFor] > walletMax) revert TooManyRequested();
             }
         }
     }
