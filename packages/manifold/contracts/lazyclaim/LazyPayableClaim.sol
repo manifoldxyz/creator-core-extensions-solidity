@@ -13,6 +13,13 @@ import ".././libraries/manifold-membership/IManifoldMembership.sol";
 
 import "./ILazyPayableClaim.sol";
 
+error InvalidInput();
+error ClaimInactive();
+error TooManyRequested();
+error MustUseSignatureMinting();
+error FailedToTransfer();
+error InvalidSignature();
+
 /**
  * @title Lazy Payable Claim
  * @author manifold.xyz
@@ -73,7 +80,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
      */
     function withdraw(address payable receiver, uint256 amount) external override adminRequired {
         (bool sent, ) = receiver.call{value: amount}("");
-        require(sent, "Failed to transfer to receiver");
+        if (!sent) revert FailedToTransfer();
     }
 
     /**
@@ -110,7 +117,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         if (erc20 == ADDRESS_ZERO && cost != 0) {
             // solhint-disable-next-line
             (bool sent, ) = recipient.call{value: cost}("");
-            require(sent, "Failed to transfer to receiver");
+            if (!sent) revert FailedToTransfer();
         }
     }
 
@@ -124,59 +131,47 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
         // Check timestamps
-        require(
-            (startDate <= block.timestamp) &&
-            (endDate == 0 || endDate >= block.timestamp),
-            "Claim inactive"
-        );
+        if (!((startDate <= block.timestamp) && (endDate == 0 || endDate >= block.timestamp))) revert ClaimInactive();
         
         if (merkleRoot != "") {
             // Merkle mint
             _checkMerkleAndUpdate(msg.sender, creatorContractAddress, instanceId, merkleRoot, mintIndex, merkleProof, mintFor);
         } else {
-            require(mintFor == msg.sender, "Invalid input");
+            if (mintFor != msg.sender) revert InvalidInput();
             // Non-merkle mint
             if (walletMax != 0) {
-                require(++_mintsPerWallet[creatorContractAddress][instanceId][msg.sender] <= walletMax, "Maximum tokens already minted for this wallet");
+                if (++_mintsPerWallet[creatorContractAddress][instanceId][msg.sender] > walletMax) revert TooManyRequested();
             }
         }
     }
 
     function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
-        require(
-            (startDate <= block.timestamp) &&
-            (endDate == 0 || endDate >= block.timestamp),
-            "Claim inactive"
-        );
+        if (!((startDate <= block.timestamp) && (endDate == 0 || endDate >= block.timestamp))) revert ClaimInactive();
         
         if (merkleRoot != "") {
-            require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
+            if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) revert InvalidInput();
             // Merkle mint
             for (uint256 i; i < mintCount;) {
                 _checkMerkleAndUpdate(msg.sender, creatorContractAddress, instanceId, merkleRoot, mintIndices[i], merkleProofs[i], mintFor);
                 unchecked { ++i; }
             }
         } else {
-            require(mintFor == msg.sender, "Invalid input");
+            if (mintFor != msg.sender) revert InvalidInput();
             // Non-merkle mint
             if (walletMax != 0) {
                 _mintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
-                require(_mintsPerWallet[creatorContractAddress][instanceId][mintFor] <= walletMax, "Too many requested for this wallet");
+                if (_mintsPerWallet[creatorContractAddress][instanceId][mintFor] > walletMax) revert TooManyRequested();
             }
         }
     }
 
     function _validateMintProxy(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
-        require(
-            (startDate <= block.timestamp) &&
-            (endDate == 0 || endDate >= block.timestamp),
-            "Claim inactive"
-        );
+        if (!((startDate <= block.timestamp) && (endDate == 0 || endDate >= block.timestamp))) revert ClaimInactive();
         
         if (merkleRoot != "") {
-            require(mintCount == mintIndices.length && mintCount == merkleProofs.length, "Invalid input");
+            if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) revert InvalidInput();
             // Merkle mint
             for (uint256 i; i < mintCount;) {
                 // Proxy mints treat the mintFor as the transaction sender
@@ -187,20 +182,16 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
             // Non-merkle mint
             if (walletMax != 0) {
                 _mintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
-                require(_mintsPerWallet[creatorContractAddress][instanceId][mintFor] <= walletMax, "Too many requested for this wallet");
+                if (_mintsPerWallet[creatorContractAddress][instanceId][mintFor] <= walletMax) revert TooManyRequested();
             }
         }
     }
 
     function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor) internal {
-        require(signingAddress != address(0), "Must be signature mint");
-        require(signature.length > 0, "Invalid input");
+        if (signingAddress == address(0)) revert MustUseSignatureMinting();
+        if (signature.length <= 0) revert InvalidInput();
         // Check timestamps
-        require(
-            (startDate <= block.timestamp) &&
-            (endDate == 0 || endDate >= block.timestamp),
-            "Claim inactive"
-        );
+        if (!((startDate <= block.timestamp) && (endDate == 0 || endDate >= block.timestamp))) revert ClaimInactive();
 
         // Signature mint
         _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress, mintFor);
@@ -232,11 +223,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce, mintFor));
         // Verify nonce usage/re-use
         require(!_usedMessages[creatorContractAddress][instanceId][expectedMessage], "Cannot replay transaction");
-        require(message == expectedMessage, "Malformed message");
-        // Verify signature was performed by the expected signing address
         address signer = message.recover(signature);
-        require(signer == signingAddress, "Incorrect signer");
-
+        if (message != expectedMessage || signer != signingAddress) revert InvalidSignature();
         _usedMessages[creatorContractAddress][instanceId][expectedMessage] = true;
     }
 
