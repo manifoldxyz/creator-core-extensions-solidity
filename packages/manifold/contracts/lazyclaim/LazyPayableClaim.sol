@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import ".././libraries/delegation-registry/IDelegationRegistry.sol";
@@ -56,8 +55,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     // { creatorContractAddress => { instanceId => nonce => t/f  } }
     mapping(address => mapping(uint256 => mapping(bytes32 => bool))) internal _usedMessages;
-
-    EnumerableSet.AddressSet private _proxyAddresses;
 
     /**
      * @notice This extension is shared, not single-creator. So we must ensure
