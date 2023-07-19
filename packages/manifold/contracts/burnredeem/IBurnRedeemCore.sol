@@ -16,6 +16,8 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     error UnsupportedContractVersion();
     error InvalidToken(uint256);
     error InvalidInput();
+    error InvalidTokenSpec();
+    error InvalidBurnSpec();
     error InvalidData();
     error TransferFailure();
     
@@ -39,7 +41,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE, ANY }
 
     enum TokenSpec { INVALID, ERC721, ERC1155 }
-    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN, UNKNOWN }
+    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN }
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
