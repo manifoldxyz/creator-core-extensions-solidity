@@ -188,6 +188,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
 
     function _getClaim(address creatorContractAddress, uint256 instanceId) private view returns(Claim storage claim) {
         claim = _claims[creatorContractAddress][instanceId];
+        if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
     }
 
     /**
