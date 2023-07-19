@@ -533,55 +533,37 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
      * Helper to burn token
      */
     function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount) private {
-        BurnSpec burnSpec = burnItem.burnSpec;
-        bool tryBurnNone = burnSpec == BurnSpec.NONE;
-        bool tryBurnManifold = burnSpec == BurnSpec.MANIFOLD;
-        bool tryBurnOpenZeppelin = burnSpec == BurnSpec.OPENZEPPELIN;
-        bool tryBurnUnknown = burnSpec == BurnSpec.UNKNOWN;
-
         if (burnItem.tokenSpec == TokenSpec.ERC1155) {
             uint256 amount = burnItem.amount * burnRedeemCount;
 
-            uint256[] memory tokenIds = new uint256[](1);
-            tokenIds[0] = tokenId;
-            uint256[] memory amounts = new uint256[](1);
-            amounts[0] = amount;
-
-            if (tryBurnManifold) {
-                // Burn using the creator core's burn function                
-                Manifold1155(contractAddress).burn(from, tokenIds, amounts);
-                return;
-            } else if (tryBurnOpenZeppelin) {
-                // Burn using OpenZeppelin's burn function
-                OZBurnable1155(contractAddress).burn(from, tokenId, amount);
-                return;
-            } else if (tryBurnUnknown) {
-                // Burn using various methods, falling back to 0xdEaD transfer
-                uint256 balance = IERC1155(contractAddress).balanceOf(from, tokenId);
-
-                try Manifold1155(contractAddress).burn(from, tokenIds, amounts) {
-                    if (balance - amount == IERC1155(contractAddress).balanceOf(from, tokenId)) {
-                        return;
-                    }
-                } catch {}
-
-                try OZBurnable1155(contractAddress).burn(from, tokenId, amount) {
-                    if (balance - amount == IERC1155(contractAddress).balanceOf(from, tokenId)) {
-                        return;
-                    }
-                } catch {}
-            } 
-            
-            if (tryBurnNone || tryBurnUnknown) {
+            if (burnItem.burnSpec == BurnSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
                 IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "");
-                return;                
-            } 
+
+            } else if (burnItem.burnSpec == BurnSpec.MANIFOLD) {
+                // Burn using the creator core's burn function
+                uint256[] memory tokenIds = new uint256[](1);
+                tokenIds[0] = tokenId;
+                uint256[] memory amounts = new uint256[](1);
+                amounts[0] = amount;
+                Manifold1155(contractAddress).burn(from, tokenIds, amounts);
+
+            } else if (burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
+                // Burn using OpenZeppelin's burn function
+                OZBurnable1155(contractAddress).burn(from, tokenId, amount);
+
+            } else {
+                revert InvalidBurnSpec();
+            }
         } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
             if (burnRedeemCount != 1) {
                 revert InvalidBurnAmount();
             } 
-            if (tryBurnManifold || tryBurnOpenZeppelin) {
+            if (burnItem.burnSpec == BurnSpec.NONE) {
+                // Send to 0xdEaD to burn if contract doesn't have burn function
+                IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
+
+            } else if (burnItem.burnSpec == BurnSpec.MANIFOLD || burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
                 if (from != address(this)) {
                     // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
                     if (IERC721(contractAddress).ownerOf(tokenId) != from) {
@@ -590,22 +572,12 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
                 }
                 // Burn using the contract's burn function
                 Burnable721(contractAddress).burn(tokenId);
-                return;
-            } else if (tryBurnUnknown) {
-                // Burn using various methods, falling back to 0xdEaD transfer
-                try Burnable721(contractAddress).burn(tokenId) {
-                    try IERC721(contractAddress).ownerOf(tokenId) {} catch {
-                        return;
-                    }
-                } catch {}
+
+            } else {
+                revert InvalidBurnSpec();
             }
-            
-            if (tryBurnNone || tryBurnUnknown) {
-                // Send to 0xdEaD to burn if contract doesn't have burn function
-                IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
-                return;                
-            }
+        } else {
+            revert InvalidTokenSpec();
         }
-        revert InvalidInput();
     }
 }

@@ -696,23 +696,67 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             {
               requiredCount: 1,
               items: [
-                // ERC-721
+                // tokenSpec: ERC-721, burnSpec: NONE
                 {
                   validationType: 4,
                   contractAddress: "0x0000000000000000000000000000000000000000",
                   tokenSpec: 1,
-                  burnSpec: 3,
+                  burnSpec: 0,
                   amount: 0,
                   minTokenId: 0,
                   maxTokenId: 0,
                   merkleRoot: ethers.utils.formatBytes32String(""),
                 },
-                // ERC-1155
+                // tokenSpec: ERC-721, burnSpec: MANIFOLD
+                {
+                  validationType: 4,
+                  contractAddress: "0x0000000000000000000000000000000000000000",
+                  tokenSpec: 1,
+                  burnSpec: 1,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String(""),
+                },
+                // tokenSpec: ERC-721, burnSpec: OPENZEPPELIN
+                {
+                  validationType: 4,
+                  contractAddress: "0x0000000000000000000000000000000000000000",
+                  tokenSpec: 1,
+                  burnSpec: 2,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String(""),
+                },
+                // tokenSpec: ERC-1155, burnSpec: NONE
                 {
                   validationType: 4,
                   contractAddress: "0x0000000000000000000000000000000000000000",
                   tokenSpec: 2,
-                  burnSpec: 3,
+                  burnSpec: 0,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String(""),
+                },
+                // tokenSpec: ERC-1155, burnSpec: MANIFOLD
+                {
+                  validationType: 4,
+                  contractAddress: "0x0000000000000000000000000000000000000000",
+                  tokenSpec: 2,
+                  burnSpec: 1,
+                  amount: 1,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String(""),
+                },
+                // tokenSpec: ERC-1155, burnSpec: OPENZEPPELIN
+                {
+                  validationType: 4,
+                  contractAddress: "0x0000000000000000000000000000000000000000",
+                  tokenSpec: 2,
+                  burnSpec: 2,
                   amount: 1,
                   minTokenId: 0,
                   maxTokenId: 0,
@@ -729,15 +773,14 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
       // Range of burnable options
       const burnContracts = [
         {
+          contract: oz721,
+          tokenSpec: 1,
+          mintTx: await oz721.mint(anyone1, 1, { from: owner }),
+        },
+        {
           contract: burnable721,
           tokenSpec: 1,
           mintTx: await burnable721.mintBase(anyone1, { from: owner }),
-          supportsBurn: true,
-        },
-        {
-          contract: burnable1155,
-          tokenSpec: 2,
-          mintTx: await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner }),
           supportsBurn: true,
         },
         {
@@ -747,35 +790,25 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
           supportsBurn: true,
         },
         {
-          contract: oz1155Burnable,
-          tokenSpec: 2,
-          mintTx: await oz1155Burnable.mint(anyone1, 1, 1, { from: owner }),
-          supportsBurn: true,
-        },
-        {
-          contract: oz721,
-          tokenSpec: 1,
-          mintTx: await oz721.mint(anyone1, 1, { from: owner }),
-        },
-        {
           contract: oz1155,
           tokenSpec: 2,
           mintTx: await oz1155.mint(anyone1, 1, 1, { from: owner }),
         },
         {
-          contract: fallback1155,
+          contract: burnable1155,
           tokenSpec: 2,
-          mintTx: await fallback1155.mint(anyone1, 1, 1, { from: owner }),
+          mintTx: await burnable1155.mintBaseNew([anyone1], [10], [""], { from: owner }),
+          supportsBurn: true,
         },
         {
-          contract: fallback1155Burnable,
+          contract: oz1155Burnable,
           tokenSpec: 2,
-          mintTx: await fallback1155Burnable.mint(anyone1, 1, 1, { from: owner }),
+          mintTx: await oz1155Burnable.mint(anyone1, 1, 1, { from: owner }),
           supportsBurn: true,
         },
       ];
 
-      const promises = burnContracts.map(async ({ contract, tokenSpec, supportsBurn, hasFallback }) => {
+      const promises = burnContracts.map(async ({ contract, tokenSpec, supportsBurn }, i) => {
         await contract.setApprovalForAll(burnRedeem.address, true, { from: anyone1 });
 
         await truffleAssert.passes(
@@ -786,7 +819,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
             [
               {
                 groupIndex: 0,
-                itemIndex: tokenSpec == 1 ? 0 : 1,
+                itemIndex: i,
                 contractAddress: contract.address,
                 id: 1,
                 merkleProof: [ethers.utils.formatBytes32String("")],
@@ -2575,7 +2608,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
       assert.equal(1, balance);
     });
 
-    it.only("onERC1155Received test - multiple redemptions", async function () {
+    it("onERC1155Received test - multiple redemptions", async function () {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock("latest")).timestamp - 30; // seconds since unix epoch
       let end = start + 300;
