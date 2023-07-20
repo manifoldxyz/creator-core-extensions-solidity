@@ -58,7 +58,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         ClaimParameters calldata claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
         // Max uint56 for instanceId
-        if (!(instanceId > 0 && instanceId <= MAX_UINT_56)) revert InvalidInstance();
+        if (instanceId == 0 || instanceId > MAX_UINT_56) revert InvalidInstance();
         // Revert if claim at instanceId already exists
         require(_claims[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID, "Claim already initialized");
 
@@ -400,7 +400,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             }
         }
         
-        if (!(newMintIndex - claim.total - 1 <= MAX_UINT_24)) revert TooManyRequested();
+        if (newMintIndex - claim.total - 1 > MAX_UINT_24) revert TooManyRequested();
         claim.total += uint32(newMintIndex - claim.total - 1);
         if (claim.totalMax != 0 && claim.total > claim.totalMax) {
             claim.totalMax = claim.total;

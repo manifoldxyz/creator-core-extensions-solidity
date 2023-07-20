@@ -128,7 +128,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
         // Check timestamps
-        if (!((startDate <= block.timestamp) && (endDate == 0 || endDate >= block.timestamp))) revert ClaimInactive();
+        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
         
         if (merkleRoot != "") {
             // Merkle mint
@@ -144,7 +144,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
-        if (!((startDate <= block.timestamp) && (endDate == 0 || endDate >= block.timestamp))) revert ClaimInactive();
+        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
         
         if (merkleRoot != "") {
             if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) revert InvalidInput();
@@ -165,7 +165,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     function _validateMintProxy(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
-        if (!((startDate <= block.timestamp) && (endDate == 0 || endDate >= block.timestamp))) revert ClaimInactive();
+        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
         
         if (merkleRoot != "") {
             if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) revert InvalidInput();
@@ -188,7 +188,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         if (signingAddress == address(0)) revert MustUseSignatureMinting();
         if (signature.length <= 0) revert InvalidInput();
         // Check timestamps
-        if (!((startDate <= block.timestamp) && (endDate == 0 || endDate >= block.timestamp))) revert ClaimInactive();
+        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
 
         // Signature mint
         _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress, mintFor);
