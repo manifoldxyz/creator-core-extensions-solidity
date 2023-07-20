@@ -227,7 +227,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
         // Check totalMax
         claim.total += mintCount;
-        if (!(claim.totalMax == 0 || claim.total <= claim.totalMax)) revert TooManyRequested();
+        if ((claim.totalMax != 0 && claim.total > claim.totalMax)) revert TooManyRequested();
 
         // Validate mint
         _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
@@ -254,7 +254,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
         // Check totalMax
         claim.total += mintCount;
-        if (!(claim.totalMax == 0 || claim.total <= claim.totalMax)) revert TooManyRequested();
+        if ((claim.totalMax != 0 && claim.total > claim.totalMax)) revert TooManyRequested();
 
         // Validate mint
         _validateMintProxy(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
@@ -280,7 +280,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         // Check totalMax
         claim.total += mintCount;
-        if (!((claim.totalMax == 0 || claim.total <= claim.totalMax))) revert TooManyRequested();
+        if ((claim.totalMax != 0 && claim.total > claim.totalMax)) revert TooManyRequested();
         // Validate mint
         _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress, mintFor);
 

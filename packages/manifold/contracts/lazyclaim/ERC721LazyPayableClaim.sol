@@ -64,7 +64,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
 
         // Sanity checks
         if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
-        if (!(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate)) revert InvalidStartDate();
+        if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate) revert InvalidStartDate();
         require(claimParameters.merkleRoot == "" || claimParameters.walletMax == 0, "Cannot provide both walletMax and merkleRoot");
 
         uint8 creatorContractVersion;
@@ -106,7 +106,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         Claim memory claim = _claims[creatorContractAddress][instanceId];
         if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
         if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
-        if (!(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate)) revert InvalidStartDate();
+        if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate) revert InvalidStartDate();
         require(claimParameters.erc20 == claim.erc20, "Cannot change payment token");
         if (claimParameters.totalMax != 0 && claim.total > claimParameters.totalMax) {
             claimParameters.totalMax = claim.total;
@@ -159,7 +159,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         string calldata locationChunk
     ) external override creatorAdminRequired(creatorContractAddress) {
         Claim storage claim = _claims[creatorContractAddress][instanceId];
-        if (!(claim.storageProtocol == StorageProtocol.NONE && claim.identical)) revert InvalidStorageProtocol();
+        if (claim.storageProtocol != StorageProtocol.NONE || !claim.identical) revert InvalidStorageProtocol();
         claim.location = string(abi.encodePacked(claim.location, locationChunk));
         emit ClaimUpdated(creatorContractAddress, instanceId);
     }
@@ -228,7 +228,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
 
         if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
         // Check totalMax
-        if (!((++claim.total <= claim.totalMax || claim.totalMax == 0) && claim.total <= MAX_UINT_24)) revert TooManyRequested();
+        if (((++claim.total > claim.totalMax && claim.totalMax != 0) || claim.total > MAX_UINT_24)) revert TooManyRequested();
 
         // Validate mint
         _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintIndex, merkleProof, mintFor);
@@ -258,7 +258,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
         // Check totalMax
         claim.total += mintCount;
-        if (!((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24)) revert TooManyRequested();
+        if (((claim.totalMax != 0 && claim.total > claim.totalMax) || claim.total > MAX_UINT_24)) revert TooManyRequested();
 
         // Validate mint
         _validateMint(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
@@ -294,7 +294,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
         // Check totalMax
         claim.total += mintCount;
-        if (!((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24)) revert TooManyRequested();
+        if (((claim.totalMax != 0 && claim.total > claim.totalMax) || claim.total > MAX_UINT_24)) revert TooManyRequested();
 
         // Validate mint
         _validateMintProxy(creatorContractAddress, instanceId, claim.startDate, claim.endDate, claim.walletMax, claim.merkleRoot, mintCount, mintIndices, merkleProofs, mintFor);
@@ -329,7 +329,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
 
         // Check totalMax
         claim.total += mintCount;
-        if (!((claim.totalMax == 0 || claim.total <= claim.totalMax) && claim.total <= MAX_UINT_24)) revert TooManyRequested();
+        if (((claim.totalMax != 0 && claim.total > claim.totalMax) || claim.total > MAX_UINT_24)) revert TooManyRequested();
 
         // Validate mint
         _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress, mintFor);
