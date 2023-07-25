@@ -846,7 +846,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
 
       await Promise.all(promises);
     });
-    it.only("redeem with custom data to be emitted", async function () {
+    it("redeem with custom data to be emitted", async function () {
       // Test initializing a new burn redeem
       let start = (await web3.eth.getBlock("latest")).timestamp - 30; // seconds since unix epoch
       let end = start + 300;
