@@ -250,7 +250,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
 
         // Do burn redeem
-        _burnTokens(burnRedeemInstance, burnTokens, burnRedeemCount, msg.sender);
+        _burnTokens(burnRedeemInstance, burnTokens, burnRedeemCount, msg.sender, data);
         _redeem(creatorContractAddress, instanceId, burnRedeemInstance, msg.sender, burnRedeemCount, data);
 
         return payableCost;
@@ -387,7 +387,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, id, merkleProof);
 
         // Do burn and redeem
-        _burn(burnItem, address(this), msg.sender, id, 1);
+        _burn(burnItem, address(this), msg.sender, id, 1, "");
         _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, 1, "");
     }
 
@@ -412,7 +412,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
         BurnRedeemLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
-        _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount);
+        _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount, "");
         _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, availableBurnRedeemCount, "");
 
         // Return excess amount
@@ -454,7 +454,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         }
 
         // Do burn redeem
-        _burnTokens(burnRedeemInstance, burnTokens, availableBurnRedeemCount, address(this));
+        _burnTokens(burnRedeemInstance, burnTokens, availableBurnRedeemCount, address(this), "");
         _redeem(creatorContractAddress, instanceId, burnRedeemInstance, from, availableBurnRedeemCount, "");
 
         // Return excess amount
@@ -482,7 +482,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Burn all listed tokens and check that the burn set is satisfied
      */
-    function _burnTokens(BurnRedeem storage burnRedeemInstance, BurnToken[] memory burnTokens, uint256 burnRedeemCount, address owner) private {
+    function _burnTokens(BurnRedeem storage burnRedeemInstance, BurnToken[] memory burnTokens, uint256 burnRedeemCount, address owner, bytes memory data) private {
         // Check that each group in the burn set is satisfied
         uint256[] memory groupCounts = new uint256[](burnRedeemInstance.burnSet.length);
 
@@ -492,7 +492,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
             BurnRedeemLib.validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
 
-            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnRedeemCount);
+            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnRedeemCount, data);
             groupCounts[burnToken.groupIndex] += burnRedeemCount;
 
             unchecked { ++i; }
@@ -542,13 +542,13 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     /**
      * Helper to burn token
      */
-    function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount) private {
+    function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount, bytes memory data) private {
         if (burnItem.tokenSpec == TokenSpec.ERC1155) {
             uint256 amount = burnItem.amount * burnRedeemCount;
 
             if (burnItem.burnSpec == BurnSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
-                IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, "");
+                IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, data);
 
             } else if (burnItem.burnSpec == BurnSpec.MANIFOLD) {
                 // Burn using the creator core's burn function
@@ -571,7 +571,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
             } 
             if (burnItem.burnSpec == BurnSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
-                IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, "");
+                IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, data);
 
             } else if (burnItem.burnSpec == BurnSpec.MANIFOLD || burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
                 if (from != address(this)) {
