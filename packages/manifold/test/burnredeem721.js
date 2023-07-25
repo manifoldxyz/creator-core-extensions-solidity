@@ -846,6 +846,87 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
 
       await Promise.all(promises);
     });
+    it("redeem with custom data to be emitted", async function () {
+      // Test initializing a new burn redeem
+      let start = (await web3.eth.getBlock("latest")).timestamp - 30; // seconds since unix epoch
+      let end = start + 300;
+
+      // Mint burnable tokens
+      for (let i = 0; i < 3; i++) {
+        await oz721.mint(anyone1, i + 1, { from: owner });
+      }
+
+      // Ensure that the creator contract state is what we expect before mints
+      let balance = await creator.balanceOf(anyone1);
+      assert.equal(0, balance);
+      balance = await oz721.balanceOf(anyone1);
+      assert.equal(3, balance);
+
+      await burnRedeem.initializeBurnRedeem(
+        creator.address,
+        1,
+        {
+          startDate: start,
+          endDate: end,
+          redeemAmount: 1,
+          totalSupply: 10,
+          storageProtocol: 1,
+          location: "XXX",
+          cost: 0,
+          paymentReceiver: owner,
+          burnSet: [
+            {
+              requiredCount: 1,
+              items: [
+                {
+                  validationType: 1,
+                  contractAddress: oz721.address,
+                  tokenSpec: 1,
+                  burnSpec: 0,
+                  amount: 0,
+                  minTokenId: 0,
+                  maxTokenId: 0,
+                  merkleRoot: ethers.utils.formatBytes32String(""),
+                },
+              ],
+            },
+          ],
+        },
+        false,
+        { from: owner }
+      );
+
+      // Set approvals
+      await oz721.setApprovalForAll(burnRedeem.address, true, { from: anyone1 });
+
+      const message = "hello";
+      // Passes
+      const tx = await burnRedeem.burnRedeemWithData(
+        creator.address,
+        1,
+        1,
+        [
+          {
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: oz721.address,
+            id: 1,
+            merkleProof: [ethers.utils.formatBytes32String("")],
+          },
+        ],
+        ethers.utils.formatBytes32String(message),
+        { from: anyone1, value: BURN_FEE }
+      );
+
+      // Verify correct data was emitted
+      assert.equal(tx.receipt.logs[0].args.data, ethers.utils.formatBytes32String(message));
+
+      // Ensure tokens are burned/minted
+      balance = await oz721.balanceOf(anyone1);
+      assert.equal(2, balance);
+      balance = await creator.balanceOf(anyone1);
+      assert.equal(1, balance);
+    });
 
     it("burnRedeem test - contracts with fallbacks cant bypass burn requirements", async function () {
       let start = (await web3.eth.getBlock("latest")).timestamp - 30; // seconds since unix epoch

@@ -74,7 +74,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
     /**
      * Helper to mint multiple redeem tokens
      */
-    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count) internal override {
+    function _redeem(address creatorContractAddress, uint256 instanceId, BurnRedeem storage burnRedeemInstance, address to, uint32 count, bytes memory data) internal override {
         address[] memory addresses = new address[](1);
         addresses[0] = to;
         uint256[] memory tokenIds = new uint256[](1);
@@ -85,7 +85,7 @@ contract ERC1155BurnRedeem is BurnRedeemCore, IERC1155BurnRedeem {
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(addresses, tokenIds, values);
         burnRedeemInstance.redeemedCount += uint32(values[0]);
 
-        emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, instanceId, tokenIds[0], uint32(values[0]));
+        emit BurnRedeemLib.BurnRedeemMint(creatorContractAddress, instanceId, tokenIds[0], uint32(values[0]), data);
     }
 
     /**
