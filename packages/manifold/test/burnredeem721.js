@@ -901,7 +901,7 @@ contract("ERC721BurnRedeem", function ([...accounts]) {
 
       const message = "hello";
       // Passes
-      const tx = await burnRedeem.burnRedeem(
+      const tx = await burnRedeem.burnRedeemWithData(
         creator.address,
         1,
         1,

@@ -158,16 +158,6 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens) external payable;
 
     /**
-     * @notice burn tokens and mint a redeem token
-     * @param creatorContractAddress    the address of the creator contract
-     * @param instanceId                the instanceId of the burn redeem for the creator contract
-     * @param burnRedeemCount           the number of burn redeems we want to do
-     * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
-     * @param data                      the data to emit with the BurnRedeemMint event
-     */
-    function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bytes calldata data) external payable;
-
-    /**
      * @notice burn tokens and mint redeem tokens multiple times in a single transaction
      * @param creatorContractAddresses  the addresses of the creator contracts
      * @param instanceIds               the instanceIds of the burn redeems for the corresponding creator contract
@@ -175,6 +165,16 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param burnTokens                the tokens to burn for each burn redeem with pointers to the corresponding BurnItem requirement
      */
     function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata instanceIds, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable;
+
+    /**
+     * @notice burn tokens and mint a redeem token
+     * @param creatorContractAddress    the address of the creator contract
+     * @param instanceId                the instanceId of the burn redeem for the creator contract
+     * @param burnRedeemCount           the number of burn redeems we want to do
+     * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
+     * @param data                      the data to emit with the BurnRedeemMint event
+     */
+    function burnRedeemWithData(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bytes calldata data) external payable;
 
     /**
      * @notice allow admin to airdrop arbitrary tokens 

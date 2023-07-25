@@ -165,16 +165,6 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
     }
 
     /**
-     * See {IBurnRedeemCore-burnRedeem}.
-     */
-    function burnRedeem(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bytes calldata data) external payable override nonReentrant {
-        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, instanceId, burnRedeemCount, burnTokens, _isActiveMember(msg.sender), true, data);
-        if (msg.value > payableCost) {
-            _forwardValue(payable(msg.sender), msg.value - payableCost);
-        }
-    }
-
-    /**
      * (Batch overload) see {IBurnRedeemCore-burnRedeem}.
      */
     function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata instanceIds, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable override nonReentrant {
@@ -193,6 +183,16 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
 
         if (msgValueRemaining != 0) {
             _forwardValue(payable(msg.sender), msgValueRemaining);
+        }
+    }
+
+    /**
+     * See {IBurnRedeemCore-burnRedeemWithData}.
+     */
+    function burnRedeemWithData(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bytes calldata data) external payable override nonReentrant {
+        uint256 payableCost = _burnRedeem(msg.value, creatorContractAddress, instanceId, burnRedeemCount, burnTokens, _isActiveMember(msg.sender), true, data);
+        if (msg.value > payableCost) {
+            _forwardValue(payable(msg.sender), msg.value - payableCost);
         }
     }
 
