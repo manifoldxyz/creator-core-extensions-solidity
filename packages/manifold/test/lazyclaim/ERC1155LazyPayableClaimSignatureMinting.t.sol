@@ -87,8 +87,8 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       vm.startPrank(other);
 
       bytes32 nonce = "1";
-
-      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2));
+      uint256 blockNumber = block.number - 10;
+      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, blockNumber));
 
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
       bytes memory signature = abi.encodePacked(r, s, v);
@@ -101,7 +101,8 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         signature,
         message,
         nonce,
-        other2
+        other2,
+        blockNumber
       );
       assertEq(3, creatorCore.balanceOf(other2, 1));
 
@@ -114,12 +115,14 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         signature,
         message,
         nonce,
-        other2
+        other2,
+        blockNumber
       );
 
       // Bad message signed
       nonce = "2";
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", nonce, uint256(1), other2));
+      blockNumber = block.number - 10;
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", nonce, uint256(1), other2, blockNumber));
 
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
@@ -132,12 +135,14 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         signature,
         message,
         nonce,
-        other2
+        other2,
+        blockNumber
       );
 
       // Correct message, wrong signer
       nonce = "2";
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2));
+      blockNumber = block.number - 10;
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, blockNumber));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(InvalidSignature.selector);
@@ -148,7 +153,26 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         signature,
         message,
         nonce,
-        other2
+        other2,
+        blockNumber
+      );
+
+      // Expired signature
+      nonce = "2";
+      blockNumber = block.number - 25;
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, blockNumber));
+      (v, r, s) = vm.sign(privateKey2, message);
+      signature = abi.encodePacked(r, s, v);
+      vm.expectRevert(InvalidSignature.selector);
+      example.mintSignature{value: mintFee*3}(
+        address(creatorCore),
+        1,
+        uint16(3),
+        signature,
+        message,
+        nonce,
+        other2,
+        blockNumber
       );
 
       // Still only owns 3
@@ -179,7 +203,8 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       vm.stopPrank();
       vm.startPrank(other);
       nonce = "2";
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2));
+      blockNumber = block.number - 10;
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, blockNumber));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(MustUseSignatureMinting.selector);
@@ -190,7 +215,8 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         signature,
         message,
         nonce,
-        other2
+        other2,
+        blockNumber
       );
 
     }
