@@ -23,6 +23,11 @@ interface ILazyPayableClaim {
     function withdraw(address payable receiver, uint256 amount) external;
 
     /**
+     * @notice Update the duration of a signature's validity
+     */
+    function updateSignatureTimeout(uint256 timeout) external;
+
+    /**
      * @notice Set the Manifold Membership address
      */
     function setMembershipAddress(address membershipAddress) external;

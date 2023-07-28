@@ -39,6 +39,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     uint256 public constant MINT_FEE = 500000000000000;
     uint256 public constant MINT_FEE_MERKLE = 690000000000000;
     address public MEMBERSHIP_ADDRESS;
+    uint256 public TIMEOUT = 20;
 
     uint256 internal constant MAX_UINT_24 = 0xffffff;
     uint256 internal constant MAX_UINT_32 = 0xffffffff;
@@ -230,6 +231,13 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     function _getTotalMints(uint32 walletMax, address minter, address creatorContractAddress, uint256 instanceId) internal view returns(uint32) {
         require(walletMax != 0, "Can only retrieve for non-merkle claims with walletMax");
         return uint32(_mintsPerWallet[creatorContractAddress][instanceId][minter]);
+    }
+
+    /**
+     * See {ILazyPayableClaim-setMembershipAddress}.
+     */
+    function updateSignatureTimeout(uint256 timeout) external override adminRequired {
+        TIMEOUT = timeout;
     }
 
 }
