@@ -39,7 +39,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     uint256 public constant MINT_FEE = 500000000000000;
     uint256 public constant MINT_FEE_MERKLE = 690000000000000;
     address public MEMBERSHIP_ADDRESS;
-    uint256 public TIMEOUT = 20;
+    uint256 public SIGNATURE_TIMEOUT = 20;
 
     uint256 internal constant MAX_UINT_24 = 0xffffff;
     uint256 internal constant MAX_UINT_32 = 0xffffffff;
@@ -224,7 +224,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         require(!_usedMessages[creatorContractAddress][instanceId][expectedMessage], "Cannot replay transaction");
         address signer = message.recover(signature);
         if (message != expectedMessage || signer != signingAddress) revert InvalidSignature();
-        if (block.number - blockNumber > TIMEOUT)  revert ExpiredSignature();
+        if (block.number - blockNumber > SIGNATURE_TIMEOUT)  revert ExpiredSignature();
         _usedMessages[creatorContractAddress][instanceId][expectedMessage] = true;
     }
 
@@ -237,7 +237,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
      * See {ILazyPayableClaim-setMembershipAddress}.
      */
     function updateSignatureTimeout(uint256 timeout) external override adminRequired {
-        TIMEOUT = timeout;
+        SIGNATURE_TIMEOUT = timeout;
     }
 
 }
