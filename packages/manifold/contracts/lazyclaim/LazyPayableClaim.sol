@@ -224,7 +224,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         require(!_usedMessages[creatorContractAddress][instanceId][expectedMessage], "Cannot replay transaction");
         address signer = message.recover(signature);
         if (message != expectedMessage || signer != signingAddress) revert InvalidSignature();
-        if (block.number - blockNumber > 20)  revert ExpiredSignature();
+        if (block.number - blockNumber > TIMEOUT)  revert ExpiredSignature();
         _usedMessages[creatorContractAddress][instanceId][expectedMessage] = true;
     }
 
