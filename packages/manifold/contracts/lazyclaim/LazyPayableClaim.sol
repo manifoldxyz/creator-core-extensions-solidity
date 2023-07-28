@@ -18,6 +18,7 @@ error TooManyRequested();
 error MustUseSignatureMinting();
 error FailedToTransfer();
 error InvalidSignature();
+error ExpiredSignature();
 
 /**
  * @title Lazy Payable Claim
@@ -184,14 +185,14 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor) internal {
+    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 blockNumber) internal {
         if (signingAddress == address(0)) revert MustUseSignatureMinting();
         if (signature.length <= 0) revert InvalidInput();
         // Check timestamps
         if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
 
         // Signature mint
-        _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress, mintFor);
+        _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress, mintFor, blockNumber);
     }
 
     function _checkMerkleAndUpdate(address sender, address creatorContractAddress, uint256 instanceId, bytes32 merkleRoot, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
@@ -215,13 +216,14 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex] = claimMintTracking | mintBitmask;
     }
 
-    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor) private {
+    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 blockNumber) private {
         // Verify valid message based on input variables
-        bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce, mintFor));
+        bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce, mintFor, blockNumber));
         // Verify nonce usage/re-use
         require(!_usedMessages[creatorContractAddress][instanceId][expectedMessage], "Cannot replay transaction");
         address signer = message.recover(signature);
         if (message != expectedMessage || signer != signingAddress) revert InvalidSignature();
+        if (block.number - blockNumber > 20)  revert ExpiredSignature();
         _usedMessages[creatorContractAddress][instanceId][expectedMessage] = true;
     }
 
