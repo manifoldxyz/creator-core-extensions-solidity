@@ -324,7 +324,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
     /**
      * See {ILazyPayableClaim-mintSignature}.
      */
-    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor, uint256 blockNumber) external payable override {
+    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor, uint expiration) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
@@ -332,7 +332,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         if (((claim.totalMax != 0 && claim.total > claim.totalMax) || claim.total > MAX_UINT_24)) revert TooManyRequested();
 
         // Validate mint
-        _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress, mintFor, blockNumber);
+        _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress, mintFor, expiration);
         uint256 newMintIndex = claim.total - mintCount + 1;
 
         // Transfer funds

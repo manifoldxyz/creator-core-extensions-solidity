@@ -88,8 +88,8 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       vm.startPrank(other);
 
       bytes32 nonce = "1";
-      uint256 blockNumber = block.number - 10;
-      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, blockNumber));
+      uint expiration = block.timestamp + 120;
+      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
 
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
       bytes memory signature = abi.encodePacked(r, s, v);
@@ -103,7 +103,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         message,
         nonce,
         other2,
-        blockNumber
+        expiration
       );
       assertEq(3, creatorCore.balanceOf(other2));
    
@@ -117,13 +117,13 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         message,
         nonce,
         other2,
-        blockNumber
+        expiration
       );
 
       // Bad message signed
       nonce = "2";
-      blockNumber = block.number - 10;
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", nonce, uint256(1), other2, blockNumber));
+      expiration = block.timestamp + 120;
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", nonce, uint256(1), other2, expiration));
 
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
@@ -137,13 +137,13 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         message,
         nonce,
         other2,
-        blockNumber
+        expiration
       );
 
       // Correct message, wrong signer
       nonce = "2";
-      blockNumber = block.number - 10;
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, blockNumber));
+      expiration = block.timestamp + 120;
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(InvalidSignature.selector);
@@ -155,13 +155,13 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         message,
         nonce,
         other2,
-        blockNumber
+        expiration
       );
 
       // Expired signature
       nonce = "2";
-      blockNumber = block.number - 25;
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, blockNumber));
+      expiration = block.timestamp - 60;
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(ExpiredSignature.selector);
@@ -173,7 +173,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         message,
         nonce,
         other2,
-        blockNumber
+        expiration
       );
 
       // Still only owns 3
@@ -204,8 +204,8 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       vm.stopPrank();
       vm.startPrank(other);
       nonce = "2";
-      blockNumber = block.number - 10;
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, blockNumber));
+      expiration = block.timestamp + 120;
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(MustUseSignatureMinting.selector);
@@ -217,7 +217,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         message,
         nonce,
         other2,
-        blockNumber
+        expiration
       );
     }
 

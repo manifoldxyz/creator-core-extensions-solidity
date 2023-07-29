@@ -39,7 +39,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     uint256 public constant MINT_FEE = 500000000000000;
     uint256 public constant MINT_FEE_MERKLE = 690000000000000;
     address public MEMBERSHIP_ADDRESS;
-    uint256 public SIGNATURE_TIMEOUT = 20;
 
     uint256 internal constant MAX_UINT_24 = 0xffffff;
     uint256 internal constant MAX_UINT_32 = 0xffffffff;
@@ -186,14 +185,14 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 blockNumber) internal {
+    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint expiration) internal {
         if (signingAddress == address(0)) revert MustUseSignatureMinting();
         if (signature.length <= 0) revert InvalidInput();
         // Check timestamps
         if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
 
         // Signature mint
-        _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress, mintFor, blockNumber);
+        _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress, mintFor, expiration);
     }
 
     function _checkMerkleAndUpdate(address sender, address creatorContractAddress, uint256 instanceId, bytes32 merkleRoot, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
@@ -217,27 +216,20 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex] = claimMintTracking | mintBitmask;
     }
 
-    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 blockNumber) private {
+    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint expiration) private {
         // Verify valid message based on input variables
-        bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce, mintFor, blockNumber));
+        bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce, mintFor, expiration));
         // Verify nonce usage/re-use
         require(!_usedMessages[creatorContractAddress][instanceId][expectedMessage], "Cannot replay transaction");
         address signer = message.recover(signature);
         if (message != expectedMessage || signer != signingAddress) revert InvalidSignature();
-        if (block.number - blockNumber > SIGNATURE_TIMEOUT)  revert ExpiredSignature();
+        if (block.timestamp > expiration)  revert ExpiredSignature();
         _usedMessages[creatorContractAddress][instanceId][expectedMessage] = true;
     }
 
     function _getTotalMints(uint32 walletMax, address minter, address creatorContractAddress, uint256 instanceId) internal view returns(uint32) {
         require(walletMax != 0, "Can only retrieve for non-merkle claims with walletMax");
         return uint32(_mintsPerWallet[creatorContractAddress][instanceId][minter]);
-    }
-
-    /**
-     * See {ILazyPayableClaim-setMembershipAddress}.
-     */
-    function updateSignatureTimeout(uint256 timeout) external override adminRequired {
-        SIGNATURE_TIMEOUT = timeout;
     }
 
 }
