@@ -88,7 +88,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       vm.startPrank(other);
 
       bytes32 nonce = "1";
-      uint expiration = block.timestamp + 120;
+      uint expiration = block.timestamp + uint(120);
       bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
 
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
@@ -122,7 +122,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
 
       // Bad message signed
       nonce = "2";
-      expiration = block.timestamp + 120;
+      expiration = block.timestamp + uint(120);
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", nonce, uint256(1), other2, expiration));
 
       (v, r, s) = vm.sign(privateKey, message);
@@ -142,7 +142,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
 
       // Correct message, wrong signer
       nonce = "2";
-      expiration = block.timestamp + 120;
+      expiration = block.timestamp + uint(120);
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
@@ -160,7 +160,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
 
       // Expired signature
       nonce = "2";
-      expiration = block.timestamp - 60;
+      expiration = block.timestamp - uint(60);
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
@@ -204,7 +204,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       vm.stopPrank();
       vm.startPrank(other);
       nonce = "2";
-      expiration = block.timestamp + 120;
+      expiration = block.timestamp + uint(120);
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
