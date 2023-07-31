@@ -162,7 +162,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       nonce = "2";
       expiration = uint(0);
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
-      (v, r, s) = vm.sign(privateKey2, message);
+      (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(ExpiredSignature.selector);
       example.mintSignature{value: mintFee*3}(
