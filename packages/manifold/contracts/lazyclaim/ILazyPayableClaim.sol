@@ -23,11 +23,6 @@ interface ILazyPayableClaim {
     function withdraw(address payable receiver, uint256 amount) external;
 
     /**
-     * @notice Update the duration of a signature's validity
-     */
-    function updateSignatureTimeout(uint256 timeout) external;
-
-    /**
      * @notice Set the Manifold Membership address
      */
     function setMembershipAddress(address membershipAddress) external;
@@ -104,6 +99,6 @@ interface ILazyPayableClaim {
      * @param nonce                     the nonce that was signed
      * @param mintFor                   the address to mint for
      */
-    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor) external payable;
+    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor, uint expiration) external payable;
 
 }
