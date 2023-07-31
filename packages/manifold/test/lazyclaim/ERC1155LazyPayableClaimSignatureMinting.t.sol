@@ -163,7 +163,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
-      vm.expectRevert(InvalidSignature.selector);
+      vm.expectRevert(ExpiredSignature.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
