@@ -185,7 +185,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint expiration) internal {
+    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 expiration) internal {
         if (signingAddress == address(0)) revert MustUseSignatureMinting();
         if (signature.length <= 0) revert InvalidInput();
         // Check timestamps
@@ -216,7 +216,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex] = claimMintTracking | mintBitmask;
     }
 
-    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint expiration) private {
+    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 expiration) private {
         // Verify valid message based on input variables
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce, mintFor, expiration));
         // Verify nonce usage/re-use

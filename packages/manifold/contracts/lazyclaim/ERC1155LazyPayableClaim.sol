@@ -275,7 +275,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     /**
      * See {ILazyPayableClaim-mintSignature}.
      */
-    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor, uint expiration) external payable override {
+    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor, uint256 expiration) external payable override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         // Check totalMax
