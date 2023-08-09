@@ -16,6 +16,8 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     error UnsupportedContractVersion();
     error InvalidToken(uint256);
     error InvalidInput();
+    error InvalidTokenSpec();
+    error InvalidBurnSpec();
     error InvalidData();
     error TransferFailure();
     
@@ -39,7 +41,7 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE, ANY }
 
     enum TokenSpec { INVALID, ERC721, ERC1155 }
-    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN, UNKNOWN }
+    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN }
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
@@ -163,6 +165,16 @@ interface IBurnRedeemCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param burnTokens                the tokens to burn for each burn redeem with pointers to the corresponding BurnItem requirement
      */
     function burnRedeem(address[] calldata creatorContractAddresses, uint256[] calldata instanceIds, uint32[] calldata burnRedeemCounts, BurnToken[][] calldata burnTokens) external payable;
+
+    /**
+     * @notice burn tokens and mint a redeem token
+     * @param creatorContractAddress    the address of the creator contract
+     * @param instanceId                the instanceId of the burn redeem for the creator contract
+     * @param burnRedeemCount           the number of burn redeems we want to do
+     * @param burnTokens                the tokens to burn with pointers to the corresponding BurnItem requirement
+     * @param data                      the data to emit with the BurnRedeemMint event
+     */
+    function burnRedeemWithData(address creatorContractAddress, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] calldata burnTokens, bytes calldata data) external payable;
 
     /**
      * @notice allow admin to airdrop arbitrary tokens 
