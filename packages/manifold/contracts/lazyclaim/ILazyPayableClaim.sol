@@ -15,7 +15,7 @@ interface ILazyPayableClaim {
     event ClaimMint(address indexed creatorContract, uint256 indexed instanceId);
     event ClaimMintBatch(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount);
     event ClaimMintProxy(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor);
-    event ClaimMintSignature(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor);
+    event ClaimMintSignature(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor, bytes32 nonce);
 
     /**
      * @notice Withdraw funds

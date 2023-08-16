@@ -352,7 +352,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
                 unchecked { ++i; }
             }
         }
-        emit ClaimMintSignature(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor);
+        emit ClaimMintSignature(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor, nonce);
     }
 
     /**
