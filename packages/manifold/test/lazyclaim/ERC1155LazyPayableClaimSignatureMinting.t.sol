@@ -130,7 +130,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         signature,
         message,
         nonce,
-        other2,
+        other,
         expiration
       );
 

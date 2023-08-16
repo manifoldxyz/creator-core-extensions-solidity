@@ -131,7 +131,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         signature,
         message,
         nonce,
-        other2,
+        other,
         expiration
       );
 
