@@ -220,11 +220,11 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         // Verify valid message based on input variables
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce, mintFor, expiration));
         // Verify nonce usage/re-use
-        require(!_usedMessages[creatorContractAddress][instanceId][expectedMessage], "Cannot replay transaction");
+        require(!_usedMessages[creatorContractAddress][instanceId][nonce], "Cannot replay transaction");
         address signer = message.recover(signature);
         if (message != expectedMessage || signer != signingAddress) revert InvalidSignature();
         if (block.timestamp > expiration)  revert ExpiredSignature();
-        _usedMessages[creatorContractAddress][instanceId][expectedMessage] = true;
+        _usedMessages[creatorContractAddress][instanceId][nonce] = true;
     }
 
     function _getTotalMints(uint32 walletMax, address minter, address creatorContractAddress, uint256 instanceId) internal view returns(uint32) {
