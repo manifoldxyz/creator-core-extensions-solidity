@@ -89,7 +89,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       uint16 mintCount = uint16(3);
       bytes32 nonce = "1";
       uint expiration = uint(block.timestamp) + uint(120);
-      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration, mintCount));
+      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
 
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
       bytes memory signature = abi.encodePacked(r, s, v);
@@ -120,7 +120,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         expiration
       );
 
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other, expiration, mintCount));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other, expiration, mintCount));
 
       // Cannot replay same tx with same nonce, even with different mintfor
       vm.expectRevert("Cannot replay transaction");
@@ -136,7 +136,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       );
 
       expiration = uint(block.timestamp) + uint(121);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
 
       // Cannot replay same tx with same nonce, even with different expiration
       vm.expectRevert("Cannot replay transaction");
@@ -154,7 +154,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       // Bad message signed
       nonce = "2";
       expiration = uint(block.timestamp) + uint(120);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", nonce, uint256(1), other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), nonce, uint256(1), other2, expiration, mintCount));
 
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
@@ -174,7 +174,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       // Correct message, wrong signer
       nonce = "2";
       expiration = uint(block.timestamp) + uint(120);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(InvalidSignature.selector);
@@ -192,7 +192,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       // Expired signature
       nonce = "2";
       expiration = uint(0);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(ExpiredSignature.selector);
@@ -236,7 +236,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       vm.startPrank(other);
       nonce = "2";
       expiration = uint(block.timestamp) + uint(120);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(MustUseSignatureMinting.selector);
