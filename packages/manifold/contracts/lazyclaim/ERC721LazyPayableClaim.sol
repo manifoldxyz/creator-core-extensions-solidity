@@ -332,7 +332,8 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         if (((claim.totalMax != 0 && claim.total > claim.totalMax) || claim.total > MAX_UINT_24)) revert TooManyRequested();
 
         // Validate mint
-        _validateMintSignature(creatorContractAddress, instanceId, claim.startDate, claim.endDate, signature, message, nonce, claim.signingAddress, mintFor, expiration, mintCount);
+        _validateMintSignature(claim.startDate, claim.endDate, signature, claim.signingAddress);
+        _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress, mintFor, expiration, mintCount);
         uint256 newMintIndex = claim.total - mintCount + 1;
 
         // Transfer funds

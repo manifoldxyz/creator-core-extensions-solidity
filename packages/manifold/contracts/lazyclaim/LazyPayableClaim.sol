@@ -185,14 +185,11 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintSignature(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 expiration, uint16 mintCount) internal {
+    function _validateMintSignature(uint48 startDate, uint48 endDate, bytes calldata signature, address signingAddress) internal {
         if (signingAddress == address(0)) revert MustUseSignatureMinting();
         if (signature.length <= 0) revert InvalidInput();
         // Check timestamps
         if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
-
-        // Signature mint
-        _checkSignatureAndUpdate(creatorContractAddress, instanceId, signature, message, nonce, signingAddress, mintFor, expiration, mintCount);
     }
 
     function _checkMerkleAndUpdate(address sender, address creatorContractAddress, uint256 instanceId, bytes32 merkleRoot, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
@@ -216,7 +213,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex] = claimMintTracking | mintBitmask;
     }
 
-    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 expiration, uint16 mintCount) private {
+    function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 expiration, uint16 mintCount) internal {
         // Verify valid message based on input variables
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, nonce, mintFor, expiration, mintCount));
         // Verify nonce usage/re-use
