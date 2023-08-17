@@ -120,7 +120,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         expiration
       );
 
-      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other, expiration));
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other, expiration));
 
       // Cannot replay same tx with same nonce, even with different mintfor
       vm.expectRevert("Cannot replay transaction");
@@ -135,8 +135,8 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
         expiration
       );
 
-      uint expiration = uint(block.timestamp) + uint(121);
-      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
+      expiration = uint(block.timestamp) + uint(121);
+      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", uint256(1), nonce, other2, expiration));
 
       // Cannot replay same tx with same nonce, even with different expiration
       vm.expectRevert("Cannot replay transaction");
