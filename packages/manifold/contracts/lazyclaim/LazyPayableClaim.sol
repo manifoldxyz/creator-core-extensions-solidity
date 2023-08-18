@@ -185,7 +185,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         }
     }
 
-    function _validateMintSignature(uint48 startDate, uint48 endDate, bytes calldata signature, address signingAddress) internal {
+    function _validateMintSignature(uint48 startDate, uint48 endDate, bytes calldata signature, address signingAddress) internal view {
         if (signingAddress == address(0)) revert MustUseSignatureMinting();
         if (signature.length <= 0) revert InvalidInput();
         // Check timestamps
