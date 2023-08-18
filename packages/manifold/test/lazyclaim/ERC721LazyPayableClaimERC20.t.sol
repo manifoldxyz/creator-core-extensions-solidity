@@ -67,7 +67,8 @@ contract ERC721LazyPayableClaimERC20Test is Test {
       identical: true,
       cost: 100,
       paymentReceiver: payable(owner),
-      erc20: address(mockERC20)
+      erc20: address(mockERC20),
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -177,7 +178,8 @@ contract ERC721LazyPayableClaimERC20Test is Test {
       identical: true,
       cost: 100,
       paymentReceiver: payable(owner),
-      erc20: address(mockERC20)
+      erc20: address(mockERC20),
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -228,7 +230,8 @@ contract ERC721LazyPayableClaimERC20Test is Test {
       identical: true,
       cost: 100,
       paymentReceiver: payable(owner),
-      erc20: address(mockERC20)
+      erc20: address(mockERC20),
+      signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
