@@ -267,21 +267,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", true);
 
-        if (claim.contractVersion >= 3) {
-            uint80[] memory tokenData = new uint80[](mintCount);
-            for (uint256 i; i < mintCount;) {
-                tokenData[i] = uint56(instanceId) << 24 | uint24(newMintIndex+i);
-                unchecked { ++i; }
-            }
-            IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(msg.sender, tokenData);
-        } else {
-            uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(msg.sender, mintCount);
-            for (uint256 i; i < mintCount;) {
-                _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(instanceId), uint32(newMintIndex+i));
-                unchecked { ++i; }
-            }
-        }
-
+        _mintBatch(creatorContractAddress, instanceId, mintCount, msg.sender, newMintIndex, claim.contractVersion);
         emit ClaimMintBatch(creatorContractAddress, instanceId, mintCount);
     }
 
@@ -303,21 +289,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", false);
 
-        if (claim.contractVersion >= 3) {
-            uint80[] memory tokenData = new uint80[](mintCount);
-            for (uint256 i; i < mintCount;) {
-                tokenData[i] = uint56(instanceId) << 24 | uint24(newMintIndex+i);
-                unchecked { ++i; }
-            }
-            IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(mintFor, tokenData);
-        } else {
-            uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(mintFor, mintCount);
-            for (uint256 i; i < mintCount;) {
-                _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(instanceId), uint32(newMintIndex+i));
-                unchecked { ++i; }
-            }
-        }
-
+        _mintBatch(creatorContractAddress, instanceId, mintCount, mintFor, newMintIndex, claim.contractVersion);
         emit ClaimMintProxy(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor);
     }
 
@@ -341,21 +313,25 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Transfer funds
         _transferFunds(claim.erc20, claim.cost, claim.paymentReceiver, mintCount, claim.merkleRoot != "", false);
 
-        if (claim.contractVersion >= 3) {
+        _mintBatch(creatorContractAddress, instanceId, mintCount, mintFor, newMintIndex, claim.contractVersion);
+        emit ClaimMintSignature(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor, nonce);
+    }
+
+    function _mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, address recipient, uint256 startIndex, uint8 contractVersion) internal {
+        if (contractVersion >= 3) {
             uint80[] memory tokenData = new uint80[](mintCount);
             for (uint256 i; i < mintCount;) {
-                tokenData[i] = uint56(instanceId) << 24 | uint24(newMintIndex+i);
+                tokenData[i] = uint56(instanceId) << 24 | uint24(startIndex+i);
                 unchecked { ++i; }
             }
-            IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(mintFor, tokenData);
+            IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(recipient, tokenData);
         } else {
-            uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(mintFor, mintCount);
+            uint256[] memory newTokenIds = IERC721CreatorCore(creatorContractAddress).mintExtensionBatch(recipient, mintCount);
             for (uint256 i; i < mintCount;) {
-                _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(instanceId), uint32(newMintIndex+i));
+                _tokenClaims[creatorContractAddress][newTokenIds[i]] = TokenClaim(uint224(instanceId), uint32(startIndex+i));
                 unchecked { ++i; }
             }
         }
-        emit ClaimMintSignature(creatorContractAddress, instanceId, mintCount, msg.sender, mintFor, nonce);
     }
 
     /**
