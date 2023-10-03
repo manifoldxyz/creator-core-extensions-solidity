@@ -5,7 +5,8 @@ import "forge-std/Test.sol";
 import "../../contracts/lazyclaim/ERC721LazyPayableClaim.sol";
 import "../../contracts/lazyclaim/IERC721LazyPayableClaim.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
-import "../../contracts/libraries/delegation-registry/DelegationRegistry.sol";
+import "../mocks/delegation-registry/DelegationRegistry.sol";
+import "../mocks/delegation-registry/DelegationRegistryV2.sol";
 import "../mocks/Mock.sol";
 import "../../lib/murky/src/Merkle.sol";
 
@@ -13,6 +14,7 @@ contract ERC721LazyPayableClaimERC20Test is Test {
   ERC721LazyPayableClaim public example;
   ERC721Creator public creatorCore;
   DelegationRegistry public delegationRegistry;
+  DelegationRegistryV2 public delegationRegistryV2;
   MockManifoldMembership public manifoldMembership;
   MockERC20 public mockERC20;
   Merkle public merkle;
@@ -28,7 +30,8 @@ contract ERC721LazyPayableClaimERC20Test is Test {
     vm.startPrank(owner);
     creatorCore = new ERC721Creator("Token", "NFT");
     delegationRegistry = new DelegationRegistry();
-    example = new ERC721LazyPayableClaim(owner, address(delegationRegistry));
+    delegationRegistryV2 = new DelegationRegistryV2();
+    example = new ERC721LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
 

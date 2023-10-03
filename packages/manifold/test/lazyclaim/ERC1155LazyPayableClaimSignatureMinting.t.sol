@@ -5,7 +5,8 @@ import "forge-std/Test.sol";
 import "../../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
 import "../../contracts/lazyclaim/IERC1155LazyPayableClaim.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
-import "../../contracts/libraries/delegation-registry/DelegationRegistry.sol";
+import "../mocks/delegation-registry/DelegationRegistry.sol";
+import "../mocks/delegation-registry/DelegationRegistryV2.sol";
 import "../mocks/Mock.sol";
 import "../../lib/murky/src/Merkle.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -16,6 +17,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
     ERC1155LazyPayableClaim public example;
     ERC1155Creator public creatorCore;
     DelegationRegistry public delegationRegistry;
+    DelegationRegistryV2 public delegationRegistryV2;
     MockManifoldMembership public manifoldMembership;
     MockERC20 public mockERC20;
     Merkle public merkle;
@@ -36,8 +38,9 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         vm.startPrank(owner);
         creatorCore = new ERC1155Creator("Token", "NFT");
         delegationRegistry = new DelegationRegistry();
+        delegationRegistryV2 = new DelegationRegistryV2();
         example = new ERC1155LazyPayableClaim(
-          owner, address(delegationRegistry)
+          owner, address(delegationRegistry), address(delegationRegistryV2)
         );
         manifoldMembership = new MockManifoldMembership();
         example.setMembershipAddress(address(manifoldMembership));

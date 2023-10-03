@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity ^0.8.9;
 
-import {IDelegationRegistry} from "./IDelegationRegistry.sol";
+import {IDelegationRegistry} from "../../../contracts/libraries/delegation-registry/IDelegationRegistry.sol";
 /**
  * @notice code taken from https://github.com/0xfoobar/delegation-registry
  * following 2 lines modified by jack (jack@manifold.xyz) to make openzeppelin imports work

@@ -18,6 +18,7 @@ import "../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
  */
  contract DeployERC1155LazyPayableClaim is Script {
     address DELEGATION_REGISTRY = 0x00000000000076A84feF008CDAbe6409d2FE638B;
+    address DELEGATION_REGISTRY_V2 = 0x00000000000000447e69651d841bD8D104Bed493;
 
     function run() external {
         // address initialOwner = <your wallet address>; // uncomment this and put in your wallet on goerli
@@ -34,7 +35,7 @@ import "../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
         vm.startBroadcast(deployerPrivateKey);
         // forge script scripts/ERC1155LazyPayableClaim.s.sol --optimizer-runs 1000 --rpc-url <YOUR_NODE> --broadcast
         // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain goerli <DEPLOYED_ADDRESS> contracts/lazyclaim/ERC1155LazyPayableClaim.sol:ERC1155LazyPayableClaim --constructor-args $(cast abi-encode "constructor(address,address)" "${INITIAL_OWNER}" "0x00000000000076A84feF008CDAbe6409d2FE638B") --watch
-        new ERC1155LazyPayableClaim{salt: 0x455243313135354c617a7950617961626c65436c61696d455243313135354c61}(initialOwner, DELEGATION_REGISTRY);
+        new ERC1155LazyPayableClaim{salt: 0x455243313135354c617a7950617961626c65436c61696d455243313135354c61}(initialOwner, DELEGATION_REGISTRY, DELEGATION_REGISTRY_V2);
         vm.stopBroadcast();
     }
 }
