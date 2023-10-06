@@ -57,6 +57,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     struct BurnItem {
         ValidationType validationType;
         address contractAddress;
+        TokenSpec tokenSpec;
         BurnSpec burnSpec;
         uint72 amount;
         uint256 minTokenId;
@@ -90,6 +91,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     struct PhysicalClaimParameters {
         address payable paymentReceiver;
         uint16 redeemAmount;
+        uint32 redeemedCount;
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;

@@ -82,14 +82,14 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * (Batch overload) see {IPhysicalClaimCore-burnRedeem}.
      */
-    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, bytes calldata data) external payable override nonReentrant {
+    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, bytes[] calldata data) external payable override nonReentrant {
         if (instanceIds.length != physicalClaimCounts.length ||
             instanceIds.length != burnTokens.length) {
             revert InvalidInput();
         }
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < instanceIds.length;) {
-            msgValueRemaining -= _burnRedeem(msgValueRemaining, instanceIds[i], physicalClaimCounts[i], burnTokens[i], true, data);
+            msgValueRemaining -= _burnRedeem(msgValueRemaining, instanceIds[i], physicalClaimCounts[i], burnTokens[i], true, data[i]);
             unchecked { ++i; }
         }
 
@@ -102,7 +102,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
 
         // Get the amount that can be burned
-        physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, physicalClaimInstance.redeemAmount, physicalClaimInstance, revertNoneRemaining);
+        physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, physicalClaimInstance.redeemAmount, physicalClaimCount, revertNoneRemaining);
         if (physicalClaimCount == 0) {
             return 0;
         }
@@ -167,7 +167,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint32 physicalClaimCount;
         uint256 burnItemIndex;
         bytes32[] memory merkleProof;
-        (instanceId, physicalClaimCount, burnItemIndex, merkleProof) = abi.decode(data, (address, uint256, uint32, uint256, bytes32[]));
+        (instanceId, physicalClaimCount, burnItemIndex, merkleProof) = abi.decode(data, (uint256, uint32, uint256, bytes32[]));
 
         // Do burn redeem
         _onERC1155Received(from, id, value, instanceId, physicalClaimCount, burnItemIndex, merkleProof);
@@ -193,7 +193,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint256 instanceId;
         uint32 physicalClaimCount;
         BurnToken[] memory burnTokens;
-        (instanceId, physicalClaimCount, burnTokens) = abi.decode(data, (address, uint256, uint32, BurnToken[]));
+        (instanceId, physicalClaimCount, burnTokens) = abi.decode(data, (uint256, uint32, BurnToken[]));
 
         // Do burn redeem
         _onERC1155BatchReceived(from, ids, values, instanceId, physicalClaimCount, burnTokens);
@@ -220,7 +220,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint256 instanceId;
         uint256 burnItemIndex;
         bytes32[] memory merkleProof;
-        (instanceId, burnItemIndex, merkleProof) = abi.decode(data, (address, uint256, uint256, bytes32[]));
+        (instanceId, burnItemIndex, merkleProof) = abi.decode(data, (uint256, uint256, bytes32[]));
 
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
 
