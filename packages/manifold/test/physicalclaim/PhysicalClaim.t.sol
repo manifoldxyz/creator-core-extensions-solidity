@@ -83,6 +83,40 @@ contract PhysicalClaimTest is Test {
     vm.expectRevert();
     example.initializePhysicalClaim(2**56, claimPs);
 
+    // Cannot do a burn redeem with non-matching lengths of inputs
+
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    uint[] memory instanceIds = new uint[](2);
+    instanceIds[0] = instanceId;
+    instanceIds[1] = instanceId;
+
+    uint32[] memory physicalClaimCounts = new uint32[](1);
+    physicalClaimCounts[0] = 1;
+
+    IPhysicalClaimCore.BurnToken[][] memory burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
+    burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+    bytes[] memory data = new bytes[](1);
+    data[0] = "";
+
+    vm.expectRevert();
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+
+    physicalClaimCounts = new uint32[](2);
+    physicalClaimCounts[0] = 1;
+    physicalClaimCounts[1] = 1;
+
+    vm.expectRevert();
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+
 
     vm.stopPrank();
   }
@@ -169,6 +203,29 @@ contract PhysicalClaimTest is Test {
     data[0] = "";
 
     example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+
+    vm.stopPrank();
+
+    vm.startPrank(owner);
+    // Mint new token to "other"
+    creatorCore721.mintBase(other, "");
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Approve token for burning
+    creatorCore721.approve(address(example), 2);
+
+    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 2,
+      merkleProof: new bytes32[](0)
+    });
+
+    // Send a non-zero value burn
+    example.burnRedeem{value: 1 ether}(instanceIds, physicalClaimCounts, burnTokens, data);
 
     vm.stopPrank();
   }
