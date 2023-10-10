@@ -63,6 +63,27 @@ contract PhysicalClaimTest is Test {
   function testHappyCase() public {
     vm.startPrank(owner);
 
+    // Mint token 1 to other
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 1,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+        requiredCount: 1,
+        items: burnItems
+      });
+
     // Create claim initialization parameters
     IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
       paymentReceiver: payable(owner),
@@ -73,7 +94,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
       cost: 0,
       location: "",
-      burnSet: new IPhysicalClaimCore.BurnGroup[](0)
+      burnSet: burnSet
     });
 
     // Initialize the physical claim
@@ -88,7 +109,31 @@ contract PhysicalClaimTest is Test {
     vm.startPrank(other);
     vm.expectRevert(bytes("Must be admin"));
     example.updatePhysicalClaim(instanceId, claimPs);
+    // Actually do a burnRedeem
 
+    // Approve token for burning
+    creatorCore721.approve(address(example), 1);
+
+    uint[] memory instanceIds = new uint[](1);
+    instanceIds[0] = instanceId;
+
+    uint32[] memory physicalClaimCounts = new uint32[](1);
+    physicalClaimCounts[0] = 1;
+
+    IPhysicalClaimCore.BurnToken[][] memory burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
+    burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+    bytes[] memory data = new bytes[](1);
+    data[0] = "";
+
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
 
     vm.stopPrank();
   }
