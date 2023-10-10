@@ -24,6 +24,8 @@ contract PhysicalClaimTest is Test {
 
   address public zeroAddress = address(0);
 
+  uint instanceId = 1;
+
   function setUp() public {
     vm.startPrank(owner);
     creatorCore721 = new ERC721Creator("Token", "NFT");
@@ -60,6 +62,33 @@ contract PhysicalClaimTest is Test {
 
   function testHappyCase() public {
     vm.startPrank(owner);
+
+    // Create claim initialization parameters
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      redeemAmount: 1,
+      redeemedCount: 0,
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      cost: 0,
+      location: "",
+      burnSet: new IPhysicalClaimCore.BurnGroup[](0)
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    // Can update
+    claimPs.redeemAmount = 2;
+    example.updatePhysicalClaim(instanceId, claimPs);
+
+    // Can't update _not_ your own
+    vm.stopPrank();
+    vm.startPrank(other);
+    vm.expectRevert(bytes("Must be admin"));
+    example.updatePhysicalClaim(instanceId, claimPs);
+
 
     vm.stopPrank();
   }

@@ -42,6 +42,7 @@ contract PhysicalClaim is PhysicalClaimCore, IPhysicalClaim {
         uint256 instanceId,
         PhysicalClaimParameters calldata physicalClaimParameters
     ) external {
+        _validateAdmin(instanceId);
         _update(instanceId, physicalClaimParameters);
     }
 

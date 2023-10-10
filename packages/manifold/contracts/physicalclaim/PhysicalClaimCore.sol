@@ -33,6 +33,9 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     // { instanceId => PhysicalClaim }
     mapping(uint256 => PhysicalClaim) internal _physicalClaims;
 
+    // { instanceId => creator } -> TODO: make it so multiple people can administer a physical claim 
+    mapping(uint256 => address) internal _physicalClaimCreator;
+
     constructor(address initialOwner) {
         _transferOwnership(initialOwner);
     }
@@ -51,6 +54,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint256 instanceId,
         PhysicalClaimParameters calldata physicalClaimParameters
     ) internal {
+        _physicalClaimCreator[instanceId] = msg.sender;
         PhysicalClaimLib.initialize(instanceId, _physicalClaims[instanceId], physicalClaimParameters);
     }
 
@@ -63,6 +67,15 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     ) internal {
         PhysicalClaimLib.update(instanceId, _getPhysicalClaim(instanceId), physicalClaimParameters);
     }
+
+    /**
+     * Validates that this physical claim is managed by the user
+     */
+     function _validateAdmin(
+        uint256 instanceId
+     ) internal view {
+        require(_physicalClaimCreator[instanceId] == msg.sender, "Must be admin");
+     }
 
     /**
      * See {IPhysicalClaimCore-getPhysicalClaim}.
