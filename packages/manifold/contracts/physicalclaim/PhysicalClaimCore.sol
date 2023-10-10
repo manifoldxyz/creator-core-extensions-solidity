@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-import ".././libraries/manifold-membership/IManifoldMembership.sol";
 import "./PhysicalClaimLib.sol";
 import "./IPhysicalClaimCore.sol";
 import "./Interfaces.sol";
@@ -227,7 +226,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // A single  can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
         // 2. The burn only requires one NFT (one burnSet element and one count)
-        // 3. They are an active member (because no fee payment can be sent with a transfer)
         _validateReceivedInput(physicalClaimInstance.cost, physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount, from);
 
         _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, physicalClaimInstance.redeemAmount, 1, true);
@@ -259,7 +257,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // A single 1155 can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
         // 2. The burn only requires one NFT (one burn set element and one required count in the set)
-        // 3. They are an active member (because no fee payment can be sent with a transfer)
         _validateReceivedInput(burnRedeemInstance.cost, burnRedeemInstance.burnSet.length, burnRedeemInstance.burnSet[0].requiredCount, from);
 
         uint32 availablePhysicalClaimCount = _getAvailablePhysicalClaimCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount, true);
@@ -289,7 +286,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // A single 1155 can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
         // 2. We have the right data length
-        // 3. They are an active member (because no fee payment can be sent with a transfer)
         if (burnRedeemInstance.cost != 0 || burnTokens.length != tokenIds.length) {
             revert InvalidInput();
         }
