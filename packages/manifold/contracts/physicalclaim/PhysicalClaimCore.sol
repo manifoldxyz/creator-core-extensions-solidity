@@ -382,7 +382,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     }
 
     /** 
-     * Abstract helper to mint multiple redeem tokens. To be implemented by inheriting contracts.
+     * Abstract helper to redeem multiple redeem tokens. To be implemented by inheriting contracts.
      */
     function _redeem(uint256 instanceId, PhysicalClaim storage burnRedeemInstance, address to, uint32 count, bytes memory data) internal virtual;
 

@@ -14,7 +14,7 @@ library PhysicalClaimLib {
 
     event PhysicalClaimInitialized(uint256 indexed instanceId, address initializer);
     event PhysicalClaimUpdated(uint256 indexed instanceId);
-    event PhysicalClaimMint(uint256 indexed instanceId, uint32 redeemedCount, bytes data);
+    event PhysicalClaimRedemption(uint256 indexed instanceId, uint32 redeemedCount, bytes data);
 
     error PhysicalClaimAlreadyInitialized();
     error InvalidBurnItem();

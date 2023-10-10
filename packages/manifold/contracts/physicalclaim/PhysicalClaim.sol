@@ -46,7 +46,7 @@ contract PhysicalClaim is PhysicalClaimCore, IPhysicalClaim {
     }
 
     /** 
-     * Helper to mint multiple redeem tokens
+     * Helper to redeem multiple redeem tokens
      */
     function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 count, bytes memory data) internal override {
         if (physicalClaimInstance.redeemAmount == 1 && count == 1) {
@@ -54,7 +54,7 @@ contract PhysicalClaim is PhysicalClaimCore, IPhysicalClaim {
 
             // TODO logic to redeem and make sure not over-redeemed
 
-            emit PhysicalClaimLib.PhysicalClaimMint(instanceId, 1, data);
+            emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, 1, data);
         } else {
             uint256 totalCount = physicalClaimInstance.redeemAmount * count;
             if (totalCount > MAX_UINT_16) {

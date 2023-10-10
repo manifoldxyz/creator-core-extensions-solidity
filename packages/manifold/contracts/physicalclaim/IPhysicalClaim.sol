@@ -7,11 +7,6 @@ pragma solidity ^0.8.0;
 import "./IPhysicalClaimCore.sol";
 
 interface IPhysicalClaim is IPhysicalClaimCore {
-    struct RedeemToken {
-        uint224 instanceId;
-        uint32 mintNumber;
-    }
-
     /**
      * @notice initialize a new physical claim, emit initialize event
      * @param instanceId                the instanceId of the physicalClaim for the physical claim

@@ -80,8 +80,8 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @notice parameters for burn redeem intialization/updates
      * @param paymentReceiver   the address to forward proceeds from paid burn redeems
      * @param storageProtocol   the type of storage used for the redeem token URIs
-     * @param redeemAmount      the number of redeem tokens to mint for each burn redeem
-     * @param totalSupply       the maximum number of redeem tokens to mint (0 for unlimited)
+     * @param redeemAmount      the number of redeem tokens to redeem for each burn redeem
+     * @param totalSupply       the maximum number of redeem tokens to redeem (0 for unlimited)
      * @param startDate         the starting time for the burn redeem (0 for immediately)
      * @param endDate           the end time for the burn redeem (0 for never)
      * @param cost              the cost for each burn redeem
@@ -141,7 +141,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param instanceIds               the instanceIds of the physical claims
      * @param physicalClaimCounts          the physical claim counts for each claim
      * @param burnTokens                the tokens to burn for each physical claim with pointers to the corresponding BurnItem requirement
-     * @param data                      the data to emit with the PhysicalClaimMint event
+     * @param data                      the data to emit with the PhysicalClaimRedemption event
      */
     function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, bytes[] calldata data) external payable;
     
