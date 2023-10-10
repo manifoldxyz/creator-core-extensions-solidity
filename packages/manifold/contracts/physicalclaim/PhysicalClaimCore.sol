@@ -89,6 +89,9 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
      */
     function _getPhysicalClaim(uint256 instanceId) internal view returns(PhysicalClaim storage physicalClaimInstance) {
         physicalClaimInstance = _physicalClaims[instanceId];
+        if (physicalClaimInstance.paymentReceiver == address(0)) {
+            revert InvalidInstance();
+        }
     }
 
     /**

@@ -60,6 +60,33 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testInputs() public {
+    vm.startPrank(owner);
+
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      redeemAmount: 1,
+      redeemedCount: 0,
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      cost: 0,
+      location: "",
+      burnSet: new IPhysicalClaimCore.BurnGroup[](0)
+    });
+
+    // Cannot do instanceId of 0
+    vm.expectRevert();
+    example.initializePhysicalClaim(0, claimPs);
+
+    // Cannot do largest instanceID
+    vm.expectRevert();
+    example.initializePhysicalClaim(2**56, claimPs);
+
+
+    vm.stopPrank();
+  }
+
   function testHappyCase() public {
     vm.startPrank(owner);
 
@@ -99,6 +126,14 @@ contract PhysicalClaimTest is Test {
 
     // Initialize the physical claim
     example.initializePhysicalClaim(instanceId, claimPs);
+
+    // Can get the claim
+    IPhysicalClaimCore.PhysicalClaim memory claim = example.getPhysicalClaim(instanceId);
+    assertEq(claim.paymentReceiver, owner);
+
+    // Cannot get claim that doesn't exist
+    vm.expectRevert();
+    example.getPhysicalClaim(2);
 
     // Can update
     claimPs.redeemAmount = 2;

@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  * Burn Redeem Core interface
  */
 interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
+    error InvalidInstance();
     error UnsupportedContractVersion();
     error InvalidToken(uint256);
     error InvalidInput();
