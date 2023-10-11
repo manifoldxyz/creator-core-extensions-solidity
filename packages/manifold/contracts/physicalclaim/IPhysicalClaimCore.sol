@@ -113,6 +113,11 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         BurnGroup[] burnSet;
     }
 
+    struct Redemption {
+        uint timestamp;
+        uint32 redeemedCount;
+    }
+
     /**
      * @notice a pointer to a `BurnItem` in a `BurnGroup` used in calls to `burnRedeem`
      * @param groupIndex        the index of the `BurnGroup` in `PhysicalClaim.burnSet`

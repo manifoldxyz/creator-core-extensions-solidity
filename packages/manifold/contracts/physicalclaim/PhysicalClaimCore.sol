@@ -25,16 +25,16 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     using Strings for uint256;
 
     uint256 internal constant MAX_UINT_16 = 0xffff;
-    uint256 internal constant MAX_UINT_24 = 0xffffff;
-    uint256 internal constant MAX_UINT_32 = 0xffffffff;
     uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
-    uint256 internal constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     // { instanceId => PhysicalClaim }
     mapping(uint256 => PhysicalClaim) internal _physicalClaims;
 
     // { instanceId => creator } -> TODO: make it so multiple people can administer a physical claim 
     mapping(uint256 => address) internal _physicalClaimCreator;
+
+    // { instanceId => { redeemer => Redemption } }
+    mapping(uint256 => mapping(address => Redemption[])) internal _redemptions;
 
     constructor(address initialOwner) {
         _transferOwnership(initialOwner);
@@ -260,10 +260,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         _redeem(instanceId, physicalClaimInstance, from, 1, "");
     }
 
-
-    // TODO - pick back up here..
-
-
     /**
      * Execute onERC1155Received burn/redeem
      */
@@ -397,11 +393,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         }
     }
 
-    /** 
-     * Abstract helper to redeem multiple redeem tokens. To be implemented by inheriting contracts.
-     */
-    function _redeem(uint256 instanceId, PhysicalClaim storage burnRedeemInstance, address to, uint32 count, bytes memory data) internal virtual;
-
     /**
      * Helper to burn token
      */
@@ -452,5 +443,26 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         } else {
             revert InvalidTokenSpec();
         }
+    }
+
+    /** 
+     * Helper to redeem multiple rede
+     */
+    function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 count, bytes memory data) internal {
+        uint256 totalCount = physicalClaimInstance.redeemAmount * count;
+        if (totalCount > MAX_UINT_16) {
+            revert InvalidInput();
+        }
+        uint256 startingCount = physicalClaimInstance.redeemedCount + 1;
+        physicalClaimInstance.redeemedCount += uint32(totalCount);
+            
+        Redemption[] memory redemptions = new Redemption[](1);
+        redemptions[0] = Redemption({
+            timestamp: block.timestamp,
+            redeemedCount: physicalClaimInstance.redeemAmount
+        });
+
+        _redemptions[instanceId][to].push(redemptions[0]);
+        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, count, data);
     }
 }

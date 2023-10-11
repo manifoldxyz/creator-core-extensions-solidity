@@ -45,31 +45,4 @@ contract PhysicalClaim is PhysicalClaimCore, IPhysicalClaim {
         _validateAdmin(instanceId);
         _update(instanceId, physicalClaimParameters);
     }
-
-    /** 
-     * Helper to redeem multiple redeem tokens
-     */
-    function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 count, bytes memory data) internal override {
-        if (physicalClaimInstance.redeemAmount == 1 && count == 1) {
-            ++physicalClaimInstance.redeemedCount;
-
-            // TODO logic to redeem and make sure not over-redeemed
-
-            emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, 1, data);
-        } else {
-            uint256 totalCount = physicalClaimInstance.redeemAmount * count;
-            if (totalCount > MAX_UINT_16) {
-                revert InvalidInput();
-            }
-            uint256 startingCount = physicalClaimInstance.redeemedCount + 1;
-            physicalClaimInstance.redeemedCount += uint32(totalCount);
-            for (uint256 i; i < totalCount;) {
-                
-                // TODO logic to redeem and make sure not over-redeemed
-
-                unchecked { i++; }
-            }
-            
-        }
-    }
 }
