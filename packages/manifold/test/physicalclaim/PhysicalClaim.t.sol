@@ -228,6 +228,60 @@ contract PhysicalClaimTest is Test {
     example.burnRedeem{value: 1 ether}(instanceIds, physicalClaimCounts, burnTokens, data);
 
     vm.stopPrank();
+
+    // Case where total supply is not unlimited and they use remaining supply
+    vm.startPrank(owner);
+
+    claimPs.totalSupply = 1;
+    claimPs.redeemAmount = 1;
+    example.initializePhysicalClaim(instanceId+1, claimPs);
+
+    creatorCore721.mintBase(owner, "");
+
+    // Approve token for burning
+    creatorCore721.approve(address(example), 3);
+
+    instanceIds = new uint[](1);
+    instanceIds[0] = instanceId+1;
+
+    burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
+    burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 3,
+      merkleProof: new bytes32[](0)
+    });
+
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+
+    // Case where total supply is huge, and they just redeem 1
+    claimPs.totalSupply = 10;
+    claimPs.redeemAmount = 1;
+    example.initializePhysicalClaim(instanceId+2, claimPs);
+
+    creatorCore721.mintBase(owner, "");
+
+    // Approve token for burning
+    creatorCore721.approve(address(example), 4);
+
+    instanceIds = new uint[](1);
+    instanceIds[0] = instanceId+2;
+
+    burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
+    burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 4,
+      merkleProof: new bytes32[](0)
+    });
+
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+
+    vm.stopPrank();
   }
 
 }

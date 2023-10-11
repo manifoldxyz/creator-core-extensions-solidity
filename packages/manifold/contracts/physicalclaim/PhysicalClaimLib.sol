@@ -102,8 +102,8 @@ library PhysicalClaimLib {
         revert InvalidBurnItem();
     }
 
-        /**
-     * Helper to validate the parameters for a burn redeem
+    /**
+     * Helper to validate the parameters for a physical claim
      */
     function _validateParameters(IPhysicalClaimCore.PhysicalClaimParameters calldata physicalClaimParameters) internal pure {
         if (physicalClaimParameters.paymentReceiver == address(0)) {
