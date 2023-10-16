@@ -73,7 +73,6 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       cost: 0,
-      location: "",
       burnSet: new IPhysicalClaimCore.BurnGroup[](0),
       signer: signerForCost
     });
@@ -157,7 +156,6 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       cost: 0,
-      location: "",
       burnSet: burnSet,
       signer: signerForCost
     });

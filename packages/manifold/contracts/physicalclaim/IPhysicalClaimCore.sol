@@ -85,7 +85,6 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param startDate         the starting time for the burn redeem (0 for immediately)
      * @param endDate           the end time for the burn redeem (0 for never)
      * @param cost              the cost for each burn redeem
-     * @param location          used to construct the token URI (Arweave hash, full URI, etc.)
      * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
      * @param signer            the address of the signer for the transaction details
      */
@@ -97,7 +96,6 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint48 startDate;
         uint48 endDate;
         uint160 cost;
-        string location;
         BurnGroup[] burnSet;
         address signer;
     }
@@ -111,7 +109,6 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint48 startDate;
         uint48 endDate;
         uint160 cost;
-        string location;
         BurnGroup[] burnSet;
         address signer;
     }
