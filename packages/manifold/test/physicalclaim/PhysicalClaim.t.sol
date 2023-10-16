@@ -68,7 +68,6 @@ contract PhysicalClaimTest is Test {
     IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
       paymentReceiver: payable(owner),
       redeemAmount: 1,
-      redeemedCount: 0,
       totalSupply: 0,
       startDate: 0,
       endDate: 0,
@@ -151,7 +150,6 @@ contract PhysicalClaimTest is Test {
     IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
       paymentReceiver: payable(owner),
       redeemAmount: 1,
-      redeemedCount: 0,
       totalSupply: 0,
       startDate: 0,
       endDate: 0,

@@ -52,7 +52,7 @@ library PhysicalClaimLib {
     ) public {
         _validateParameters(physicalClaimParameters);
         // The current redeemedCount must be divisible by redeemAmount
-        if (physicalClaimParameters.redeemedCount % physicalClaimParameters.redeemAmount != 0) {
+        if (physicalClaimInstance.redeemedCount % physicalClaimParameters.redeemAmount != 0) {
             revert IPhysicalClaimCore.InvalidRedeemAmount();
         }
 
