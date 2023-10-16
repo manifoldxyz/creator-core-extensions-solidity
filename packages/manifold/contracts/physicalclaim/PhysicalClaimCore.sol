@@ -97,14 +97,14 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * (Batch overload) see {IPhysicalClaimCore-burnRedeem}.
      */
-    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, bytes[] calldata data) external payable override nonReentrant {
+    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, uint8[] calldata variations, bytes[] calldata data) external payable override nonReentrant {
         if (instanceIds.length != physicalClaimCounts.length ||
             instanceIds.length != burnTokens.length) {
             revert InvalidInput();
         }
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < instanceIds.length;) {
-            msgValueRemaining -= _burnRedeem(msgValueRemaining, instanceIds[i], physicalClaimCounts[i], burnTokens[i], true, data[i]);
+            msgValueRemaining -= _burnRedeem(msgValueRemaining, instanceIds[i], physicalClaimCounts[i], burnTokens[i], true, variations[i], data[i]);
             unchecked { ++i; }
         }
 
@@ -113,7 +113,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         }
     }
 
-    function _burnRedeem(uint256 msgValue, uint256 instanceId, uint32 physicalClaimCount, BurnToken[] calldata burnTokens, bool revertNoneRemaining, bytes memory data) private returns (uint256) {
+    function _burnRedeem(uint256 msgValue, uint256 instanceId, uint32 physicalClaimCount, BurnToken[] calldata burnTokens, bool revertNoneRemaining, uint8 variation, bytes memory data) private returns (uint256) {
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
 
         // Get the amount that can be burned
@@ -138,7 +138,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
         // Do physical claim
         _burnTokens(physicalClaimInstance, burnTokens, physicalClaimCount, msg.sender, data);
-        _redeem(instanceId, physicalClaimInstance, msg.sender, physicalClaimCount, data);
+        _redeem(instanceId, physicalClaimInstance, msg.sender, physicalClaimCount, variation, data);
 
         return payableCost;
     }
@@ -235,7 +235,8 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint256 instanceId;
         uint256 burnItemIndex;
         bytes32[] memory merkleProof;
-        (instanceId, burnItemIndex, merkleProof) = abi.decode(data, (uint256, uint256, bytes32[]));
+        uint8 variation;
+        (instanceId, burnItemIndex, merkleProof, variation) = abi.decode(data, (uint256, uint256, bytes32[], uint8));
 
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
 
@@ -257,7 +258,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
         // Do burn and redeem
         _burn(burnItem, address(this), msg.sender, id, 1, "");
-        _redeem(instanceId, physicalClaimInstance, from, 1, "");
+        _redeem(instanceId, physicalClaimInstance, from, 1, variation, "");
     }
 
     /**
@@ -281,7 +282,9 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         PhysicalClaimLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         _burn(burnItem, address(this), msg.sender, tokenId, availablePhysicalClaimCount, "");
-        _redeem(instanceId, burnRedeemInstance, from, availablePhysicalClaimCount, "");
+
+        // TODO - actually implement variations
+        _redeem(instanceId, burnRedeemInstance, from, availablePhysicalClaimCount, 1, "");
 
         // Return excess amount
         if (availablePhysicalClaimCount != burnRedeemCount) {
@@ -322,7 +325,8 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
         // Do burn redeem
         _burnTokens(burnRedeemInstance, burnTokens, availablePhysicalClaimCount, address(this), "");
-        _redeem(instanceId, burnRedeemInstance, from, availablePhysicalClaimCount, "");
+        // TODO - actually implement variations
+        _redeem(instanceId, burnRedeemInstance, from, availablePhysicalClaimCount, 1, "");
 
         // Return excess amount
         if (availablePhysicalClaimCount != burnRedeemCount) {
@@ -448,7 +452,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /** 
      * Helper to redeem multiple rede
      */
-    function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 count, bytes memory data) internal {
+    function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 count, uint8 variation, bytes memory data) internal {
         uint256 totalCount = physicalClaimInstance.redeemAmount * count;
         if (totalCount > MAX_UINT_16) {
             revert InvalidInput();
@@ -459,10 +463,11 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         Redemption[] memory redemptions = new Redemption[](1);
         redemptions[0] = Redemption({
             timestamp: block.timestamp,
-            redeemedCount: physicalClaimInstance.redeemAmount
+            redeemedCount: physicalClaimInstance.redeemAmount,
+            variation: variation
         });
 
         _redemptions[instanceId][to].push(redemptions[0]);
-        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, count, data);
+        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, count, variation, data);
     }
 }

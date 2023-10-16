@@ -66,6 +66,15 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     }
 
     /**
+     * @param id               the ID of the variation
+     * @param maxRedeems       the maximum number of times the variation can be redeemed
+     */
+    struct Variation {
+        uint8 id;
+        uint16 maxRedeems;
+    }
+
+    /**
      * @notice a `BurnGroup` is a group of valid `BurnItem`s
      * @param requiredCount     the number of `BurnItem`s (0 < requiredCount <= items.length) that 
      *                          need to be included in a burn
@@ -86,6 +95,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param endDate           the end time for the burn redeem (0 for never)
      * @param cost              the cost for each burn redeem
      * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
+     * @param variations        a list of `Variation`s for the redemptions
      * @param signer            the address of the signer for the transaction details
      */
     struct PhysicalClaimParameters {
@@ -96,6 +106,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint48 endDate;
         uint160 cost;
         BurnGroup[] burnSet;
+        Variation[] variations;
         address signer;
     }
 
@@ -109,12 +120,14 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint48 endDate;
         uint160 cost;
         BurnGroup[] burnSet;
+        Variation[] variations;
         address signer;
     }
 
     struct Redemption {
         uint timestamp;
         uint32 redeemedCount;
+        uint8 variation;
     }
 
     /**
@@ -145,9 +158,10 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param instanceIds               the instanceIds of the physical claims
      * @param physicalClaimCounts          the physical claim counts for each claim
      * @param burnTokens                the tokens to burn for each physical claim with pointers to the corresponding BurnItem requirement
+     * @param variations                the variations to redeem for each physical claim
      * @param data                      the data to emit with the PhysicalClaimRedemption event
      */
-    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, bytes[] calldata data) external payable;
+    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, uint8[] calldata variations, bytes[] calldata data) external payable;
     
     /**
      * @notice recover a token that was sent to the contract without safeTransferFrom

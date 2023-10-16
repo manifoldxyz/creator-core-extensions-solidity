@@ -73,6 +73,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
       cost: 0,
       burnSet: new IPhysicalClaimCore.BurnGroup[](0),
+      variations: new IPhysicalClaimCore.Variation[](0),
       signer: signerForCost
     });
 
@@ -108,15 +109,18 @@ contract PhysicalClaimTest is Test {
     bytes[] memory data = new bytes[](1);
     data[0] = "";
 
+    uint8[] memory variationsSelections = new uint8[](1);
+    variationsSelections[0] = 0;
+
     vm.expectRevert();
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
 
     physicalClaimCounts = new uint32[](2);
     physicalClaimCounts[0] = 1;
     physicalClaimCounts[1] = 1;
 
     vm.expectRevert();
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
 
 
     vm.stopPrank();
@@ -146,6 +150,12 @@ contract PhysicalClaimTest is Test {
         items: burnItems
       });
 
+    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
+    variations[0] = IPhysicalClaimCore.Variation({
+      id: 1,
+      maxRedeems: 1
+    });
+
     // Create claim initialization parameters
     IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
       paymentReceiver: payable(owner),
@@ -155,6 +165,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
       cost: 0,
       burnSet: burnSet,
+      variations: variations,
       signer: signerForCost
     });
 
@@ -202,7 +213,10 @@ contract PhysicalClaimTest is Test {
     bytes[] memory data = new bytes[](1);
     data[0] = "";
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+    uint8[] memory variationsSelections = new uint8[](1);
+    variationsSelections[0] = 0;
+
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
 
     vm.stopPrank();
 
@@ -225,7 +239,7 @@ contract PhysicalClaimTest is Test {
     });
 
     // Send a non-zero value burn
-    example.burnRedeem{value: 1 ether}(instanceIds, physicalClaimCounts, burnTokens, data);
+    example.burnRedeem{value: 1 ether}(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
 
     vm.stopPrank();
 
@@ -254,7 +268,7 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
 
     // Case where total supply is huge, and they just redeem 1
     claimPs.totalSupply = 10;
@@ -279,7 +293,7 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
 
     vm.stopPrank();
   }
