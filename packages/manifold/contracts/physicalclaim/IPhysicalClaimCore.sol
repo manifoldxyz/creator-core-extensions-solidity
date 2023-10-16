@@ -87,6 +87,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @param cost              the cost for each burn redeem
      * @param location          used to construct the token URI (Arweave hash, full URI, etc.)
      * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
+     * @param signer            the address of the signer for the transaction details
      */
     struct PhysicalClaimParameters {
         address payable paymentReceiver;
@@ -98,6 +99,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint160 cost;
         string location;
         BurnGroup[] burnSet;
+        address signer;
     }
 
     struct PhysicalClaim {
@@ -111,6 +113,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint160 cost;
         string location;
         BurnGroup[] burnSet;
+        address signer;
     }
 
     struct Redemption {

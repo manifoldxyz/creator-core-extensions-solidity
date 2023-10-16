@@ -22,6 +22,8 @@ contract PhysicalClaimTest is Test {
   address public other2 = 0x80AAC46bbd3C2FcE33681541a52CacBEd14bF425;
   address public other3 = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
 
+  address public signerForCost = 0x6140F00E4Ff3936702e68744f2b5978885464CBc;
+
   address public zeroAddress = address(0);
 
   uint instanceId = 1;
@@ -72,7 +74,8 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
       cost: 0,
       location: "",
-      burnSet: new IPhysicalClaimCore.BurnGroup[](0)
+      burnSet: new IPhysicalClaimCore.BurnGroup[](0),
+      signer: signerForCost
     });
 
     // Cannot do instanceId of 0
@@ -155,7 +158,8 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
       cost: 0,
       location: "",
-      burnSet: burnSet
+      burnSet: burnSet,
+      signer: signerForCost
     });
 
     // Initialize the physical claim
