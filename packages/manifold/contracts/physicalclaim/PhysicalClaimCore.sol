@@ -236,7 +236,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
         for (uint256 i; i < groupCounts.length;) {
             if (groupCounts[i] != burnRedeemInstance.burnSet[i].requiredCount * burnRedeemCount) {
-                revert InvalidBurnAmount();
+                revert InvalidBurnAmount2();
             }
             unchecked { ++i; }
         }
