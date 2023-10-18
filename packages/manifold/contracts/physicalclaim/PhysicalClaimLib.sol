@@ -51,10 +51,6 @@ library PhysicalClaimLib {
         IPhysicalClaimCore.PhysicalClaimParameters calldata physicalClaimParameters
     ) public {
         _validateParameters(physicalClaimParameters);
-        // The current redeemedCount must be divisible by redeemAmount
-        if (physicalClaimInstance.redeemedCount % physicalClaimParameters.redeemAmount != 0) {
-            revert IPhysicalClaimCore.InvalidRedeemAmount();
-        }
 
         // Overwrite the existing burnRedeem
         _setParameters(physicalClaimInstance, physicalClaimParameters);
@@ -112,9 +108,6 @@ library PhysicalClaimLib {
         if (physicalClaimParameters.endDate != 0 && physicalClaimParameters.startDate >= physicalClaimParameters.endDate) {
             revert InvalidDates();
         }
-        if (physicalClaimParameters.totalSupply % physicalClaimParameters.redeemAmount != 0) {
-            revert IPhysicalClaimCore.InvalidRedeemAmount();
-        }
     }
 
     /**
@@ -123,7 +116,6 @@ library PhysicalClaimLib {
     function _setParameters(IPhysicalClaimCore.PhysicalClaim storage physicalClaimInstance, IPhysicalClaimCore.PhysicalClaimParameters calldata physicalClaimParameters) private {
         physicalClaimInstance.startDate = physicalClaimParameters.startDate;
         physicalClaimInstance.endDate = physicalClaimParameters.endDate;
-        physicalClaimInstance.redeemAmount = physicalClaimParameters.redeemAmount;
         physicalClaimInstance.totalSupply = physicalClaimParameters.totalSupply;
         physicalClaimInstance.cost = physicalClaimParameters.cost;
         physicalClaimInstance.paymentReceiver = physicalClaimParameters.paymentReceiver;

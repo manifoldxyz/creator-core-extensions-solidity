@@ -67,7 +67,6 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
       paymentReceiver: payable(owner),
-      redeemAmount: 1,
       totalSupply: 0,
       startDate: 0,
       endDate: 0,
@@ -96,6 +95,9 @@ contract PhysicalClaimTest is Test {
     uint32[] memory physicalClaimCounts = new uint32[](1);
     physicalClaimCounts[0] = 1;
 
+    uint32[] memory currentClaimCounts = new uint32[](1);
+    currentClaimCounts[0] = 0;
+
     IPhysicalClaimCore.BurnToken[][] memory burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
     burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
     burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
@@ -113,14 +115,14 @@ contract PhysicalClaimTest is Test {
     variationsSelections[0] = 0;
 
     vm.expectRevert();
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
 
     physicalClaimCounts = new uint32[](2);
     physicalClaimCounts[0] = 1;
     physicalClaimCounts[1] = 1;
 
     vm.expectRevert();
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
 
 
     vm.stopPrank();
@@ -153,13 +155,12 @@ contract PhysicalClaimTest is Test {
     IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
     variations[0] = IPhysicalClaimCore.Variation({
       id: 1,
-      maxRedeems: 1
+      max: 1
     });
 
     // Create claim initialization parameters
     IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
       paymentReceiver: payable(owner),
-      redeemAmount: 1,
       totalSupply: 0,
       startDate: 0,
       endDate: 0,
@@ -181,7 +182,7 @@ contract PhysicalClaimTest is Test {
     example.getPhysicalClaim(2);
 
     // Can update
-    claimPs.redeemAmount = 2;
+    claimPs.totalSupply = 2;
     example.updatePhysicalClaim(instanceId, claimPs);
 
     // Can't update _not_ your own
@@ -200,6 +201,9 @@ contract PhysicalClaimTest is Test {
     uint32[] memory physicalClaimCounts = new uint32[](1);
     physicalClaimCounts[0] = 1;
 
+    uint32[] memory currentClaimCounts = new uint32[](1);
+    currentClaimCounts[0] = 0;
+
     IPhysicalClaimCore.BurnToken[][] memory burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
     burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
     burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
@@ -216,7 +220,7 @@ contract PhysicalClaimTest is Test {
     uint8[] memory variationsSelections = new uint8[](1);
     variationsSelections[0] = 0;
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
 
     vm.stopPrank();
 
@@ -239,7 +243,7 @@ contract PhysicalClaimTest is Test {
     });
 
     // Send a non-zero value burn
-    example.burnRedeem{value: 1 ether}(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
+    example.burnRedeem{value: 1 ether}(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
 
     vm.stopPrank();
 
@@ -247,7 +251,6 @@ contract PhysicalClaimTest is Test {
     vm.startPrank(owner);
 
     claimPs.totalSupply = 1;
-    claimPs.redeemAmount = 1;
     example.initializePhysicalClaim(instanceId+1, claimPs);
 
     creatorCore721.mintBase(owner, "");
@@ -268,11 +271,10 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
 
     // Case where total supply is huge, and they just redeem 1
     claimPs.totalSupply = 10;
-    claimPs.redeemAmount = 1;
     example.initializePhysicalClaim(instanceId+2, claimPs);
 
     creatorCore721.mintBase(owner, "");
@@ -293,7 +295,7 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, burnTokens, variationsSelections, data);
+    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
 
     vm.stopPrank();
   }

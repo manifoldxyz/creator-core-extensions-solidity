@@ -71,7 +71,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      */
     struct Variation {
         uint8 id;
-        uint16 maxRedeems;
+        uint16 max;
     }
 
     /**
@@ -88,19 +88,16 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     /**
      * @notice parameters for burn redeem intialization/updates
      * @param paymentReceiver   the address to forward proceeds from paid burn redeems
-     * @param storageProtocol   the type of storage used for the redeem token URIs
-     * @param redeemAmount      the number of redeem tokens to redeem for each burn redeem
-     * @param totalSupply       the maximum number of redeem tokens to redeem (0 for unlimited)
+     * @param totalSupply       the maximum number of redemptions to redeem (0 for unlimited)
      * @param startDate         the starting time for the burn redeem (0 for immediately)
      * @param endDate           the end time for the burn redeem (0 for never)
-     * @param cost              the cost for each burn redeem
+     * @param cost              the cost for each burn redeem (shipping)
      * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
      * @param variations        a list of `Variation`s for the redemptions
      * @param signer            the address of the signer for the transaction details
      */
     struct PhysicalClaimParameters {
         address payable paymentReceiver;
-        uint16 redeemAmount;
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
@@ -113,9 +110,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
     struct PhysicalClaim {
         address payable paymentReceiver;
         uint32 redeemedCount;
-        uint16 redeemAmount;
         uint32 totalSupply;
-        uint8 contractVersion;
         uint48 startDate;
         uint48 endDate;
         uint160 cost;
@@ -153,15 +148,22 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      */
     function getPhysicalClaim(uint256 instanceId) external view returns(PhysicalClaim memory);
     
+
+    // struct BurnRedeemSubmission {
+    //     uint instanceId;
+    //      uint32 whatever;
+    // }
+
     /**
      * @notice burn tokens and physical claims multiple times in a single transaction
      * @param instanceIds               the instanceIds of the physical claims
-     * @param physicalClaimCounts          the physical claim counts for each claim
+     * @param physicalClaimCounts       the physical claim counts for each claim
+     * @param currentClaimCounts        the current number of claims we have for each
      * @param burnTokens                the tokens to burn for each physical claim with pointers to the corresponding BurnItem requirement
      * @param variations                the variations to redeem for each physical claim
      * @param data                      the data to emit with the PhysicalClaimRedemption event
      */
-    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, uint8[] calldata variations, bytes[] calldata data) external payable;
+    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, uint32[] calldata currentClaimCounts, BurnToken[][] calldata burnTokens, uint8[] calldata variations, bytes[] calldata data) external payable;
     
     /**
      * @notice recover a token that was sent to the contract without safeTransferFrom

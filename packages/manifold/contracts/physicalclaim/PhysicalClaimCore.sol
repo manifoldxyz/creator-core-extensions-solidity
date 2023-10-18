@@ -30,7 +30,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     // { instanceId => PhysicalClaim }
     mapping(uint256 => PhysicalClaim) internal _physicalClaims;
 
-    // { instanceId => creator } -> TODO: make it so multiple people can administer a physical claim 
+    // { instanceId => creator } -> TODO: make it so multiple people can administer a physical claim
     mapping(uint256 => address) internal _physicalClaimCreator;
 
     // { instanceId => { redeemer => Redemption } }
@@ -97,7 +97,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * (Batch overload) see {IPhysicalClaimCore-burnRedeem}.
      */
-    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, BurnToken[][] calldata burnTokens, uint8[] calldata variations, bytes[] calldata data) external payable override nonReentrant {
+    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, uint32[] calldata currentClaimCounts, BurnToken[][] calldata burnTokens, uint8[] calldata variations, bytes[] calldata data) external payable override nonReentrant {
         if (instanceIds.length != physicalClaimCounts.length ||
             instanceIds.length != burnTokens.length) {
             revert InvalidInput();
@@ -117,7 +117,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
 
         // Get the amount that can be burned
-        physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, physicalClaimInstance.redeemAmount, physicalClaimCount, revertNoneRemaining);
+        physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, physicalClaimCount, revertNoneRemaining);
         if (physicalClaimCount == 0) {
             return 0;
         }
@@ -245,7 +245,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // 2. The burn only requires one NFT (one burnSet element and one count)
         _validateReceivedInput(physicalClaimInstance.cost, physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount, from);
 
-        _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, physicalClaimInstance.redeemAmount, 1, true);
+        _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, 1, true);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = physicalClaimInstance.burnSet[0].items[burnItemIndex];
@@ -272,7 +272,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // 2. The burn only requires one NFT (one burn set element and one required count in the set)
         _validateReceivedInput(burnRedeemInstance.cost, burnRedeemInstance.burnSet.length, burnRedeemInstance.burnSet[0].requiredCount, from);
 
-        uint32 availablePhysicalClaimCount = _getAvailablePhysicalClaimCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount, true);
+        uint32 availablePhysicalClaimCount = _getAvailablePhysicalClaimCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemCount, true);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
@@ -304,7 +304,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         if (burnRedeemInstance.cost != 0 || burnTokens.length != tokenIds.length) {
             revert InvalidInput();
         }
-        uint32 availablePhysicalClaimCount = _getAvailablePhysicalClaimCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemInstance.redeemAmount, burnRedeemCount, true);
+        uint32 availablePhysicalClaimCount = _getAvailablePhysicalClaimCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemCount, true);
 
         // Verify the values match what is needed
         uint256[] memory returnValues = new uint256[](tokenIds.length);
@@ -380,11 +380,11 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * Helper to get the number of burn redeems the person can accomplish
      */
-    function _getAvailablePhysicalClaimCount(uint32 totalSupply, uint32 redeemedCount, uint32 redeemAmount, uint32 desiredCount, bool revertNoneRemaining) internal pure returns(uint32 burnRedeemCount) {
+    function _getAvailablePhysicalClaimCount(uint32 totalSupply, uint32 redeemedCount, uint32 desiredCount, bool revertNoneRemaining) internal pure returns(uint32 burnRedeemCount) {
         if (totalSupply == 0) {
             burnRedeemCount = desiredCount;
         } else {
-            uint32 remainingCount = (totalSupply - redeemedCount) / redeemAmount;
+            uint32 remainingCount = (totalSupply - redeemedCount);
             if (remainingCount > desiredCount) {
                 burnRedeemCount = desiredCount;
             } else {
@@ -453,7 +453,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
      * Helper to redeem multiple rede
      */
     function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 count, uint8 variation, bytes memory data) internal {
-        uint256 totalCount = physicalClaimInstance.redeemAmount * count;
+        uint256 totalCount = count;
         if (totalCount > MAX_UINT_16) {
             revert InvalidInput();
         }
@@ -463,7 +463,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         Redemption[] memory redemptions = new Redemption[](1);
         redemptions[0] = Redemption({
             timestamp: block.timestamp,
-            redeemedCount: physicalClaimInstance.redeemAmount,
+            redeemedCount: count,
             variation: variation
         });
 
