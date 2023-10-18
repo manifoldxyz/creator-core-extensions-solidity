@@ -125,6 +125,15 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
         uint8 variation;
     }
 
+    struct PhysicalClaimSubmission {
+        uint instanceId;
+        uint32 physicalClaimCount;
+        uint32 currentClaimCount;
+        BurnToken[] burnTokens;
+        uint8 variation;
+        bytes data;
+    }
+
     /**
      * @notice a pointer to a `BurnItem` in a `BurnGroup` used in calls to `burnRedeem`
      * @param groupIndex        the index of the `BurnGroup` in `PhysicalClaim.burnSet`
@@ -147,23 +156,12 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver  {
      * @return PhysicalClaim               the physical claim object
      */
     function getPhysicalClaim(uint256 instanceId) external view returns(PhysicalClaim memory);
-    
-
-    // struct BurnRedeemSubmission {
-    //     uint instanceId;
-    //      uint32 whatever;
-    // }
 
     /**
      * @notice burn tokens and physical claims multiple times in a single transaction
-     * @param instanceIds               the instanceIds of the physical claims
-     * @param physicalClaimCounts       the physical claim counts for each claim
-     * @param currentClaimCounts        the current number of claims we have for each
-     * @param burnTokens                the tokens to burn for each physical claim with pointers to the corresponding BurnItem requirement
-     * @param variations                the variations to redeem for each physical claim
-     * @param data                      the data to emit with the PhysicalClaimRedemption event
+     * @param submissions               the submissions for the physical claims
      */
-    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, uint32[] calldata currentClaimCounts, BurnToken[][] calldata burnTokens, uint8[] calldata variations, bytes[] calldata data) external payable;
+    function burnRedeem(PhysicalClaimSubmission[] calldata submissions) external payable;
     
     /**
      * @notice recover a token that was sent to the contract without safeTransferFrom

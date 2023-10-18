@@ -97,14 +97,10 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * (Batch overload) see {IPhysicalClaimCore-burnRedeem}.
      */
-    function burnRedeem(uint256[] calldata instanceIds, uint32[] calldata physicalClaimCounts, uint32[] calldata currentClaimCounts, BurnToken[][] calldata burnTokens, uint8[] calldata variations, bytes[] calldata data) external payable override nonReentrant {
-        if (instanceIds.length != physicalClaimCounts.length ||
-            instanceIds.length != burnTokens.length) {
-            revert InvalidInput();
-        }
+    function burnRedeem(PhysicalClaimSubmission[] calldata submissions) external payable override nonReentrant {
         uint256 msgValueRemaining = msg.value;
-        for (uint256 i; i < instanceIds.length;) {
-            msgValueRemaining -= _burnRedeem(msgValueRemaining, instanceIds[i], physicalClaimCounts[i], burnTokens[i], true, variations[i], data[i]);
+        for (uint256 i; i < submissions.length;) {
+            msgValueRemaining -= _burnRedeem(msgValueRemaining, submissions[i].instanceId, submissions[i].physicalClaimCount, submissions[i].burnTokens, true, submissions[i].variation, submissions[i].data);
             unchecked { ++i; }
         }
 

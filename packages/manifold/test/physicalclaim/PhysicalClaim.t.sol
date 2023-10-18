@@ -84,47 +84,6 @@ contract PhysicalClaimTest is Test {
     vm.expectRevert();
     example.initializePhysicalClaim(2**56, claimPs);
 
-    // Cannot do a burn redeem with non-matching lengths of inputs
-
-    example.initializePhysicalClaim(instanceId, claimPs);
-
-    uint[] memory instanceIds = new uint[](2);
-    instanceIds[0] = instanceId;
-    instanceIds[1] = instanceId;
-
-    uint32[] memory physicalClaimCounts = new uint32[](1);
-    physicalClaimCounts[0] = 1;
-
-    uint32[] memory currentClaimCounts = new uint32[](1);
-    currentClaimCounts[0] = 0;
-
-    IPhysicalClaimCore.BurnToken[][] memory burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
-    burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
-    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
-      groupIndex: 0,
-      itemIndex: 0,
-      contractAddress: address(creatorCore721),
-      id: 1,
-      merkleProof: new bytes32[](0)
-    });
-
-    bytes[] memory data = new bytes[](1);
-    data[0] = "";
-
-    uint8[] memory variationsSelections = new uint8[](1);
-    variationsSelections[0] = 0;
-
-    vm.expectRevert();
-    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
-
-    physicalClaimCounts = new uint32[](2);
-    physicalClaimCounts[0] = 1;
-    physicalClaimCounts[1] = 1;
-
-    vm.expectRevert();
-    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
-
-
     vm.stopPrank();
   }
 
@@ -195,18 +154,8 @@ contract PhysicalClaimTest is Test {
     // Approve token for burning
     creatorCore721.approve(address(example), 1);
 
-    uint[] memory instanceIds = new uint[](1);
-    instanceIds[0] = instanceId;
-
-    uint32[] memory physicalClaimCounts = new uint32[](1);
-    physicalClaimCounts[0] = 1;
-
-    uint32[] memory currentClaimCounts = new uint32[](1);
-    currentClaimCounts[0] = 0;
-
-    IPhysicalClaimCore.BurnToken[][] memory burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
-    burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
-    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
       groupIndex: 0,
       itemIndex: 0,
       contractAddress: address(creatorCore721),
@@ -220,7 +169,15 @@ contract PhysicalClaimTest is Test {
     uint8[] memory variationsSelections = new uint8[](1);
     variationsSelections[0] = 0;
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
+    submissions[0].instanceId = instanceId;
+    submissions[0].physicalClaimCount = 1;
+    submissions[0].currentClaimCount = 0;
+    submissions[0].burnTokens = burnTokens;
+    submissions[0].variation = 0;
+    submissions[0].data = data[0];
+
+    example.burnRedeem(submissions);
 
     vm.stopPrank();
 
@@ -234,7 +191,7 @@ contract PhysicalClaimTest is Test {
     // Approve token for burning
     creatorCore721.approve(address(example), 2);
 
-    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
       groupIndex: 0,
       itemIndex: 0,
       contractAddress: address(creatorCore721),
@@ -243,7 +200,7 @@ contract PhysicalClaimTest is Test {
     });
 
     // Send a non-zero value burn
-    example.burnRedeem{value: 1 ether}(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
+    example.burnRedeem{value: 1 ether}(submissions);
 
     vm.stopPrank();
 
@@ -258,12 +215,7 @@ contract PhysicalClaimTest is Test {
     // Approve token for burning
     creatorCore721.approve(address(example), 3);
 
-    instanceIds = new uint[](1);
-    instanceIds[0] = instanceId+1;
-
-    burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
-    burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
-    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
       groupIndex: 0,
       itemIndex: 0,
       contractAddress: address(creatorCore721),
@@ -271,7 +223,9 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
+    submissions[0].instanceId = instanceId+1;
+
+    example.burnRedeem(submissions);
 
     // Case where total supply is huge, and they just redeem 1
     claimPs.totalSupply = 10;
@@ -282,12 +236,7 @@ contract PhysicalClaimTest is Test {
     // Approve token for burning
     creatorCore721.approve(address(example), 4);
 
-    instanceIds = new uint[](1);
-    instanceIds[0] = instanceId+2;
-
-    burnTokens = new IPhysicalClaimCore.BurnToken[][](1);
-    burnTokens[0] = new IPhysicalClaimCore.BurnToken[](1);
-    burnTokens[0][0] = IPhysicalClaimCore.BurnToken({
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
       groupIndex: 0,
       itemIndex: 0,
       contractAddress: address(creatorCore721),
@@ -295,7 +244,9 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    example.burnRedeem(instanceIds, physicalClaimCounts, currentClaimCounts, burnTokens, variationsSelections, data);
+    submissions[0].instanceId = instanceId+2;
+
+    example.burnRedeem(submissions);
 
     vm.stopPrank();
   }
