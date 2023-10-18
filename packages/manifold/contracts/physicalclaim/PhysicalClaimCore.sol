@@ -8,7 +8,6 @@ import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
@@ -43,7 +42,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165, AdminControl) returns (bool) {
         return interfaceId == type(IPhysicalClaimCore).interfaceId ||
             interfaceId == type(IERC721Receiver).interfaceId ||
-            interfaceId == type(IERC1155Receiver).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -157,59 +155,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     }
 
     /**
-     * @dev See {IERC1155Receiver-onERC1155Received}.
-     */
-    function onERC1155Received(
-        address,
-        address from,
-        uint256 id,
-        uint256 value,
-        bytes calldata data
-    ) external override nonReentrant returns(bytes4) {
-        // Check calldata is valid
-        if (data.length % 32 != 0) {
-            revert InvalidData();
-        }
-
-        uint256 instanceId;
-        uint32 physicalClaimCount;
-        uint256 burnItemIndex;
-        bytes32[] memory merkleProof;
-        (instanceId, physicalClaimCount, burnItemIndex, merkleProof) = abi.decode(data, (uint256, uint32, uint256, bytes32[]));
-
-        // Do burn redeem
-        _onERC1155Received(from, id, value, instanceId, physicalClaimCount, burnItemIndex, merkleProof);
-
-        return this.onERC1155Received.selector;
-    }
-
-    /**
-     * @dev See {IERC1155Receiver-onERC1155BatchReceived}.
-     */
-    function onERC1155BatchReceived(
-        address,
-        address from,
-        uint256[] calldata ids,
-        uint256[] calldata values,
-        bytes calldata data
-    ) external override nonReentrant returns(bytes4) {
-        // Check calldata is valid
-        if (data.length % 32 != 0) {
-            revert InvalidData();
-        }
-
-        uint256 instanceId;
-        uint32 physicalClaimCount;
-        BurnToken[] memory burnTokens;
-        (instanceId, physicalClaimCount, burnTokens) = abi.decode(data, (uint256, uint32, BurnToken[]));
-
-        // Do burn redeem
-        _onERC1155BatchReceived(from, ids, values, instanceId, physicalClaimCount, burnTokens);
-
-        return this.onERC1155BatchReceived.selector;
-    }
-
-    /**
      * @notice  token transfer callback
      * @param from      the person sending the tokens
      * @param id        the token id of the burn token
@@ -252,79 +197,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // Do burn and redeem
         _burn(burnItem, address(this), msg.sender, id, 1, "");
         _redeem(instanceId, physicalClaimInstance, from, 1, variation, "");
-    }
-
-    /**
-     * Execute onERC1155Received burn/redeem
-     */
-    function _onERC1155Received(address from, uint256 tokenId, uint256 value, uint256 instanceId, uint32 burnRedeemCount, uint256 burnItemIndex, bytes32[] memory merkleProof) private {
-        PhysicalClaim storage burnRedeemInstance = _getPhysicalClaim(instanceId);
-
-        // A single 1155 can only be sent in directly for a burn if:
-        // 1. There is no cost to the burn (because no payment can be sent with a transfer)
-        // 2. The burn only requires one NFT (one burn set element and one required count in the set)
-        _validateReceivedInput(burnRedeemInstance.cost, burnRedeemInstance.burnSet.length, burnRedeemInstance.burnSet[0].requiredCount, from);
-
-        uint32 availablePhysicalClaimCount = _getAvailablePhysicalClaimCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemCount);
-
-        // Check that the burn token is valid
-        BurnItem memory burnItem = burnRedeemInstance.burnSet[0].items[burnItemIndex];
-        if (value != burnItem.amount * burnRedeemCount) {
-            revert InvalidBurnAmount();
-        }
-        PhysicalClaimLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
-
-        _burn(burnItem, address(this), msg.sender, tokenId, availablePhysicalClaimCount, "");
-
-        // TODO - actually implement variations
-        _redeem(instanceId, burnRedeemInstance, from, availablePhysicalClaimCount, 1, "");
-
-        // Return excess amount
-        if (availablePhysicalClaimCount != burnRedeemCount) {
-            IERC1155(msg.sender).safeTransferFrom(address(this), from, tokenId, (burnRedeemCount - availablePhysicalClaimCount) * burnItem.amount, "");
-        }
-    }
-
-    /**
-     * Execute onERC1155BatchReceived burn/redeem
-     */
-    function _onERC1155BatchReceived(address from, uint256[] calldata tokenIds, uint256[] calldata values, uint256 instanceId, uint32 burnRedeemCount, BurnToken[] memory burnTokens) private {
-        PhysicalClaim storage burnRedeemInstance = _getPhysicalClaim(instanceId);
-
-        // A single 1155 can only be sent in directly for a burn if:
-        // 1. There is no cost to the burn (because no payment can be sent with a transfer)
-        // 2. We have the right data length
-        if (burnRedeemInstance.cost != 0 || burnTokens.length != tokenIds.length) {
-            revert InvalidInput();
-        }
-        uint32 availablePhysicalClaimCount = _getAvailablePhysicalClaimCount(burnRedeemInstance.totalSupply, burnRedeemInstance.redeemedCount, burnRedeemCount);
-
-        // Verify the values match what is needed
-        uint256[] memory returnValues = new uint256[](tokenIds.length);
-        for (uint256 i; i < burnTokens.length;) {
-            BurnToken memory burnToken = burnTokens[i];
-            BurnItem memory burnItem = burnRedeemInstance.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
-            if (burnToken.id != tokenIds[i]) {
-                revert InvalidToken(tokenIds[i]);
-            }
-            if (burnItem.amount * burnRedeemCount != values[i]) {
-                revert InvalidRedeemAmount();
-            }
-            if (availablePhysicalClaimCount != burnRedeemCount) {
-                returnValues[i] = values[i] - burnItem.amount * availablePhysicalClaimCount;
-            }
-            unchecked { ++i; }
-        }
-
-        // Do burn redeem
-        _burnTokens(burnRedeemInstance, burnTokens, availablePhysicalClaimCount, address(this), "");
-        // TODO - actually implement variations
-        _redeem(instanceId, burnRedeemInstance, from, availablePhysicalClaimCount, 1, "");
-
-        // Return excess amount
-        if (availablePhysicalClaimCount != burnRedeemCount) {
-            IERC1155(msg.sender).safeBatchTransferFrom(address(this), from, tokenIds, returnValues, "");
-        }
     }
 
     function _validateReceivedInput(uint256 cost, uint256 length, uint256 requiredCount, address from) private view {
@@ -394,29 +266,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
      * Helper to burn token
      */
     function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount, bytes memory data) private {
-        if (burnItem.tokenSpec == TokenSpec.ERC1155) {
-            uint256 amount = burnItem.amount * burnRedeemCount;
-
-            if (burnItem.burnSpec == BurnSpec.NONE) {
-                // Send to 0xdEaD to burn if contract doesn't have burn function
-                IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, data);
-
-            } else if (burnItem.burnSpec == BurnSpec.MANIFOLD) {
-                // Burn using the creator core's burn function
-                uint256[] memory tokenIds = new uint256[](1);
-                tokenIds[0] = tokenId;
-                uint256[] memory amounts = new uint256[](1);
-                amounts[0] = amount;
-                Manifold1155(contractAddress).burn(from, tokenIds, amounts);
-
-            } else if (burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
-                // Burn using OpenZeppelin's burn function
-                OZBurnable1155(contractAddress).burn(from, tokenId, amount);
-
-            } else {
-                revert InvalidBurnSpec();
-            }
-        } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
+        if (burnItem.tokenSpec == TokenSpec.ERC721) {
             if (burnRedeemCount != 1) {
                 revert InvalidBurnAmount();
             } 
