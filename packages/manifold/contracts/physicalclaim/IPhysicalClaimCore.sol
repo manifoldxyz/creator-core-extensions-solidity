@@ -68,7 +68,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
 
     /**
      * @param id               the ID of the variation
-     * @param maxRedeems       the maximum number of times the variation can be redeemed
+     * @param max       the maximum number of times the variation can be redeemed
      */
     struct Variation {
         uint8 id;
