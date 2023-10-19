@@ -68,7 +68,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
 
     /**
      * @param id               the ID of the variation
-     * @param max       the maximum number of times the variation can be redeemed
+     * @param max              the maximum number of times the variation can be redeemed
      */
     struct Variation {
         uint8 id;
@@ -155,7 +155,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     /**
      * @notice get a physical claim corresponding to an instanceId
      * @param instanceId                the instanceId of the physical claim
-     * @return PhysicalClaim               the physical claim object
+     * @return PhysicalClaim            the physical claim object
      */
     function getPhysicalClaim(uint256 instanceId) external view returns(PhysicalClaim memory);
 
