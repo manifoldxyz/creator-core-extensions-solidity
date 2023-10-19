@@ -112,9 +112,9 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
+        address signer;
         BurnGroup[] burnSet;
         Variation[] variations;
-        address signer;
     }
 
     struct Redemption {
