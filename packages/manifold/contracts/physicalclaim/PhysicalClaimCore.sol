@@ -109,10 +109,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
             msgValueRemaining -= _burnRedeem(msgValueRemaining, submissions[i]);
             unchecked { ++i; }
         }
-
-        if (msgValueRemaining != 0) {
-            _forwardValue(payable(msg.sender), msgValueRemaining);
-        }
     }
 
     function _burnRedeem(uint256 msgValue, PhysicalClaimSubmission calldata submission) private returns (uint256) {
