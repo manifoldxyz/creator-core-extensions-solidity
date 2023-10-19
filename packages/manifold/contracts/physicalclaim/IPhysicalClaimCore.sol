@@ -91,7 +91,6 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
      * @param totalSupply       the maximum number of redemptions to redeem (0 for unlimited)
      * @param startDate         the starting time for the burn redeem (0 for immediately)
      * @param endDate           the end time for the burn redeem (0 for never)
-     * @param cost              the cost for each burn redeem (shipping)
      * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
      * @param variations        a list of `Variation`s for the redemptions
      * @param signer            the address of the signer for the transaction details
@@ -101,7 +100,6 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
-        uint160 cost;
         BurnGroup[] burnSet;
         Variation[] variations;
         address signer;
@@ -113,7 +111,6 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
         uint32 totalSupply;
         uint48 startDate;
         uint48 endDate;
-        uint160 cost;
         BurnGroup[] burnSet;
         Variation[] variations;
         address signer;

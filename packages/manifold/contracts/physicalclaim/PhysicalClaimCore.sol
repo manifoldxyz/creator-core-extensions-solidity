@@ -113,14 +113,15 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // Get the amount that can be burned
         physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, physicalClaimCount);
 
-        uint256 payableCost = physicalClaimInstance.cost;
-        uint256 cost = physicalClaimInstance.cost;
+        uint cost;
+        if (physicalClaimInstance.signer == address(0)) {
+            cost = 0;
+        }
 
         if (physicalClaimCount > 1) {
-            payableCost *= physicalClaimCount;
             cost *= physicalClaimCount;
         }
-        if (payableCost > msgValue) {
+        if (cost > msgValue) {
             revert InvalidPaymentAmount();
         }
         if (cost > 0) {
@@ -131,7 +132,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         _burnTokens(physicalClaimInstance, burnTokens, physicalClaimCount, msg.sender, data);
         _redeem(instanceId, physicalClaimInstance, msg.sender, physicalClaimCount, variation, data);
 
-        return payableCost;
+        return cost;
     }
 
     /**
@@ -181,7 +182,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // A single  can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
         // 2. The burn only requires one NFT (one burnSet element and one count)
-        _validateReceivedInput(physicalClaimInstance.cost, physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount, from);
+        _validateReceivedInput(physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount, from);
 
         _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, 1);
 
@@ -199,8 +200,8 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         _redeem(instanceId, physicalClaimInstance, from, 1, variation, "");
     }
 
-    function _validateReceivedInput(uint256 cost, uint256 length, uint256 requiredCount, address from) private view {
-        if (cost != 0 || length != 1 || requiredCount != 1) {
+    function _validateReceivedInput(uint256 length, uint256 requiredCount, address from) private view {
+        if (length != 1 || requiredCount != 1) {
             revert InvalidInput();
         }
     }
