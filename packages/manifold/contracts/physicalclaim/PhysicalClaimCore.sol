@@ -106,15 +106,16 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         }
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < submissions.length;) {
-            if (msgValueRemaining < submissions[i].totalCost) {
+            PhysicalClaimSubmission memory currentSub = submissions[i];
+            if (msgValueRemaining < currentSub.totalCost) {
                 revert InvalidPaymentAmount();
             }
-            msgValueRemaining -= _burnRedeem(submissions[i]);
+            msgValueRemaining -= _burnRedeem(currentSub);
             unchecked { ++i; }
         }
     }
 
-    function _burnRedeem(PhysicalClaimSubmission calldata submission) private returns (uint256) {
+    function _burnRedeem(PhysicalClaimSubmission memory submission) private returns (uint256) {
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(submission.instanceId);
 
         // Get the amount that can be burned
@@ -136,7 +137,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         return submission.totalCost;
     }
 
-    function _checkPriceSignature(uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
+    function _checkPriceSignature(uint256 instanceId, bytes memory signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
         // Verify valid message based on input variables
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, cost));
         // Verify nonce usage/re-use
