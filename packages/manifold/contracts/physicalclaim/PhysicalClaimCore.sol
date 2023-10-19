@@ -322,6 +322,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         });
 
         _redemptions[instanceId][to].push(redemptions[0]);
-        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, count, variation, data);
+        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, variation, count, data);
     }
 }
