@@ -164,7 +164,7 @@ contract PhysicalClaimTest is Test {
 
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -217,7 +217,7 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    submissions[0].instanceId = instanceId+1;
+    submissions[0].instanceId = uint56(instanceId+1);
 
     example.burnRedeem(submissions);
 
@@ -238,7 +238,7 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    submissions[0].instanceId = instanceId+2;
+    submissions[0].instanceId = uint56(instanceId+2);
 
     example.burnRedeem(submissions);
 
@@ -307,7 +307,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -327,7 +327,7 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 1;
     submissions[0].burnTokens = burnTokens;
@@ -420,7 +420,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -495,7 +495,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](2);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -510,7 +510,7 @@ contract PhysicalClaimTest is Test {
       id: 2,
       merkleProof: new bytes32[](0)
     });
-    submissions[1].instanceId = instanceId;
+    submissions[1].instanceId = uint56(instanceId);
     submissions[1].physicalClaimCount = 1;
     submissions[1].currentClaimCount = 0;
     submissions[1].burnTokens = burnTokens2;
@@ -583,7 +583,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -655,7 +655,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -727,7 +727,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -800,7 +800,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -872,7 +872,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -944,7 +944,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
@@ -1019,7 +1019,7 @@ contract PhysicalClaimTest is Test {
     });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = instanceId;
+    submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
