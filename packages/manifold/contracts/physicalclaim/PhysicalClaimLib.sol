@@ -118,6 +118,7 @@ library PhysicalClaimLib {
         physicalClaimInstance.endDate = physicalClaimParameters.endDate;
         physicalClaimInstance.totalSupply = physicalClaimParameters.totalSupply;
         physicalClaimInstance.paymentReceiver = physicalClaimParameters.paymentReceiver;
+        physicalClaimInstance.signer = physicalClaimParameters.signer;
     }
 
     /**

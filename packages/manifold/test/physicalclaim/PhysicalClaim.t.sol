@@ -23,6 +23,7 @@ contract PhysicalClaimTest is Test {
   address public other3 = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
 
   address public signerForCost = 0x6140F00E4Ff3936702e68744f2b5978885464CBc;
+  address public zeroSigner = address(0);
 
   address public zeroAddress = address(0);
 
@@ -72,7 +73,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
       burnSet: new IPhysicalClaimCore.BurnGroup[](0),
       variations: new IPhysicalClaimCore.Variation[](0),
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Cannot do instanceId of 0
@@ -125,7 +126,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -285,7 +286,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -390,7 +391,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -472,7 +473,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -561,7 +562,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -633,7 +634,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -705,7 +706,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -778,7 +779,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -850,7 +851,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -922,7 +923,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -996,7 +997,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -1081,7 +1082,7 @@ contract PhysicalClaimTest is Test {
 
       burnSet: burnSet,
       variations: variations,
-      signer: signerForCost
+      signer: zeroSigner
     });
 
     // Initialize the physical claim
@@ -1111,6 +1112,79 @@ contract PhysicalClaimTest is Test {
     vm.expectRevert();
     example.initializePhysicalClaim(instanceId, claimPs);
 
+    vm.stopPrank();
+  }
+
+  function testSend0EthButHasCost() public {
+    vm.startPrank(owner);
+
+    // Mint 2 tokens to other
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 3,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+      requiredCount: 1,
+      items: burnItems
+    });
+
+    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
+    variations[0] = IPhysicalClaimCore.Variation({
+      id: 1,
+      max: 1
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      burnSet: burnSet,
+      variations: variations,
+      signer: signerForCost
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Approve token for burning
+    creatorCore721.approve(address(example), 1);
+
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
+    submissions[0].instanceId = uint56(instanceId);
+    submissions[0].physicalClaimCount = 1;
+    submissions[0].currentClaimCount = 0;
+    submissions[0].burnTokens = burnTokens;
+    submissions[0].totalCost = 1;
+    submissions[0].variation = 0;
+    submissions[0].data = "";
+
+    vm.expectRevert();
+    example.burnRedeem(submissions);
     vm.stopPrank();
   }
 
