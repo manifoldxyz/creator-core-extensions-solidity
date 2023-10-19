@@ -110,12 +110,13 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
             if (msgValueRemaining < currentSub.totalCost) {
                 revert InvalidPaymentAmount();
             }
-            msgValueRemaining -= _burnRedeem(currentSub);
+            _burnRedeem(currentSub);
+            msgValueRemaining -= currentSub.totalCost;
             unchecked { ++i; }
         }
     }
 
-    function _burnRedeem(PhysicalClaimSubmission memory submission) private returns (uint256) {
+    function _burnRedeem(PhysicalClaimSubmission memory submission) private {
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(submission.instanceId);
 
         // Get the amount that can be burned
@@ -133,8 +134,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // Do physical claim
         _burnTokens(physicalClaimInstance, submission.burnTokens, physicalClaimCount, msg.sender, submission.data);
         _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.physicalClaimCount, submission.variation, submission.data);
-
-        return submission.totalCost;
     }
 
     function _checkPriceSignature(uint256 instanceId, bytes memory signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
