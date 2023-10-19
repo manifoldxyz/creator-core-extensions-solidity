@@ -133,8 +133,8 @@ library PhysicalClaimLib {
             }
             burnGroup.requiredCount = burnGroups[i].requiredCount;
             for (uint256 j; j < burnGroups[i].items.length;) {
-                IPhysicalClaimCore.BurnItem memory burnItem = burnGroups[i].items[j];
-                uint256 amount = burnItem.amount;
+                // IPhysicalClaimCore.BurnItem memory burnItem = burnGroups[i].items[j];
+                // uint256 amount = burnItem.amount;
                 burnGroup.items.push(burnGroups[i].items[j]);
                 unchecked { ++j; }
             }

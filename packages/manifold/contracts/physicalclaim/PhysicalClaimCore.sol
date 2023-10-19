@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./PhysicalClaimLib.sol";
 import "./IPhysicalClaimCore.sol";
@@ -22,6 +23,7 @@ import "./Interfaces.sol";
  */
 abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IPhysicalClaimCore {
     using Strings for uint256;
+    using ECDSA for bytes32;
 
     uint256 internal constant MAX_UINT_16 = 0xffff;
     uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
@@ -34,6 +36,9 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
     // { instanceId => { redeemer => Redemption } }
     mapping(uint256 => mapping(address => Redemption[])) internal _redemptions;
+
+    // { instanceId => nonce => t/f  }
+    mapping(uint256 => mapping(bytes32 => bool)) internal _usedMessages;
 
     constructor(address initialOwner) {
         _transferOwnership(initialOwner);
@@ -96,9 +101,12 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
      * (Batch overload) see {IPhysicalClaimCore-burnRedeem}.
      */
     function burnRedeem(PhysicalClaimSubmission[] calldata submissions) external payable override nonReentrant {
+        if (submissions.length == 0) {
+            revert InvalidInput();
+        }
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < submissions.length;) {
-            msgValueRemaining -= _burnRedeem(msgValueRemaining, submissions[i].instanceId, submissions[i].physicalClaimCount, submissions[i].burnTokens, submissions[i].variation, submissions[i].data);
+            msgValueRemaining -= _burnRedeem(msgValueRemaining, submissions[i]);
             unchecked { ++i; }
         }
 
@@ -107,15 +115,18 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         }
     }
 
-    function _burnRedeem(uint256 msgValue, uint256 instanceId, uint32 physicalClaimCount, BurnToken[] calldata burnTokens, uint8 variation, bytes memory data) private returns (uint256) {
-        PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
+    function _burnRedeem(uint256 msgValue, PhysicalClaimSubmission calldata submission) private returns (uint256) {
+        PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(submission.instanceId);
 
         // Get the amount that can be burned
-        physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, physicalClaimCount);
+        uint32 physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, submission.physicalClaimCount);
 
         uint cost;
         if (physicalClaimInstance.signer == address(0)) {
             cost = 0;
+        } else {
+            // Check that the message value is what was signed...
+            _checkPriceSignature(submission.instanceId, submission.signature, submission.message, submission.nonce, physicalClaimInstance.signer, msgValue);
         }
 
         if (physicalClaimCount > 1) {
@@ -129,10 +140,20 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         }
 
         // Do physical claim
-        _burnTokens(physicalClaimInstance, burnTokens, physicalClaimCount, msg.sender, data);
-        _redeem(instanceId, physicalClaimInstance, msg.sender, physicalClaimCount, variation, data);
+        _burnTokens(physicalClaimInstance, submission.burnTokens, physicalClaimCount, msg.sender, submission.data);
+        _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.physicalClaimCount, submission.variation, submission.data);
 
         return cost;
+    }
+
+    function _checkPriceSignature(uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, uint cost) internal {
+        // Verify valid message based on input variables
+        bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, cost));
+        // Verify nonce usage/re-use
+        require(!_usedMessages[instanceId][nonce], "Cannot replay transaction");
+        address signer = message.recover(signature);
+        if (message != expectedMessage || signer != signingAddress) revert InvalidSignature();
+        _usedMessages[instanceId][nonce] = true;
     }
 
     /**
@@ -182,7 +203,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // A single  can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
         // 2. The burn only requires one NFT (one burnSet element and one count)
-        _validateReceivedInput(physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount, from);
+        _validateReceivedInput(physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount);
 
         _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, 1);
 
@@ -200,7 +221,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         _redeem(instanceId, physicalClaimInstance, from, 1, variation, "");
     }
 
-    function _validateReceivedInput(uint256 length, uint256 requiredCount, address from) private view {
+    function _validateReceivedInput(uint256 length, uint256 requiredCount) private pure {
         if (length != 1 || requiredCount != 1) {
             revert InvalidInput();
         }

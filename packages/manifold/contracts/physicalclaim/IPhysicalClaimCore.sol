@@ -27,6 +27,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     error InvalidBurnAmount2();
     error InvalidRedeemAmount();
     error InvalidPaymentAmount();
+    error InvalidSignature();
 
     /**
      * @notice the validation type used for a `BurnItem`
@@ -129,6 +130,9 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
         BurnToken[] burnTokens;
         uint8 variation;
         bytes data;
+        bytes signature;
+        bytes32 message;
+        bytes32 nonce;
     }
 
     /**
