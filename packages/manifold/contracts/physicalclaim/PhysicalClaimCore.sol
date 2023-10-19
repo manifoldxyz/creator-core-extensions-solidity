@@ -106,12 +106,12 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         }
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < submissions.length;) {
-            msgValueRemaining -= _burnRedeem(msgValueRemaining, submissions[i]);
+            msgValueRemaining -= _burnRedeem(submissions[i]);
             unchecked { ++i; }
         }
     }
 
-    function _burnRedeem(uint256 msgValue, PhysicalClaimSubmission calldata submission) private returns (uint256) {
+    function _burnRedeem(PhysicalClaimSubmission calldata submission) private returns (uint256) {
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(submission.instanceId);
 
         // Get the amount that can be burned
@@ -122,16 +122,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
             cost = 0;
         } else {
             // Check that the message value is what was signed...
-            _checkPriceSignature(submission.instanceId, submission.signature, submission.message, submission.nonce, physicalClaimInstance.signer, msgValue);
-        }
-
-        if (physicalClaimCount > 1) {
-            cost *= physicalClaimCount;
-        }
-        if (cost > msgValue) {
-            revert InvalidPaymentAmount();
-        }
-        if (cost > 0) {
+            _checkPriceSignature(submission.instanceId, submission.signature, submission.message, submission.nonce, physicalClaimInstance.signer, submission.totalCost);
             _forwardValue(physicalClaimInstance.paymentReceiver, cost);
         }
 
@@ -139,7 +130,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         _burnTokens(physicalClaimInstance, submission.burnTokens, physicalClaimCount, msg.sender, submission.data);
         _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.physicalClaimCount, submission.variation, submission.data);
 
-        return cost;
+        return submission.totalCost;
     }
 
     function _checkPriceSignature(uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
@@ -322,7 +313,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         physicalClaimInstance.redeemedCount += uint32(totalCount);
         Redemption[] memory redemptions = new Redemption[](1);
         redemptions[0] = Redemption({
-            timestamp: block.timestamp,
+            timestamp: uint16(block.timestamp),
             redeemedCount: count,
             variation: variation
         });
