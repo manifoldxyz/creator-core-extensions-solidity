@@ -88,6 +88,13 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     }
 
     /**
+     * See {IPhysicalClaimCore-getPhysicalClaim}.
+     */
+    function getRedemptions(uint256 instanceId, address redeemer) external override view returns(Redemption[] memory) {
+        return _redemptions[instanceId][redeemer];
+    }
+
+    /**
      * Helper to get physical claim instance
      */
     function _getPhysicalClaim(uint256 instanceId) internal view returns(PhysicalClaim storage physicalClaimInstance) {
