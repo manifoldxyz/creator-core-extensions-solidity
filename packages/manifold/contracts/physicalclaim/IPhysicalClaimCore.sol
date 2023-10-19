@@ -118,7 +118,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     }
 
     struct Redemption {
-        uint timestamp;
+        uint48 timestamp;
         uint32 redeemedCount;
         uint8 variation;
     }
