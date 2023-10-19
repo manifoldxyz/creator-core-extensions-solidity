@@ -196,6 +196,8 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
 
+    submissions[0].currentClaimCount = 1;
+
     // Send a non-zero value burn
     example.burnRedeem{value: 1 ether}(submissions);
 
@@ -222,6 +224,8 @@ contract PhysicalClaimTest is Test {
 
     submissions[0].instanceId = uint56(instanceId+1);
 
+    submissions[0].currentClaimCount = 0;
+
     example.burnRedeem(submissions);
 
     // Case where total supply is huge, and they just redeem 1
@@ -242,6 +246,8 @@ contract PhysicalClaimTest is Test {
     });
 
     submissions[0].instanceId = uint56(instanceId+2);
+
+    submissions[0].currentClaimCount = 0;
 
     example.burnRedeem(submissions);
 
@@ -515,7 +521,7 @@ contract PhysicalClaimTest is Test {
     });
     submissions[1].instanceId = uint56(instanceId);
     submissions[1].physicalClaimCount = 1;
-    submissions[1].currentClaimCount = 0;
+    submissions[1].currentClaimCount = 1;
     submissions[1].burnTokens = burnTokens2;
     submissions[1].variation = 0;
     submissions[1].data = "";
