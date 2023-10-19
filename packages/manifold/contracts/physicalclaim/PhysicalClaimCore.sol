@@ -117,7 +117,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // Get the amount that can be burned
         uint32 physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, submission.physicalClaimCount);
 
-        uint cost;
+        uint256 cost;
         if (physicalClaimInstance.signer == address(0)) {
             cost = 0;
         } else {
@@ -142,7 +142,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         return cost;
     }
 
-    function _checkPriceSignature(uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, uint cost) internal {
+    function _checkPriceSignature(uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
         // Verify valid message based on input variables
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, cost));
         // Verify nonce usage/re-use

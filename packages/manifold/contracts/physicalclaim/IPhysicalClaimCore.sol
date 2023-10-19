@@ -124,7 +124,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     }
 
     struct PhysicalClaimSubmission {
-        uint instanceId;
+        uint56 instanceId;
         uint32 physicalClaimCount;
         uint32 currentClaimCount;
         uint8 variation;
