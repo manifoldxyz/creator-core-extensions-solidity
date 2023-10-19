@@ -228,7 +228,8 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
             PhysicalClaimLib.validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
 
-            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnRedeemCount, data);
+            // Always 721s right now, so always 1
+            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, 1, data);
             groupCounts[burnToken.groupIndex] += burnRedeemCount;
 
             unchecked { ++i; }
@@ -300,9 +301,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         if (totalCount > MAX_UINT_16) {
             revert InvalidInput();
         }
-        uint256 startingCount = physicalClaimInstance.redeemedCount + 1;
         physicalClaimInstance.redeemedCount += uint32(totalCount);
-            
         Redemption[] memory redemptions = new Redemption[](1);
         redemptions[0] = Redemption({
             timestamp: block.timestamp,
