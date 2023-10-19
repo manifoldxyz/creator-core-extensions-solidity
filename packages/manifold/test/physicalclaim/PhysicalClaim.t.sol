@@ -1118,5 +1118,78 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testCreateWithInvalidParameters() public {
+    vm.startPrank(owner);
+
+    // Mint 2 tokens to other
+    creatorCore721.mintBase(other, "");
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.RANGE,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 2,
+      maxTokenId: 4,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+      requiredCount: 1,
+      items: burnItems
+    });
+
+    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
+    variations[0] = IPhysicalClaimCore.Variation({
+      id: 1,
+      max: 1
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(0),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      cost: 0,
+      burnSet: burnSet,
+      variations: variations,
+      signer: signerForCost
+    });
+
+    // Initialize the physical claim
+    vm.expectRevert();
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    claimPs.paymentReceiver = payable(owner);
+    claimPs.startDate = 2;
+    claimPs.endDate = 1;
+
+    vm.expectRevert();
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    claimPs.startDate = 0;
+    claimPs.endDate = 0;
+
+    burnSet[0].requiredCount = 0;
+    claimPs.burnSet = burnSet;
+
+    vm.expectRevert();
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    burnSet[0].requiredCount = 1;
+    burnSet[0].items = new IPhysicalClaimCore.BurnItem[](0);
+    claimPs.burnSet = burnSet;
+
+    vm.expectRevert();
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+  }
+
 
 }
