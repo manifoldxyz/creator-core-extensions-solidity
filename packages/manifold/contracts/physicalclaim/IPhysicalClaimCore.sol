@@ -127,12 +127,12 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
         uint instanceId;
         uint32 physicalClaimCount;
         uint32 currentClaimCount;
-        BurnToken[] burnTokens;
         uint8 variation;
         bytes data;
         bytes signature;
         bytes32 message;
         bytes32 nonce;
+        BurnToken[] burnTokens;
     }
 
     /**
