@@ -107,11 +107,14 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < submissions.length;) {
             PhysicalClaimSubmission memory currentSub = submissions[i];
-            if (msgValueRemaining < currentSub.totalCost) {
-                revert InvalidPaymentAmount();
+            uint256 totalCost = currentSub.totalCost;
+            if (totalCost > 0) {
+                if (msgValueRemaining < totalCost) {
+                    revert InvalidPaymentAmount();
+                }
+                msgValueRemaining -= totalCost;
             }
             _burnRedeem(currentSub);
-            msgValueRemaining -= currentSub.totalCost;
             unchecked { ++i; }
         }
     }
