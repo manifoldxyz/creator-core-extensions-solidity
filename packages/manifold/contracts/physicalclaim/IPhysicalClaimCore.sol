@@ -132,7 +132,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
         bytes signature;
         bytes32 message;
         bytes32 nonce;
-        uint totalCost;
+        uint256 totalCost;
         BurnToken[] burnTokens;
     }
 

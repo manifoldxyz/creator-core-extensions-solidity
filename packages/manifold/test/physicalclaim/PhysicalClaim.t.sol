@@ -29,7 +29,7 @@ contract PhysicalClaimTest is Test {
 
   uint256 privateKey = 0x1010101010101010101010101010101010101010101010101010101010101010;
 
-  uint instanceId = 1;
+  uint56 instanceId = 1;
 
   function setUp() public {
     vm.startPrank(owner);

@@ -153,7 +153,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.physicalClaimCount, submission.variation, submission.data);
     }
 
-    function _checkPriceSignature(uint256 instanceId, bytes memory signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
+    function _checkPriceSignature(uint56 instanceId, bytes memory signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
         // Verify valid message based on input variables
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, cost));
         // Verify nonce usage/re-use
