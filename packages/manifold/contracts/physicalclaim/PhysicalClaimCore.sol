@@ -139,13 +139,10 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // Get the amount that can be burned
         uint32 physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, submission.physicalClaimCount);
 
-        uint256 cost;
-        if (physicalClaimInstance.signer == address(0)) {
-            cost = 0;
-        } else {
+        if (physicalClaimInstance.signer != address(0)) {
             // Check that the message value is what was signed...
             _checkPriceSignature(submission.instanceId, submission.signature, submission.message, submission.nonce, physicalClaimInstance.signer, submission.totalCost);
-            _forwardValue(physicalClaimInstance.paymentReceiver, cost);
+            _forwardValue(physicalClaimInstance.paymentReceiver, submission.totalCost);
         }
 
         // Do physical claim
@@ -266,7 +263,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
         for (uint256 i; i < groupCounts.length;) {
             if (groupCounts[i] != burnRedeemInstance.burnSet[i].requiredCount * burnRedeemCount) {
-                revert InvalidBurnAmount2();
+                revert InvalidBurnAmount();
             }
             unchecked { ++i; }
         }

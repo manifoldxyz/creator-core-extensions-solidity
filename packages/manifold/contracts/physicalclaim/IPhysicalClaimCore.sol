@@ -24,7 +24,6 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     error PhysicalClaimInactive(uint256);
 
     error InvalidBurnAmount();
-    error InvalidBurnAmount2();
     error InvalidRedeemAmount();
     error InvalidPaymentAmount();
     error InvalidSignature();
