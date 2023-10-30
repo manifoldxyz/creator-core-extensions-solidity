@@ -37,6 +37,9 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     // { instanceId => { redeemer => Redemption } }
     mapping(uint256 => mapping(address => Redemption[])) internal _redemptions;
 
+    // { instanceId => { variation => count } }
+    mapping(uint256 => mapping(uint8 => uint32)) internal _variationRedemptions;
+
     // { instanceId => nonce => t/f  }
     mapping(uint256 => mapping(bytes32 => bool)) internal _usedMessages;
 
@@ -94,6 +97,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         return _redemptions[instanceId][redeemer];
     }
 
+
     /**
      * Helper to get physical claim instance
      */
@@ -137,7 +141,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(submission.instanceId);
 
         // Get the amount that can be burned
-        uint32 physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, submission.physicalClaimCount);
+        uint32 physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, submission.physicalClaimCount, submission.variation, physicalClaimInstance.variations, submission.instanceId);
 
         if (physicalClaimInstance.signer != address(0)) {
             // Check that the message value is what was signed...
@@ -209,7 +213,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // 2. The burn only requires one NFT (one burnSet element and one count)
         _validateReceivedInput(physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount);
 
-        _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, 1);
+        _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, 1, variation, physicalClaimInstance.variations, instanceId);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = physicalClaimInstance.burnSet[0].items[burnItemIndex];
@@ -272,15 +276,34 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * Helper to get the number of burn redeems the person can accomplish
      */
-    function _getAvailablePhysicalClaimCount(uint32 totalSupply, uint32 redeemedCount, uint32 desiredCount) internal pure returns(uint32 burnRedeemCount) {
+    function _getAvailablePhysicalClaimCount(uint32 totalSupply, uint32 redeemedCount, uint32 desiredCount, uint8 variation, Variation[] memory variations, uint256 instanceId) internal view returns(uint32 burnRedeemCount) {
         if (totalSupply == 0) {
             burnRedeemCount = desiredCount;
         } else {
-            uint32 remainingCount = (totalSupply - redeemedCount);
-            if (remainingCount > desiredCount) {
+            uint32 remainingTotalCount = (totalSupply - redeemedCount);
+
+            Variation memory variationSelected;
+            // Get max redemptions for this variation...
+            for (uint i = 0; i < variations.length; i++) {
+                if (variations[i].id == variation) {
+                    variationSelected = variations[i];
+                    break;
+                }
+            }
+
+            if (variationSelected.id == 0) {
+                revert InvalidVariation();
+            }
+
+            uint32 variationRemainingCount = (variationSelected.max - _variationRedemptions[instanceId][variation]);
+
+            // Use whichever is lesser...
+            uint32 comparator = remainingTotalCount > variationRemainingCount ? variationRemainingCount : remainingTotalCount;
+
+            if (comparator > desiredCount) {
                 burnRedeemCount = desiredCount;
             } else {
-                burnRedeemCount = remainingCount;
+                burnRedeemCount = comparator;
             }
         }
 
@@ -328,14 +351,14 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
             revert InvalidInput();
         }
         physicalClaimInstance.redeemedCount += uint32(totalCount);
-        Redemption[] memory redemptions = new Redemption[](1);
-        redemptions[0] = Redemption({
+        Redemption memory redemption = Redemption({
             timestamp: uint16(block.timestamp),
             redeemedCount: count,
             variation: variation
         });
 
-        _redemptions[instanceId][to].push(redemptions[0]);
+        _redemptions[instanceId][to].push(redemption);
+        _variationRedemptions[instanceId][variation]++;
         emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, variation, count, data);
     }
 }

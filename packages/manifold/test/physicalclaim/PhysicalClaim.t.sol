@@ -116,7 +116,7 @@ contract PhysicalClaimTest is Test {
     IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
     variations[0] = IPhysicalClaimCore.Variation({
       id: 1,
-      max: 1
+      max: 10
     });
 
     // Create claim initialization parameters
@@ -171,7 +171,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     example.burnRedeem(submissions);
@@ -282,7 +282,7 @@ contract PhysicalClaimTest is Test {
     IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
     variations[0] = IPhysicalClaimCore.Variation({
       id: 1,
-      max: 1
+      max: 100
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -320,7 +320,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     example.burnRedeem(submissions);
@@ -340,7 +340,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 1;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     vm.expectRevert(); // should revert cause none remaining and the setting is to revert it...
@@ -433,7 +433,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     example.burnRedeem(submissions);
@@ -469,7 +469,7 @@ contract PhysicalClaimTest is Test {
     IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
     variations[0] = IPhysicalClaimCore.Variation({
       id: 1,
-      max: 1
+      max: 10
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -508,7 +508,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     IPhysicalClaimCore.BurnToken[] memory burnTokens2 = new IPhysicalClaimCore.BurnToken[](1);
@@ -523,7 +523,7 @@ contract PhysicalClaimTest is Test {
     submissions[1].physicalClaimCount = 1;
     submissions[1].currentClaimCount = 1;
     submissions[1].burnTokens = burnTokens2;
-    submissions[1].variation = 0;
+    submissions[1].variation = 1;
     submissions[1].data = "";
 
     example.burnRedeem(submissions);
@@ -596,7 +596,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     example.burnRedeem(submissions);
@@ -668,7 +668,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     example.burnRedeem(submissions);
@@ -740,7 +740,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     vm.expectRevert();
@@ -813,7 +813,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     example.burnRedeem(submissions);
@@ -885,7 +885,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     example.burnRedeem(submissions);
@@ -957,7 +957,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     vm.expectRevert();
@@ -1032,7 +1032,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].physicalClaimCount = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     vm.expectRevert();
@@ -1188,7 +1188,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     vm.expectRevert();
@@ -1261,7 +1261,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
 
     vm.expectRevert();
@@ -1334,7 +1334,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
     submissions[0].message = "Hello";
     submissions[0].nonce = "";
@@ -1416,7 +1416,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
     submissions[0].message = "Hello";
     submissions[0].nonce = "";
@@ -1498,7 +1498,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
     submissions[0].nonce = "abcd";
 
@@ -1580,7 +1580,7 @@ contract PhysicalClaimTest is Test {
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
-    submissions[0].variation = 0;
+    submissions[0].variation = 1;
     submissions[0].data = "";
     submissions[0].nonce = "abcd";
 

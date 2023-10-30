@@ -27,6 +27,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     error InvalidRedeemAmount();
     error InvalidPaymentAmount();
     error InvalidSignature();
+    error InvalidVariation();
 
     /**
      * @notice the validation type used for a `BurnItem`
