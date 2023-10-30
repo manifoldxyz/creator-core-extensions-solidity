@@ -119,6 +119,11 @@ library PhysicalClaimLib {
         physicalClaimInstance.totalSupply = physicalClaimParameters.totalSupply;
         physicalClaimInstance.paymentReceiver = physicalClaimParameters.paymentReceiver;
         physicalClaimInstance.signer = physicalClaimParameters.signer;
+
+        delete physicalClaimInstance.variations;
+        for (uint i = 0; i < physicalClaimParameters.variations.length; i++) {
+            physicalClaimInstance.variations.push(physicalClaimParameters.variations[i]);
+        }
     }
 
     /**
