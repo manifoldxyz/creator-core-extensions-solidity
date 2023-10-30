@@ -167,6 +167,14 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     function getRedemptions(uint256 instanceId, address redeemer) external view returns(Redemption[] memory);
 
     /**
+     * @notice gets the redemptions for a physical claim for a given variation
+     * @param instanceId           the instanceId of the physical claim
+     * @param variation            the variation
+     * @return redemptions         the redemptions
+     */
+    function getVariationRedemptions(uint256 instanceId, uint8 variation) external view returns(uint32);
+
+    /**
      * @notice burn tokens and physical claims multiple times in a single transaction
      * @param submissions               the submissions for the physical claims
      */
