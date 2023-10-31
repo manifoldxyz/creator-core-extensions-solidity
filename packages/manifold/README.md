@@ -24,7 +24,7 @@ These are the latest Claim Page extensions.
 
 | Network     | Spec        | Address                                    |
 | ----------- | ----------- | ------------------------------------------ |
-| 1 (Mainnet) | ERC721      | 0x074eaee8fc3e4e2b361762253f83d9a94aec6fd4 |
+| 1 (Mainnet) | ERC721      | 0x1EB73FEE2090fB1C20105d5Ba887e3c3bA14a17E |
 | 2 (Goerli)  | ERC721      | 0x074eaee8fc3e4e2b361762253f83d9a94aec6fd4 |
 | 1 (Mainnet) | ERC1155     | 0xDb8d79C775452a3929b86ac5DEaB3e9d38e1c006 |
 | 2 (Goerli)  | ERC1155     | 0x73CA7420625d312d1792Cea60Ced7B35D009322c |
