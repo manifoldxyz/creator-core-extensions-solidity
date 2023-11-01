@@ -60,6 +60,9 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint256 instanceId,
         PhysicalClaimParameters calldata physicalClaimParameters
     ) internal {
+        if (_physicalClaimCreator[instanceId] != address(0)) {
+            revert InvalidInstance();
+        }
         _physicalClaimCreator[instanceId] = msg.sender;
         PhysicalClaimLib.initialize(instanceId, _physicalClaims[instanceId], physicalClaimParameters);
     }
