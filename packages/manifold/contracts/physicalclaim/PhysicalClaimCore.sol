@@ -28,6 +28,8 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     uint256 internal constant MAX_UINT_16 = 0xffff;
     uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
 
+    bool public deprecated;
+
     // { instanceId => PhysicalClaim }
     mapping(uint256 => PhysicalClaim) internal _physicalClaims;
 
@@ -54,12 +56,22 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     }
 
     /**
+     * Admin function to deprecate the contract
+     */
+    function deprecate(bool _deprecated) external adminRequired {
+        deprecated = _deprecated;
+    }
+
+    /**
      * Initialiazes a physical claim with base parameters
      */
     function _initialize(
         uint256 instanceId,
         PhysicalClaimParameters calldata physicalClaimParameters
     ) internal {
+        if (deprecated) {
+            revert ContractDeprecated();
+        }
         if (_physicalClaimCreator[instanceId] != address(0)) {
             revert InvalidInstance();
         }

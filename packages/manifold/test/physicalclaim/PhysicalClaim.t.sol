@@ -305,6 +305,70 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testCannotInitializeAfterDeprecation() public {
+    vm.startPrank(owner);
+
+    // Mint token 1 to other
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 1,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+        requiredCount: 1,
+        items: burnItems
+      });
+
+    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
+    variations[0] = IPhysicalClaimCore.Variation({
+      id: 1,
+      max: 10
+    });
+
+    // Create claim initialization parameters
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+
+      burnSet: burnSet,
+      variations: variations,
+      signer: zeroSigner
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    example.deprecate(true);
+
+    vm.expectRevert();
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    example.deprecate(false);
+
+    example.initializePhysicalClaim(instanceId+1, claimPs);
+
+    vm.stopPrank();
+
+    // Cannot deprecate if now admin
+    vm.startPrank(other);
+    vm.expectRevert(bytes("AdminControl: Must be owner or admin"));
+    example.deprecate(true);
+    vm.stopPrank();
+  }
+
+
   function testBurnFinalToken() public {
     vm.startPrank(owner);
 

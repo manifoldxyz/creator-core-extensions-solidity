@@ -19,7 +19,8 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     error InvalidBurnSpec();
     error InvalidData();
     error TransferFailure();
-    
+    error ContractDeprecated();
+
     error PhysicalClaimDoesNotExist(uint256);
     error PhysicalClaimInactive(uint256);
 
