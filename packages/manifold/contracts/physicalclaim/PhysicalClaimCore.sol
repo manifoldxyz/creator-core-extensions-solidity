@@ -172,7 +172,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
         // Do physical claim
         _burnTokens(physicalClaimInstance, submission.burnTokens, physicalClaimCount, msg.sender, submission.data);
-        _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.physicalClaimCount, submission.variation, submission.data);
+        _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.currentClaimCount, submission.variation, submission.data);
     }
 
     function _checkPriceSignature(uint56 instanceId, bytes memory signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
@@ -366,20 +366,20 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /** 
      * Helper to redeem multiple rede
      */
-    function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 count, uint8 variation, bytes memory data) internal {
-        uint256 totalCount = count;
+    function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 currentClaimCount, uint8 variation, bytes memory data) internal {
+        uint256 totalCount = currentClaimCount;
         if (totalCount > MAX_UINT_16) {
             revert InvalidInput();
         }
         physicalClaimInstance.redeemedCount += uint32(totalCount);
         Redemption memory redemption = Redemption({
             timestamp: uint16(block.timestamp),
-            redeemedCount: count,
+            currentClaimCount: currentClaimCount,
             variation: variation
         });
 
         _redemptions[instanceId][to].push(redemption);
         _variationRedemptions[instanceId][variation]++;
-        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, variation, count, data);
+        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, variation, currentClaimCount, data);
     }
 }

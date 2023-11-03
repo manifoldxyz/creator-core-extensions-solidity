@@ -453,7 +453,7 @@ contract PhysicalClaimTest is Test {
 
     submissions[0].instanceId = uint56(instanceId);
     submissions[0].physicalClaimCount = 1;
-    submissions[0].currentClaimCount = 1;
+    submissions[0].currentClaimCount = 2;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
     submissions[0].data = "";
