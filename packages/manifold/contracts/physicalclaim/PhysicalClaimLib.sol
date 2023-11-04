@@ -14,7 +14,7 @@ library PhysicalClaimLib {
 
     event PhysicalClaimInitialized(uint256 indexed instanceId, address initializer);
     event PhysicalClaimUpdated(uint256 indexed instanceId);
-    event PhysicalClaimRedemption(uint256 indexed instanceId, uint8 indexed variation, uint32 redeemedCount, bytes data);
+    event PhysicalClaimRedemption(uint256 indexed instanceId, uint8 indexed variation, uint32 count, bytes data);
 
     error PhysicalClaimAlreadyInitialized();
     error InvalidBurnItem();
@@ -120,9 +120,19 @@ library PhysicalClaimLib {
         physicalClaimInstance.paymentReceiver = physicalClaimParameters.paymentReceiver;
         physicalClaimInstance.signer = physicalClaimParameters.signer;
 
-        delete physicalClaimInstance.variations;
-        for (uint i = 0; i < physicalClaimParameters.variations.length; i++) {
-            physicalClaimInstance.variations.push(physicalClaimParameters.variations[i]);
+        uint8[] memory currentVariationIds = physicalClaimInstance.variationIds;
+        for (uint256 i; i < currentVariationIds.length;) {
+            physicalClaimInstance.variations[currentVariationIds[i]].active = false;
+            unchecked { ++i; }
+        }
+        physicalClaimInstance.variationIds = new uint8[](physicalClaimParameters.variationLimits.length);
+        for (uint256 i; i < physicalClaimParameters.variationLimits.length;) {
+            IPhysicalClaimCore.VariationLimit memory VariationLimit = physicalClaimParameters.variationLimits[i];
+            IPhysicalClaimCore.VariationState storage variationState = physicalClaimInstance.variations[VariationLimit.id];
+            variationState.active = true;
+            // Set the totalSupply. If params specify 0, we use 0, otherwise it's the max of the current redeemCount and the param's totalSupply
+            variationState.totalSupply = VariationLimit.totalSupply == 0 ? 0 : (variationState.redeemedCount > VariationLimit.totalSupply ? variationState.redeemedCount : VariationLimit.totalSupply);
+            unchecked { ++i; }
         }
     }
 

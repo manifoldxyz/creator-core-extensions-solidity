@@ -3,6 +3,8 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "../../contracts/physicalclaim/PhysicalClaim.sol";
+import "../../contracts/physicalclaim/PhysicalClaimLib.sol";
+import "../../contracts/physicalclaim/IPhysicalClaimCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "../../contracts/libraries/delegation-registry/DelegationRegistry.sol";
@@ -50,7 +52,7 @@ contract PhysicalClaimTest is Test {
 
   function testAccess() public {
     vm.startPrank(other);
-    vm.expectRevert();
+    vm.expectRevert("AdminControl: Must be owner or admin");
     example.recover(address(creatorCore721), 1, other);
     vm.stopPrank();
 
@@ -74,22 +76,22 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       burnSet: new IPhysicalClaimCore.BurnGroup[](0),
-      variations: new IPhysicalClaimCore.Variation[](0),
+      variationLimits: new IPhysicalClaimCore.VariationLimit[](0),
       signer: zeroSigner
     });
 
     // Cannot do instanceId of 0
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
     example.initializePhysicalClaim(0, claimPs);
 
     // Cannot do largest instanceID
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
     example.initializePhysicalClaim(2**56, claimPs);
 
     vm.stopPrank();
   }
   
-    function testHappyCase() public {
+  function testHappyCaseERC721Burn() public {
     vm.startPrank(owner);
 
     // Mint token 1 to other
@@ -113,10 +115,10 @@ contract PhysicalClaimTest is Test {
         items: burnItems
       });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 10
+      totalSupply: 10
     });
 
     // Create claim initialization parameters
@@ -125,9 +127,8 @@ contract PhysicalClaimTest is Test {
       totalSupply: 0,
       startDate: 0,
       endDate: 0,
-
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -135,11 +136,11 @@ contract PhysicalClaimTest is Test {
     example.initializePhysicalClaim(instanceId, claimPs);
 
     // Can get the claim
-    IPhysicalClaimCore.PhysicalClaim memory claim = example.getPhysicalClaim(instanceId);
+    IPhysicalClaimCore.PhysicalClaimView memory claim = example.getPhysicalClaim(instanceId);
     assertEq(claim.paymentReceiver, owner);
 
     // Cannot get claim that doesn't exist
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidInstance.selector);
     example.getPhysicalClaim(2);
 
     // Can update
@@ -168,7 +169,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
@@ -195,7 +196,7 @@ contract PhysicalClaimTest is Test {
       id: 2,
       merkleProof: new bytes32[](0)
     });
-
+    
     submissions[0].currentClaimCount = 1;
 
     // Send a non-zero value burn
@@ -254,6 +255,163 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testHappyCaseERC721SafeTransferFrom() public {
+    vm.startPrank(owner);
+
+    // Mint token 1 to other
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 1,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+        requiredCount: 1,
+        items: burnItems
+      });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 10
+    });
+
+    // Create claim initialization parameters
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: zeroSigner
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Actually do a burnRedeem
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
+    submissions[0].instanceId = uint56(instanceId);
+    submissions[0].count = 1;
+    submissions[0].currentClaimCount = 0;
+    submissions[0].burnTokens = burnTokens;
+    submissions[0].variation = 1;
+    submissions[0].data = "";
+
+    // Burn via safeTransferFrom
+    creatorCore721.safeTransferFrom(other, address(example), 1, abi.encode(uint56(instanceId), uint256(0), "", uint8(1)));
+
+    assertEq(creatorCore721.balanceOf(address(other)), 0);
+
+    vm.stopPrank();
+
+  }
+
+  function testIdempotencyViaIncorrectCurrentClaimCount() public {
+    vm.startPrank(owner);
+
+    // Mint token 2 to other
+    creatorCore721.mintBase(other, "");
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 2,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+        requiredCount: 1,
+        items: burnItems
+      });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 10
+    });
+
+    // Create claim initialization parameters
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: zeroSigner
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Approve token for burning
+    creatorCore721.approve(address(example), 1);
+    creatorCore721.approve(address(example), 2);
+
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
+    submissions[0].instanceId = uint56(instanceId);
+    submissions[0].count = 1;
+    submissions[0].currentClaimCount = 0;
+    submissions[0].burnTokens = burnTokens;
+    submissions[0].variation = 1;
+    submissions[0].data = "";
+
+    example.burnRedeem(submissions);
+
+    // Idempotency test, wrong currentClaimCount
+    submissions[0].burnTokens[0].id = 2;
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
+    example.burnRedeem(submissions);
+
+
+    vm.stopPrank();
+
+  }
+
   function testCannotInitializeTwice() public {
     vm.startPrank(owner);
 
@@ -278,10 +436,10 @@ contract PhysicalClaimTest is Test {
         items: burnItems
       });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 10
+      totalSupply: 10
     });
 
     // Create claim initialization parameters
@@ -292,14 +450,14 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
     // Initialize the physical claim
     example.initializePhysicalClaim(instanceId, claimPs);
 
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidInstance.selector);
     example.initializePhysicalClaim(instanceId, claimPs);
     
     vm.stopPrank();
@@ -329,10 +487,10 @@ contract PhysicalClaimTest is Test {
         items: burnItems
       });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 10
+      totalSupply: 10
     });
 
     // Create claim initialization parameters
@@ -343,7 +501,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -352,7 +510,7 @@ contract PhysicalClaimTest is Test {
 
     example.deprecate(true);
 
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.ContractDeprecated.selector);
     example.initializePhysicalClaim(instanceId, claimPs);
 
     example.deprecate(false);
@@ -394,10 +552,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 100
+      totalSupply: 100
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -408,7 +566,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -432,7 +590,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
@@ -452,13 +610,13 @@ contract PhysicalClaimTest is Test {
     });
 
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
-    submissions[0].currentClaimCount = 2;
+    submissions[0].count = 1;
+    submissions[0].currentClaimCount = 1;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
     submissions[0].data = "";
 
-    vm.expectRevert(); // should revert cause none remaining and the setting is to revert it...
+    vm.expectRevert(IPhysicalClaimCore.InvalidRedeemAmount.selector); // should revert cause none remaining and the setting is to revert it...
     example.burnRedeem(submissions);
 
     vm.stopPrank();
@@ -499,10 +657,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -513,7 +671,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -545,7 +703,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
@@ -581,10 +739,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 10
+      totalSupply: 10
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -595,7 +753,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -620,7 +778,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](2);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
@@ -635,7 +793,7 @@ contract PhysicalClaimTest is Test {
       merkleProof: new bytes32[](0)
     });
     submissions[1].instanceId = uint56(instanceId);
-    submissions[1].physicalClaimCount = 1;
+    submissions[1].count = 1;
     submissions[1].currentClaimCount = 1;
     submissions[1].burnTokens = burnTokens2;
     submissions[1].variation = 1;
@@ -650,6 +808,7 @@ contract PhysicalClaimTest is Test {
     vm.startPrank(owner);
 
     // Mint 2 tokens to other
+    creatorCore721.mintBase(other, "");
     creatorCore721.mintBase(other, "");
 
     IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
@@ -670,10 +829,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -684,7 +843,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -694,10 +853,11 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
     vm.startPrank(other);
 
-    // Approve token for burning
+    // Approve tokens for burning
     creatorCore721.approve(address(example), 1);
+    creatorCore721.approve(address(example), 2);
 
-    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](2);
     burnTokens[0] = IPhysicalClaimCore.BurnToken({
       groupIndex: 0,
       itemIndex: 0,
@@ -705,16 +865,27 @@ contract PhysicalClaimTest is Test {
       id: 1,
       merkleProof: new bytes32[](0)
     });
+    burnTokens[1] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 2,
+      merkleProof: new bytes32[](0)
+    });
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 2;
+    submissions[0].count = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
     submissions[0].data = "";
 
+    assertEq(creatorCore721.balanceOf(address(other)), 2);
+
+    vm.expectRevert(IPhysicalClaimCore.InvalidBurnAmount.selector);
     example.burnRedeem(submissions);
+
     vm.stopPrank();
   }
 
@@ -742,10 +913,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -756,7 +927,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -780,7 +951,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 2;
+    submissions[0].count = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
@@ -790,11 +961,18 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
-  function test1155NotSupportedYet() public {
+  function test1155() public {
     vm.startPrank(owner);
 
-    // Mint 2 tokens to other
-    creatorCore721.mintBase(other, "");
+    // Mint 10 tokens to other
+    address[] memory recipientsInput = new address[](1);
+    recipientsInput[0] = other;
+    uint[] memory mintsInput = new uint[](1);
+    mintsInput[0] = 10;
+    string[] memory urisInput = new string[](1);
+    urisInput[0] = "";
+    // base mint something in between
+    creatorCore1155.mintBaseNew(recipientsInput, mintsInput, urisInput);
 
     IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
     burnItems[0] = IPhysicalClaimCore.BurnItem({
@@ -802,7 +980,7 @@ contract PhysicalClaimTest is Test {
       contractAddress: address(creatorCore1155),
       tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
       burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
-      amount: 1,
+      amount: 3,
       minTokenId: 1,
       maxTokenId: 3,
       merkleRoot: ""
@@ -814,10 +992,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 2
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -828,7 +1006,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -839,7 +1017,7 @@ contract PhysicalClaimTest is Test {
     vm.startPrank(other);
 
     // Approve token for burning
-    creatorCore721.approve(address(example), 1);
+    creatorCore1155.setApprovalForAll(address(example), true);
 
     IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
     burnTokens[0] = IPhysicalClaimCore.BurnToken({
@@ -852,14 +1030,15 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 2;
+    submissions[0].count = 2;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
     submissions[0].data = "";
 
-    vm.expectRevert();
     example.burnRedeem(submissions);
+
+    assertEq(creatorCore1155.balanceOf(address(other), 1), 4);
     vm.stopPrank();
   }
 
@@ -887,10 +1066,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -901,7 +1080,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -925,7 +1104,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
@@ -959,10 +1138,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -973,7 +1152,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -997,7 +1176,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
@@ -1031,10 +1210,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1045,7 +1224,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -1069,13 +1248,13 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
     submissions[0].data = "";
 
-    vm.expectRevert();
+    vm.expectRevert(PhysicalClaimLib.InvalidBurnToken.selector);
     example.burnRedeem(submissions);
     vm.stopPrank();
   }
@@ -1105,10 +1284,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1119,7 +1298,7 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
@@ -1144,13 +1323,13 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].variation = 1;
     submissions[0].data = "";
 
-    vm.expectRevert();
+    vm.expectRevert(abi.encodePacked(IPhysicalClaimCore.InvalidToken.selector, uint256(1)));
     example.burnRedeem(submissions);
 
     burnTokens[0] = IPhysicalClaimCore.BurnToken({
@@ -1190,10 +1369,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1204,19 +1383,19 @@ contract PhysicalClaimTest is Test {
       endDate: 0,
 
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: zeroSigner
     });
 
     // Initialize the physical claim
-    vm.expectRevert();
+    vm.expectRevert(PhysicalClaimLib.InvalidPaymentReceiver.selector);
     example.initializePhysicalClaim(instanceId, claimPs);
 
     claimPs.paymentReceiver = payable(owner);
     claimPs.startDate = 2;
     claimPs.endDate = 1;
 
-    vm.expectRevert();
+    vm.expectRevert(PhysicalClaimLib.InvalidDates.selector);
     example.initializePhysicalClaim(instanceId, claimPs);
 
     claimPs.startDate = 0;
@@ -1225,14 +1404,14 @@ contract PhysicalClaimTest is Test {
     burnSet[0].requiredCount = 0;
     claimPs.burnSet = burnSet;
 
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
     example.initializePhysicalClaim(instanceId, claimPs);
 
     burnSet[0].requiredCount = 1;
     burnSet[0].items = new IPhysicalClaimCore.BurnItem[](0);
     claimPs.burnSet = burnSet;
 
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
     example.initializePhysicalClaim(instanceId, claimPs);
 
     vm.stopPrank();
@@ -1262,10 +1441,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1275,7 +1454,7 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: signerForCost
     });
 
@@ -1299,14 +1478,14 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
     submissions[0].variation = 1;
     submissions[0].data = "";
 
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidPaymentAmount.selector);
     example.burnRedeem(submissions);
     vm.stopPrank();
   }
@@ -1335,10 +1514,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1348,7 +1527,7 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: signerForCost
     });
 
@@ -1372,14 +1551,14 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
     submissions[0].variation = 1;
     submissions[0].data = "";
 
-    vm.expectRevert();
+    vm.expectRevert("ECDSA: invalid signature length");
     example.burnRedeem{value: 1}(submissions);
     vm.stopPrank();
   }
@@ -1408,10 +1587,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1421,7 +1600,7 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: signerForCost
     });
 
@@ -1445,7 +1624,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
@@ -1461,7 +1640,7 @@ contract PhysicalClaimTest is Test {
 
     submissions[0].signature = signature;
 
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidSignature.selector);
     example.burnRedeem{value: 1}(submissions);
     vm.stopPrank();
   }
@@ -1490,10 +1669,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1503,7 +1682,7 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: vm.addr(privateKey)
     });
 
@@ -1527,7 +1706,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
@@ -1543,7 +1722,7 @@ contract PhysicalClaimTest is Test {
 
     submissions[0].signature = signature;
 
-    vm.expectRevert();
+    vm.expectRevert(IPhysicalClaimCore.InvalidSignature.selector);
     example.burnRedeem{value: 1}(submissions);
     vm.stopPrank();
   }
@@ -1572,10 +1751,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 1
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1585,7 +1764,7 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: vm.addr(privateKey)
     });
 
@@ -1609,7 +1788,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
@@ -1625,7 +1804,6 @@ contract PhysicalClaimTest is Test {
     submissions[0].signature = signature;
     submissions[0].message = message;
 
-    // vm.expectRevert();
     example.burnRedeem{value: 1}(submissions);
     vm.stopPrank();
   }
@@ -1634,6 +1812,7 @@ contract PhysicalClaimTest is Test {
     vm.startPrank(owner);
 
     // Mint 2 tokens to other
+    creatorCore721.mintBase(other, "");
     creatorCore721.mintBase(other, "");
 
     IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
@@ -1654,10 +1833,10 @@ contract PhysicalClaimTest is Test {
       items: burnItems
     });
 
-    IPhysicalClaimCore.Variation[] memory variations = new IPhysicalClaimCore.Variation[](1);
-    variations[0] = IPhysicalClaimCore.Variation({
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
       id: 1,
-      max: 1
+      totalSupply: 2
     });
 
     // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
@@ -1667,7 +1846,7 @@ contract PhysicalClaimTest is Test {
       startDate: 0,
       endDate: 0,
       burnSet: burnSet,
-      variations: variations,
+      variationLimits: variations,
       signer: vm.addr(privateKey)
     });
 
@@ -1679,6 +1858,7 @@ contract PhysicalClaimTest is Test {
 
     // Approve token for burning
     creatorCore721.approve(address(example), 1);
+    creatorCore721.approve(address(example), 2);
 
     IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
     burnTokens[0] = IPhysicalClaimCore.BurnToken({
@@ -1691,7 +1871,7 @@ contract PhysicalClaimTest is Test {
 
     IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
     submissions[0].instanceId = uint56(instanceId);
-    submissions[0].physicalClaimCount = 1;
+    submissions[0].count = 1;
     submissions[0].currentClaimCount = 0;
     submissions[0].burnTokens = burnTokens;
     submissions[0].totalCost = 1;
@@ -1711,10 +1891,11 @@ contract PhysicalClaimTest is Test {
     example.burnRedeem{value: 1}(submissions);
 
     // Reuse nonce
-    vm.expectRevert();
+    submissions[0].currentClaimCount = 1;
+    submissions[0].burnTokens[0].id = 2;
+    vm.expectRevert("Cannot replay transaction");
     example.burnRedeem{value: 1}(submissions);
     vm.stopPrank();
   }
-
 
 }

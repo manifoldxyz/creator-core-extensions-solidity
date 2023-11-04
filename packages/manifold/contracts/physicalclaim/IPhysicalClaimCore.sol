@@ -68,12 +68,14 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
     }
 
     /**
-     * @param id               the ID of the variation
-     * @param max              the maximum number of times the variation can be redeemed
+     * @param totalSupply      the maximum number of times the variation can be redeemed (0 means no limit)
+     * @param redeemedCount    the number of times the variation has been redeemed
+     * @param active           whether the variation is active
      */
-    struct Variation {
-        uint8 id;
-        uint16 max;
+    struct VariationState {
+        uint16 totalSupply;
+        uint16 redeemedCount;
+        bool active;
     }
 
     /**
@@ -93,41 +95,92 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
      * @param totalSupply       the maximum number of redemptions to redeem (0 for unlimited)
      * @param startDate         the starting time for the burn redeem (0 for immediately)
      * @param endDate           the end time for the burn redeem (0 for never)
-     * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
-     * @param variations        a list of `Variation`s for the redemptions
      * @param signer            the address of the signer for the transaction details
+     * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
+     * @param variationLimits        a list of `Variation` ids and limits
      */
     struct PhysicalClaimParameters {
         address payable paymentReceiver;
-        uint32 totalSupply;
+        uint16 totalSupply;
         uint48 startDate;
         uint48 endDate;
         address signer;
         BurnGroup[] burnSet;
-        Variation[] variations;
+        VariationLimit[] variationLimits;
     }
 
+    /**
+     * @notice parameters
+     */
+    struct VariationLimit {
+        uint8 id;
+        uint16 totalSupply;
+    }
+
+    /**
+     * @notice the state for a physical claim
+     * @param paymentReceiver   the address to forward proceeds from paid burn redeems
+     * @param redeemedCount     the amount currently redeemed
+     * @param totalSupply       the maximum number of redemptions to redeem (0 for unlimited)
+     * @param startDate         the starting time for the burn redeem (0 for immediately)
+     * @param endDate           the end time for the burn redeem (0 for never)
+     * @param signer            the address of the signer for the transaction details
+     * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
+     * @param variationIds      a list of variation IDs for the redemptions
+     * @param variations        a mapping of `Variation`s for the redemptions
+     */
     struct PhysicalClaim {
         address payable paymentReceiver;
-        uint32 redeemedCount;
-        uint32 totalSupply;
+        uint16 redeemedCount;
+        uint16 totalSupply;
         uint48 startDate;
         uint48 endDate;
         address signer;
         BurnGroup[] burnSet;
-        Variation[] variations;
+        uint8[] variationIds;
+        mapping(uint8 => VariationState) variations;
     }
 
-    struct Redemption {
-        uint48 timestamp;
-        uint32 currentClaimCount;
-        uint8 variation;
+    /**
+     * @notice the state for a physical claim
+     * @param paymentReceiver   the address to forward proceeds from paid burn redeems
+     * @param redeemedCount     the amount currently redeemed
+     * @param totalSupply       the maximum number of redemptions to redeem (0 for unlimited)
+     * @param startDate         the starting time for the burn redeem (0 for immediately)
+     * @param endDate           the end time for the burn redeem (0 for never)
+     * @param signer            the address of the signer for the transaction details
+     * @param burnSet           a list of `BurnGroup`s that must each be satisfied for a burn redeem
+     * @param variationIds      a list of variation IDs for the redemptions
+     * @param variations        a mapping of `Variation`s for the redemptions
+     */
+    struct PhysicalClaimView {
+        address payable paymentReceiver;
+        uint16 redeemedCount;
+        uint16 totalSupply;
+        uint48 startDate;
+        uint48 endDate;
+        address signer;
+        BurnGroup[] burnSet;
+        VariationState[] variationStates;
     }
 
+    /**
+     * @notice a submission for a physical claim
+     * @param instanceId            the instanceId of the physical claim
+     * @param count                 the number of times to perform a claim for this instance
+     * @param currentClaimCount     the current number of times the physical claim has been redeemed
+     * @param variation             the variation to redeem
+     * @param data                  the data for the transaction
+     * @param signature             the signature for the transaction
+     * @param message               the message for the transaction
+     * @param nonce                 the nonce for the transaction
+     * @param totalCost             the total cost for the transaction
+     * @param burnTokens            the tokens to burn
+     */
     struct PhysicalClaimSubmission {
         uint56 instanceId;
-        uint32 physicalClaimCount;
-        uint32 currentClaimCount;
+        uint16 count;
+        uint16 currentClaimCount;
         uint8 variation;
         bytes data;
         bytes signature;
@@ -158,22 +211,22 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
      * @param instanceId                the instanceId of the physical claim
      * @return PhysicalClaim            the physical claim object
      */
-    function getPhysicalClaim(uint256 instanceId) external view returns(PhysicalClaim memory);
+    function getPhysicalClaim(uint256 instanceId) external view returns(PhysicalClaimView memory);
 
     /**
-     * @notice gets the redemptions for a physical claim for a given redeemer
+     * @notice gets the number of redemptions for a physical claim for a given redeemer
      * @param instanceId           the instanceId of the physical claim
      * @return redeemer            the address who redeemed
      */
-    function getRedemptions(uint256 instanceId, address redeemer) external view returns(Redemption[] memory);
+    function getRedemptions(uint256 instanceId, address redeemer) external view returns(uint256);
 
     /**
-     * @notice gets the redemptions for a physical claim for a given variation
+     * @notice gets the redemption state for a physical claim for a given variation
      * @param instanceId           the instanceId of the physical claim
      * @param variation            the variation
-     * @return redemptions         the redemptions
+     * @return VariationState      the max and available for the variation
      */
-    function getVariationRedemptions(uint256 instanceId, uint8 variation) external view returns(uint32);
+    function getVariationState(uint256 instanceId, uint8 variation) external view returns(VariationState memory);
 
     /**
      * @notice burn tokens and physical claims multiple times in a single transaction

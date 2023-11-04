@@ -8,6 +8,7 @@ import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -36,11 +37,8 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     // { instanceId => creator } -> TODO: make it so multiple people can administer a physical claim
     mapping(uint256 => address) internal _physicalClaimCreator;
 
-    // { instanceId => { redeemer => Redemption } }
-    mapping(uint256 => mapping(address => Redemption[])) internal _redemptions;
-
-    // { instanceId => { variation => count } }
-    mapping(uint256 => mapping(uint8 => uint32)) internal _variationRedemptions;
+    // { instanceId => { redeemer => uint256 } }
+    mapping(uint256 => mapping(address => uint256)) internal _redemptionCounts;
 
     // { instanceId => nonce => t/f  }
     mapping(uint256 => mapping(bytes32 => bool)) internal _usedMessages;
@@ -101,22 +99,37 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * See {IPhysicalClaimCore-getPhysicalClaim}.
      */
-    function getPhysicalClaim(uint256 instanceId) external override view returns(PhysicalClaim memory) {
-        return _getPhysicalClaim(instanceId);
+    function getPhysicalClaim(uint256 instanceId) external override view returns(PhysicalClaimView memory) {
+        PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
+        VariationState[] memory variationStates = new VariationState[](physicalClaimInstance.variationIds.length);
+        for (uint256 i; i < physicalClaimInstance.variationIds.length;) {
+            variationStates[i] = physicalClaimInstance.variations[physicalClaimInstance.variationIds[i]];
+            unchecked { ++i; }
+        }
+        return PhysicalClaimView({
+            paymentReceiver: physicalClaimInstance.paymentReceiver,
+            redeemedCount: physicalClaimInstance.redeemedCount,
+            totalSupply: physicalClaimInstance.totalSupply,
+            startDate: physicalClaimInstance.startDate,
+            endDate: physicalClaimInstance.endDate,
+            signer: physicalClaimInstance.signer,
+            burnSet: physicalClaimInstance.burnSet,
+            variationStates: variationStates
+        });
     }
 
     /**
      * See {IPhysicalClaimCore-getPhysicalClaim}.
      */
-    function getRedemptions(uint256 instanceId, address redeemer) external override view returns(Redemption[] memory) {
-        return _redemptions[instanceId][redeemer];
+    function getRedemptions(uint256 instanceId, address redeemer) external override view returns(uint256) {
+        return _redemptionCounts[instanceId][redeemer];
     }
 
     /**
-     * See {IPhysicalClaimCore-getVariationRedemptions}.
+     * See {IPhysicalClaimCore-getVariationState}.
      */
-    function getVariationRedemptions(uint256 instanceId, uint8 variation) external override view returns(uint32) {
-        return _variationRedemptions[instanceId][variation];
+    function getVariationState(uint256 instanceId, uint8 variation) external override view returns(VariationState memory) {
+        return _getPhysicalClaim(instanceId).variations[variation];
     }
 
     /**
@@ -133,20 +146,19 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
      * (Batch overload) see {IPhysicalClaimCore-burnRedeem}.
      */
     function burnRedeem(PhysicalClaimSubmission[] calldata submissions) external payable override nonReentrant {
-        if (submissions.length == 0) {
-            revert InvalidInput();
-        }
+        if (submissions.length == 0) revert InvalidInput();
+
         uint256 msgValueRemaining = msg.value;
         for (uint256 i; i < submissions.length;) {
             PhysicalClaimSubmission memory currentSub = submissions[i];
-            uint256 totalCost = currentSub.totalCost;
-            uint32 expectedCount = currentSub.currentClaimCount;
             uint256 instanceId = currentSub.instanceId;
 
-            if (expectedCount != _redemptions[instanceId][msg.sender].length) {
-                revert InvalidInput();
-            }
+            // The expectedCount must match the user's current redemption count to enforce idempotency
+            if (currentSub.currentClaimCount != _redemptionCounts[instanceId][msg.sender]) revert InvalidInput();
 
+            uint256 totalCost = currentSub.totalCost;
+
+            // Check that we have enough funds for the redemption
             if (totalCost > 0) {
                 if (msgValueRemaining < totalCost) {
                     revert InvalidPaymentAmount();
@@ -162,8 +174,9 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(submission.instanceId);
 
         // Get the amount that can be burned
-        uint32 physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, submission.physicalClaimCount, submission.variation, physicalClaimInstance.variations, submission.instanceId);
+        uint16 physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance, submission.variation, submission.count);
 
+        // Signer being set means that the physical claim is a paid claim
         if (physicalClaimInstance.signer != address(0)) {
             // Check that the message value is what was signed...
             _checkPriceSignature(submission.instanceId, submission.signature, submission.message, submission.nonce, physicalClaimInstance.signer, submission.totalCost);
@@ -172,7 +185,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
         // Do physical claim
         _burnTokens(physicalClaimInstance, submission.burnTokens, physicalClaimCount, msg.sender, submission.data);
-        _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.currentClaimCount, submission.variation, submission.data);
+        _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.variation, physicalClaimCount, submission.data);
     }
 
     function _checkPriceSignature(uint56 instanceId, bytes memory signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
@@ -201,7 +214,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint256 id,
         bytes calldata data
     ) external override nonReentrant returns(bytes4) {
-        _onReceived(from, id, data);
+        _onERC721Received(from, id, data);
         return this.onERC721Received.selector;
     }
 
@@ -211,7 +224,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
      * @param id        the token id of the burn token
      * @param data      bytes indicating the target burnRedeem and, optionally, a merkle proof that the token is valid
      */
-    function _onReceived(
+    function _onERC721Received(
         address from,
         uint256 id,
         bytes calldata data
@@ -221,11 +234,11 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
             revert InvalidData();
         }
 
-        uint256 instanceId;
+        uint56 instanceId;
         uint256 burnItemIndex;
         bytes32[] memory merkleProof;
         uint8 variation;
-        (instanceId, burnItemIndex, merkleProof, variation) = abi.decode(data, (uint256, uint256, bytes32[], uint8));
+        (instanceId, burnItemIndex, merkleProof, variation) = abi.decode(data, (uint56, uint256, bytes32[], uint8));
 
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
 
@@ -234,7 +247,8 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // 2. The burn only requires one NFT (one burnSet element and one count)
         _validateReceivedInput(physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount);
 
-        _getAvailablePhysicalClaimCount(physicalClaimInstance.totalSupply, physicalClaimInstance.redeemedCount, 1, variation, physicalClaimInstance.variations, instanceId);
+        // Validate we have remaining amounts available (will revert if not)
+        _getAvailablePhysicalClaimCount(physicalClaimInstance, variation, 1);
 
         // Check that the burn token is valid
         BurnItem memory burnItem = physicalClaimInstance.burnSet[0].items[burnItemIndex];
@@ -247,7 +261,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
         // Do burn and redeem
         _burn(burnItem, address(this), msg.sender, id, 1, "");
-        _redeem(instanceId, physicalClaimInstance, from, 1, variation, "");
+        _redeem(instanceId, physicalClaimInstance, from, variation, 1, "");
     }
 
     function _validateReceivedInput(uint256 length, uint256 requiredCount) private pure {
@@ -279,13 +293,11 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
             PhysicalClaimLib.validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
 
-            // Always 721s right now, so always 1
-            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, 1, data);
+            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnRedeemCount, data);
             groupCounts[burnToken.groupIndex] += burnRedeemCount;
 
             unchecked { ++i; }
         }
-
         for (uint256 i; i < groupCounts.length;) {
             if (groupCounts[i] != burnRedeemInstance.burnSet[i].requiredCount * burnRedeemCount) {
                 revert InvalidBurnAmount();
@@ -297,47 +309,70 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * Helper to get the number of burn redeems the person can accomplish
      */
-    function _getAvailablePhysicalClaimCount(uint32 totalSupply, uint32 redeemedCount, uint32 desiredCount, uint8 variation, Variation[] memory variations, uint256 instanceId) internal view returns(uint32 burnRedeemCount) {
-        if (totalSupply == 0) {
-            burnRedeemCount = desiredCount;
+    function _getAvailablePhysicalClaimCount(PhysicalClaim storage instance, uint8 variation, uint16 count) internal view returns(uint16 burnRedeemCount) {
+        uint16 remainingTotalCount;
+        if (instance.totalSupply == 0) {
+            // If totalSupply is 0, it means unlimited redemptions
+            remainingTotalCount = count;
         } else {
-            uint32 remainingTotalCount = (totalSupply - redeemedCount);
-
-            Variation memory variationSelected;
-            // Get max redemptions for this variation...
-            for (uint i = 0; i < variations.length; i++) {
-                if (variations[i].id == variation) {
-                    variationSelected = variations[i];
-                    break;
-                }
-            }
-
-            if (variationSelected.id == 0) {
-                revert InvalidVariation();
-            }
-
-            uint32 variationRemainingCount = (variationSelected.max - _variationRedemptions[instanceId][variation]);
-
-            // Use whichever is lesser...
-            uint32 comparator = remainingTotalCount > variationRemainingCount ? variationRemainingCount : remainingTotalCount;
-
-            if (comparator > desiredCount) {
-                burnRedeemCount = desiredCount;
-            } else {
-                burnRedeemCount = comparator;
-            }
+            // Get the remaining total redemptions
+            remainingTotalCount = (instance.totalSupply - instance.redeemedCount);
         }
 
-        if (burnRedeemCount == 0) {
-            revert InvalidRedeemAmount();
+        // Get the max redemptions for this variation
+        VariationState memory variationState = instance.variations[variation];
+        if (!variationState.active) revert InvalidVariation();
+
+        uint16 variationRemainingCount;
+        if (variationState.totalSupply == 0) {
+            // If totalSupply of variation is 0, it means unlimited available
+            variationRemainingCount = count;
+        } else {
+            // Get the remaining variation redemptions
+            variationRemainingCount = (variationState.totalSupply - variationState.redeemedCount);
         }
+        
+        // Use whichever is lesser...
+        uint16 comparator = remainingTotalCount > variationRemainingCount ? variationRemainingCount : remainingTotalCount;
+
+        // Use the lesser of what's available or the desired count
+        if (comparator > count) {
+            burnRedeemCount = count;
+        } else {
+            burnRedeemCount = comparator;
+        }
+
+        // No more remaining
+        if (burnRedeemCount == 0) revert InvalidRedeemAmount();
     }
 
     /**
      * Helper to burn token
      */
     function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount, bytes memory data) private {
-        if (burnItem.tokenSpec == TokenSpec.ERC721) {
+        if (burnItem.tokenSpec == TokenSpec.ERC1155) {
+            uint256 amount = burnItem.amount * burnRedeemCount;
+
+            if (burnItem.burnSpec == BurnSpec.NONE) {
+                // Send to 0xdEaD to burn if contract doesn't have burn function
+                IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, data);
+
+            } else if (burnItem.burnSpec == BurnSpec.MANIFOLD) {
+                // Burn using the creator core's burn function
+                uint256[] memory tokenIds = new uint256[](1);
+                tokenIds[0] = tokenId;
+                uint256[] memory amounts = new uint256[](1);
+                amounts[0] = amount;
+                Manifold1155(contractAddress).burn(from, tokenIds, amounts);
+
+            } else if (burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
+                // Burn using OpenZeppelin's burn function
+                OZBurnable1155(contractAddress).burn(from, tokenId, amount);
+
+            } else {
+                revert InvalidBurnSpec();
+            }
+        } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
             if (burnRedeemCount != 1) {
                 revert InvalidBurnAmount();
             } 
@@ -364,22 +399,16 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     }
 
     /** 
-     * Helper to redeem multiple rede
+     * Helper to redeem multiple redeem
      */
-    function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint32 currentClaimCount, uint8 variation, bytes memory data) internal {
-        uint256 totalCount = currentClaimCount;
+    function _redeem(uint256 instanceId, PhysicalClaim storage physicalClaimInstance, address to, uint8 variation, uint16 count, bytes memory data) internal {
+        uint256 totalCount = count;
         if (totalCount > MAX_UINT_16) {
             revert InvalidInput();
         }
-        physicalClaimInstance.redeemedCount += uint32(totalCount);
-        Redemption memory redemption = Redemption({
-            timestamp: uint16(block.timestamp),
-            currentClaimCount: currentClaimCount,
-            variation: variation
-        });
-
-        _redemptions[instanceId][to].push(redemption);
-        _variationRedemptions[instanceId][variation]++;
-        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, variation, currentClaimCount, data);
+        physicalClaimInstance.redeemedCount += uint16(totalCount);
+        physicalClaimInstance.variations[variation].redeemedCount += count;
+        _redemptionCounts[instanceId][to] += count;
+        emit PhysicalClaimLib.PhysicalClaimRedemption(instanceId, variation, count, data);
     }
 }
