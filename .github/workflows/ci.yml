@@ -106,8 +106,8 @@ jobs:
       - name: Report code coverage
         uses: zgosalvez/github-actions-report-lcov@v3
         with:
-          coverage-files: lcov.info
+          coverage-files: packages/${{ matrix.folder }}/lcov.info
           artifact-name: code-coverage-report
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: packages/${{ matrix.folder }}
+          # working-directory: packages/${{ matrix.folder }}
           update-comment: true
