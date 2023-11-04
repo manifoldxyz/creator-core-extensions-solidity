@@ -109,5 +109,5 @@ jobs:
           coverage-files: packages/${{ matrix.folder }}/lcov.info
           artifact-name: code-coverage-report
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # working-directory: packages/${{ matrix.folder }}
+          working-directory: packages/${{ matrix.folder }}
           update-comment: true
