@@ -255,7 +255,82 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
-  function testHappyCaseERC721SafeTransferFrom() public {
+  function testERC721SafeTransferFromWithSigner() public {
+    vm.startPrank(owner);
+
+    // Mint token 1 to other
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 1,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+        requiredCount: 1,
+        items: burnItems
+      });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 10
+    });
+
+    // Create claim initialization parameters
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: signerForCost
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Actually do a burnRedeem
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
+    submissions[0].instanceId = uint56(instanceId);
+    submissions[0].count = 1;
+    submissions[0].currentClaimCount = 0;
+    submissions[0].burnTokens = burnTokens;
+    submissions[0].variation = 1;
+    submissions[0].data = "";
+
+    // Cannot burn via safeTransferFrom because we have a signer (paid burn)
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
+    creatorCore721.safeTransferFrom(other, address(example), 1, abi.encode(uint56(instanceId), uint256(0), "", uint8(1)));
+
+
+    vm.stopPrank();
+
+  }
+
+  function testERC721SafeTransferFrom() public {
     vm.startPrank(owner);
 
     // Mint token 1 to other
@@ -301,25 +376,6 @@ contract PhysicalClaimTest is Test {
 
     vm.stopPrank();
     vm.startPrank(other);
-
-    // Actually do a burnRedeem
-    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
-    burnTokens[0] = IPhysicalClaimCore.BurnToken({
-      groupIndex: 0,
-      itemIndex: 0,
-      contractAddress: address(creatorCore721),
-      id: 1,
-      merkleProof: new bytes32[](0)
-    });
-
-
-    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
-    submissions[0].instanceId = uint56(instanceId);
-    submissions[0].count = 1;
-    submissions[0].currentClaimCount = 0;
-    submissions[0].burnTokens = burnTokens;
-    submissions[0].variation = 1;
-    submissions[0].data = "";
 
     // Burn via safeTransferFrom
     creatorCore721.safeTransferFrom(other, address(example), 1, abi.encode(uint56(instanceId), uint256(0), "", uint8(1)));
@@ -961,7 +1017,7 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
-  function test1155() public {
+  function testERC1155() public {
     vm.startPrank(owner);
 
     // Mint 10 tokens to other
@@ -1039,6 +1095,196 @@ contract PhysicalClaimTest is Test {
     example.burnRedeem(submissions);
 
     assertEq(creatorCore1155.balanceOf(address(other), 1), 4);
+    vm.stopPrank();
+  }
+
+  function testERC1155SafeTransferFrom() public {
+    vm.startPrank(owner);
+
+    // Mint 10 tokens to other
+    address[] memory recipientsInput = new address[](1);
+    recipientsInput[0] = other;
+    uint[] memory mintsInput = new uint[](1);
+    mintsInput[0] = 10;
+    string[] memory urisInput = new string[](1);
+    urisInput[0] = "";
+    // base mint something in between
+    creatorCore1155.mintBaseNew(recipientsInput, mintsInput, urisInput);
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore1155),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 3,
+      minTokenId: 1,
+      maxTokenId: 3,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+      requiredCount: 1,
+      items: burnItems
+    });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 2
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: zeroSigner
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Burn via safeTransferFrom
+    creatorCore1155.safeTransferFrom(address(other), address(example), 1, 6, abi.encode(uint56(instanceId), uint16(2), uint256(0), "", uint8(1)));
+
+    assertEq(creatorCore1155.balanceOf(address(other), 1), 4);
+    vm.stopPrank();
+  }
+
+  function testERC1155SafeTransferFromBadAmount() public {
+    vm.startPrank(owner);
+
+    // Mint 10 tokens to other
+    address[] memory recipientsInput = new address[](1);
+    recipientsInput[0] = other;
+    uint[] memory mintsInput = new uint[](1);
+    mintsInput[0] = 10;
+    string[] memory urisInput = new string[](1);
+    urisInput[0] = "";
+    // base mint something in between
+    creatorCore1155.mintBaseNew(recipientsInput, mintsInput, urisInput);
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore1155),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 3,
+      minTokenId: 1,
+      maxTokenId: 3,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+      requiredCount: 1,
+      items: burnItems
+    });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 2
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: zeroSigner
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Burn via safeTransferFrom but with not enough tokens
+    // Note: this will revert with a non-ERC1155Receiver implementer error
+    vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
+    creatorCore1155.safeTransferFrom(address(other), address(example), 1, 4, abi.encode(uint56(instanceId), uint16(2), uint256(0), "", uint8(1)));
+
+    assertEq(creatorCore1155.balanceOf(address(other), 1), 10);
+    vm.stopPrank();
+  }
+
+  function testERC1155SafeTransferWithSigner() public {
+    vm.startPrank(owner);
+
+    // Mint 10 tokens to other
+    address[] memory recipientsInput = new address[](1);
+    recipientsInput[0] = other;
+    uint[] memory mintsInput = new uint[](1);
+    mintsInput[0] = 10;
+    string[] memory urisInput = new string[](1);
+    urisInput[0] = "";
+    // base mint something in between
+    creatorCore1155.mintBaseNew(recipientsInput, mintsInput, urisInput);
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore1155),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 3,
+      minTokenId: 1,
+      maxTokenId: 3,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+      requiredCount: 1,
+      items: burnItems
+    });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 2
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: signerForCost
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Burn via safeTransferFrom but with not enough tokens
+    // Note: this will revert with a non-ERC1155Receiver implementer error
+    vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
+    creatorCore1155.safeTransferFrom(address(other), address(example), 1, 6, abi.encode(uint56(instanceId), uint16(2), uint256(0), "", uint8(1)));
+
+    assertEq(creatorCore1155.balanceOf(address(other), 1), 10);
     vm.stopPrank();
   }
 

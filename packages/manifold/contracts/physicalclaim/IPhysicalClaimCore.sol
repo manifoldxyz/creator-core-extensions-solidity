@@ -5,12 +5,13 @@ pragma solidity ^0.8.0;
 /// @author: manifold.xyz
 
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
  * Burn Redeem Core interface
  */
-interface IPhysicalClaimCore is IERC165, IERC721Receiver  {
+interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
     error InvalidInstance();
     error UnsupportedContractVersion();
     error InvalidToken(uint256);

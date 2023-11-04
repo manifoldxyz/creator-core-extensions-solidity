@@ -214,21 +214,6 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         uint256 id,
         bytes calldata data
     ) external override nonReentrant returns(bytes4) {
-        _onERC721Received(from, id, data);
-        return this.onERC721Received.selector;
-    }
-
-    /**
-     * @notice  token transfer callback
-     * @param from      the person sending the tokens
-     * @param id        the token id of the burn token
-     * @param data      bytes indicating the target burnRedeem and, optionally, a merkle proof that the token is valid
-     */
-    function _onERC721Received(
-        address from,
-        uint256 id,
-        bytes calldata data
-    ) private {
         // Check calldata is valid
         if (data.length % 32 != 0) {
             revert InvalidData();
@@ -239,8 +224,25 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         bytes32[] memory merkleProof;
         uint8 variation;
         (instanceId, burnItemIndex, merkleProof, variation) = abi.decode(data, (uint56, uint256, bytes32[], uint8));
+      
+        _onERC721Received(from, id, instanceId, burnItemIndex, merkleProof, variation);
+        return this.onERC721Received.selector;
+    }
 
+    /**
+     * @notice  token transfer callback
+     */
+    function _onERC721Received(
+        address from,
+        uint256 tokenId,
+        uint56 instanceId,
+        uint256 burnItemIndex,
+        bytes32[] memory merkleProof,
+        uint8 variation
+    ) private {
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
+        // Note: since safeTransferFrom can't take funds, we are restricted to non-signature mints
+        if (physicalClaimInstance.signer != address(0)) revert InvalidInput();
 
         // A single  can only be sent in directly for a burn if:
         // 1. There is no cost to the burn (because no payment can be sent with a transfer)
@@ -257,11 +259,85 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         if (burnItem.tokenSpec != TokenSpec.ERC721) {
             revert InvalidInput();
         }
-        PhysicalClaimLib.validateBurnItem(burnItem, msg.sender, id, merkleProof);
+        PhysicalClaimLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         // Do burn and redeem
-        _burn(burnItem, address(this), msg.sender, id, 1, "");
+        _burn(burnItem, address(this), msg.sender, tokenId, 1, "");
         _redeem(instanceId, physicalClaimInstance, from, variation, 1, "");
+    }
+
+    /**
+     * @dev See {IERC1155Receiver-onERC1155Received}.
+     */
+    function onERC1155Received(
+        address,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external override nonReentrant returns(bytes4) {
+        // Check calldata is valid
+        if (data.length % 32 != 0) {
+            revert InvalidData();
+        }
+
+        uint56 instanceId;
+        uint16 burnRedeemCount;
+        uint256 burnItemIndex;
+        bytes32[] memory merkleProof;
+        uint8 variation;
+        (instanceId, burnRedeemCount, burnItemIndex, merkleProof, variation) = abi.decode(data, (uint56, uint16, uint256, bytes32[], uint8));
+
+        // Do burn redeem
+        _onERC1155Received(from, id, value, instanceId, burnRedeemCount, burnItemIndex, merkleProof, variation);
+
+        return this.onERC1155Received.selector;
+    }
+
+    /**
+     * Execute onERC1155Received burn/redeem
+     */
+    function _onERC1155Received(address from, uint256 tokenId, uint256 value, uint256 instanceId, uint16 burnRedeemCount, uint256 burnItemIndex, bytes32[] memory merkleProof, uint8 variation) private {
+        PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
+        // Note: since safeTransferFrom can't take funds, we are restricted to non-signature mints
+        if (physicalClaimInstance.signer != address(0)) revert InvalidInput();
+
+        // A single 1155 can only be sent in directly for a burn if:
+        // 1. The burn only requires one NFT (one burn set element and one required count in the set)
+        // 2. They are an active member (because no fee payment can be sent with a transfer)
+        _validateReceivedInput(physicalClaimInstance.burnSet.length, physicalClaimInstance.burnSet[0].requiredCount);
+
+        uint16 availableBurnRedeemCount = _getAvailablePhysicalClaimCount(physicalClaimInstance, variation, burnRedeemCount);
+
+        // Check that the burn token is valid
+        BurnItem memory burnItem = physicalClaimInstance.burnSet[0].items[burnItemIndex];
+        if (value != burnItem.amount * burnRedeemCount) {
+            revert InvalidBurnAmount();
+        }
+        PhysicalClaimLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
+
+        // Do burn and redeem
+        _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount, "");
+        _redeem(instanceId, physicalClaimInstance, from, variation, availableBurnRedeemCount, "");
+
+        // Return excess amount
+        if (availableBurnRedeemCount != burnRedeemCount) {
+            IERC1155(msg.sender).safeTransferFrom(address(this), from, tokenId, (burnRedeemCount - availableBurnRedeemCount) * burnItem.amount, "");
+        }
+    }
+
+    /**
+     * @dev See {IERC1155Receiver-onERC1155BatchReceived}.
+     */
+    function onERC1155BatchReceived(
+        address,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external override nonReentrant returns(bytes4) {
+        // Do not support batch burning right now
+        revert InvalidInput();
     }
 
     function _validateReceivedInput(uint256 length, uint256 requiredCount) private pure {
