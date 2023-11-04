@@ -103,7 +103,6 @@ jobs:
 
       - name: Report code coverage
         uses: zgosalvez/github-actions-report-lcov@v3
-        working-directory: packages/${{ matrix.folder }}
         with:
           coverage-files: lcov.info
           github-token: ${{ secrets.GITHUB_TOKEN }}
