@@ -15,7 +15,7 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
     error InvalidInstance();
     error UnsupportedContractVersion();
     error InvalidToken(uint256);
-    error InvalidInput();
+    error InvalidInput(); // 0xb4fa3fb3
     error InvalidTokenSpec();
     error InvalidBurnSpec();
     error InvalidData();
@@ -25,11 +25,11 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
     error PhysicalClaimDoesNotExist(uint256);
     error PhysicalClaimInactive(uint256);
 
-    error InvalidBurnAmount();
-    error InvalidRedeemAmount();
-    error InvalidPaymentAmount();
-    error InvalidSignature();
-    error InvalidVariation();
+    error InvalidBurnAmount(); // 0x2075cc10
+    error InvalidRedeemAmount(); // 0x918e94c5
+    error InvalidPaymentAmount(); // 0xfc512fde
+    error InvalidSignature(); // 0x8baa579f
+    error InvalidVariation(); // 0xc674e37c
 
     /**
      * @notice the validation type used for a `BurnItem`
