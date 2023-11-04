@@ -2399,7 +2399,7 @@ contract PhysicalClaimTest is Test {
     example.updatePhysicalClaim(instanceId, claimPs);
 
     // Get variations...
-    // Check get redemptions, should be 1
+    // Check get redemptions, should be 3
     IPhysicalClaimCore.VariationState memory variationStateReturn = example.getVariationState(instanceId, 1);
 
     // Total Supply isn't "lower" than redeem count, even though we "lowered" it to 2
@@ -2427,10 +2427,8 @@ contract PhysicalClaimTest is Test {
     variations[0].totalSupply = 0;
     example.updatePhysicalClaim(instanceId, claimPs);
 
-    // Check get redemptions, should be 1
+    // Check get redemptions, should be 3
     variationStateReturn = example.getVariationState(instanceId, 1);
-
-    // Total Supply isn't "lower" than redeem count, even though we "lowered" it to 2
     assertEq(variationStateReturn.totalSupply, 0);
     assertEq(variationStateReturn.redeemedCount, 3);
     assertEq(variationStateReturn.active, true);
@@ -2439,6 +2437,13 @@ contract PhysicalClaimTest is Test {
     vm.startPrank(other);
 
     example.burnRedeem(submissions);
+
+    // Check get redemptions, should be 4
+    variationStateReturn = example.getVariationState(instanceId, 1);
+    assertEq(variationStateReturn.totalSupply, 0);
+    assertEq(variationStateReturn.redeemedCount, 4);
+    assertEq(variationStateReturn.active, true);
+
 
     vm.stopPrank();
   }
