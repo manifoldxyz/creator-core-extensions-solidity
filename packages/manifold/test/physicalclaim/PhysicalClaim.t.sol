@@ -67,6 +67,16 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testSupportsInterface() public {
+    vm.startPrank(owner);
+
+    bytes4 interfaceId = type(IPhysicalClaimCore).interfaceId;
+    assertEq(example.supportsInterface(interfaceId), true);
+    assertEq(example.supportsInterface(0xffffffff), false);
+
+    vm.stopPrank();
+  }
+
   function testInputs() public {
     vm.startPrank(owner);
 
