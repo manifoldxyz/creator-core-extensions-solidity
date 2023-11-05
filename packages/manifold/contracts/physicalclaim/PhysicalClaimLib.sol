@@ -130,6 +130,7 @@ library PhysicalClaimLib {
             IPhysicalClaimCore.VariationLimit memory VariationLimit = physicalClaimParameters.variationLimits[i];
             IPhysicalClaimCore.VariationState storage variationState = physicalClaimInstance.variations[VariationLimit.id];
             variationState.active = true;
+            physicalClaimInstance.variationIds[i] = VariationLimit.id;
             // Set the totalSupply. If params specify 0, we use 0, otherwise it's the max of the current redeemCount and the param's totalSupply
             variationState.totalSupply = VariationLimit.totalSupply == 0 ? 0 : (variationState.redeemedCount > VariationLimit.totalSupply ? variationState.redeemedCount : VariationLimit.totalSupply);
             unchecked { ++i; }
