@@ -1446,6 +1446,71 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testTransfer721To1155Claim() public {
+    vm.startPrank(owner);
+
+    // Mint 10 tokens to other
+    address[] memory recipientsInput = new address[](1);
+    recipientsInput[0] = other;
+    uint[] memory mintsInput = new uint[](1);
+    mintsInput[0] = 10;
+    string[] memory urisInput = new string[](1);
+    urisInput[0] = "";
+    // base mint something in between
+    creatorCore1155.mintBaseNew(recipientsInput, mintsInput, urisInput);
+
+    // Mint 721 to other
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore1155),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 3,
+      minTokenId: 1,
+      maxTokenId: 3,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+      requiredCount: 1,
+      items: burnItems
+    });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 2
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: zeroSigner
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Transfer in the 721
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
+    creatorCore721.safeTransferFrom(other, address(example), 1, abi.encode(uint56(instanceId), uint256(0), "", uint8(1)));
+    vm.stopPrank();
+  }
+
+
   function testERC1155SafeTransferFromBadAmount() public {
     vm.startPrank(owner);
 
