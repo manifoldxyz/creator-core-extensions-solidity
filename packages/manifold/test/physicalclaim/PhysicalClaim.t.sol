@@ -74,6 +74,12 @@ contract PhysicalClaimTest is Test {
     assertEq(example.supportsInterface(interfaceId), true);
     assertEq(example.supportsInterface(0xffffffff), false);
 
+    interfaceId = type(IERC721Receiver).interfaceId;
+    assertEq(example.supportsInterface(interfaceId), true);
+
+    interfaceId = type(IERC1155Receiver).interfaceId;
+    assertEq(example.supportsInterface(interfaceId), true);
+
     vm.stopPrank();
   }
 
