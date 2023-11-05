@@ -265,6 +265,73 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testEmptySubmissionsArray() public {
+    vm.startPrank(owner);
+
+    // Mint token 1 to other
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 1,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+        requiredCount: 1,
+        items: burnItems
+      });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 10
+    });
+
+    // Create claim initialization parameters
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: zeroSigner
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Approve token for burning
+    creatorCore721.approve(address(example), 1);
+
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](0);
+
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
+    example.burnRedeem(submissions);
+    vm.stopPrank();
+  }
+
   function testGetRedemptionsCountCorrect() public {
     vm.startPrank(owner);
 
