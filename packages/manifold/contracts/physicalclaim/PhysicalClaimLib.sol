@@ -127,12 +127,12 @@ library PhysicalClaimLib {
         }
         physicalClaimInstance.variationIds = new uint8[](physicalClaimParameters.variationLimits.length);
         for (uint256 i; i < physicalClaimParameters.variationLimits.length;) {
-            IPhysicalClaimCore.VariationLimit memory VariationLimit = physicalClaimParameters.variationLimits[i];
-            IPhysicalClaimCore.VariationState storage variationState = physicalClaimInstance.variations[VariationLimit.id];
+            IPhysicalClaimCore.VariationLimit memory variationLimit = physicalClaimParameters.variationLimits[i];
+            IPhysicalClaimCore.VariationState storage variationState = physicalClaimInstance.variations[variationLimit.id];
             variationState.active = true;
-            physicalClaimInstance.variationIds[i] = VariationLimit.id;
+            physicalClaimInstance.variationIds[i] = variationLimit.id;
             // Set the totalSupply. If params specify 0, we use 0, otherwise it's the max of the current redeemCount and the param's totalSupply
-            variationState.totalSupply = VariationLimit.totalSupply == 0 ? 0 : (variationState.redeemedCount > VariationLimit.totalSupply ? variationState.redeemedCount : VariationLimit.totalSupply);
+            variationState.totalSupply = variationLimit.totalSupply == 0 ? 0 : (variationState.redeemedCount > variationLimit.totalSupply ? variationState.redeemedCount : variationLimit.totalSupply);
             unchecked { ++i; }
         }
     }
