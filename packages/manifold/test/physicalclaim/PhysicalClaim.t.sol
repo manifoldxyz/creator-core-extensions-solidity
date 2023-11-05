@@ -2766,4 +2766,102 @@ contract PhysicalClaimTest is Test {
 
     vm.stopPrank();
   }
+
+  function testSyncTotalSupply() public {
+    vm.startPrank(owner);
+
+    // Mint 2 tokens to other
+    creatorCore721.mintBase(other, "");
+    creatorCore721.mintBase(other, "");
+    creatorCore721.mintBase(other, "");
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
+      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 3,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+      requiredCount: 1,
+      items: burnItems
+    });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 10
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 20,
+      startDate: 0,
+      endDate: 0,
+
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: zeroSigner
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Approve tokens for burning
+    creatorCore721.approve(address(example), 1);
+    creatorCore721.approve(address(example), 2);
+    creatorCore721.approve(address(example), 3);
+    creatorCore721.approve(address(example), 4);
+
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
+    submissions[0].instanceId = uint56(instanceId);
+    submissions[0].count = 1;
+    submissions[0].currentClaimCount = 0;
+    submissions[0].burnTokens = burnTokens;
+    submissions[0].variation = 1;
+    submissions[0].data = "";
+
+    assertEq(creatorCore721.balanceOf(address(other)), 4);
+
+    // Burn 1
+    example.burnRedeem(submissions);
+
+    assertEq(creatorCore721.balanceOf(address(other)), 3);
+
+    burnTokens[0].id = 2;
+    submissions[0].currentClaimCount = 1;
+    example.burnRedeem(submissions);
+    
+    vm.stopPrank();
+    vm.startPrank(owner);
+    // 2 redemptions now... update claim to be 1 total supply...
+    claimPs.totalSupply = 1;
+    example.updatePhysicalClaim(instanceId, claimPs);
+
+    // Make sure that the total supply is 2 (in sync)
+    IPhysicalClaimCore.PhysicalClaimView memory claim = example.getPhysicalClaim(instanceId);
+    assertEq(claim.totalSupply, 2);
+
+    vm.stopPrank();
+  }
 }
