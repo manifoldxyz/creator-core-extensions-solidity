@@ -9,22 +9,22 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import ".././libraries/manifold-membership/IManifoldMembership.sol";
 
-import "./ISuperLike.sol";
+import "./IArtistProof.sol";
 
 error InvalidStorageProtocol();
-error SuperLikeNotInitialized();
+error ArtistProofNotInitialized();
 error FailedToTransfer();
 error InvalidInstance();
 
 /**
- * @title SuperLike
+ * @title ArtistProof
  * @author manifold.xyz
- * @notice SuperLike extension
+ * @notice ArtistProof extension
  */
-contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, AdminControl {
+contract ArtistProofExtension is IArtistProofExtension, ICreatorExtensionTokenURI, AdminControl {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    struct TokenSuperLike {
+    struct TokenArtistProof {
         address creatorContractAddress;
         uint56 instanceId;
     }
@@ -46,18 +46,18 @@ contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, A
 
     // stores mapping from contractAddress/instanceId to the claim it represents
     // { contractAddress => { instanceId => Claim } }
-    mapping(address => mapping(uint256 => SuperLikeInstance)) private _superLikes;
+    mapping(address => mapping(uint256 => ArtistProofInstance)) private _artistProofs;
 
 
-    // { contractAddress => { tokenId => { TokenSuperLike } }
-    mapping(address => mapping(uint256 => TokenSuperLike)) private _tokenSuperLike;
+    // { contractAddress => { tokenId => { TokenArtistProof } }
+    mapping(address => mapping(uint256 => TokenArtistProof)) private _tokenArtistProof;
 
 
     /**
      * @dev See {IERC165-supportsInterface}.
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override (AdminControl, IERC165) returns (bool) {
-        return interfaceId == type(ISuperLikeExtension).interfaceId
+        return interfaceId == type(IArtistProofExtension).interfaceId
             || interfaceId == type(ICreatorExtensionTokenURI).interfaceId
             || interfaceId == type(IERC1155CreatorExtensionApproveTransfer).interfaceId
             || interfaceId == type(IAdminControl).interfaceId
@@ -80,16 +80,16 @@ contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, A
     }
 
     /**
-     * See {ISuperLikeExtension-initializeSuperLike}.
+     * See {IArtistProofExtension-initializeArtistProof}.
      */
-    function initializeSuperLike(
+    function initializeArtistProof(
         address creatorContractAddress,
         address editionAddress,
         uint256 instanceId,
-        SuperLikeParameters calldata parameters
+        ArtistProofParameters calldata parameters
     ) external override creatorAdminRequired(creatorContractAddress) creatorAdminRequired(editionAddress) {
         // Revert if claim at instanceId already exists
-        require(_superLikes[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID, "Claim already initialized");
+        require(_artistProofs[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID, "Claim already initialized");
 
         // Max uint56 for instanceId
         if (instanceId == 0 || instanceId > MAX_UINT_56) revert InvalidInstance();
@@ -104,7 +104,7 @@ contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, A
         uint256[] memory erc1155TokenIds = IERC1155CreatorCore(editionAddress).mintExtensionNew(receivers, amounts, uris);
 
          // Create the claim
-        _superLikes[creatorContractAddress][instanceId] = SuperLikeInstance({
+        _artistProofs[creatorContractAddress][instanceId] = ArtistProofInstance({
             proofTokenId: erc721TokenId,
             editionTokenId: erc1155TokenIds[0],
             editionAddress: editionAddress,
@@ -113,30 +113,30 @@ contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, A
             paymentReceiver: parameters.paymentReceiver,
             editionCount: 0
         });
-        _tokenSuperLike[creatorContractAddress][erc721TokenId] = TokenSuperLike(creatorContractAddress, uint56(instanceId));
-        _tokenSuperLike[editionAddress][erc1155TokenIds[0]] = TokenSuperLike(creatorContractAddress, uint56(instanceId));
+        _tokenArtistProof[creatorContractAddress][erc721TokenId] = TokenArtistProof(creatorContractAddress, uint56(instanceId));
+        _tokenArtistProof[editionAddress][erc1155TokenIds[0]] = TokenArtistProof(creatorContractAddress, uint56(instanceId));
         
-        emit SuperLikeInitialized(creatorContractAddress, instanceId, editionAddress, msg.sender);
+        emit ArtistProofInitialized(creatorContractAddress, instanceId, editionAddress, msg.sender);
     }
 
     /**
-     * See {ISuperLikeExtension-updateSuperLike}.
+     * See {IArtistProofExtension-updateArtistProof}.
      */
-    function updateSuperLike(
+    function updateArtistProof(
         address creatorContractAddress,
         uint256 instanceId,
-        SuperLikeParameters calldata parameters
+        ArtistProofParameters calldata parameters
     ) external override creatorAdminRequired(creatorContractAddress) {
         // Sanity checks
-        SuperLikeInstance storage superLikeInstance = _superLikes[creatorContractAddress][instanceId];
-        if (superLikeInstance.storageProtocol == StorageProtocol.INVALID) revert SuperLikeNotInitialized();
+        ArtistProofInstance storage artistProofInstance = _artistProofs[creatorContractAddress][instanceId];
+        if (artistProofInstance.storageProtocol == StorageProtocol.INVALID) revert ArtistProofNotInitialized();
         if (parameters.storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
 
-        superLikeInstance.location = parameters.location;
-        superLikeInstance.storageProtocol = parameters.storageProtocol;
-        superLikeInstance.paymentReceiver = parameters.paymentReceiver;
+        artistProofInstance.location = parameters.location;
+        artistProofInstance.storageProtocol = parameters.storageProtocol;
+        artistProofInstance.paymentReceiver = parameters.paymentReceiver;
 
-        emit SuperLikeUpdated(creatorContractAddress, instanceId);
+        emit ArtistProofUpdated(creatorContractAddress, instanceId);
     }
 
     /**
@@ -155,13 +155,13 @@ contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, A
     }
 
     /**
-     * See {ISuperLike-mint}.
+     * See {IArtistProof-mint}.
      */
     function mint(address creatorContractAddress, uint256 instanceId, uint96 count) external payable override {
-        SuperLikeInstance storage superLikeInstance = _getSuperLike(creatorContractAddress, instanceId);
+        ArtistProofInstance storage artistProofInstance = _getArtistProof(creatorContractAddress, instanceId);
 
         // Transfer funds
-        _transferFunds(SUPERLIKE_FEE, superLikeInstance.paymentReceiver, count, true);
+        _transferFunds(SUPERLIKE_FEE, artistProofInstance.paymentReceiver, count, true);
 
         // Do mint
         address[] memory recipients = new address[](1);
@@ -169,21 +169,21 @@ contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, A
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = count;
         uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = superLikeInstance.editionTokenId;
-        IERC1155CreatorCore(superLikeInstance.editionAddress).mintExtensionExisting(recipients, tokenIds, amounts);
-        superLikeInstance.editionCount += count;
+        tokenIds[0] = artistProofInstance.editionTokenId;
+        IERC1155CreatorCore(artistProofInstance.editionAddress).mintExtensionExisting(recipients, tokenIds, amounts);
+        artistProofInstance.editionCount += count;
 
-        emit SuperLike(creatorContractAddress, instanceId, msg.sender, count);
+        emit ArtistProof(creatorContractAddress, instanceId, msg.sender, count);
     }
 
     /**
-     * See {ISuperLike-mintProxy}.
+     * See {IArtistProof-mintProxy}.
      */
     function mintProxy(address creatorContractAddress, uint256 instanceId, uint96 count, address mintFor) external payable override {
-        SuperLikeInstance storage superLikeInstance = _getSuperLike(creatorContractAddress, instanceId);
+        ArtistProofInstance storage artistProofInstance = _getArtistProof(creatorContractAddress, instanceId);
 
         // Transfer funds
-        _transferFunds(SUPERLIKE_FEE, superLikeInstance.paymentReceiver, count, false);
+        _transferFunds(SUPERLIKE_FEE, artistProofInstance.paymentReceiver, count, false);
 
         // Do mint
         address[] memory recipients = new address[](1);
@@ -191,11 +191,11 @@ contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, A
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = count;
         uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = superLikeInstance.editionTokenId;
-        IERC1155CreatorCore(superLikeInstance.editionAddress).mintExtensionExisting(recipients, tokenIds, amounts);
-        superLikeInstance.editionCount += count;
+        tokenIds[0] = artistProofInstance.editionTokenId;
+        IERC1155CreatorCore(artistProofInstance.editionAddress).mintExtensionExisting(recipients, tokenIds, amounts);
+        artistProofInstance.editionCount += count;
 
-        emit SuperLikeProxy(creatorContractAddress, instanceId, mintFor, count, msg.sender);
+        emit ArtistProofProxy(creatorContractAddress, instanceId, mintFor, count, msg.sender);
     }
 
     function _transferFunds(uint256 cost, address payable recipient, uint96 mintCount, bool allowMembership) internal {
@@ -222,44 +222,44 @@ contract SuperLikeExtension is ISuperLikeExtension, ICreatorExtensionTokenURI, A
         if (!sent) revert FailedToTransfer();
     }
 
-    function _getSuperLike(address creatorContractAddress, uint256 instanceId) private view returns(SuperLikeInstance storage superLikeInstance) {
-        superLikeInstance = _superLikes[creatorContractAddress][instanceId];
-        if (superLikeInstance.storageProtocol == StorageProtocol.INVALID) revert SuperLikeNotInitialized();
+    function _getArtistProof(address creatorContractAddress, uint256 instanceId) private view returns(ArtistProofInstance storage artistProofInstance) {
+        artistProofInstance = _artistProofs[creatorContractAddress][instanceId];
+        if (artistProofInstance.storageProtocol == StorageProtocol.INVALID) revert ArtistProofNotInitialized();
     }
 
     /**
-     * See {ISuperLike-getSuperLike}.
+     * See {IArtistProof-getArtistProof}.
      */
-    function getSuperLike(address creatorContractAddress, uint256 instanceId) external view returns(SuperLikeInstance memory) {
-        return _getSuperLike(creatorContractAddress, instanceId);
+    function getArtistProof(address creatorContractAddress, uint256 instanceId) external view returns(ArtistProofInstance memory) {
+        return _getArtistProof(creatorContractAddress, instanceId);
     }
 
     /**
-     * See {ISuperLike-extendTokenURI}.
+     * See {IArtistProof-extendTokenURI}.
      */
     function extendTokenURI(
         address creatorContractAddress, uint256 instanceId,
         string calldata locationChunk
     ) external override creatorAdminRequired(creatorContractAddress) {
-        SuperLikeInstance storage superLikeInstance = _superLikes[creatorContractAddress][instanceId];
-        require(superLikeInstance.storageProtocol == StorageProtocol.NONE, "Invalid storage protocol");
-        superLikeInstance.location = string(abi.encodePacked(superLikeInstance.location, locationChunk));
+        ArtistProofInstance storage artistProofInstance = _artistProofs[creatorContractAddress][instanceId];
+        require(artistProofInstance.storageProtocol == StorageProtocol.NONE, "Invalid storage protocol");
+        artistProofInstance.location = string(abi.encodePacked(artistProofInstance.location, locationChunk));
     }
     /**
      * See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorContractAddress, uint256 tokenId) external override view returns(string memory uri) {
-        TokenSuperLike memory tokenSuperLike = _tokenSuperLike[creatorContractAddress][tokenId];
-        require(tokenSuperLike.instanceId > 0, "Token does not exist");
-        SuperLikeInstance memory superLikeInstance = _superLikes[tokenSuperLike.creatorContractAddress][tokenSuperLike.instanceId];
+        TokenArtistProof memory tokenArtistProof = _tokenArtistProof[creatorContractAddress][tokenId];
+        require(tokenArtistProof.instanceId > 0, "Token does not exist");
+        ArtistProofInstance memory artistProofInstance = _artistProofs[tokenArtistProof.creatorContractAddress][tokenArtistProof.instanceId];
 
         string memory prefix = "";
-        if (superLikeInstance.storageProtocol == StorageProtocol.ARWEAVE) {
+        if (artistProofInstance.storageProtocol == StorageProtocol.ARWEAVE) {
             prefix = ARWEAVE_PREFIX;
-        } else if (superLikeInstance.storageProtocol == StorageProtocol.IPFS) {
+        } else if (artistProofInstance.storageProtocol == StorageProtocol.IPFS) {
             prefix = IPFS_PREFIX;
         }
-        uri = string(abi.encodePacked(prefix, superLikeInstance.location));
+        uri = string(abi.encodePacked(prefix, artistProofInstance.location));
     }
 
     /**
