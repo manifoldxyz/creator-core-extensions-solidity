@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
-import "../contracts/physicalClaim/PhysicalClaimLib.sol";
+import "../contracts/physicalclaim/PhysicalClaimLib.sol";
 
 contract DeployPhysicalClaimLib is Script {
     function run() external {
