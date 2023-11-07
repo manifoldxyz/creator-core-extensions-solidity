@@ -9,7 +9,6 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "./PhysicalClaimCore.sol";
 import "./PhysicalClaimLib.sol";
 import "./IPhysicalClaim.sol";
-import "../libraries/IERC721CreatorCoreVersion.sol";
 
 contract PhysicalClaim is PhysicalClaimCore, IPhysicalClaim {
     using Strings for uint256;
