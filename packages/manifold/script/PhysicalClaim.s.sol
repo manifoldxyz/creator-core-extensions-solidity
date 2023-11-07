@@ -32,7 +32,7 @@ contract DeployPhysicalClaim is Script {
         vm.startBroadcast(deployerPrivateKey);
         // forge script scripts/PhysicalClaim.s.sol --optimizer-runs 1000 --rpc-url <YOUR_NODE> --broadcast
         // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain goerli <DEPLOYED_ADDRESS> contracts/physicalclaim/PhysicalClaim.sol:PhysicalClaim --constructor-args $(cast abi-encode "constructor(address,address)" "${INITIAL_OWNER}") --watch
-        new PhysicalClaim{salt: 0x4552433732314c617a7950617961626c65436c61696d4552433732314c617a79}(initialOwner);
+        new PhysicalClaim{salt: 0x4c657427732067657420506879736963616c2000000000000000000000000000}(initialOwner);
         vm.stopBroadcast();
     }
 }
