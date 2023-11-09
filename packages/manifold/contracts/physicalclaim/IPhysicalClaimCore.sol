@@ -16,8 +16,8 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
     error UnsupportedContractVersion();
     error InvalidToken(uint256);
     error InvalidInput(); // 0xb4fa3fb3
-    error InvalidTokenSpec();
-    error InvalidBurnSpec();
+    error InvalidBurnTokenSpec();
+    error InvalidBurnFunctionSpec();
     error InvalidData();
     error TransferFailure();
     error ContractDeprecated();
@@ -40,15 +40,15 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
      */
     enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE, ANY }
 
-    enum TokenSpec { ERC721, ERC1155 }
+    enum BurnTokenSpec { ERC721, ERC1155, ERC721_NO_BURN }
 
-    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN }
+    enum BurnFunctionSpec { NONE, MANIFOLD, OPENZEPPELIN }
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
      * @param validationType    which type of validation used to check that the burn item is 
      *                          satisfied
-     * @param tokenSpec         whether the token is an  or ERC1155
+     * @param tokenSpec         the burn item token type
      * @param burnSpec          whether the contract for a token has a `burn` function and, if so,
      *                          what interface
      * @param amount            (only for ERC1155 tokens) the amount (value) required to burn
@@ -60,8 +60,8 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
     struct BurnItem {
         ValidationType validationType;
         address contractAddress;
-        TokenSpec tokenSpec;
-        BurnSpec burnSpec;
+        BurnTokenSpec burnTokenSpec;
+        BurnFunctionSpec burnFunctionSpec;
         uint72 amount;
         uint256 minTokenId;
         uint256 maxTokenId;
