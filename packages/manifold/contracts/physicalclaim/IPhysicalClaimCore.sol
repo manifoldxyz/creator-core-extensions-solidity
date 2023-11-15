@@ -16,8 +16,8 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
     error UnsupportedContractVersion();
     error InvalidToken(uint256);
     error InvalidInput(); // 0xb4fa3fb3
-    error InvalidTokenSpec();
-    error InvalidBurnSpec();
+    error InvalidBurnTokenSpec();
+    error InvalidBurnFunctionSpec();
     error InvalidData();
     error TransferFailure();
     error ContractDeprecated();
@@ -40,15 +40,15 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
      */
     enum ValidationType { INVALID, CONTRACT, RANGE, MERKLE_TREE, ANY }
 
-    enum TokenSpec { ERC721, ERC1155 }
+    enum BurnTokenSpec { ERC721, ERC1155, ERC721_NO_BURN }
 
-    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN }
+    enum BurnFunctionSpec { NONE, MANIFOLD, OPENZEPPELIN }
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
      * @param validationType    which type of validation used to check that the burn item is 
      *                          satisfied
-     * @param tokenSpec         whether the token is an  or ERC1155
+     * @param tokenSpec         the burn item token type
      * @param burnSpec          whether the contract for a token has a `burn` function and, if so,
      *                          what interface
      * @param amount            (only for ERC1155 tokens) the amount (value) required to burn
@@ -60,8 +60,8 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
     struct BurnItem {
         ValidationType validationType;
         address contractAddress;
-        TokenSpec tokenSpec;
-        BurnSpec burnSpec;
+        BurnTokenSpec burnTokenSpec;
+        BurnFunctionSpec burnFunctionSpec;
         uint72 amount;
         uint256 minTokenId;
         uint256 maxTokenId;
@@ -207,6 +207,12 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
         bytes32[] merkleProof;
     }
 
+    struct TokensUsedQuery {
+        uint256 instanceId;
+        address[] contractAddresses;
+        uint256[] tokenIds;
+    }
+
     /**
      * @notice get a physical claim corresponding to an instanceId
      * @param instanceId                the instanceId of the physical claim
@@ -228,6 +234,13 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
      * @return VariationState      the max and available for the variation
      */
     function getVariationState(uint256 instanceId, uint8 variation) external view returns(VariationState memory);
+
+    /**
+     * @notice gets the redemption state for a tokenId/contractAddress on an instance
+     * @param tokensUsedQuery      the query for instance id and list of tokenIds and contracts
+     * @return bool[]              true/false for each tokenId/contractAddress pair
+     */
+    function getAreTokensUsed(TokensUsedQuery calldata tokensUsedQuery) external view returns(bool[] memory);
 
     /**
      * @notice burn tokens and physical claims multiple times in a single transaction

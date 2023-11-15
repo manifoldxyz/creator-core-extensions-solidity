@@ -43,6 +43,10 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     // { instanceId => nonce => t/f  }
     mapping(uint256 => mapping(bytes32 => bool)) internal _usedMessages;
 
+    // { instanceId => { contractAddress => { tokenId => t/f }}
+    // Track used tokens for a given instannceId
+    mapping(uint256 => mapping(address => mapping(uint256 => bool))) internal _usedTokens;
+
     constructor(address initialOwner) {
         _transferOwnership(initialOwner);
     }
@@ -133,6 +137,15 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         return _getPhysicalClaim(instanceId).variations[variation];
     }
 
+    function getAreTokensUsed(TokensUsedQuery calldata tokensUsedQuery) external override view returns(bool[] memory results) {
+        results = new bool[](tokensUsedQuery.tokenIds.length);
+        for (uint i = 0; i < results.length; i++) {
+            address contractAddress = tokensUsedQuery.contractAddresses[i];
+            uint256 tokenId = tokensUsedQuery.tokenIds[i];
+            results[i] = _usedTokens[tokensUsedQuery.instanceId][contractAddress][tokenId];
+        }
+    }
+
     /**
      * Helper to get physical claim instance
      */
@@ -172,7 +185,8 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     }
 
     function _burnRedeem(PhysicalClaimSubmission memory submission) private {
-        PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(submission.instanceId);
+        uint56 instanceId = submission.instanceId;
+        PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
 
         // Get the amount that can be burned
         uint16 physicalClaimCount = _getAvailablePhysicalClaimCount(physicalClaimInstance, submission.variation, submission.count);
@@ -180,13 +194,13 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         // Signer being set means that the physical claim is a paid claim
         if (physicalClaimInstance.signer != address(0)) {
             // Check that the message value is what was signed...
-            _checkPriceSignature(submission.instanceId, submission.signature, submission.message, submission.nonce, physicalClaimInstance.signer, submission.totalCost);
+            _checkPriceSignature(instanceId, submission.signature, submission.message, submission.nonce, physicalClaimInstance.signer, submission.totalCost);
             _forwardValue(physicalClaimInstance.paymentReceiver, submission.totalCost);
         }
 
         // Do physical claim
-        _burnTokens(physicalClaimInstance, submission.burnTokens, physicalClaimCount, msg.sender, submission.data);
-        _redeem(submission.instanceId, physicalClaimInstance, msg.sender, submission.variation, physicalClaimCount, submission.data);
+        _burnTokens(instanceId, physicalClaimInstance, submission.burnTokens, physicalClaimCount, msg.sender, submission.data);
+        _redeem(instanceId, physicalClaimInstance, msg.sender, submission.variation, physicalClaimCount, submission.data);
     }
 
     function _checkPriceSignature(uint56 instanceId, bytes memory signature, bytes32 message, bytes32 nonce, address signingAddress, uint256 cost) internal {
@@ -257,13 +271,13 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         BurnItem memory burnItem = physicalClaimInstance.burnSet[0].items[burnItemIndex];
 
         // Can only take in one burn item
-        if (burnItem.tokenSpec != TokenSpec.ERC721) {
+        if (burnItem.burnTokenSpec != BurnTokenSpec.ERC721) {
             revert InvalidInput();
         }
         PhysicalClaimLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         // Do burn and redeem
-        _burn(burnItem, address(this), msg.sender, tokenId, 1, "");
+        _burn(instanceId, burnItem, address(this), msg.sender, tokenId, 1, "");
         _redeem(instanceId, physicalClaimInstance, from, variation, 1, "");
     }
 
@@ -298,7 +312,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * Execute onERC1155Received burn/redeem
      */
-    function _onERC1155Received(address from, uint256 tokenId, uint256 value, uint256 instanceId, uint16 burnRedeemCount, uint256 burnItemIndex, bytes32[] memory merkleProof, uint8 variation) private {
+    function _onERC1155Received(address from, uint256 tokenId, uint256 value, uint56 instanceId, uint16 burnRedeemCount, uint256 burnItemIndex, bytes32[] memory merkleProof, uint8 variation) private {
         PhysicalClaim storage physicalClaimInstance = _getPhysicalClaim(instanceId);
         // Note: since safeTransferFrom can't take funds, we are restricted to non-signature mints
         if (physicalClaimInstance.signer != address(0)) revert InvalidInput();
@@ -318,7 +332,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         PhysicalClaimLib.validateBurnItem(burnItem, msg.sender, tokenId, merkleProof);
 
         // Do burn and redeem
-        _burn(burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount, "");
+        _burn(instanceId, burnItem, address(this), msg.sender, tokenId, availableBurnRedeemCount, "");
         _redeem(instanceId, physicalClaimInstance, from, variation, availableBurnRedeemCount, "");
 
         // Return excess amount
@@ -360,7 +374,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * Burn all listed tokens and check that the burn set is satisfied
      */
-    function _burnTokens(PhysicalClaim storage burnRedeemInstance, BurnToken[] memory burnTokens, uint256 burnRedeemCount, address owner, bytes memory data) private {
+    function _burnTokens(uint56 instanceId, PhysicalClaim storage burnRedeemInstance, BurnToken[] memory burnTokens, uint256 burnRedeemCount, address owner, bytes memory data) private {
         // Check that each group in the burn set is satisfied
         uint256[] memory groupCounts = new uint256[](burnRedeemInstance.burnSet.length);
 
@@ -370,7 +384,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
 
             PhysicalClaimLib.validateBurnItem(burnItem, burnToken.contractAddress, burnToken.id, burnToken.merkleProof);
 
-            _burn(burnItem, owner, burnToken.contractAddress, burnToken.id, burnRedeemCount, data);
+            _burn(instanceId, burnItem, owner, burnToken.contractAddress, burnToken.id, burnRedeemCount, data);
             groupCounts[burnToken.groupIndex] += burnRedeemCount;
 
             unchecked { ++i; }
@@ -426,15 +440,15 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
     /**
      * Helper to burn token
      */
-    function _burn(BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount, bytes memory data) private {
-        if (burnItem.tokenSpec == TokenSpec.ERC1155) {
+    function _burn(uint56 instanceId, BurnItem memory burnItem, address from, address contractAddress, uint256 tokenId, uint256 burnRedeemCount, bytes memory data) private {
+        if (burnItem.burnTokenSpec == BurnTokenSpec.ERC1155) {
             uint256 amount = burnItem.amount * burnRedeemCount;
 
-            if (burnItem.burnSpec == BurnSpec.NONE) {
+            if (burnItem.burnFunctionSpec == BurnFunctionSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
                 IERC1155(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, amount, data);
 
-            } else if (burnItem.burnSpec == BurnSpec.MANIFOLD) {
+            } else if (burnItem.burnFunctionSpec == BurnFunctionSpec.MANIFOLD) {
                 // Burn using the creator core's burn function
                 uint256[] memory tokenIds = new uint256[](1);
                 tokenIds[0] = tokenId;
@@ -442,22 +456,22 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
                 amounts[0] = amount;
                 Manifold1155(contractAddress).burn(from, tokenIds, amounts);
 
-            } else if (burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
+            } else if (burnItem.burnFunctionSpec == BurnFunctionSpec.OPENZEPPELIN) {
                 // Burn using OpenZeppelin's burn function
                 OZBurnable1155(contractAddress).burn(from, tokenId, amount);
 
             } else {
-                revert InvalidBurnSpec();
+                revert InvalidBurnFunctionSpec();
             }
-        } else if (burnItem.tokenSpec == TokenSpec.ERC721) {
+        } else if (burnItem.burnTokenSpec == BurnTokenSpec.ERC721) {
             if (burnRedeemCount != 1) {
                 revert InvalidBurnAmount();
-            } 
-            if (burnItem.burnSpec == BurnSpec.NONE) {
+            }
+            if (burnItem.burnFunctionSpec == BurnFunctionSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
                 IERC721(contractAddress).safeTransferFrom(from, address(0xdEaD), tokenId, data);
 
-            } else if (burnItem.burnSpec == BurnSpec.MANIFOLD || burnItem.burnSpec == BurnSpec.OPENZEPPELIN) {
+            } else if (burnItem.burnFunctionSpec == BurnFunctionSpec.MANIFOLD || burnItem.burnFunctionSpec == BurnFunctionSpec.OPENZEPPELIN) {
                 if (from != address(this)) {
                     // 721 `burn` functions do not have a `from` parameter, so we must verify the owner
                     if (IERC721(contractAddress).ownerOf(tokenId) != from) {
@@ -468,10 +482,19 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
                 Burnable721(contractAddress).burn(tokenId);
 
             } else {
-                revert InvalidBurnSpec();
+                revert InvalidBurnFunctionSpec();
             }
+        } else if (burnItem.burnTokenSpec == BurnTokenSpec.ERC721_NO_BURN) {
+            if (burnRedeemCount != 1) {
+                revert InvalidBurnAmount();
+            }
+            if (_usedTokens[instanceId][contractAddress][tokenId]) {
+                revert InvalidBurnAmount();
+            }
+            _usedTokens[instanceId][contractAddress][tokenId] = true;
+            emit PhysicalClaimLib.PhysicalClaimTokenConsumed(instanceId, tokenId, contractAddress);
         } else {
-            revert InvalidTokenSpec();
+            revert InvalidBurnTokenSpec();
         }
     }
 

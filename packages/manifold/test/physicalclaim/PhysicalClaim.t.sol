@@ -117,8 +117,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -281,8 +281,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -348,8 +348,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -425,8 +425,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -504,8 +504,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -579,8 +579,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -635,8 +635,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -690,8 +690,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 2,
@@ -771,8 +771,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -822,8 +822,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -886,8 +886,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -981,8 +981,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 1,
@@ -991,8 +991,8 @@ contract PhysicalClaimTest is Test {
     burnItems[1] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 2,
       maxTokenId: 2,
@@ -1073,8 +1073,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1163,8 +1163,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1247,8 +1247,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1326,8 +1326,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore1155),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC1155,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 3,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1407,8 +1407,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore1155),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC1155,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 3,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1472,8 +1472,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore1155),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC1155,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 3,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1534,8 +1534,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore1155),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC1155,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 3,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1598,8 +1598,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore1155),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC1155,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC1155,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 3,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1645,7 +1645,7 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
-  function testBurnSpecNoneTransferToDead() public {
+  function testBurnFunctionSpecNoneTransferToDead() public {
     vm.startPrank(owner);
 
     // Mint 2 tokens to other
@@ -1655,8 +1655,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.NONE,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.NONE,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1717,7 +1717,7 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
-  function testBurnSpecOZ() public {
+  function testBurnFunctionSpecOZ() public {
     vm.startPrank(owner);
 
     // Mint 2 tokens to other
@@ -1727,8 +1727,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.OPENZEPPELIN,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.OPENZEPPELIN,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1799,8 +1799,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -1873,8 +1873,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.RANGE,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 2,
       maxTokenId: 4,
@@ -1958,8 +1958,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.RANGE,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 2,
       maxTokenId: 4,
@@ -2030,8 +2030,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -2103,8 +2103,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -2176,8 +2176,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -2258,8 +2258,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -2340,8 +2340,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -2422,8 +2422,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -2501,6 +2501,180 @@ contract PhysicalClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testNoBurnSpec() public {
+    vm.startPrank(owner);
+
+    // Mint 2 tokens to other
+    creatorCore721.mintBase(other, "");
+    creatorCore721.mintBase(other, "");
+
+    IPhysicalClaimCore.BurnItem[] memory burnItems = new IPhysicalClaimCore.BurnItem[](1);
+    burnItems[0] = IPhysicalClaimCore.BurnItem({
+      validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
+      contractAddress: address(creatorCore721),
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721_NO_BURN, // no burn!
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
+      amount: 1,
+      minTokenId: 1,
+      maxTokenId: 3,
+      merkleRoot: ""
+    });
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](1);
+    burnSet[0] = IPhysicalClaimCore.BurnGroup({
+      requiredCount: 1,
+      items: burnItems
+    });
+
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 10
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: vm.addr(privateKey)
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    // Does not need to approve token for burning
+    // creatorCore721.approve(address(example), 1);
+    // creatorCore721.approve(address(example), 2);
+
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](1);
+    burnTokens[0] = IPhysicalClaimCore.BurnToken({
+      groupIndex: 0,
+      itemIndex: 0,
+      contractAddress: address(creatorCore721),
+      id: 1,
+      merkleProof: new bytes32[](0)
+    });
+
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
+    submissions[0].instanceId = uint56(instanceId);
+    submissions[0].count = 1;
+    submissions[0].currentClaimCount = 0;
+    submissions[0].burnTokens = burnTokens;
+    submissions[0].totalCost = 1;
+    submissions[0].variation = 1;
+    submissions[0].data = "";
+    submissions[0].nonce = "abcd";
+
+    bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, uint(1)));
+
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    submissions[0].signature = signature;
+    submissions[0].message = message;
+
+    // Fine
+    example.burnRedeem{value: 1}(submissions);
+
+    // Verify that the token still exists..
+    assertEq(creatorCore721.ownerOf(1), other);
+
+    // Cannot re-use token
+    submissions[0].currentClaimCount = 1;
+    submissions[0].nonce = "efgh";
+    vm.expectRevert(IPhysicalClaimCore.InvalidBurnAmount.selector);
+    example.burnRedeem{value: 1}(submissions);
+
+    uint[] memory tokenIdsQuery = new uint[](2);
+    tokenIdsQuery[0] = 1;
+    tokenIdsQuery[1] = 2;
+
+    address[] memory contractAddressesQuery = new address[](2);
+    contractAddressesQuery[0] = address(creatorCore721);
+    contractAddressesQuery[1] = address(creatorCore721);
+
+    // Check if it's been used...
+    IPhysicalClaimCore.TokensUsedQuery memory tuq = IPhysicalClaimCore.TokensUsedQuery({
+      instanceId: uint56(instanceId),
+      tokenIds: tokenIdsQuery,
+      contractAddresses: contractAddressesQuery
+    });
+
+    bool[] memory tuqResponse = example.getAreTokensUsed(tuq);
+    assertEq(tuqResponse[0], true);
+    assertEq(tuqResponse[1], false);
+
+    // Try with invalid burn redeem amount
+    burnTokens[0].id = 2;
+    submissions[0].count = 2;
+    vm.expectRevert(IPhysicalClaimCore.InvalidBurnAmount.selector);
+    example.burnRedeem{value: 1}(submissions);
+
+    vm.stopPrank();
+  }
+
+  function testNoGate() public {
+    vm.startPrank(owner);
+
+    IPhysicalClaimCore.BurnGroup[] memory burnSet = new IPhysicalClaimCore.BurnGroup[](0);
+    IPhysicalClaimCore.VariationLimit[] memory variations = new IPhysicalClaimCore.VariationLimit[](1);
+    variations[0] = IPhysicalClaimCore.VariationLimit({
+      id: 1,
+      totalSupply: 10
+    });
+
+    // Create claim initialization parameters. Total supply is 1 so they will use the whole supply
+    IPhysicalClaimCore.PhysicalClaimParameters memory claimPs = IPhysicalClaimCore.PhysicalClaimParameters({
+      paymentReceiver: payable(owner),
+      totalSupply: 0,
+      startDate: 0,
+      endDate: 0,
+      burnSet: burnSet,
+      variationLimits: variations,
+      signer: vm.addr(privateKey)
+    });
+
+    // Initialize the physical claim
+    example.initializePhysicalClaim(instanceId, claimPs);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+
+    IPhysicalClaimCore.BurnToken[] memory burnTokens = new IPhysicalClaimCore.BurnToken[](0);
+
+
+    IPhysicalClaimCore.PhysicalClaimSubmission[] memory submissions = new IPhysicalClaimCore.PhysicalClaimSubmission[](1);
+    submissions[0].instanceId = uint56(instanceId);
+    submissions[0].count = 1;
+    submissions[0].currentClaimCount = 0;
+    submissions[0].burnTokens = burnTokens;
+    submissions[0].totalCost = 1;
+    submissions[0].variation = 1;
+    submissions[0].data = "";
+    submissions[0].nonce = "abcd";
+
+    bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", instanceId, uint(1)));
+
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    submissions[0].signature = signature;
+    submissions[0].message = message;
+
+    // Fine
+    example.burnRedeem{value: 1}(submissions);
+
+    vm.stopPrank();
+  }
+
+
   function testChangeVariationsToLower() public {
     vm.startPrank(owner);
 
@@ -2514,8 +2688,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -2663,8 +2837,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
@@ -2780,8 +2954,8 @@ contract PhysicalClaimTest is Test {
     burnItems[0] = IPhysicalClaimCore.BurnItem({
       validationType: IPhysicalClaimCore.ValidationType.CONTRACT,
       contractAddress: address(creatorCore721),
-      tokenSpec: IPhysicalClaimCore.TokenSpec.ERC721,
-      burnSpec: IPhysicalClaimCore.BurnSpec.MANIFOLD,
+      burnTokenSpec: IPhysicalClaimCore.BurnTokenSpec.ERC721,
+      burnFunctionSpec: IPhysicalClaimCore.BurnFunctionSpec.MANIFOLD,
       amount: 1,
       minTokenId: 1,
       maxTokenId: 3,
