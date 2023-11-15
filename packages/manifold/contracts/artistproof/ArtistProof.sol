@@ -8,7 +8,6 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC1155/IERC1155
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import ".././libraries/manifold-membership/IManifoldMembership.sol";
-
 import "./IArtistProof.sol";
 
 error InvalidStorageProtocol();
