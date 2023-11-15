@@ -137,6 +137,15 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
         return _getPhysicalClaim(instanceId).variations[variation];
     }
 
+    function getAreTokensUsed(TokensUsedQuery calldata tokensUsedQuery) external override view returns(bool[] memory results) {
+        results = new bool[](tokensUsedQuery.tokenIds.length);
+        for (uint i = 0; i < results.length; i++) {
+            address contractAddress = tokensUsedQuery.contractAddresses[i];
+            uint256 tokenId = tokensUsedQuery.tokenIds[i];
+            results[i] = _usedTokens[tokensUsedQuery.instanceId][contractAddress][tokenId];
+        }
+    }
+
     /**
      * Helper to get physical claim instance
      */
@@ -483,6 +492,7 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
                 revert InvalidBurnAmount();
             }
             _usedTokens[instanceId][contractAddress][tokenId] = true;
+            emit PhysicalClaimLib.PhysicalClaimTokenConsumed(instanceId, tokenId, contractAddress);
         } else {
             revert InvalidBurnTokenSpec();
         }
