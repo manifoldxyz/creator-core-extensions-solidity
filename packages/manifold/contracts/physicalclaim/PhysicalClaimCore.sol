@@ -491,6 +491,9 @@ abstract contract PhysicalClaimCore is ERC165, AdminControl, ReentrancyGuard, IP
             if (_usedTokens[instanceId][contractAddress][tokenId]) {
                 revert InvalidBurnAmount();
             }
+            if (IERC721(contractAddress).ownerOf(tokenId) != from) {
+                revert InvalidBurnAmount();
+            }
             _usedTokens[instanceId][contractAddress][tokenId] = true;
             emit PhysicalClaimLib.PhysicalClaimTokenConsumed(instanceId, tokenId, contractAddress);
         } else {
