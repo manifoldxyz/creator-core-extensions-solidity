@@ -207,6 +207,12 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
         bytes32[] merkleProof;
     }
 
+    struct TokensUsedQuery {
+        uint256 instanceId;
+        address[] contractAddresses;
+        uint256[] tokenIds;
+    }
+
     /**
      * @notice get a physical claim corresponding to an instanceId
      * @param instanceId                the instanceId of the physical claim
@@ -228,6 +234,13 @@ interface IPhysicalClaimCore is IERC165, IERC721Receiver, IERC1155Receiver {
      * @return VariationState      the max and available for the variation
      */
     function getVariationState(uint256 instanceId, uint8 variation) external view returns(VariationState memory);
+
+    /**
+     * @notice gets the redemption state for a tokenId/contractAddress on an instance
+     * @param tokensUsedQuery      the query for instance id and list of tokenIds and contracts
+     * @return bool[]              true/false for each tokenId/contractAddress pair
+     */
+    function getAreTokensUsed(TokensUsedQuery calldata tokensUsedQuery) external view returns(bool[] memory);
 
     /**
      * @notice burn tokens and physical claims multiple times in a single transaction

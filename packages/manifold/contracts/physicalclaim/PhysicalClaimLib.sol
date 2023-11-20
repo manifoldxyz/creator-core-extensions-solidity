@@ -15,6 +15,7 @@ library PhysicalClaimLib {
     event PhysicalClaimInitialized(uint256 indexed instanceId, address initializer);
     event PhysicalClaimUpdated(uint256 indexed instanceId);
     event PhysicalClaimRedemption(uint256 indexed instanceId, uint8 indexed variation, uint32 count, bytes data);
+    event PhysicalClaimTokenConsumed(uint256 indexed instanceId, uint256 tokenId, address contractAddress);
 
     error PhysicalClaimAlreadyInitialized();
     error InvalidBurnItem();
@@ -107,6 +108,9 @@ library PhysicalClaimLib {
         }
         if (physicalClaimParameters.endDate != 0 && physicalClaimParameters.startDate >= physicalClaimParameters.endDate) {
             revert InvalidDates();
+        }
+        if (physicalClaimParameters.variationLimits.length == 0) {
+            revert InvalidInput();
         }
     }
 

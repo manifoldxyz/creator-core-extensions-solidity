@@ -104,6 +104,10 @@ contract PhysicalClaimTest is Test {
     vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
     example.initializePhysicalClaim(2**56, claimPs);
 
+    // Cannot do 0 variations
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
+    example.initializePhysicalClaim(1, claimPs);
+
     vm.stopPrank();
   }
   
@@ -2591,6 +2595,25 @@ contract PhysicalClaimTest is Test {
     submissions[0].nonce = "efgh";
     vm.expectRevert(IPhysicalClaimCore.InvalidBurnAmount.selector);
     example.burnRedeem{value: 1}(submissions);
+
+    uint[] memory tokenIdsQuery = new uint[](2);
+    tokenIdsQuery[0] = 1;
+    tokenIdsQuery[1] = 2;
+
+    address[] memory contractAddressesQuery = new address[](2);
+    contractAddressesQuery[0] = address(creatorCore721);
+    contractAddressesQuery[1] = address(creatorCore721);
+
+    // Check if it's been used...
+    IPhysicalClaimCore.TokensUsedQuery memory tuq = IPhysicalClaimCore.TokensUsedQuery({
+      instanceId: uint56(instanceId),
+      tokenIds: tokenIdsQuery,
+      contractAddresses: contractAddressesQuery
+    });
+
+    bool[] memory tuqResponse = example.getAreTokensUsed(tuq);
+    assertEq(tuqResponse[0], true);
+    assertEq(tuqResponse[1], false);
 
     // Try with invalid burn redeem amount
     burnTokens[0].id = 2;
