@@ -104,6 +104,10 @@ contract PhysicalClaimTest is Test {
     vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
     example.initializePhysicalClaim(2**56, claimPs);
 
+    // Cannot do 0 variations
+    vm.expectRevert(IPhysicalClaimCore.InvalidInput.selector);
+    example.initializePhysicalClaim(1, claimPs);
+
     vm.stopPrank();
   }
   
