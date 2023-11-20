@@ -109,9 +109,6 @@ library PhysicalClaimLib {
         if (physicalClaimParameters.endDate != 0 && physicalClaimParameters.startDate >= physicalClaimParameters.endDate) {
             revert InvalidDates();
         }
-        if (physicalClaimParameters.variationLimits.length == 0) {
-            revert InvalidInput();
-        }
     }
 
     /**
