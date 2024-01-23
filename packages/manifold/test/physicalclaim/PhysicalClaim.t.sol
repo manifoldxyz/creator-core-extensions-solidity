@@ -7,7 +7,7 @@ import "../../contracts/physicalclaim/PhysicalClaimLib.sol";
 import "../../contracts/physicalclaim/IPhysicalClaimCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
-import "../../contracts/libraries/delegation-registry/DelegationRegistry.sol";
+import "../mocks/delegation-registry/DelegationRegistry.sol";
 import "../mocks/Mock.sol";
 import "../../lib/murky/src/Merkle.sol";
 
