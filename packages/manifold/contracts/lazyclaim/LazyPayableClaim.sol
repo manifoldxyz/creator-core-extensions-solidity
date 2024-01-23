@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import ".././libraries/delegation-registry/IDelegationRegistry.sol";
+import ".././libraries/delegation-registry/IDelegationRegistryV2.sol";
 import ".././libraries/manifold-membership/IManifoldMembership.sol";
 
 import "./ILazyPayableClaim.sol";
@@ -35,9 +36,12 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     uint256 internal constant MINT_INDEX_BITMASK = 0xFF;
     // solhint-disable-next-line
     address public immutable DELEGATION_REGISTRY;
+    // solhint-disable-next-line
+    address public immutable DELEGATION_REGISTRY_V2;
 
     uint256 public constant MINT_FEE = 500000000000000;
     uint256 public constant MINT_FEE_MERKLE = 690000000000000;
+    // solhint-disable-next-line
     address public MEMBERSHIP_ADDRESS;
 
     uint256 internal constant MAX_UINT_24 = 0xffffff;
@@ -68,9 +72,10 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         _;
     }
 
-    constructor(address initialOwner, address delegationRegistry) {
+    constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2) {
         _transferOwnership(initialOwner);
         DELEGATION_REGISTRY = delegationRegistry;
+        DELEGATION_REGISTRY_V2 = delegationRegistryV2;
     }
 
     /**
@@ -198,9 +203,13 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         if (mintFor == sender) {
             leaf = keccak256(abi.encodePacked(sender, mintIndex));
         } else {
-            // Direct verification failed, try delegate verification
+            // Direct verification failed, try delegate verification            
             IDelegationRegistry dr = IDelegationRegistry(DELEGATION_REGISTRY);
-            require(dr.checkDelegateForContract(sender, mintFor, address(this)), "Invalid delegate");
+            IDelegationRegistryV2 drV2 = IDelegationRegistryV2(DELEGATION_REGISTRY_V2);
+            require(
+                drV2.checkDelegateForContract(sender, mintFor, address(this), "") ||
+                dr.checkDelegateForContract(sender, mintFor, address(this)), "Invalid delegate");
+
             leaf = keccak256(abi.encodePacked(mintFor, mintIndex));
         }
         require(MerkleProof.verify(merkleProof, merkleRoot, leaf), "Could not verify merkle proof");

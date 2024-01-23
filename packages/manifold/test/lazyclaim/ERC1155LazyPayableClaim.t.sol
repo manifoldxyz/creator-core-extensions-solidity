@@ -5,7 +5,8 @@ import "forge-std/Test.sol";
 import "../../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
 import "../../contracts/lazyclaim/IERC1155LazyPayableClaim.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
-import "../../contracts/libraries/delegation-registry/DelegationRegistry.sol";
+import "../mocks/delegation-registry/DelegationRegistry.sol";
+import "../mocks/delegation-registry/DelegationRegistryV2.sol";
 import "../mocks/Mock.sol";
 import "../../lib/murky/src/Merkle.sol";
 
@@ -13,6 +14,7 @@ contract ERC1155LazyPayableClaimTest is Test {
   ERC1155LazyPayableClaim public example;
   ERC1155Creator public creatorCore;
   DelegationRegistry public delegationRegistry;
+  DelegationRegistryV2 public delegationRegistryV2;
   MockManifoldMembership public manifoldMembership;
   Merkle public merkle;
 
@@ -27,7 +29,8 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.startPrank(owner);
     creatorCore = new ERC1155Creator("Token", "NFT");
     delegationRegistry = new DelegationRegistry();
-    example = new ERC1155LazyPayableClaim(owner, address(delegationRegistry));
+    delegationRegistryV2 = new DelegationRegistryV2();
+    example = new ERC1155LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
 
@@ -824,7 +827,61 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.stopPrank();
   }
 
-  function testDelegateMinting() public {
+  function testDelegateV2Minting() public {
+    vm.startPrank(owner);
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    uint mintFee = example.MINT_FEE_MERKLE();
+
+    bytes32[] memory allowListTuples = new bytes32[](3);
+    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+    allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
+    allowListTuples[2] = keccak256(abi.encodePacked(other3, uint32(2)));
+
+    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+      merkleRoot: merkle.getRoot(allowListTuples),
+      location: "XXX",
+      totalMax: 0,
+      walletMax: 0,
+      startDate: nowC,
+      endDate: later,
+      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      cost: 1,
+      paymentReceiver: payable(other),
+      erc20: zeroAddress,
+      signingAddress: address(0)
+    });
+
+    example.initializeClaim(address(creatorCore), 1, claimP);
+
+    // Set delegations
+    delegationRegistryV2.delegateAll(other, "", true);
+
+    vm.stopPrank();
+    vm.startPrank(other2);
+    delegationRegistryV2.delegateContract(other, address(example), "", true);
+
+    // Mint with wallet-level delegate
+    bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
+    vm.stopPrank();
+    vm.startPrank(other);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, owner);
+    assertEq(creatorCore.balanceOf(owner, 1), 0);
+    assertEq(creatorCore.balanceOf(other, 1), 1);
+
+    // Mint with contract-level delegate
+    bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 1, merkleProof2, other2);
+
+    // Fail to mint when no delegate is set
+    bytes32[] memory merkleProof3 = merkle.getProof(allowListTuples, uint32(2));
+    vm.expectRevert("Invalid delegate");
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 2, merkleProof3, other3);
+
+    vm.stopPrank();
+  }
+
+    function testDelegateMinting() public {
     vm.startPrank(owner);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
@@ -883,10 +940,13 @@ contract ERC1155LazyPayableClaimTest is Test {
 
     ERC1155LazyPayableClaim claim = new ERC1155LazyPayableClaim(
       address(creatorCore),
-      address(0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A)
+      address(0x00000000000076A84feF008CDAbe6409d2FE638B),
+      address(0x00000000000000447e69651d841bD8D104Bed493)
     );
     address onChainAddress = claim.DELEGATION_REGISTRY();
-    assertEq(0x00000000b1BBFe1BF5C5934c4bb9c30FEF15E57A, onChainAddress);
+    assertEq(0x00000000000076A84feF008CDAbe6409d2FE638B, onChainAddress);
+    address onChainAddressV2 = claim.DELEGATION_REGISTRY_V2();
+    assertEq(0x00000000000000447e69651d841bD8D104Bed493, onChainAddressV2);
 
     vm.stopPrank();
   }
