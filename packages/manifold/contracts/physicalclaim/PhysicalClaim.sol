@@ -26,6 +26,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
     mapping(uint256 => mapping(address => mapping(uint256 => bool))) private _usedTokens;
     mapping(uint256 => mapping(bytes32 => bool)) private _usedNonces;
     mapping(uint256 => mapping(uint8 => uint64)) private _variationCount;
+    mapping(uint256 => uint64) private _totalCount;
 
     constructor(address initialOwner, address signingAddress) {
         _transferOwnership(initialOwner);
@@ -102,7 +103,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
     function _validateSubmission(BurnSubmission memory submission) private {
         if (block.timestamp > submission.expiration) revert ExpiredSignature();
         // Verify valid message based on input variables
-        bytes memory messageData = abi.encode(submission.instanceId, submission.burnTokens, submission.variation, submission.variationLimit, submission.erc20, submission.price, submission.fundsRecipient, submission.expiration, submission.nonce);
+        bytes memory messageData = abi.encode(submission.instanceId, submission.burnTokens, submission.variation, submission.variationLimit, submission.totalLimit, submission.erc20, submission.price, submission.fundsRecipient, submission.expiration, submission.nonce);
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageData));
         address signer = submission.message.recover(submission.signature);
         if (submission.message != expectedMessage || signer != _signingAddress) revert InvalidSignature();
@@ -113,6 +114,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
     function _isVariationAvailable(BurnSubmission memory submission) private view returns(bool) {
         // Check variation limit
         if (submission.variationLimit > 0 && _variationCount[submission.instanceId][submission.variation] >= submission.variationLimit) return false;
+        if (submission.totalLimit > 0 && _totalCount[submission.instanceId] >= submission.totalLimit) return false;
         return true;
     }
 
@@ -360,6 +362,8 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
     function _redeem(address redeemer, BurnSubmission memory submission, uint256 msgValue) private returns (uint256) {
         // Increment variation count
         _variationCount[submission.instanceId][submission.variation]++;
+        // Increment total count
+        _totalCount[submission.instanceId]++;
 
         // Transfer funds
         uint256 payableCost = submission.erc20 == address(0) ? submission.price : 0;
@@ -406,6 +410,13 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
             counts[i] = _variationCount[instanceId][variations[i]];
             unchecked { ++i; }
         }
+    }
+
+    /**
+     * @dev See {IPhysicalClaim-getTotalCount}.
+     */
+    function getTotalCount(uint256 instanceId) external view override returns(uint64) {
+        return _totalCount[instanceId];
     }
 
 }

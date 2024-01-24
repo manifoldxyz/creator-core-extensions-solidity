@@ -115,6 +115,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -122,7 +123,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem failure because token does not exist
         vm.startPrank(other1);
@@ -167,6 +168,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -174,7 +176,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -201,6 +203,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 1;
         address payable fundsRecipient = payable(address(0));
@@ -208,7 +211,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -235,6 +238,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -242,7 +246,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem because we have an invalid signature
         // Change configured signer
@@ -273,6 +277,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -280,7 +285,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem because we change the data
         submission.message = bytes32(0);
@@ -308,6 +313,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -315,7 +321,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem because we change the data
         submission.variationLimit = 10;
@@ -343,6 +349,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -350,7 +357,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem because we change the data
         vm.startPrank(other1);
@@ -373,6 +380,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -380,7 +388,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -403,6 +411,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -410,7 +419,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -438,6 +447,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -445,7 +455,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -473,6 +483,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -480,7 +491,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem from non-owner should fail
         vm.startPrank(other2);
@@ -507,6 +518,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -514,7 +526,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -532,7 +544,7 @@ contract PhysicalClaimTest is Test {
 
         // Try redemption again (different nonce), not allowed because it was marked as consumed
         nonce = bytes32(bytes4(0xdeafbeef));
-        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
         vm.startPrank(other1);
         vm.expectRevert(abi.encodeWithSelector(IPhysicalClaim.InvalidToken.selector, address(creatorCore721), 1));
         example.burnRedeem{value: burnFee}(submission);
@@ -556,6 +568,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -563,7 +576,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -590,6 +603,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -597,7 +611,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -627,6 +641,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -634,7 +649,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -668,6 +683,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -675,7 +691,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -709,6 +725,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -716,7 +733,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -746,6 +763,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 1 ether;
         address payable fundsRecipient = payable(seller);
@@ -753,7 +771,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -788,13 +806,14 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 1 ether;
         address payable fundsRecipient = payable(seller);
         uint160 expiration = uint160(block.timestamp + 1000);
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -828,6 +847,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(mockERC20);
         uint256 price = 15;
         address payable fundsRecipient = payable(seller);
@@ -835,7 +855,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Approve spend from other2
         vm.startPrank(other2);
@@ -871,6 +891,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(mockERC20);
         uint256 price = 15;
         address payable fundsRecipient = payable(seller);
@@ -878,7 +899,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -928,6 +949,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -935,7 +957,7 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).MULTI_BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem
         vm.startPrank(other1);
@@ -976,6 +998,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 1 ether;
         address payable fundsRecipient = payable(seller);
@@ -984,9 +1007,9 @@ contract PhysicalClaimTest is Test {
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
         IPhysicalClaim.BurnSubmission[] memory submissions = new IPhysicalClaim.BurnSubmission[](2);
-        submissions[0] = constructSubmission(instanceId, burnTokens1, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        submissions[0] = constructSubmission(instanceId, burnTokens1, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
         nonce = bytes32(bytes4(0xdeadbee2));
-        submissions[1] = constructSubmission(instanceId, burnTokens2, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        submissions[1] = constructSubmission(instanceId, burnTokens2, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
 
         // Test redeem
@@ -1031,6 +1054,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 2;
         uint64 variationLimit = 1;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 1 ether;
         address payable fundsRecipient = payable(seller);
@@ -1039,9 +1063,9 @@ contract PhysicalClaimTest is Test {
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
         IPhysicalClaim.BurnSubmission[] memory submissions = new IPhysicalClaim.BurnSubmission[](2);
-        submissions[0] = constructSubmission(instanceId, burnTokens1, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        submissions[0] = constructSubmission(instanceId, burnTokens1, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
         nonce = bytes32(bytes4(0xdeadbee2));
-        submissions[1] = constructSubmission(instanceId, burnTokens2, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        submissions[1] = constructSubmission(instanceId, burnTokens2, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
 
         // Test redeem
@@ -1065,6 +1089,7 @@ contract PhysicalClaimTest is Test {
         uint256 instanceId = 100;
         uint8 variation = 1;
         uint64 variationLimit = 2;
+        uint64 totalLimit = 0;
         address erc20 = address(0);
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
@@ -1072,27 +1097,33 @@ contract PhysicalClaimTest is Test {
         uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
-        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         // Test redeem (third time should fail because sold out)
         vm.startPrank(other1);
         example.burnRedeem{value: burnFee}(submission);
         vm.stopPrank();
         nonce = bytes32(bytes4(0xdeadbee1));
-        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
         vm.startPrank(other1);
         example.burnRedeem{value: burnFee}(submission);
         vm.stopPrank();
         nonce = bytes32(bytes4(0xdeadbee2));
-        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
         vm.startPrank(other1);
         vm.expectRevert(IPhysicalClaim.SoldOut.selector);
         example.burnRedeem{value: burnFee}(submission);
         vm.stopPrank();
     }
 
-    function constructSubmission(uint256 instanceId, IPhysicalClaim.BurnToken[] memory burnTokens, uint8 variation, uint64 variationLimit, address erc20, uint256 price, address payable fundsRecipient, uint160 expiration, bytes32 nonce) private view returns (IPhysicalClaim.BurnSubmission memory submission) {
-        bytes memory messageData = abi.encode(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+    function constructSubmission(uint256 instanceId, IPhysicalClaim.BurnToken[] memory burnTokens, uint8 variation, uint64 variationLimit, uint64 totalLimit, address erc20, uint256 price, address payable fundsRecipient, uint160 expiration, bytes32 nonce) private view returns (IPhysicalClaim.BurnSubmission memory submission) {
+        // Hack because we were getting stack too deep, so need to pass into subfunction
+        submission = _constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
+        submission.instanceId = instanceId;
+    }
+
+    function _constructSubmission(uint256 instanceId, IPhysicalClaim.BurnToken[] memory burnTokens, uint8 variation, uint64 variationLimit, uint64 totalLimit, address erc20, uint256 price, address payable fundsRecipient, uint160 expiration, bytes32 nonce) private view returns (IPhysicalClaim.BurnSubmission memory submission) {
+        bytes memory messageData = abi.encode(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
         bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageData));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
@@ -1100,10 +1131,10 @@ contract PhysicalClaimTest is Test {
 
         submission.signature = signature;
         submission.message = message;
-        submission.instanceId = instanceId;
         submission.burnTokens = burnTokens;
         submission.variation = variation;
         submission.variationLimit = variationLimit;
+        submission.totalLimit = totalLimit;
         submission.erc20 = erc20;
         submission.price = price;
         submission.fundsRecipient = fundsRecipient;

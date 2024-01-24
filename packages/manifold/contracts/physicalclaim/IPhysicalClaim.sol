@@ -37,6 +37,7 @@ interface IPhysicalClaim is IERC165, IERC721Receiver, IERC1155Receiver {
         BurnToken[] burnTokens;
         uint8 variation;
         uint64 variationLimit;
+        uint64 totalLimit;
         address erc20;
         uint256 price;
         address payable fundsRecipient;
@@ -103,11 +104,18 @@ interface IPhysicalClaim is IERC165, IERC721Receiver, IERC1155Receiver {
     function recover(address tokenAddress, uint256 tokenId, address destination) external;
 
     /**
-     * @notice get the number of variations redeemed for a given instance/variation
+     * @notice get the number of variations redeemed
      * @param instanceId                the instance id
      * @param variations                the variations
      * @return the number of variations redeemed
      */
     function getVariationCounts(uint256 instanceId, uint8[] calldata variations) external view returns (uint64[] memory);
+
+    /**
+     * @notice get the number of redemptions for a given instance
+     * @param instanceId                the instance id
+     * @return the number of redemptions
+     */
+    function getTotalCount(uint256 instanceId) external view returns (uint64);
     
 }
