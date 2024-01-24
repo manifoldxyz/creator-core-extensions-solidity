@@ -24,6 +24,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
 
     address private _signingAddress;
     mapping(uint256 => mapping(address => mapping(uint256 => bool))) private _usedTokens;
+    mapping(uint256 => mapping(bytes32 => bool)) private _usedNonces;
     mapping(uint256 => mapping(uint8 => uint64)) private _variationCount;
 
     constructor(address initialOwner, address signingAddress) {
@@ -93,13 +94,15 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
         }
     }
 
-    function _validateSubmission(BurnSubmission memory submission) private view {
+    function _validateSubmission(BurnSubmission memory submission) private {
         if (block.timestamp > submission.expiration) revert ExpiredSignature();
         // Verify valid message based on input variables
-        bytes memory messageData = abi.encode(submission.instanceId, submission.burnTokens, submission.variation, submission.variationLimit, submission.erc20, submission.price, submission.fundsRecipient, submission.expiration);
+        bytes memory messageData = abi.encode(submission.instanceId, submission.burnTokens, submission.variation, submission.variationLimit, submission.erc20, submission.price, submission.fundsRecipient, submission.expiration, submission.nonce);
         bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageData));
         address signer = submission.message.recover(submission.signature);
         if (submission.message != expectedMessage || signer != _signingAddress) revert InvalidSignature();
+        if (_usedNonces[submission.instanceId][submission.nonce]) revert InvalidNonce();
+        _usedNonces[submission.instanceId][submission.nonce] = true;
     }
 
     function _isVariationAvailable(BurnSubmission memory submission) private view returns(bool) {
@@ -141,6 +144,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
                 revert InvalidBurnSpec();
             }
         } else if (burnToken.tokenSpec == TokenSpec.ERC721) {
+            if (burnToken.amount != 1) revert InvalidToken(burnToken.contractAddress, burnToken.tokenId);
             if (burnToken.burnSpec == BurnSpec.NONE) {
                 // Send to 0xdEaD to burn if contract doesn't have burn function
                 IERC721(burnToken.contractAddress).safeTransferFrom(from, address(0xdEaD), burnToken.tokenId, "");
@@ -372,7 +376,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
         }
 
         // Redeem
-        emit Redeem(submission.instanceId, redeemer, submission.variation);
+        emit Redeem(submission.instanceId, redeemer, submission.variation, submission.nonce);
 
     }
 

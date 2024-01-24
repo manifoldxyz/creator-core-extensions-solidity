@@ -24,10 +24,11 @@ interface IPhysicalClaim is IERC165, IERC721Receiver, IERC1155Receiver {
 
     error InvalidSignature(); // 0x8baa579f
     error ExpiredSignature();
+    error InvalidNonce();
 
-    enum TokenSpec { ERC721, ERC1155, ERC721_NO_BURN }
+    enum TokenSpec { INVALID, ERC721, ERC1155, ERC721_NO_BURN }
 
-    enum BurnSpec { NONE, MANIFOLD, OPENZEPPELIN }
+    enum BurnSpec { INVALID, NONE, MANIFOLD, OPENZEPPELIN }
 
     struct BurnSubmission {
         bytes signature;
@@ -40,9 +41,10 @@ interface IPhysicalClaim is IERC165, IERC721Receiver, IERC1155Receiver {
         uint256 price;
         address payable fundsRecipient;
         uint160 expiration;
+        bytes32 nonce;
     }
 
-    event Redeem(uint256 instanceId, address indexed redeemer, uint8 variationSelection);
+    event Redeem(uint256 instanceId, address indexed redeemer, uint8 variationSelection, bytes32 nonce);
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
