@@ -206,7 +206,6 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
     ) external override nonReentrant returns(bytes4) {
         // Do burn redeem
         _onERC1155Received(from, id, value, data);
-
         return this.onERC1155Received.selector;
     }
 
@@ -222,7 +221,6 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
     ) external override nonReentrant returns(bytes4) {
         // Do burn redeem
         _onERC1155BatchReceived(from, ids, values, data);
-
         return this.onERC1155BatchReceived.selector;
     }
 

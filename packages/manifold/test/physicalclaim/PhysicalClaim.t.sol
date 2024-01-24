@@ -128,7 +128,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         vm.expectRevert("ERC721: invalid token ID");
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         vm.startPrank(owner);
         creatorCore721.mintBase(other1, "");
@@ -138,7 +138,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         vm.expectRevert("Caller is not owner or approved");
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Test redeem failure because token is notowned by sender
         vm.startPrank(other1);
@@ -147,7 +147,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other2);
         vm.expectRevert(IPhysicalClaim.TransferFailure.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testInvalidPaymentAmountFee() public {
@@ -181,7 +181,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(IPhysicalClaim.InvalidPaymentAmount.selector);
         example.burnRedeem{value: burnFee-1}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
     
     function testInvalidPaymentAmountPrice() public {
@@ -215,7 +215,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(IPhysicalClaim.InvalidPaymentAmount.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testInvalidSignature() public {
@@ -253,7 +253,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(IPhysicalClaim.InvalidSignature.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testInvalidMessage() public {
@@ -288,7 +288,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(IPhysicalClaim.InvalidSignature.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testInvalidDueToDataChange() public {
@@ -323,7 +323,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(IPhysicalClaim.InvalidSignature.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testInvalidDueToExpired() public {
@@ -357,7 +357,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(IPhysicalClaim.ExpiredSignature.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testInvalidBurnSpec721() public {
@@ -386,7 +386,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         vm.expectRevert(IPhysicalClaim.InvalidBurnSpec.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
     }
 
@@ -416,7 +416,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         vm.expectRevert(IPhysicalClaim.InvalidBurnSpec.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
     }
 
@@ -452,7 +452,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(IPhysicalClaim.InvalidTokenSpec.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
     }
 
@@ -486,7 +486,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other2);
         vm.expectRevert(IPhysicalClaim.TransferFailure.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
     }
 
@@ -519,7 +519,7 @@ contract PhysicalClaimTest is Test {
         // Test redeem
         vm.startPrank(other1);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token not burned
         assertEq(creatorCore721.ownerOf(1), other1);
@@ -528,7 +528,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         vm.expectRevert(IPhysicalClaim.InvalidNonce.selector);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Try redemption again (different nonce), not allowed because it was marked as consumed
         nonce = bytes32(bytes4(0xdeafbeef));
@@ -536,7 +536,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         vm.expectRevert(abi.encodeWithSelector(IPhysicalClaim.InvalidToken.selector, address(creatorCore721), 1));
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testInvalidBurnAmount721() public {
@@ -570,7 +570,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(abi.encodeWithSelector(IPhysicalClaim.InvalidToken.selector, address(creatorCore721), 1));
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testPhysicalClaim721() public {
@@ -603,7 +603,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         creatorCore721.approve(address(example), 1);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token burned
         vm.expectRevert("ERC721: invalid token ID");
@@ -640,7 +640,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         creatorCore721.approve(address(example), 1);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token burned
         assertEq(creatorCore721.ownerOf(1), address(0xdead));
@@ -681,7 +681,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         creatorCore1155.setApprovalForAll(address(example), true);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token burned
         assertEq(creatorCore1155.balanceOf(other1, 1), 8);
@@ -722,7 +722,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         creatorCore1155.setApprovalForAll(address(example), true);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token burned
         assertEq(creatorCore1155.balanceOf(other1, 1), 8);
@@ -759,7 +759,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         creatorCore721.approve(address(example), 1);
         example.burnRedeem{value: burnFee+price}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token burned
         vm.expectRevert("ERC721: invalid token ID");
@@ -792,7 +792,6 @@ contract PhysicalClaimTest is Test {
         uint256 price = 1 ether;
         address payable fundsRecipient = payable(seller);
         uint160 expiration = uint160(block.timestamp + 1000);
-        uint256 burnFee = PhysicalClaim(example).BURN_FEE();
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
         IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
@@ -801,7 +800,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         creatorCore721.approve(address(example), 1);
         example.burnRedeem{value: price}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token burned
         vm.expectRevert("ERC721: invalid token ID");
@@ -851,7 +850,7 @@ contract PhysicalClaimTest is Test {
         mockERC20.approve(address(example), 15);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
     }
 
     function testPhysicalClaimWithERC20Price() public {
@@ -888,7 +887,7 @@ contract PhysicalClaimTest is Test {
         example.burnRedeem{value: burnFee}(submission);
         mockERC20.approve(address(example), 15);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token burned
         vm.expectRevert("ERC721: invalid token ID");
@@ -943,12 +942,43 @@ contract PhysicalClaimTest is Test {
         creatorCore721.approve(address(example), 1);
         creatorCore1155.setApprovalForAll(address(example), true);
         example.burnRedeem{value: burnFee}(submission);
-        vm.stopPrank(); 
+        vm.stopPrank();
 
         // Check token burned
         vm.expectRevert("ERC721: invalid token ID");
         creatorCore721.ownerOf(1);
         assertEq(creatorCore1155.balanceOf(other1, 1), 8);
+    }
+
+    function testPhysicalClaimSoldOut() public {
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](0);
+        uint256 instanceId = 100;
+        uint8 variation = 1;
+        uint64 variationLimit = 2;
+        address erc20 = address(0);
+        uint256 price = 0;
+        address payable fundsRecipient = payable(address(0));
+        uint160 expiration = uint160(block.timestamp + 1000);
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE();
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+        // Test redeem (third time should fail because sold out)
+        vm.startPrank(other1);
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank();
+        nonce = bytes32(bytes4(0xdeadbee1));
+        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        vm.startPrank(other1);
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank();
+        nonce = bytes32(bytes4(0xdeadbee2));
+        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+        vm.startPrank(other1);
+        vm.expectRevert(IPhysicalClaim.SoldOut.selector);
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank();
     }
 
     function constructSubmission(uint256 instanceId, IPhysicalClaim.BurnToken[] memory burnTokens, uint8 variation, uint64 variationLimit, address erc20, uint256 price, address payable fundsRecipient, uint160 expiration, bytes32 nonce) private view returns (IPhysicalClaim.BurnSubmission memory submission) {
