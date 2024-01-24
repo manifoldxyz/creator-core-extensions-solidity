@@ -1028,7 +1028,10 @@ contract PhysicalClaimTest is Test {
         assertEq(address(seller).balance, 2 ether);
     }
 
-    function testPhysicalMultiSubmissionSoldOut() public {
+    /**
+     * Sold out due to variation limit
+     */
+    function testPhysicalMultiSubmissionSoldOut1() public {
         vm.startPrank(owner);
         creatorCore721.mintBase(other1, "");
         creatorCore721.mintBase(other1, "");
@@ -1084,7 +1087,69 @@ contract PhysicalClaimTest is Test {
         assertEq(address(seller).balance, 1 ether);
     }
 
-    function testPhysicalClaimSoldOut() public {
+    /**
+     * Sold out due to total limit
+     */
+    function testPhysicalMultiSubmissionSoldOut2() public {
+        vm.startPrank(owner);
+        creatorCore721.mintBase(other1, "");
+        creatorCore721.mintBase(other1, "");
+        vm.stopPrank();
+
+        IPhysicalClaim.BurnToken[] memory burnTokens1 = new IPhysicalClaim.BurnToken[](1);
+        burnTokens1[0] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore721),
+            tokenId: 1,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC721,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 1
+        });
+        IPhysicalClaim.BurnToken[] memory burnTokens2 = new IPhysicalClaim.BurnToken[](1);
+        burnTokens2[0] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore721),
+            tokenId: 2,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC721,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 1
+        });
+
+        uint256 instanceId = 100;
+        uint8 variation = 2;
+        uint64 variationLimit = 0;
+        uint64 totalLimit = 1;
+        address erc20 = address(0);
+        uint256 price = 1 ether;
+        address payable fundsRecipient = payable(seller);
+        uint160 expiration = uint160(block.timestamp + 1000);
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE() * 2;
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission[] memory submissions = new IPhysicalClaim.BurnSubmission[](2);
+        submissions[0] = constructSubmission(instanceId, burnTokens1, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
+        nonce = bytes32(bytes4(0xdeadbee2));
+        submissions[1] = constructSubmission(instanceId, burnTokens2, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+
+        // Test redeem
+        vm.startPrank(other1);
+        creatorCore721.approve(address(example), 1);
+        creatorCore721.approve(address(example), 2);
+        example.burnRedeem{value: burnFee + 2 ether}(submissions);
+        vm.stopPrank();
+
+        // Check token burned
+        vm.expectRevert("ERC721: invalid token ID");
+        creatorCore721.ownerOf(1);
+        // Token 2 not burned because we were sold out and it didn't process
+        assertEq(creatorCore721.ownerOf(2), other1);
+        assertEq(address(example).balance, burnFee/2);
+        assertEq(address(seller).balance, 1 ether);
+    }
+
+    /**
+     * Sold out due to variation limit
+     */
+    function testPhysicalClaimSoldOut1() public {
         IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](0);
         uint256 instanceId = 100;
         uint8 variation = 1;
@@ -1109,6 +1174,42 @@ contract PhysicalClaimTest is Test {
         example.burnRedeem{value: burnFee}(submission);
         vm.stopPrank();
         nonce = bytes32(bytes4(0xdeadbee2));
+        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
+        vm.startPrank(other1);
+        vm.expectRevert(IPhysicalClaim.SoldOut.selector);
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank();
+    }
+
+    /**
+     * Sold out due to total limit
+     */
+    function testPhysicalClaimSoldOut2() public {
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](0);
+        uint256 instanceId = 100;
+        uint8 variation = 1;
+        uint64 variationLimit = 0;
+        uint64 totalLimit = 2;
+        address erc20 = address(0);
+        uint256 price = 0;
+        address payable fundsRecipient = payable(address(0));
+        uint160 expiration = uint160(block.timestamp + 1000);
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE();
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+        // Test redeem (third time should fail because sold out)
+        vm.startPrank(other1);
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank();
+        nonce = bytes32(bytes4(0xdeadbee1));
+        submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
+        vm.startPrank(other1);
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank();
+        nonce = bytes32(bytes4(0xdeadbee2));
+        variation = 2;
         submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
         vm.startPrank(other1);
         vm.expectRevert(IPhysicalClaim.SoldOut.selector);
