@@ -75,22 +75,27 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
         if (!_isVariationAvailable(submission)) revert SoldOut();
         _validateSubmission(submission);
         _burnTokens(submission.instanceId, msg.sender, submission.burnTokens);
-        _redeem(msg.sender, submission);
+        _redeem(msg.sender, submission, msg.value);
     }
 
     /**
      * @dev See {IPhysicalClaimCore-burnRedeem}.
      */
     function burnRedeem(BurnSubmission[] calldata submissions) external payable override nonReentrant {
+        uint256 msgValue = msg.value;
         for (uint256 i; i < submissions.length;) {
             BurnSubmission calldata submission = submissions[i];
             if (_isVariationAvailable(submission)) {
                 // Only validate if the variation requested available
                 _validateSubmission(submission);
                 _burnTokens(submission.instanceId, msg.sender, submission.burnTokens);
+                msgValue = _redeem(msg.sender, submission, msgValue);
             }
-            _redeem(msg.sender, submission);
             unchecked { ++i; }
+        }
+        if (msgValue > 0) {
+            // Return remaining unused funds
+            _forwardValue(payable(msg.sender), msgValue);
         }
     }
 
@@ -261,7 +266,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
 
         // Do burn and redeem
         _burn(submission.instanceId, address(this), burnToken);
-        _redeem(from, submission);
+        _redeem(from, submission, 0);
     }
 
     /**
@@ -298,7 +303,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
 
         // Do burn and redeem
         _burn(submission.instanceId, address(this), burnToken);
-        _redeem(from, submission);
+        _redeem(from, submission, 0);
     }
 
     /**
@@ -329,7 +334,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
         }
 
         // Do redeem
-        _redeem(from, submission);
+        _redeem(from, submission, 0);
     }
 
     /**
@@ -349,7 +354,10 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
             IManifoldMembership(manifoldMembershipContract).isActiveMember(sender);
     }
 
-    function _redeem(address redeemer, BurnSubmission memory submission) private {
+    /**
+     * Helper to perform the redeem and returns the remaining msg value after consumed amount
+     */
+    function _redeem(address redeemer, BurnSubmission memory submission, uint256 msgValue) private returns (uint256) {
         // Increment variation count
         _variationCount[submission.instanceId][submission.variation]++;
 
@@ -360,7 +368,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
         }
         
         // Check we have sufficient funds
-        if (payableCost > msg.value) {
+        if (payableCost > msgValue) {
             revert InvalidPaymentAmount();
         }
 
@@ -376,6 +384,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
         // Redeem
         emit Redeem(submission.instanceId, redeemer, submission.variation, submission.nonce);
 
+        return msgValue - payableCost;
     }
 
     /**

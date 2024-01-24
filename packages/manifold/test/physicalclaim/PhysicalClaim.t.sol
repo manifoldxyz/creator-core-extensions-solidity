@@ -980,7 +980,7 @@ contract PhysicalClaimTest is Test {
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
         uint160 expiration = uint160(block.timestamp + 1000);
-        uint256 burnFee = PhysicalClaim(example).MULTI_BURN_FEE();
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE() * 2;
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
         IPhysicalClaim.BurnSubmission[] memory submissions = new IPhysicalClaim.BurnSubmission[](2);
@@ -1001,6 +1001,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.ownerOf(1);
         vm.expectRevert("ERC721: invalid token ID");
         creatorCore721.ownerOf(2);
+        assertEq(address(example).balance, burnFee);
     }
 
     function testPhysicalMultiSubmissionSoldOut() public {
@@ -1033,7 +1034,7 @@ contract PhysicalClaimTest is Test {
         uint256 price = 0;
         address payable fundsRecipient = payable(address(0));
         uint160 expiration = uint160(block.timestamp + 1000);
-        uint256 burnFee = PhysicalClaim(example).MULTI_BURN_FEE();
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE() * 2;
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
 
         IPhysicalClaim.BurnSubmission[] memory submissions = new IPhysicalClaim.BurnSubmission[](2);
@@ -1054,6 +1055,7 @@ contract PhysicalClaimTest is Test {
         creatorCore721.ownerOf(1);
         // Token 2 not burned because we were sold out and it didn't process
         assertEq(creatorCore721.ownerOf(2), other1);
+        assertEq(address(example).balance, burnFee/2);
     }
 
     function testPhysicalClaimSoldOut() public {
