@@ -1031,8 +1031,8 @@ contract PhysicalClaimTest is Test {
         uint8 variation = 2;
         uint64 variationLimit = 1;
         address erc20 = address(0);
-        uint256 price = 0;
-        address payable fundsRecipient = payable(address(0));
+        uint256 price = 1 ether;
+        address payable fundsRecipient = payable(seller);
         uint160 expiration = uint160(block.timestamp + 1000);
         uint256 burnFee = PhysicalClaim(example).BURN_FEE() * 2;
         bytes32 nonce = bytes32(bytes4(0xdeadbeef));
@@ -1047,7 +1047,7 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(other1);
         creatorCore721.approve(address(example), 1);
         creatorCore721.approve(address(example), 2);
-        example.burnRedeem{value: burnFee}(submissions);
+        example.burnRedeem{value: burnFee + 2 ether}(submissions);
         vm.stopPrank();
 
         // Check token burned
@@ -1056,6 +1056,7 @@ contract PhysicalClaimTest is Test {
         // Token 2 not burned because we were sold out and it didn't process
         assertEq(creatorCore721.ownerOf(2), other1);
         assertEq(address(example).balance, burnFee/2);
+        assertEq(address(seller).balance, 1 ether);
     }
 
     function testPhysicalClaimSoldOut() public {
