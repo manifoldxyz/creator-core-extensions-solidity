@@ -12,6 +12,8 @@ contract PhysicalClaimTest is Test {
     PhysicalClaim public example;
     ERC721Creator public creatorCore721;
     ERC1155Creator public creatorCore1155;
+    MockERC20 public mockERC20;
+    MockManifoldMembership public manifoldMembership;
 
     address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
     address public other1 = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
@@ -29,6 +31,8 @@ contract PhysicalClaimTest is Test {
         vm.startPrank(owner);
         creatorCore721 = new ERC721Creator("Token721", "NFT721");
         creatorCore1155 = new ERC1155Creator("Token1155", "NFT1155");
+        mockERC20 = new MockERC20("Token20", "ERC20");
+        manifoldMembership = new MockManifoldMembership();
 
         signingAddress = vm.addr(privateKey);
         example = new PhysicalClaim(owner, signingAddress);
@@ -723,6 +727,228 @@ contract PhysicalClaimTest is Test {
         // Check token burned
         assertEq(creatorCore1155.balanceOf(other1, 1), 8);
         assertEq(creatorCore1155.balanceOf(address(0xdead), 1), 2);
+    }
+
+    function testPhysicalClaimWithPrice() public {
+        vm.startPrank(owner);
+        creatorCore721.mintBase(other1, "");
+        vm.stopPrank();
+
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](1);
+        burnTokens[0] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore721),
+            tokenId: 1,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC721,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 1
+        });
+
+        uint256 instanceId = 100;
+        uint8 variation = 2;
+        uint64 variationLimit = 0;
+        address erc20 = address(0);
+        uint256 price = 1 ether;
+        address payable fundsRecipient = payable(seller);
+        uint160 expiration = uint160(block.timestamp + 1000);
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE();
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+        // Test redeem
+        vm.startPrank(other1);
+        creatorCore721.approve(address(example), 1);
+        example.burnRedeem{value: burnFee+price}(submission);
+        vm.stopPrank(); 
+
+        // Check token burned
+        vm.expectRevert("ERC721: invalid token ID");
+        creatorCore721.ownerOf(1);
+
+        // Check seller got price
+        assertEq(address(seller).balance, 1 ether);
+    }
+
+    function testPhysicalClaimWithPriceManifoldMember() public {
+        vm.startPrank(owner);
+        example.setMembershipAddress(address(manifoldMembership));
+        manifoldMembership.setMember(other1, true);
+        creatorCore721.mintBase(other1, "");
+        vm.stopPrank();
+
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](1);
+        burnTokens[0] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore721),
+            tokenId: 1,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC721,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 1
+        });
+
+        uint256 instanceId = 100;
+        uint8 variation = 2;
+        uint64 variationLimit = 0;
+        address erc20 = address(0);
+        uint256 price = 1 ether;
+        address payable fundsRecipient = payable(seller);
+        uint160 expiration = uint160(block.timestamp + 1000);
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE();
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+        // Test redeem
+        vm.startPrank(other1);
+        creatorCore721.approve(address(example), 1);
+        example.burnRedeem{value: price}(submission);
+        vm.stopPrank(); 
+
+        // Check token burned
+        vm.expectRevert("ERC721: invalid token ID");
+        creatorCore721.ownerOf(1);
+
+        // Check seller got price
+        assertEq(address(seller).balance, 1 ether);
+    }
+
+    function testPhysicalClaimWithERC20PriceInvalid() public {
+        vm.startPrank(owner);
+        creatorCore721.mintBase(other1, "");
+        mockERC20.fakeMint(other2, 200);
+        vm.stopPrank();
+
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](1);
+        burnTokens[0] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore721),
+            tokenId: 1,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC721,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 1
+        });
+
+        uint256 instanceId = 100;
+        uint8 variation = 2;
+        uint64 variationLimit = 0;
+        address erc20 = address(mockERC20);
+        uint256 price = 15;
+        address payable fundsRecipient = payable(seller);
+        uint160 expiration = uint160(block.timestamp + 1000);
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE();
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+        // Approve spend from other2
+        vm.startPrank(other2);
+        mockERC20.approve(address(example), 15);
+        vm.stopPrank();
+
+        // Test redeem (should fail, cannot steal someone else's balance)
+        vm.startPrank(other1);
+        creatorCore721.approve(address(example), 1);
+        vm.expectRevert("ERC20: insufficient allowance");
+        example.burnRedeem{value: burnFee}(submission);
+        mockERC20.approve(address(example), 15);
+        vm.expectRevert("ERC20: transfer amount exceeds balance");
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank(); 
+    }
+
+    function testPhysicalClaimWithERC20Price() public {
+        vm.startPrank(owner);
+        creatorCore721.mintBase(other1, "");
+        mockERC20.fakeMint(other1, 200);
+        vm.stopPrank();
+
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](1);
+        burnTokens[0] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore721),
+            tokenId: 1,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC721,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 1
+        });
+
+        uint256 instanceId = 100;
+        uint8 variation = 2;
+        uint64 variationLimit = 0;
+        address erc20 = address(mockERC20);
+        uint256 price = 15;
+        address payable fundsRecipient = payable(seller);
+        uint160 expiration = uint160(block.timestamp + 1000);
+        uint256 burnFee = PhysicalClaim(example).BURN_FEE();
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+        // Test redeem
+        vm.startPrank(other1);
+        creatorCore721.approve(address(example), 1);
+        vm.expectRevert("ERC20: insufficient allowance");
+        example.burnRedeem{value: burnFee}(submission);
+        mockERC20.approve(address(example), 15);
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank(); 
+
+        // Check token burned
+        vm.expectRevert("ERC721: invalid token ID");
+        creatorCore721.ownerOf(1);
+
+        // Check seller got price
+        assertEq(mockERC20.balanceOf(address(seller)), 15);
+        assertEq(mockERC20.balanceOf(address(other1)), 185);
+    }
+
+    function testPhysicalClaimMultiBurn() public {
+        vm.startPrank(owner);
+        creatorCore721.mintBase(other1, "");
+        address[] memory recipients = new address[](1);
+        recipients[0] = other1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 10;
+        string[] memory uris = new string[](1);
+        creatorCore1155.mintBaseNew(recipients, amounts, uris);
+        vm.stopPrank();
+
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](2);
+        burnTokens[0] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore721),
+            tokenId: 1,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC721,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 1
+        });
+        burnTokens[1] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore1155),
+            tokenId: 1,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC1155,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 2
+        });
+
+        uint256 instanceId = 100;
+        uint8 variation = 2;
+        uint64 variationLimit = 0;
+        address erc20 = address(0);
+        uint256 price = 0;
+        address payable fundsRecipient = payable(address(0));
+        uint160 expiration = uint160(block.timestamp + 1000);
+        uint256 burnFee = PhysicalClaim(example).MULTI_BURN_FEE();
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+        // Test redeem
+        vm.startPrank(other1);
+        creatorCore721.approve(address(example), 1);
+        creatorCore1155.setApprovalForAll(address(example), true);
+        example.burnRedeem{value: burnFee}(submission);
+        vm.stopPrank(); 
+
+        // Check token burned
+        vm.expectRevert("ERC721: invalid token ID");
+        creatorCore721.ownerOf(1);
+        assertEq(creatorCore1155.balanceOf(other1, 1), 8);
     }
 
     function constructSubmission(uint256 instanceId, IPhysicalClaim.BurnToken[] memory burnTokens, uint8 variation, uint64 variationLimit, address erc20, uint256 price, address payable fundsRecipient, uint160 expiration, bytes32 nonce) private view returns (IPhysicalClaim.BurnSubmission memory submission) {
