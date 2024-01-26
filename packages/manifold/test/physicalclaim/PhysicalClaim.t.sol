@@ -2,13 +2,14 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import "./PhysicalClaimBase.t.sol";
 import "../../contracts/physicalclaim/PhysicalClaim.sol";
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "../mocks/Mock.sol";
 
-contract PhysicalClaimTest is Test {
+contract PhysicalClaimTest is PhysicalClaimBase {
     PhysicalClaim public example;
     ERC721Creator public creatorCore721;
     ERC1155Creator public creatorCore1155;
@@ -25,7 +26,6 @@ contract PhysicalClaimTest is Test {
     address public zeroAddress = address(0);
 
     address public signingAddress;
-    uint256 privateKey = 0x1010101010101010101010101010101010101010101010101010101010101010;
 
     function setUp() public {
         vm.startPrank(owner);
@@ -359,7 +359,7 @@ contract PhysicalClaimTest is Test {
 
         IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
-        // Test redeem because we change the data
+        // Test redeem because it is expired
         vm.startPrank(other1);
         creatorCore721.approve(address(example), 1);
         vm.expectRevert(IPhysicalClaim.ExpiredSignature.selector);
@@ -1216,31 +1216,4 @@ contract PhysicalClaimTest is Test {
         example.burnRedeem{value: burnFee}(submission);
         vm.stopPrank();
     }
-
-    function constructSubmission(uint256 instanceId, IPhysicalClaim.BurnToken[] memory burnTokens, uint8 variation, uint64 variationLimit, uint64 totalLimit, address erc20, uint256 price, address payable fundsRecipient, uint160 expiration, bytes32 nonce) private view returns (IPhysicalClaim.BurnSubmission memory submission) {
-        // Hack because we were getting stack too deep, so need to pass into subfunction
-        submission = _constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
-        submission.instanceId = instanceId;
-    }
-
-    function _constructSubmission(uint256 instanceId, IPhysicalClaim.BurnToken[] memory burnTokens, uint8 variation, uint64 variationLimit, uint64 totalLimit, address erc20, uint256 price, address payable fundsRecipient, uint160 expiration, bytes32 nonce) private view returns (IPhysicalClaim.BurnSubmission memory submission) {
-        bytes memory messageData = abi.encode(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
-        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageData));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
-        submission.signature = signature;
-        submission.message = message;
-        submission.burnTokens = burnTokens;
-        submission.variation = variation;
-        submission.variationLimit = variationLimit;
-        submission.totalLimit = totalLimit;
-        submission.erc20 = erc20;
-        submission.price = price;
-        submission.fundsRecipient = fundsRecipient;
-        submission.expiration = expiration;
-        submission.nonce = nonce;
-    }
-
   }
