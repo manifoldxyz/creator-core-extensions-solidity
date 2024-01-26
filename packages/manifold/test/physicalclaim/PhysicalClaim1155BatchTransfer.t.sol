@@ -9,7 +9,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "../mocks/Mock.sol";
 
-contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
+contract PhysicalClaim1155BatchTransferTest is PhysicalClaimBase {
     PhysicalClaim public example;
     ERC721Creator public creatorCore721;
     ERC1155Creator public creatorCore1155;
@@ -54,8 +54,12 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         vm.stopPrank();
 
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, "");
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, "");
         vm.stopPrank();
     }
 
@@ -86,10 +90,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.InvalidInput.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -125,10 +133,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.InvalidInput.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -166,10 +178,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.InvalidInput.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
     
@@ -207,10 +223,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.InvalidInput.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -248,10 +268,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(abi.encodeWithSelector(IPhysicalClaim.InvalidToken.selector, address(creatorCore1155), 2));
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -289,10 +313,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
 
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(abi.encodeWithSelector(IPhysicalClaim.InvalidToken.selector, address(creatorCore721), 1));
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -335,10 +363,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         example.updateSigner(other2);
         vm.stopPrank();
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.InvalidSignature.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -378,10 +410,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         // Test redeem because we change the data
         submission.message = bytes32(0);
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.InvalidSignature.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -421,10 +457,14 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         // Test redeem because we change the data
         submission.variationLimit = 10;
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.InvalidSignature.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -463,14 +503,18 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
 
         // Test redeem because it is expired
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.ExpiredSignature.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
-    function testNotEnoughTokens() public {
+    function testNotEnoughTokens1() public {
         vm.startPrank(owner);
         example.setMembershipAddress(address(manifoldMembership));
         manifoldMembership.setMember(other1, true);
@@ -505,10 +549,69 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
 
         // Test redeem
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 1;
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.InvalidBurnAmount.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 1, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
+        vm.stopPrank();
+    }
+
+    function testNotEnoughTokens2() public {
+        vm.startPrank(owner);
+        example.setMembershipAddress(address(manifoldMembership));
+        manifoldMembership.setMember(other1, true);
+        address[] memory recipients = new address[](1);
+        recipients[0] = other1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 10;
+        string[] memory uris = new string[](1);
+        creatorCore1155.mintBaseNew(recipients, amounts, uris);
+        amounts[0] = 20;
+        creatorCore1155.mintBaseNew(recipients, amounts, uris);
+        vm.stopPrank();
+
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](2);
+        burnTokens[0] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore1155),
+            tokenId: 1,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC1155,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 2
+        });
+        burnTokens[1] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore1155),
+            tokenId: 2,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC1155,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 2
+        });
+
+        uint256 instanceId = 100;
+        uint8 variation = 2;
+        uint64 variationLimit = 0;
+        uint64 totalLimit = 0;
+        address erc20 = address(0);
+        uint256 price = 0;
+        address payable fundsRecipient = payable(address(0));
+        uint160 expiration = uint160(block.timestamp + 100);
+        bytes32 nonce = bytes32(bytes4(0xdeadbeef));
+
+        IPhysicalClaim.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
+
+        // Test redeem
+        vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 2;
+        // Note: Current ERC1155 implementation does not pass through revert messages
+        vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
+        //vm.expectRevert(IPhysicalClaim.InvalidInput.selector);
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
     }
 
@@ -522,15 +625,24 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         amounts[0] = 10;
         string[] memory uris = new string[](1);
         creatorCore1155.mintBaseNew(recipients, amounts, uris);
+        amounts[0] = 20;
+        creatorCore1155.mintBaseNew(recipients, amounts, uris);
         vm.stopPrank();
 
-        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](1);
+        IPhysicalClaim.BurnToken[] memory burnTokens = new IPhysicalClaim.BurnToken[](2);
         burnTokens[0] = IPhysicalClaim.BurnToken({
             contractAddress: address(creatorCore1155),
             tokenId: 1,
             tokenSpec: IPhysicalClaim.TokenSpec.ERC1155,
             burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
             amount: 2
+        });
+        burnTokens[1] = IPhysicalClaim.BurnToken({
+            contractAddress: address(creatorCore1155),
+            tokenId: 2,
+            tokenSpec: IPhysicalClaim.TokenSpec.ERC1155,
+            burnSpec: IPhysicalClaim.BurnSpec.MANIFOLD,
+            amount: 3
         });
 
         uint256 instanceId = 100;
@@ -547,11 +659,18 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
 
         // Test redeem
         vm.startPrank(other1);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 2, abi.encode(submission));
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = 1;
+        ids[1] = 2;
+        uint256[] memory transferAmounts = new uint256[](2);
+        transferAmounts[0] = 2;
+        transferAmounts[1] = 3;
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
 
         // Check token burned
         assertEq(creatorCore1155.balanceOf(other1, 1), 8);
+        assertEq(creatorCore1155.balanceOf(other1, 2), 17);
     }
 
     function testPhyiscalClaimSoldOut() public {
@@ -589,7 +708,11 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
 
         // Test redeem
         vm.startPrank(other1);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 2, abi.encode(submission));
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 2;
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
 
         // Check correct amount of tokens burned
@@ -602,7 +725,7 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
         // Note: Current ERC1155 implementation does not pass through revert messages
         vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         //vm.expectRevert(IPhysicalClaim.SoldOut.selector);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 2, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
 
         // Check correct amount of tokens burned
@@ -650,11 +773,15 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
 
         // Test redeem (should fail, cannot steal someone else's balance)
         vm.startPrank(other1);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory transferAmounts = new uint256[](1);
+        transferAmounts[0] = 2;
         vm.expectRevert("ERC20: insufficient allowance");
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 2, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         mockERC20.approve(address(example), 15);
         vm.expectRevert("ERC20: transfer amount exceeds balance");
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 2, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
 
         // Mint to other1
@@ -664,7 +791,7 @@ contract PhysicalClaim1155TransferTest is PhysicalClaimBase {
     
         // Approve spend from other1
         vm.startPrank(other1);
-        creatorCore1155.safeTransferFrom(other1, address(example), 1, 2, abi.encode(submission));
+        creatorCore1155.safeBatchTransferFrom(other1, address(example), ids, transferAmounts, abi.encode(submission));
         vm.stopPrank();
 
         // Check token burned

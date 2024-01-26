@@ -328,8 +328,11 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
         // Verify the values match what is needed and burn tokens
         for (uint256 i; i < submission.burnTokens.length;) {
             BurnToken memory burnToken = submission.burnTokens[i];
-            if (burnToken.contractAddress != msg.sender || burnToken.tokenId != tokenIds[i] || burnToken.amount != values[i]) {
+            if (burnToken.contractAddress != msg.sender || burnToken.tokenId != tokenIds[i]) {
                 revert InvalidToken(burnToken.contractAddress, burnToken.tokenId);
+            }
+            if (burnToken.amount != values[i]) {
+                revert InvalidBurnAmount();
             }
             _burn(submission.instanceId, address(this), burnToken);
             unchecked { ++i; }
