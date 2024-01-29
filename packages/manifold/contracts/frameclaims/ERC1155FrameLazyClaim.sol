@@ -36,7 +36,7 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     constructor(address initialOwner) FrameLazyClaim(initialOwner) {}
 
     /**
-     * See {IERC1155LazyClaim-initializeClaim}.
+     * See {IERC1155FrameLazyClaim-initializeClaim}.
      */
     function initializeClaim(
         address creatorContractAddress,
@@ -67,7 +67,7 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     }
 
     /**
-     * See {IERC1155LazyClaim-updateTokenURIParams}.
+     * See {IERC1155FrameLazyClaim-updateTokenURIParams}.
      */
     function updateTokenURIParams(
         address creatorContractAddress, uint256 instanceId,
@@ -84,7 +84,7 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     }
 
     /**
-     * See {IERC1155LazyClaim-extendTokenURI}.
+     * See {IERC1155FrameLazyClaim-extendTokenURI}.
      */
     function extendTokenURI(
         address creatorContractAddress, uint256 instanceId,
@@ -96,14 +96,14 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     }
 
     /**
-     * See {IERC1155LazyClaim-getClaim}.
+     * See {IERC1155FrameLazyClaim-getClaim}.
      */
     function getClaim(address creatorContractAddress, uint256 instanceId) public override view returns(Claim memory claim) {
         return _getClaim(creatorContractAddress, instanceId);
     }
 
     /**
-     * See {IERC1155LazyClaim-getClaimForToken}.
+     * See {IERC1155FrameLazyClaim-getClaimForToken}.
      */
     function getClaimForToken(address creatorContractAddress, uint256 tokenId) external override view returns(uint256 instanceId, Claim memory claim) {
         instanceId = _claimTokenIds[creatorContractAddress][tokenId];
@@ -128,7 +128,7 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     }
 
     /**
-     * See {IERC1155LazyPayableClaim-airdrop}.
+     * See {IERC1155FrameLazyClaim-airdrop}.
      */
     function airdrop(address creatorContractAddress, uint256 instanceId, Recipient[] calldata recipients) external override creatorAdminRequired(creatorContractAddress) {
         // Fetch the claim
