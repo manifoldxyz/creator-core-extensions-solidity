@@ -24,7 +24,7 @@ error ExpiredSignature();
 /**
  * @title Lazy Payable Claim
  * @author manifold.xyz
- * @notice Lazy payable claim with optional whitelist ERC721 tokens
+ * @notice Lazy payable claim with optional whitelist
  */
 abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     using EnumerableSet for EnumerableSet.AddressSet;
