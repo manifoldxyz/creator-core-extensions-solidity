@@ -6,8 +6,6 @@ import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
 import "./IFrameLazyClaim.sol";
 
-error InvalidSignature();
-
 /**
  * @title Frame Lazy Claim
  * @author manifold.xyz
@@ -47,7 +45,7 @@ abstract contract FrameLazyClaim is IFrameLazyClaim, AdminControl {
         _signer = signer;
     }
 
-    function _validateMint() internal {
+    function _validateMint() internal view {
         if (msg.sender != _signer) revert InvalidSignature();
     }
 }

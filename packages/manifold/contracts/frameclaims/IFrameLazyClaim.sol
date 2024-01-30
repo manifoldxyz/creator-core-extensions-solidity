@@ -9,7 +9,9 @@ pragma solidity ^0.8.0;
  */
 interface IFrameLazyClaim {
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
-    
+
+    error InvalidSignature();
+
     event FrameClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
     event FrameClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
     event FrameClaimMint(address indexed creatorContract, uint256 indexed instanceId);
