@@ -38,15 +38,6 @@ abstract contract FrameLazyClaim is IFrameLazyClaim, AdminControl {
         _transferOwnership(initialOwner);
     }
 
-
-    /**
-     * See {IFrameLazyClaim-withdraw}.
-     */
-    function withdraw(address payable receiver, uint256 amount) external override adminRequired {
-        (bool sent, ) = receiver.call{value: amount}("");
-        if (!sent) revert FailedToTransfer();
-    }
-
     /**
      * See {IFrameLazyClaim-setSigner}.
      */
