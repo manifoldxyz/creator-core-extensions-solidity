@@ -116,15 +116,18 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     }
 
     /**
-     * See {ILazyPayableClaim-mint}.
+     * See {IFrameLazyClaim-mint}.
      */
-    function mint(address creatorContractAddress, uint256 instanceId, Recipient[] calldata recipients) external override {
-        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
+    function mint(Mint[] calldata mints) external override {
         _validateMint();
-        // Do mint
-        _mintClaim(creatorContractAddress, claim, recipients);
+        for (uint256 i; i < mints.length;) {
+            Mint calldata mintData = mints[i];
+            Claim storage claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
+            _mintClaim(mintData.creatorContractAddress, claim, mintData.recipients);
+            emit FrameClaimMint(mintData.creatorContractAddress, mintData.instanceId);
+            unchecked{ ++i; }
+        }
 
-        emit FrameClaimMint(creatorContractAddress, instanceId);
     }
 
     /**
