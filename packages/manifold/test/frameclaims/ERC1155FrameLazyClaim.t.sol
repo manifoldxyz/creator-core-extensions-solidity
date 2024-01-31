@@ -33,10 +33,16 @@ contract ERC1155FrameLazyClaimTest is Test {
     vm.deal(creator, 10 ether);
     vm.deal(other, 10 ether);
     vm.deal(signer, 10 ether);
+    vm.deal(address(example), 10 ether);
   }
 
   function testAccess() public {
     vm.startPrank(other);
+
+    // Must be admin
+    vm.expectRevert();
+    example.withdraw(payable(other), 20);
+
     // Must be admin
     vm.expectRevert();
     example.setSigner(other);
@@ -73,6 +79,12 @@ contract ERC1155FrameLazyClaimTest is Test {
     example.extendTokenURI(address(creatorCore), 1, "part2");
     assertEq("part1part2", creatorCore.uri(1));
 
+    vm.stopPrank();
+  }
+
+  function testWithdraw() public {
+    vm.startPrank(owner);
+    example.withdraw(payable(owner), 1 ether);
     vm.stopPrank();
   }
 
