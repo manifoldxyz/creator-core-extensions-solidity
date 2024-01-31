@@ -16,6 +16,12 @@ interface IFrameLazyClaim {
     event FrameClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
     event FrameClaimMint(address indexed creatorContract, uint256 indexed instanceId);
 
+    struct Mint {
+        address creatorContractAddress;
+        uint256 instanceId;
+        Recipient[] recipients;
+    }
+
     struct Recipient {
         address receiver;
         uint256 amount;
@@ -29,10 +35,8 @@ interface IFrameLazyClaim {
 
     /**
      * @notice allowlist minting based on signatures
-     * @param creatorContractAddress    the creator contract address
-     * @param instanceId                the claim instanceId for the creator contract
-     * @param recipients                the recipients to mint to
+     * @param mints    the mint instructions
      */
-    function mint(address creatorContractAddress, uint256 instanceId, Recipient[] calldata recipients) external;
+    function mint(Mint[] calldata mints) external;
 
 }

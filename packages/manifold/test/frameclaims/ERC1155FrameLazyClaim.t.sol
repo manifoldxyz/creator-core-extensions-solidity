@@ -129,8 +129,14 @@ contract ERC1155FrameLazyClaimTest is Test {
       receiver: other,
       amount: 1
     });
+    IFrameLazyClaim.Mint[] memory mints = new IFrameLazyClaim.Mint[](1);
+    mints[0] = IFrameLazyClaim.Mint({
+      creatorContractAddress: address(creatorCore),
+      instanceId: 1,
+      recipients: recipients
+    });
     vm.expectRevert(IFrameLazyClaim.InvalidSignature.selector);
-    example.mint(address(creatorCore), 1, recipients);
+    example.mint(mints);
     vm.stopPrank();
   }
 
@@ -155,10 +161,67 @@ contract ERC1155FrameLazyClaimTest is Test {
       receiver: owner,
       amount: 1
     });
-    example.mint(address(creatorCore), 1, recipients);
+    IFrameLazyClaim.Mint[] memory mints = new IFrameLazyClaim.Mint[](1);
+    mints[0] = IFrameLazyClaim.Mint({
+      creatorContractAddress: address(creatorCore),
+      instanceId: 1,
+      recipients: recipients
+    });
+    example.mint(mints);
     vm.stopPrank();
 
     assertEq(2, creatorCore.balanceOf(other, 1));
     assertEq(1, creatorCore.balanceOf(owner, 1));
+  }
+
+  function testMultipleMint() public {
+    vm.startPrank(creator);
+    IERC1155FrameLazyClaim.ClaimParameters memory claimP1 = IERC1155FrameLazyClaim.ClaimParameters({
+      location: "arweaveHash1",
+      storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE
+    });
+
+    example.initializeClaim(address(creatorCore), 1, claimP1);
+    IERC1155FrameLazyClaim.ClaimParameters memory claimP2 = IERC1155FrameLazyClaim.ClaimParameters({
+      location: "arweaveHash2",
+      storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE
+    });
+
+    example.initializeClaim(address(creatorCore), 2, claimP2);
+
+    vm.stopPrank();
+  
+    vm.startPrank(signer);
+    IFrameLazyClaim.Recipient[] memory recipients1 = new IFrameLazyClaim.Recipient[](2);
+    recipients1[0] = IFrameLazyClaim.Recipient({
+      receiver: other,
+      amount: 2
+    });
+    recipients1[1] = IFrameLazyClaim.Recipient({
+      receiver: owner,
+      amount: 1
+    });
+    IFrameLazyClaim.Recipient[] memory recipients2 = new IFrameLazyClaim.Recipient[](1);
+    recipients2[0] = IFrameLazyClaim.Recipient({
+      receiver: other,
+      amount: 3
+    });
+    IFrameLazyClaim.Mint[] memory mints = new IFrameLazyClaim.Mint[](2);
+    mints[0] = IFrameLazyClaim.Mint({
+      creatorContractAddress: address(creatorCore),
+      instanceId: 1,
+      recipients: recipients1
+    });
+    mints[1] = IFrameLazyClaim.Mint({
+      creatorContractAddress: address(creatorCore),
+      instanceId: 2,
+      recipients: recipients2
+    });
+    example.mint(mints);
+    vm.stopPrank();
+
+    assertEq(2, creatorCore.balanceOf(other, 1));
+    assertEq(1, creatorCore.balanceOf(owner, 1));
+    assertEq(3, creatorCore.balanceOf(other, 2));
   }
 }
