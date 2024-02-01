@@ -31,8 +31,8 @@ contract DeployPhysicalClaim is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY"); // comment this out when testing on goerli
         vm.startBroadcast(deployerPrivateKey);
         // forge script script/PhysicalClaim.s.sol --optimizer-runs 1000 --rpc-url <YOUR_NODE> --broadcast
-        // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain goerli <DEPLOYED_ADDRESS> contracts/physicalclaim/PhysicalClaim.sol:PhysicalClaim --constructor-args $(cast abi-encode "constructor(address)" "${INITIAL_OWNER}") --libraries contracts/physicalclaim/PhysicalClaimLib.sol:PhysicalClaimLib:<address from library deployment>  --watch
-        new PhysicalClaim{salt: 0x4c657427732067657420506879736963616c2000000000000000000000000000}(initialOwner);
+        // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain goerli <DEPLOYED_ADDRESS> contracts/physicalclaim/PhysicalClaim.sol:PhysicalClaim --constructor-args $(cast abi-encode "constructor(address)" "${INITIAL_OWNER}") --watch
+        new PhysicalClaim{salt: 0x4c657427732067657420506879736963616c2000000000000000000000000000}(initialOwner, address(0));
         vm.stopBroadcast();
     }
 }
