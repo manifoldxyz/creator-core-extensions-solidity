@@ -59,7 +59,8 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
         _claims[creatorContractAddress][instanceId] = Claim({
             storageProtocol: claimParameters.storageProtocol,
             location: claimParameters.location,
-            tokenId: newTokenIds[0]
+            tokenId: newTokenIds[0],
+            paymentReceiver: claimParameters.paymentReceiver
         });
         _claimTokenIds[creatorContractAddress][newTokenIds[0]] = instanceId;
         
@@ -118,12 +119,12 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     /**
      * See {IFrameLazyClaim-mint}.
      */
-    function mint(Mint[] calldata mints) external override {
+    function mint(Mint[] calldata mints) external override payable {
         _validateMint();
         for (uint256 i; i < mints.length;) {
             Mint calldata mintData = mints[i];
             Claim storage claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
-            _mintClaim(mintData.creatorContractAddress, claim, mintData.recipients);
+            _mintClaim(mintData, claim);
             emit FrameClaimMint(mintData.creatorContractAddress, mintData.instanceId);
             unchecked{ ++i; }
         }
@@ -131,30 +132,20 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     }
 
     /**
-     * See {IERC1155FrameLazyClaim-airdrop}.
-     */
-    function airdrop(address creatorContractAddress, uint256 instanceId, Recipient[] calldata recipients) external override creatorAdminRequired(creatorContractAddress) {
-        // Fetch the claim
-        Claim storage claim = _claims[creatorContractAddress][instanceId];
-
-        // Airdrop the tokens
-        _mintClaim(creatorContractAddress, claim, recipients);
-    }
-
-    /**
      * Mint a claim
      */
-    function _mintClaim(address creatorContractAddress, Claim storage claim, Recipient[] calldata recipients) private {
+    function _mintClaim(Mint calldata mintData, Claim storage claim) private {
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = claim.tokenId;
-        address[] memory receivers = new address[](recipients.length);
-        uint256[] memory amounts = new uint256[](recipients.length);
-        for (uint256 i; i < recipients.length;) {
-            receivers[i] = recipients[i].receiver;
-            amounts[i] = recipients[i].amount;
-            unchecked{ ++i; }
+        address[] memory receivers = new address[](1);
+        receivers[0] = mintData.recipient;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = mintData.amount;
+        IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
+        if (mintData.payment > 0) {
+            (bool sent, ) = claim.paymentReceiver.call{value: mintData.payment}("");
+            if (!sent) revert FailedToTransfer();
         }
-        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
     }
 
     /**

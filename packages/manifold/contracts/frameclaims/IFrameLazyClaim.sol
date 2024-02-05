@@ -11,6 +11,7 @@ interface IFrameLazyClaim {
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
 
     error InvalidSignature();
+    error FailedToTransfer();
 
     event FrameClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
     event FrameClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
@@ -19,12 +20,9 @@ interface IFrameLazyClaim {
     struct Mint {
         address creatorContractAddress;
         uint256 instanceId;
-        Recipient[] recipients;
-    }
-
-    struct Recipient {
-        address receiver;
+        address recipient;
         uint256 amount;
+        uint256 payment;
     }
 
     /**
@@ -37,6 +35,6 @@ interface IFrameLazyClaim {
      * @notice allowlist minting based on signatures
      * @param mints    the mint instructions
      */
-    function mint(Mint[] calldata mints) external;
+    function mint(Mint[] calldata mints) external payable;
 
 }
