@@ -42,9 +42,9 @@ contract FramePaymaster is IFramePaymaster, AdminControl {
     /**
      * See {IFramePaymaster-deliver}.
      */
-    function deliver(address extensionAddres, IFrameLazyClaim.Mint[] calldata mints) external override {
+    function deliver(address extensionAddress, IFrameLazyClaim.Mint[] calldata mints) external override {
         if (msg.sender != _signer) revert InvalidSignature();
-        IFrameLazyClaim(extensionAddres).mint(mints);
+        IFrameLazyClaim(extensionAddress).mint(mints);
     }
 
     /**
@@ -79,6 +79,8 @@ contract FramePaymaster is IFramePaymaster, AdminControl {
             IFrameLazyClaim(extensionMint.extensionAddress).mint{value: extensionPayment}(mints);
             unchecked { ++i; }
         }
+
+        emit CheckoutComplete(msg.sender, submission.fid, submission.nonce, submission.message, submission.signature);
     }
 
     function _validateCheckout(MintSubmission calldata submission) private {

@@ -17,7 +17,7 @@ interface IFramePaymaster {
     error InvalidNonce();
     error FailedToTransfer();
 
-    event CheckoutComplete(address indexed sender, uint256 indexed fid, uint256 nonce);
+    event CheckoutComplete(address indexed sender, uint256 indexed fid, uint256 nonce, bytes32 message, bytes signature);
 
     struct MintSubmission {
         ExtensionMint[] extensionMints;
@@ -49,7 +49,7 @@ interface IFramePaymaster {
     /**
      * @notice Deliver NFTs
      */
-    function deliver(address extensionAddres, IFrameLazyClaim.Mint[] calldata mints) external;
+    function deliver(address extensionAddress, IFrameLazyClaim.Mint[] calldata mints) external;
 
     /**
      * @notice Checkout and mint NFTs
