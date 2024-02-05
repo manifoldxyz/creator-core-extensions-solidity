@@ -121,10 +121,11 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
      */
     function mint(Mint[] calldata mints) external override payable {
         _validateMint();
+        uint256 paymentReceived = msg.value;
         for (uint256 i; i < mints.length;) {
             Mint calldata mintData = mints[i];
             Claim storage claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
-            _mintClaim(mintData, claim);
+            paymentReceived = _mintClaim(mintData, claim, paymentReceived);
             emit FrameClaimMint(mintData.creatorContractAddress, mintData.instanceId);
             unchecked{ ++i; }
         }
@@ -134,18 +135,28 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     /**
      * Mint a claim
      */
-    function _mintClaim(Mint calldata mintData, Claim storage claim) private {
+    function _mintClaim(Mint calldata mintData, Claim storage claim, uint256 paymentReceived) private returns(uint256) {
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = claim.tokenId;
-        address[] memory receivers = new address[](1);
-        receivers[0] = mintData.recipient;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = mintData.amount;
+        address[] memory receivers = new address[](mintData.recipients.length);
+        uint256[] memory amounts = new uint256[](mintData.recipients.length);
+        uint256 totalPayment;
+        for (uint256 i; i < mintData.recipients.length;) {
+            receivers[i] = mintData.recipients[i].receiver;
+            amounts[i] = mintData.recipients[i].amount;
+            totalPayment += mintData.recipients[i].payment;
+            unchecked { ++i; }
+        }
+        if (totalPayment > 0) {
+            if (paymentReceived < totalPayment) revert InsufficientPayment();
+            paymentReceived -= totalPayment;
+        }
         IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
-        if (mintData.payment > 0) {
-            (bool sent, ) = claim.paymentReceiver.call{value: mintData.payment}("");
+        if (totalPayment > 0) {
+            (bool sent, ) = claim.paymentReceiver.call{value: totalPayment}("");
             if (!sent) revert FailedToTransfer();
         }
+        return paymentReceived;
     }
 
     /**

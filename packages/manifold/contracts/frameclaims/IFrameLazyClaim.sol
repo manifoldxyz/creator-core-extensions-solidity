@@ -12,17 +12,22 @@ interface IFrameLazyClaim {
 
     error InvalidSignature();
     error FailedToTransfer();
+    error InsufficientPayment();
 
     event FrameClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
     event FrameClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
     event FrameClaimMint(address indexed creatorContract, uint256 indexed instanceId);
 
+    struct Recipient {
+        address receiver;
+        uint256 amount;
+        uint256 payment;
+    }
+
     struct Mint {
         address creatorContractAddress;
         uint256 instanceId;
-        address recipient;
-        uint256 amount;
-        uint256 payment;
+        Recipient[] recipients;
     }
 
     /**

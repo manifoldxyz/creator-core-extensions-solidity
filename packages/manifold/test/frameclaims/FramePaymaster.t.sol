@@ -37,6 +37,8 @@ contract FramePaymasterTest is Test {
         vm.expectRevert();
         paymaster.setSigner(other);
         vm.stopPrank();
+        vm.expectRevert(IFramePaymaster.InvalidSignature.selector);
+        paymaster.deliver(address(0), new IFrameLazyClaim.Mint[](0));
     }
 
     function testWithdraw() public {

@@ -142,13 +142,17 @@ contract ERC1155FrameLazyClaimTest is Test {
       
         vm.startPrank(other);
 
+        IFrameLazyClaim.Recipient[] memory recipients = new IFrameLazyClaim.Recipient[](1);
+        recipients[0] = IFrameLazyClaim.Recipient({
+            receiver: other,
+            amount: 1,
+            payment: 0
+        });
         IFrameLazyClaim.Mint[] memory mints = new IFrameLazyClaim.Mint[](1);
         mints[0] = IFrameLazyClaim.Mint({
             creatorContractAddress: address(creatorCore1),
             instanceId: 1,
-            recipient: other,
-            amount: 1,
-            payment: 0
+            recipients: recipients
         });
         vm.expectRevert(IFrameLazyClaim.InvalidSignature.selector);
         example.mint(mints);
@@ -335,6 +339,70 @@ contract ERC1155FrameLazyClaimTest is Test {
         assertEq(11 ether, creator.balance);
         assertEq(2, creatorCore2.balanceOf(other, 1));
         assertEq(2 ether, creatorOtherReceiver.balance);
+    }
+
+    function testDeliverMultiple() public {
+        vm.startPrank(creator);
+        IERC1155FrameLazyClaim.ClaimParameters memory claimP1 = IERC1155FrameLazyClaim.ClaimParameters({
+          location: "arweaveHash1",
+          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+          paymentReceiver: payable(creator)
+        });
+
+        example.initializeClaim(address(creatorCore1), 1, claimP1);
+
+        IERC1155FrameLazyClaim.ClaimParameters memory claimP2 = IERC1155FrameLazyClaim.ClaimParameters({
+          location: "arweaveHash2",
+          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+          paymentReceiver: payable(creatorOtherReceiver)
+        });
+
+        example.initializeClaim(address(creatorCore2), 2, claimP2);
+
+        vm.stopPrank();
+      
+        IFrameLazyClaim.Recipient[] memory recipients1 = new IFrameLazyClaim.Recipient[](2);
+            recipients1[0] = IFrameLazyClaim.Recipient({
+            receiver: other,
+            amount: 2,
+            payment: 0
+        });
+        recipients1[1] = IFrameLazyClaim.Recipient({
+            receiver: owner,
+            amount: 1,
+            payment: 0
+        });
+        IFrameLazyClaim.Recipient[] memory recipients2 = new IFrameLazyClaim.Recipient[](2);
+        recipients2[0] = IFrameLazyClaim.Recipient({
+            receiver: owner,
+            amount: 5,
+            payment: 0
+        });
+        recipients2[1] = IFrameLazyClaim.Recipient({
+            receiver: other,
+            amount: 10,
+            payment: 0
+        });
+        IFrameLazyClaim.Mint[] memory mints = new IFrameLazyClaim.Mint[](2);
+        mints[0] = IFrameLazyClaim.Mint({
+            creatorContractAddress: address(creatorCore1),
+            instanceId: 1,
+            recipients: recipients1
+        });
+        mints[1] = IFrameLazyClaim.Mint({
+            creatorContractAddress: address(creatorCore2),
+            instanceId: 2,
+            recipients: recipients2
+        });
+
+        vm.startPrank(signingAddress);
+        paymaster.deliver(address(example), mints);
+        vm.stopPrank();
+
+        assertEq(2, creatorCore1.balanceOf(other, 1));
+        assertEq(1, creatorCore1.balanceOf(owner, 1));
+        assertEq(5, creatorCore2.balanceOf(owner, 1));
+        assertEq(10, creatorCore2.balanceOf(other, 1));
     }
 
     function _constructSubmission(IFramePaymaster.ExtensionMint[] memory extensionMints, uint256 fid, uint256 expiration, uint256 nonce, uint256 totalAmount) internal view returns (IFramePaymaster.MintSubmission memory submission) {

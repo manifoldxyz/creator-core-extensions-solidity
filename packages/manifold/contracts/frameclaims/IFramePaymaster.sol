@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
+import "./IFrameLazyClaim.sol";
+
 /**
  * Frame Paymaster interface
  */
@@ -43,6 +45,11 @@ interface IFramePaymaster {
      */
     function withdraw(address payable receiver, uint256 amount) external;
 
+
+    /**
+     * @notice Deliver NFTs
+     */
+    function deliver(address extensionAddres, IFrameLazyClaim.Mint[] calldata mints) external;
 
     /**
      * @notice Checkout and mint NFTs
