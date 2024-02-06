@@ -22,6 +22,16 @@ contract FramePaymaster is IFramePaymaster, AdminControl {
 
     using ECDSA for bytes32;
 
+    constructor(address initialOwner) {
+        _transferOwnership(initialOwner);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AdminControl) returns (bool) {
+        return interfaceId == type(IFramePaymaster).interfaceId ||
+            interfaceId == type(IAdminControl).interfaceId ||
+            interfaceId == type(IERC165).interfaceId;
+    }
+
 
     /**
      * See {IFramePaymaster-withdraw}.

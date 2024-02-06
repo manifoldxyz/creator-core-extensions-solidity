@@ -20,7 +20,7 @@ contract FramePaymasterTest is Test {
         signingAddress = vm.addr(privateKey);
 
         vm.startPrank(owner);
-        paymaster = new FramePaymaster();
+        paymaster = new FramePaymaster(owner);
         paymaster.setSigner(signingAddress);
         vm.stopPrank();
 
