@@ -42,12 +42,17 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
         address creatorContractAddress,
         uint256 instanceId,
         ClaimParameters calldata claimParameters
-    ) external override creatorAdminRequired(creatorContractAddress) {
+    ) external payable override creatorAdminRequired(creatorContractAddress) {
         // Revert if claim at instanceId already exists
         require(_claims[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID, "Claim already initialized");
 
         // Sanity checks
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot initialize with invalid storage protocol");
+        require(claimParameters.paymentReceiver == address(0) || claimParameters.sponsoredMints == 0, "Cannot have payment receiver and sponsored mints");
+
+        if (claimParameters.sponsoredMints > MANIFOLD_FREE_MINTS) {
+            if (msg.value != (claimParameters.sponsoredMints - MANIFOLD_FREE_MINTS) * SPONSORED_MINT_FEE) revert InsufficientPayment();
+        }
 
         address[] memory receivers = new address[](1);
         receivers[0] = msg.sender;
@@ -60,10 +65,15 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
             storageProtocol: claimParameters.storageProtocol,
             location: claimParameters.location,
             tokenId: newTokenIds[0],
-            paymentReceiver: claimParameters.paymentReceiver
+            paymentReceiver: claimParameters.paymentReceiver,
+            sponsoredMints: claimParameters.sponsoredMints
         });
         _claimTokenIds[creatorContractAddress][newTokenIds[0]] = instanceId;
         
+        if (msg.value > 0) {
+            _sendFunds(_fundsReceiver, msg.value);
+        }
+
         emit FrameClaimInitialized(creatorContractAddress, instanceId, msg.sender);
     }
 
@@ -120,7 +130,7 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
      * See {IFrameLazyClaim-mint}.
      */
     function mint(Mint[] calldata mints) external override payable {
-        _validateMint();
+        _validateSigner();
         uint256 paymentReceived = msg.value;
         for (uint256 i; i < mints.length;) {
             Mint calldata mintData = mints[i];
@@ -130,6 +140,18 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
             unchecked{ ++i; }
         }
 
+    }
+
+    /**
+     * See {IFrameLazyClaim-sponsorMints}.
+     */
+    function sponsorMints(address creatorContractAddress, uint256 instanceId, uint56 amount) external override payable {
+        if (msg.value != amount * SPONSORED_MINT_FEE) revert InsufficientPayment();
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
+        if (claim.sponsoredMints == 0) revert PaymentNotAllowed();
+         _sendFunds(_fundsReceiver, msg.value);
+        claim.sponsoredMints += amount;
+        emit FrameClaimSponsored(msg.sender, creatorContractAddress, instanceId, amount);
     }
 
     /**
@@ -153,8 +175,7 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
         }
         IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
         if (totalPayment > 0) {
-            (bool sent, ) = claim.paymentReceiver.call{value: totalPayment}("");
-            if (!sent) revert FailedToTransfer();
+            _sendFunds(claim.paymentReceiver, totalPayment);
         }
         return paymentReceived;
     }

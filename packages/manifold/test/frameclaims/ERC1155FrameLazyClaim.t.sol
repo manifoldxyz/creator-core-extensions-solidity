@@ -36,6 +36,7 @@ contract ERC1155FrameLazyClaimTest is Test {
         paymaster.setSigner(signingAddress);
         example = new ERC1155FrameLazyClaim(owner);
         example.setSigner(address(paymaster));
+        example.setFundsReceiver(payable(signingAddress));
         vm.stopPrank();
 
         vm.startPrank(creator);
@@ -51,16 +52,23 @@ contract ERC1155FrameLazyClaimTest is Test {
     function testAccess() public {
         vm.startPrank(other);
         // Must be admin
-        vm.expectRevert();
+        vm.expectRevert("AdminControl: Must be owner or admin");
         example.setSigner(other);
+        vm.expectRevert("AdminControl: Must be owner or admin");
+        example.setFundsReceiver(payable(other));
+        vm.expectRevert("AdminControl: Must be owner or admin");
+        example.updateSponsoredMintFee(1 ether);
+        vm.expectRevert("AdminControl: Must be owner or admin");
+        example.updateManifoldFreeMints(1);
 
         IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash1",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creator)
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
         // Must be admin
-        vm.expectRevert();
+        vm.expectRevert("Wallet is not an administrator for contract");
         example.initializeClaim(address(creatorCore1), 1, claimP);
         // Succeeds because is admin
         vm.stopPrank();
@@ -70,10 +78,10 @@ contract ERC1155FrameLazyClaimTest is Test {
         // Update, not admin
         vm.stopPrank();
         vm.startPrank(other);
-        vm.expectRevert();
+        vm.expectRevert("Wallet is not an administrator for contract");
         example.updateTokenURIParams(address(creatorCore1), 1, IFrameLazyClaim.StorageProtocol.IPFS, "");
 
-        vm.expectRevert();
+        vm.expectRevert("Wallet is not an administrator for contract");
         example.extendTokenURI(address(creatorCore1), 2, "");
 
         vm.stopPrank();
@@ -81,7 +89,7 @@ contract ERC1155FrameLazyClaimTest is Test {
         example.updateTokenURIParams(address(creatorCore1), 1, IFrameLazyClaim.StorageProtocol.ARWEAVE, "arweaveHash3");
         assertEq("https://arweave.net/arweaveHash3", creatorCore1.uri(1));
         // Extend uri
-        vm.expectRevert();
+        vm.expectRevert("Invalid storage protocol");
         example.extendTokenURI(address(creatorCore1), 1, "");
         example.updateTokenURIParams(address(creatorCore1), 1, IFrameLazyClaim.StorageProtocol.NONE, "part1");
         example.extendTokenURI(address(creatorCore1), 1, "part2");
@@ -96,11 +104,28 @@ contract ERC1155FrameLazyClaimTest is Test {
         IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
             location: "arweaveHash1",
             storageProtocol: IFrameLazyClaim.StorageProtocol.INVALID,
-            paymentReceiver: payable(creator)
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
 
         vm.expectRevert("Cannot initialize with invalid storage protocol");
         example.initializeClaim(address(creatorCore1), 1, claimP);
+
+        claimP.storageProtocol = IFrameLazyClaim.StorageProtocol.ARWEAVE;
+        claimP.sponsoredMints = 1;
+        vm.expectRevert("Cannot have payment receiver and sponsored mints");
+        example.initializeClaim(address(creatorCore1), 1, claimP);
+        
+        uint56 manifoldSponsoredMints = example.MANIFOLD_FREE_MINTS();
+        claimP.storageProtocol = IFrameLazyClaim.StorageProtocol.ARWEAVE;
+        claimP.paymentReceiver = payable(address(0));
+        claimP.sponsoredMints = manifoldSponsoredMints + 2;
+        vm.expectRevert(IFrameLazyClaim.InsufficientPayment.selector);
+        example.initializeClaim(address(creatorCore1), 1, claimP);
+
+        uint256 fee = example.SPONSORED_MINT_FEE();
+        vm.expectRevert(IFrameLazyClaim.InsufficientPayment.selector);
+        example.initializeClaim{value: fee}(address(creatorCore1), 1, claimP);
 
         vm.expectRevert("Claim not initialized");
         example.updateTokenURIParams(address(creatorCore1), 1, IFrameLazyClaim.StorageProtocol.NONE, "");
@@ -110,13 +135,79 @@ contract ERC1155FrameLazyClaimTest is Test {
         vm.stopPrank();
     }
 
+    function testSponsoredMintFee() public {
+        vm.startPrank(creator);
+
+        uint56 manifoldSponsoredMints = example.MANIFOLD_FREE_MINTS();
+        IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(address(0)),
+            sponsoredMints: manifoldSponsoredMints+2
+        });
+
+        uint256 fee = example.SPONSORED_MINT_FEE();
+        example.initializeClaim{value: fee*2}(address(creatorCore1), 1, claimP);
+        assertEq(signingAddress.balance, fee*2);
+
+        vm.stopPrank();
+
+        IERC1155FrameLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+        assertEq(claim.sponsoredMints, manifoldSponsoredMints+2);
+
+        vm.startPrank(other);
+
+        // Insufficient funds tests
+        vm.expectRevert(IFrameLazyClaim.InsufficientPayment.selector);
+        example.sponsorMints(address(creatorCore1), 1, 1);
+        vm.expectRevert(IFrameLazyClaim.InsufficientPayment.selector);
+        example.sponsorMints{value: fee-1}(address(creatorCore1), 1, 1);
+
+        // Increase mints
+        example.sponsorMints{value: fee*3}(address(creatorCore1), 1, 3);
+
+        vm.stopPrank();
+
+        claim = example.getClaim(address(creatorCore1), 1);
+        assertEq(claim.sponsoredMints, manifoldSponsoredMints+5);
+
+        assertEq(signingAddress.balance, fee*5);
+    }
+
+    function testSponsorMintNotAllowed() public {
+        vm.startPrank(creator);
+
+        IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
+        });
+
+        example.initializeClaim(address(creatorCore1), 1, claimP);
+        vm.stopPrank();
+
+        vm.startPrank(other);
+
+        // Increase mints
+        uint256 fee = example.SPONSORED_MINT_FEE();
+        vm.expectRevert(IFrameLazyClaim.PaymentNotAllowed.selector);
+        example.sponsorMints{value: fee*3}(address(creatorCore1), 1, 3);
+
+        vm.stopPrank();
+
+        IERC1155FrameLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+        assertEq(claim.sponsoredMints, 0);
+    }
+
     function testUpdateClaimSanitization() public {
         vm.startPrank(creator);
 
         IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
             location: "arweaveHash1",
             storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-            paymentReceiver: payable(creator)
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -133,7 +224,8 @@ contract ERC1155FrameLazyClaimTest is Test {
         IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
             location: "arweaveHash1",
             storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-            paymentReceiver: payable(creator)
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -162,9 +254,10 @@ contract ERC1155FrameLazyClaimTest is Test {
     function testMintNoPayment() public {
         vm.startPrank(creator);
         IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash1",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creator)
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -196,9 +289,10 @@ contract ERC1155FrameLazyClaimTest is Test {
     function testMintWithPayment() public {
         vm.startPrank(creator);
         IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash1",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creator)
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -231,17 +325,19 @@ contract ERC1155FrameLazyClaimTest is Test {
     function testMintMultipleForOneExtensionWithPayment() public {
         vm.startPrank(creator);
         IERC1155FrameLazyClaim.ClaimParameters memory claimP1 = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash1",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creator)
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore1), 1, claimP1);
 
         IERC1155FrameLazyClaim.ClaimParameters memory claimP2 = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash2",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creatorOtherReceiver)
+            location: "arweaveHash2",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creatorOtherReceiver),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore2), 2, claimP2);
@@ -287,18 +383,20 @@ contract ERC1155FrameLazyClaimTest is Test {
 
         vm.startPrank(creator);
         IERC1155FrameLazyClaim.ClaimParameters memory claimP1 = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash1",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creator)
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore1), 1, claimP1);
 
         creatorCore2.registerExtension(address(example2), "override");
         IERC1155FrameLazyClaim.ClaimParameters memory claimP2 = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash2",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creatorOtherReceiver)
+            location: "arweaveHash2",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creatorOtherReceiver),
+            sponsoredMints: 0
         });
 
         example2.initializeClaim(address(creatorCore2), 2, claimP2);
@@ -344,17 +442,19 @@ contract ERC1155FrameLazyClaimTest is Test {
     function testDeliverMultiple() public {
         vm.startPrank(creator);
         IERC1155FrameLazyClaim.ClaimParameters memory claimP1 = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash1",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creator)
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore1), 1, claimP1);
 
         IERC1155FrameLazyClaim.ClaimParameters memory claimP2 = IERC1155FrameLazyClaim.ClaimParameters({
-          location: "arweaveHash2",
-          storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
-          paymentReceiver: payable(creatorOtherReceiver)
+            location: "arweaveHash2",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creatorOtherReceiver),
+            sponsoredMints: 0
         });
 
         example.initializeClaim(address(creatorCore2), 2, claimP2);

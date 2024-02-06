@@ -15,6 +15,7 @@ interface IERC1155FrameLazyClaim is IFrameLazyClaim {
         StorageProtocol storageProtocol;
         string location;
         address payable paymentReceiver;
+        uint56 sponsoredMints;
     }
 
     struct Claim {
@@ -22,6 +23,7 @@ interface IERC1155FrameLazyClaim is IFrameLazyClaim {
         string location;
         uint256 tokenId;
         address payable paymentReceiver;
+        uint56 sponsoredMints;
     }
 
     /**
@@ -30,7 +32,7 @@ interface IERC1155FrameLazyClaim is IFrameLazyClaim {
      * @param instanceId                the claim instanceId for the creator contract
      * @param claimParameters           the parameters which will affect the minting behavior of the claim
      */
-    function initializeClaim(address creatorContractAddress, uint256 instanceId, ClaimParameters calldata claimParameters) external;
+    function initializeClaim(address creatorContractAddress, uint256 instanceId, ClaimParameters calldata claimParameters) external payable;
 
     /**
      * @notice update tokenURI parameters for an existing claim at instanceId
