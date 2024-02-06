@@ -32,7 +32,7 @@ contract ERC1155FrameLazyClaimTest is Test {
         creatorCore2 = new ERC1155Creator("Token2", "NFT2");
         vm.stopPrank();
         vm.startPrank(owner);
-        paymaster = new FramePaymaster();
+        paymaster = new FramePaymaster(owner);
         paymaster.setSigner(signingAddress);
         example = new ERC1155FrameLazyClaim(owner);
         example.setSigner(address(paymaster));
