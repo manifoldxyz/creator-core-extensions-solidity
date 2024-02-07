@@ -156,7 +156,11 @@ contract ERC1155FrameLazyClaimTest is Test {
         assertEq(claim.sponsoredMints, manifoldSponsoredMints+2);
 
         vm.startPrank(other);
+        vm.expectRevert("Wallet is not an administrator for contract");
+        example.sponsorMints(address(creatorCore1), 1, 1);
+        vm.stopPrank();
 
+        vm.startPrank(creator);
         // Insufficient funds tests
         vm.expectRevert(IFrameLazyClaim.InsufficientPayment.selector);
         example.sponsorMints(address(creatorCore1), 1, 1);
@@ -187,8 +191,7 @@ contract ERC1155FrameLazyClaimTest is Test {
         example.initializeClaim(address(creatorCore1), 1, claimP);
         vm.stopPrank();
 
-        vm.startPrank(other);
-
+        vm.startPrank(creator);
         // Increase mints
         uint256 fee = example.SPONSORED_MINT_FEE();
         vm.expectRevert(IFrameLazyClaim.PaymentNotAllowed.selector);

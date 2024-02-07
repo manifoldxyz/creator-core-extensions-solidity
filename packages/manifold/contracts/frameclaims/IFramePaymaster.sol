@@ -45,7 +45,6 @@ interface IFramePaymaster {
      */
     function withdraw(address payable receiver, uint256 amount) external;
 
-
     /**
      * @notice Deliver NFTs
      */

@@ -145,7 +145,7 @@ contract ERC1155FrameLazyClaim is IERC165, IERC1155FrameLazyClaim, ICreatorExten
     /**
      * See {IFrameLazyClaim-sponsorMints}.
      */
-    function sponsorMints(address creatorContractAddress, uint256 instanceId, uint56 amount) external override payable {
+    function sponsorMints(address creatorContractAddress, uint256 instanceId, uint56 amount) external override payable creatorAdminRequired(creatorContractAddress) {
         if (msg.value != amount * SPONSORED_MINT_FEE) revert InsufficientPayment();
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         if (claim.sponsoredMints == 0) revert PaymentNotAllowed();
