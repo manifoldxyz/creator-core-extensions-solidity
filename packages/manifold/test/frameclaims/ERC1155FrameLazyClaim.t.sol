@@ -325,6 +325,41 @@ contract ERC1155FrameLazyClaimTest is Test {
         assertEq(11 ether, creator.balance);
     }
 
+    function testMintWithInsufficientPayment() public {
+        vm.startPrank(creator);
+        IERC1155FrameLazyClaim.ClaimParameters memory claimP = IERC1155FrameLazyClaim.ClaimParameters({
+            location: "arweaveHash1",
+            storageProtocol: IFrameLazyClaim.StorageProtocol.ARWEAVE,
+            paymentReceiver: payable(creator),
+            sponsoredMints: 0
+        });
+
+        example.initializeClaim(address(creatorCore1), 1, claimP);
+
+        vm.stopPrank();
+      
+        IFramePaymaster.Mint[] memory mints = new IFramePaymaster.Mint[](1);
+        mints[0] = IFramePaymaster.Mint({
+            creatorContractAddress: address(creatorCore1),
+            instanceId: 1,
+            amount: 5,
+            payment: 1 ether
+        });
+        IFramePaymaster.ExtensionMint[] memory extensionMints = new IFramePaymaster.ExtensionMint[](1);
+        extensionMints[0] = IFramePaymaster.ExtensionMint({
+            extensionAddress: address(example),
+            mints: mints
+        });
+
+        IFramePaymaster.MintSubmission memory submission = _constructSubmission(extensionMints, 1, block.timestamp+1000, 1, 0.9 ether);
+
+        vm.startPrank(other);
+        vm.expectRevert(IFrameLazyClaim.InsufficientPayment.selector);
+        paymaster.checkout{value: 0.9 ether}(submission);
+        vm.stopPrank();
+
+    }
+
     function testMintMultipleForOneExtensionWithPayment() public {
         vm.startPrank(creator);
         IERC1155FrameLazyClaim.ClaimParameters memory claimP1 = IERC1155FrameLazyClaim.ClaimParameters({
