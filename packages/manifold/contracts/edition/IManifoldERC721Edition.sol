@@ -14,12 +14,7 @@ interface IManifoldERC721Edition {
     /**
      * @dev Create a new series.  Returns the series id.
      */
-    function createSeries(address creator, uint256 maxSupply, string calldata prefix) external returns(uint256);
-
-    /**
-     * @dev Get the latest series created.
-     */
-    function latestSeries(address creator) external view returns(uint256);
+    function createSeries(address creator, uint256 maxSupply, string calldata prefix, uint256 instanceId) external returns(uint256);
 
     /**
      * @dev Set the token uri prefix

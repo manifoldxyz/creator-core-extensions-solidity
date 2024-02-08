@@ -25,11 +25,12 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         uint256 count;
     }
 
-    mapping(address => mapping(uint256 => string)) _tokenPrefix;
-    mapping(address => mapping(uint256 => uint256)) _maxSupply;
-    mapping(address => mapping(uint256 => uint256)) _totalSupply;
-    mapping(address => mapping(uint256 => IndexRange[])) _indexRanges;
-    mapping(address => uint256) _currentSeries;
+    mapping(uint256 => string) _tokenPrefix;
+    mapping(uint256 => uint256) _maxSupply;
+    mapping(uint256 => uint256) _totalSupply;
+    mapping(uint256 => IndexRange[]) _indexRanges;
+
+    mapping(address => uint256[]) _creatorInstanceIds;
     
     /**
      * @dev Only allows approved admins to call the specified function
@@ -47,83 +48,76 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
     /**
      * @dev See {IManifoldERC721Edition-totalSupply}.
      */
-    function totalSupply(address creator, uint256 series) external view override returns(uint256) {
-        return _totalSupply[creator][series];
+    function totalSupply(address creator, uint256 instanceId) external view override returns(uint256) {
+        return _totalSupply[instanceId];
     }
 
     /**
      * @dev See {IManifoldERC721Edition-maxSupply}.
      */
-    function maxSupply(address creator, uint256 series) external view override returns(uint256) {
-        return _maxSupply[creator][series];
+    function maxSupply(address creator, uint256 instanceId) external view override returns(uint256) {
+        return _maxSupply[instanceId];
     }
 
     /**
      * @dev See {IManifoldERC721Edition-createSeries}.
      */
-    function createSeries(address creator, uint256 maxSupply_, string calldata prefix) external override creatorAdminRequired(creator) returns(uint256) {
-        _currentSeries[creator] += 1;
-        uint256 series = _currentSeries[creator];
-        _maxSupply[creator][series] = maxSupply_;
-        _tokenPrefix[creator][series] = prefix;
-        emit SeriesCreated(msg.sender, creator, series, maxSupply_);
-        return series;
-    }
-
-    /**
-     * @dev See {IManifoldERC721Edition-latestSeries}.
-     */
-    function latestSeries(address creator) external view override returns(uint256) {
-        return _currentSeries[creator];
+    function createSeries(address creator, uint256 maxSupply_, string calldata prefix, uint256 instanceId) external override creatorAdminRequired(creator) returns(uint256) {
+        require(instanceId > 0 && _maxSupply[instanceId] == 0, "Invalid instanceId");
+        _maxSupply[instanceId] = maxSupply_;
+        _tokenPrefix[instanceId] = prefix;
+        _creatorInstanceIds[creator].push(instanceId);
+        emit SeriesCreated(msg.sender, creator, instanceId, maxSupply_);
+        return instanceId;
     }
 
     /**
      * See {IManifoldERC721Edition-setTokenURIPrefix}.
      */
-    function setTokenURIPrefix(address creator, uint256 series, string calldata prefix) external override creatorAdminRequired(creator) {
-        require(series > 0 && series <= _currentSeries[creator], "Invalid series");
-        _tokenPrefix[creator][series] = prefix;
+    function setTokenURIPrefix(address creator, uint256 instanceId, string calldata prefix) external override creatorAdminRequired(creator) {
+        require(instanceId > 0, "Invalid instanceId");
+        _tokenPrefix[instanceId] = prefix;
     }
     
     /**
      * @dev See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creator, uint256 tokenId) external view override returns (string memory) {
-        (uint256 series, uint256 index) = _tokenSeriesAndIndex(creator, tokenId);
-        return string(abi.encodePacked(_tokenPrefix[creator][series], (index+1).toString()));
+        (uint256 instanceId, uint256 index) = _tokenInstanceAndIndex(creator, tokenId);
+        return string(abi.encodePacked(_tokenPrefix[instanceId], (index+1).toString()));
     }
     
     /**
      * @dev See {IManifoldERC721Edition-mint}.
      */
-    function mint(address creator, uint256 series, address recipient, uint16 count) external override nonReentrant creatorAdminRequired(creator) {
+    function mint(address creator, uint256 instanceId, address recipient, uint16 count) external override nonReentrant creatorAdminRequired(creator) {
         require(count > 0, "Invalid amount requested");
-        require(_totalSupply[creator][series]+count <= _maxSupply[creator][series], "Too many requested");
+        require(_totalSupply[instanceId]+count <= _maxSupply[instanceId], "Too many requested");
         
         uint256[] memory tokenIds = IERC721CreatorCore(creator).mintExtensionBatch(recipient, count);
-        _updateIndexRanges(creator, series, tokenIds[0], count);
+        _updateIndexRanges(instanceId, tokenIds[0], count);
     }
 
     /**
      * @dev See {IManifoldERC721Edition-mint}.
      */
-    function mint(address creator, uint256 series, address[] calldata recipients) external override nonReentrant creatorAdminRequired(creator) {
+    function mint(address creator, uint256 instanceId, address[] calldata recipients) external override nonReentrant creatorAdminRequired(creator) {
         require(recipients.length > 0, "Invalid amount requested");
-        require(_totalSupply[creator][series]+recipients.length <= _maxSupply[creator][series], "Too many requested");
+        require(_totalSupply[instanceId]+recipients.length <= _maxSupply[instanceId], "Too many requested");
         
         uint256 startIndex = IERC721CreatorCore(creator).mintExtension(recipients[0]);
         for (uint256 i = 1; i < recipients.length;) {
             IERC721CreatorCore(creator).mintExtension(recipients[i]);
             unchecked{i++;}
         }
-        _updateIndexRanges(creator, series, startIndex, recipients.length);
+        _updateIndexRanges(instanceId, startIndex, recipients.length);
     }
 
     /**
      * @dev Update the index ranges, which is used to figure out the index from a tokenId
      */
-    function _updateIndexRanges(address creator, uint256 series, uint256 startIndex, uint256 count) internal {
-        IndexRange[] storage indexRanges = _indexRanges[creator][series];
+    function _updateIndexRanges(uint256 instanceId, uint256 startIndex, uint256 count) internal {
+        IndexRange[] storage indexRanges = _indexRanges[instanceId];
         if (indexRanges.length == 0) {
            indexRanges.push(IndexRange(startIndex, count));
         } else {
@@ -134,22 +128,23 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             indexRanges.push(IndexRange(startIndex, count));
           }
         }
-        _totalSupply[creator][series] += count;
+        _totalSupply[instanceId] += count;
     }
 
     /**
      * @dev Index from tokenId
      */
-    function _tokenSeriesAndIndex(address creator, uint256 tokenId) internal view returns(uint256, uint256) {
-        require(_currentSeries[creator] > 0, "Invalid token");
-        for (uint series=1; series <= _currentSeries[creator]; series++) {
-            IndexRange[] memory indexRanges = _indexRanges[creator][series];
+    function _tokenInstanceAndIndex(address creator, uint256 tokenId) internal view returns(uint256, uint256) {
+        // Go through all their series until we find the tokenId
+        for (uint i = 0; i < _creatorInstanceIds[creator].length; i++) {
+            uint256 instanceId = _creatorInstanceIds[creator][i];
+            IndexRange[] memory indexRanges = _indexRanges[instanceId];
             uint256 offset;
-            for (uint i = 0; i < indexRanges.length; i++) {
-                IndexRange memory currentIndex = indexRanges[i];
+            for (uint j = 0; j < indexRanges.length; j++) {
+                IndexRange memory currentIndex = indexRanges[j];
                 if (tokenId < currentIndex.startIndex) break;
                 if (tokenId >= currentIndex.startIndex && tokenId < currentIndex.startIndex + currentIndex.count) {
-                   return (series, tokenId - currentIndex.startIndex + offset);
+                   return (instanceId, tokenId - currentIndex.startIndex + offset);
                 }
                 offset += currentIndex.count;
             }
