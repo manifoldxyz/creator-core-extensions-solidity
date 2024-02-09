@@ -19,25 +19,25 @@ interface IManifoldERC721Edition {
     /**
      * @dev Set the token uri prefix
      */
-    function setTokenURIPrefix(address creator, uint256 series, string calldata prefix) external;
+    function setTokenURIPrefix(address creator, uint256 instanceId, string calldata prefix) external;
     
     /**
      * @dev Mint NFTs to a single recipient
      */
-    function mint(address creator, uint256 series, address recipient, uint16 count) external;
+    function mint(address creator, uint256 instanceId, address recipient, uint16 count) external;
 
     /**
      * @dev Mint NFTS to the recipients
      */
-    function mint(address creator, uint256 series, address[] calldata recipients) external;
+    function mint(address creator, uint256 instanceId, address[] calldata recipients) external;
 
     /**
      * @dev Total supply of editions
      */
-    function totalSupply(address creator, uint256 series) external view returns(uint256);
+    function totalSupply(uint256 instanceId) external view returns(uint256);
 
     /**
      * @dev Max supply of editions
      */
-    function maxSupply(address creator, uint256 series) external view returns(uint256);
+    function maxSupply(uint256 instanceId) external view returns(uint256);
 }

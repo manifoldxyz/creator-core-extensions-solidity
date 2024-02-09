@@ -48,14 +48,14 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
     /**
      * @dev See {IManifoldERC721Edition-totalSupply}.
      */
-    function totalSupply(address creator, uint256 instanceId) external view override returns(uint256) {
+    function totalSupply(uint256 instanceId) external view override returns(uint256) {
         return _totalSupply[instanceId];
     }
 
     /**
      * @dev See {IManifoldERC721Edition-maxSupply}.
      */
-    function maxSupply(address creator, uint256 instanceId) external view override returns(uint256) {
+    function maxSupply(uint256 instanceId) external view override returns(uint256) {
         return _maxSupply[instanceId];
     }
 
