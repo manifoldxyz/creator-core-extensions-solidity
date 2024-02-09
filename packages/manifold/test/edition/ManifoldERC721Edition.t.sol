@@ -113,19 +113,19 @@ contract ManifoldERC721EditionTest is Test {
     example.mint(address(creatorCore2), 3, operator, 2);
     example.mint(address(creatorCore3), 4, operator, 2);
 
-    // assertEq("http://creator1series2/1", creatorCore1.tokenURI(16));
-    // assertEq("http://creator1series2/2", creatorCore1.tokenURI(17));
-    // assertEq("http://creator1series1/6", creatorCore1.tokenURI(18));
+    assertEq("http://creator1series2/1", creatorCore1.tokenURI(16));
+    assertEq("http://creator1series2/2", creatorCore1.tokenURI(17));
+    assertEq("http://creator1series1/6", creatorCore1.tokenURI(18));
 
-    // vm.expectRevert("Invalid token");
-    // example.tokenURI(address(creatorCore1), 6);
-    // vm.expectRevert("Invalid token");
-    // example.tokenURI(address(creatorCore1), 19);
+    vm.expectRevert("Invalid token");
+    example.tokenURI(address(creatorCore1), 6);
+    vm.expectRevert("Invalid token");
+    example.tokenURI(address(creatorCore1), 19);
 
-    // // Prefix change test
-    // example.setTokenURIPrefix(address(creatorCore1), 1, "http://creator1series1new/");
-    // assertEq("http://creator1series1new/3", creatorCore1.tokenURI(13));
-    // assertEq("http://creator1series1new/5", creatorCore1.tokenURI(15));
+    // Prefix change test
+    example.setTokenURIPrefix(address(creatorCore1), 1, "http://creator1series1new/");
+    assertEq("http://creator1series1new/3", creatorCore1.tokenURI(13));
+    assertEq("http://creator1series1new/5", creatorCore1.tokenURI(15));
 
     vm.stopPrank();
   }
