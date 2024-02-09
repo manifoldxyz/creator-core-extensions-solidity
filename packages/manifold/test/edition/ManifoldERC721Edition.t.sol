@@ -111,7 +111,7 @@ contract ManifoldERC721EditionTest is Test {
     assertEq(0, example.totalSupply(2));
     assertEq(0, example.totalSupply(3));
     assertEq(0, example.totalSupply(4));
-    
+
     // Mint some tokens in between
     creatorCore1.mintBaseBatch(owner, 10);
     example.mint(address(creatorCore1), 1, operator, 3);
@@ -139,6 +139,51 @@ contract ManifoldERC721EditionTest is Test {
     example.setTokenURIPrefix(address(creatorCore1), 1, "http://creator1series1new/");
     assertEq("http://creator1series1new/3", creatorCore1.tokenURI(13));
     assertEq("http://creator1series1new/5", creatorCore1.tokenURI(15));
+
+    vm.stopPrank();
+  }
+
+  function testMintingNone() public {
+    vm.startPrank(owner);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1);
+
+    vm.expectRevert("Invalid amount requested");
+    example.mint(address(creatorCore1), 1, operator, 0);
+
+    vm.expectRevert("Invalid amount requested");
+    example.mint(address(creatorCore1), 1, new address[](0));
+
+    vm.stopPrank();
+  }
+
+
+  function testMintingTooMany() public {
+    vm.startPrank(owner);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1);
+
+    vm.expectRevert("Too many requested");
+    example.mint(address(creatorCore1), 1, operator, 11);
+
+    address[] memory recipients = new address[](11);
+    for (uint i = 0; i < 11; i++) {
+      recipients[i] = operator;
+    }
+    vm.expectRevert("Too many requested");
+    example.mint(address(creatorCore1), 1, recipients);
+
+    vm.stopPrank();
+  }
+
+  function testCreatingInvalidSeries() public {
+    vm.startPrank(owner);
+
+    vm.expectRevert("Invalid instanceId");
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 0);
+
+    example.createSeries(address(creatorCore1), 10, "hi", 1);
+
+    vm.expectRevert("Invalid instanceId");
+    example.createSeries(address(creatorCore1), 10, "hi", 1);
 
     vm.stopPrank();
   }
