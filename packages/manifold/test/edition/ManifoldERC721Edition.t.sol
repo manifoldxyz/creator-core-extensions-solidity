@@ -217,6 +217,13 @@ contract ManifoldERC721EditionTest is Test {
     vm.expectRevert("Must have 1 recipient");
     example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 3, new address[](0), 1);
 
+    recipients = new address[](1);
+    recipients[0] = operator;
+    vm.expectRevert("Too many requested");
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 3, recipients, 20);
+
+        example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 3, recipients, 10);
+
     vm.stopPrank();
   }
 
