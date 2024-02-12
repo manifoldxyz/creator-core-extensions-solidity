@@ -94,10 +94,10 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         if (recipients.length == 0) revert("Invalid amount requested");
         if (_totalSupply[creatorCore][instanceId]+recipients.length > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
         
-        mintTokens(creatorCore, recipients, instanceId);
+        _mintTokens(creatorCore, recipients, instanceId);
     }
 
-    function mintTokens(address creatorCore, address[] memory recipients, uint256 instanceId) internal {
+    function _mintTokens(address creatorCore, address[] memory recipients, uint256 instanceId) private {
         uint256 startIndex = IERC721CreatorCore(creatorCore).mintExtension(recipients[0]);
         for (uint256 i = 1; i < recipients.length;) {
             IERC721CreatorCore(creatorCore).mintExtension(recipients[i]);
@@ -105,7 +105,6 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         }
         _updateIndexRanges(creatorCore, instanceId, startIndex, recipients.length);
     }
-
 
     /**
      * @dev See {IManifoldERC721Edition-createSeries}.
@@ -119,7 +118,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
 
         // Mint to recipients
         if (recipients.length > 0) {
-            mintTokens(creatorCore, recipients, instanceId);
+            _mintTokens(creatorCore, recipients, instanceId);
         }
 
         return instanceId;
