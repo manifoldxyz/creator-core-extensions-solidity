@@ -108,7 +108,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         uint256 startIndex = IERC721CreatorCore(creatorCore).mintExtension(recipients[0]);
         for (uint256 i = 1; i < recipients.length;) {
             IERC721CreatorCore(creatorCore).mintExtension(recipients[i]);
-            unchecked{i++;}
+            unchecked{++i;}
         }
         _updateIndexRanges(creatorCore, instanceId, startIndex, recipients.length);
     }
@@ -148,7 +148,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
                 }
                 offset += currentIndex.count;
             }
-            unchecked{i++;}
+            unchecked{++i;}
         }
         revert("Invalid token");
     }
