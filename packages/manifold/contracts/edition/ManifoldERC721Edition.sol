@@ -36,7 +36,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      * @dev Only allows approved admins to call the specified function
      */
     modifier creatorAdminRequired(address creator) {
-        require(IAdminControl(creator).isAdmin(msg.sender), "Must be owner or admin of creator contract");
+        if (!IAdminControl(creator).isAdmin(msg.sender)) revert("Must be owner or admin of creator contract");
         _;
     }
     
@@ -64,7 +64,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      * See {IManifoldERC721Edition-setTokenURIPrefix}.
      */
     function setTokenURIPrefix(address creatorCore, uint256 instanceId, string calldata prefix) external override creatorAdminRequired(creatorCore) {
-        require(_maxSupply[creatorCore][instanceId] != 0, "Invalid instanceId");
+        if (_maxSupply[creatorCore][instanceId] == 0) revert("Invalid instanceId");
         _tokenPrefix[creatorCore][instanceId] = prefix;
     }
     
@@ -80,8 +80,8 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      * @dev See {IManifoldERC721Edition-mint}.
      */
     function mint(address creatorCore, uint256 instanceId, address recipient, uint16 count) external override nonReentrant creatorAdminRequired(creatorCore) {
-        require(count > 0, "Invalid amount requested");
-        require(_totalSupply[creatorCore][instanceId]+count <= _maxSupply[creatorCore][instanceId], "Too many requested");
+        if (count == 0) revert("Invalid amount requested");
+        if (_totalSupply[creatorCore][instanceId]+count > _maxSupply[creatorCore][instanceId]) revert ("Too many requested");
         
         uint256[] memory tokenIds = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipient, count);
         _updateIndexRanges(creatorCore, instanceId, tokenIds[0], count);
@@ -91,8 +91,8 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      * @dev See {IManifoldERC721Edition-mint}.
      */
     function mint(address creatorCore, uint256 instanceId, address[] calldata recipients) external override nonReentrant creatorAdminRequired(creatorCore) {
-        require(recipients.length > 0, "Invalid amount requested");
-        require(_totalSupply[creatorCore][instanceId]+recipients.length <= _maxSupply[creatorCore][instanceId], "Too many requested");
+        if (recipients.length == 0) revert("Invalid amount requested");
+        if (_totalSupply[creatorCore][instanceId]+recipients.length > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
         
         mintTokens(creatorCore, recipients, instanceId);
     }
@@ -111,7 +111,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      * @dev See {IManifoldERC721Edition-createSeries}.
      */
     function createSeries(address creatorCore, uint256 maxSupply_, string calldata prefix, uint256 instanceId, address[] memory recipients) external override creatorAdminRequired(creatorCore) returns(uint256) {
-        require(instanceId > 0 && maxSupply_ > 0 && _maxSupply[creatorCore][instanceId] == 0, "Invalid instance");
+        if (instanceId == 0 || maxSupply_ == 0 || _maxSupply[creatorCore][instanceId] != 0) revert("Invalid instance");
         _maxSupply[creatorCore][instanceId] = maxSupply_;
         _tokenPrefix[creatorCore][instanceId] = prefix;
         _creatorInstanceIds[creatorCore].push(instanceId);
