@@ -159,13 +159,14 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             uint256 instanceId = _creatorInstanceIds[creatorCore][i];
             IndexRange[] memory indexRanges = _indexRanges[creatorCore][instanceId];
             uint256 offset;
-            for (uint j; j < indexRanges.length; j++) {
+            for (uint j; j < indexRanges.length;) {
                 IndexRange memory currentIndex = indexRanges[j];
                 if (tokenId < currentIndex.startIndex) break;
                 if (tokenId >= currentIndex.startIndex && tokenId < currentIndex.startIndex + currentIndex.count) {
                    return (instanceId, tokenId - currentIndex.startIndex + offset);
                 }
                 offset += currentIndex.count;
+                unchecked{++j;}
             }
             unchecked{++i;}
         }
