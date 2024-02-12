@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
+import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
@@ -17,7 +17,7 @@ import "./IManifoldERC721Edition.sol";
 /**
  * Manifold ERC721 Edition Controller Implementation
  */
-contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, IManifoldERC721Edition, ReentrancyGuard {
+contract ManifoldERC721Edition is AdminControl, CreatorExtension, ICreatorExtensionTokenURI, IManifoldERC721Edition, ReentrancyGuard {
     using Strings for uint256;
 
     struct IndexRange {
@@ -32,6 +32,10 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
 
     mapping(address => uint256[]) _creatorInstanceIds;
     
+    constructor(address initialOwner) {
+        _transferOwnership(initialOwner);
+    }
+
     /**
      * @dev Only allows approved admins to call the specified function
      */
@@ -40,9 +44,12 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         _;
     }
     
-    function supportsInterface(bytes4 interfaceId) public view virtual override(CreatorExtension, IERC165) returns (bool) {
-        return interfaceId == type(ICreatorExtensionTokenURI).interfaceId || interfaceId == type(IManifoldERC721Edition).interfaceId ||
-               CreatorExtension.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId) public view virtual override(CreatorExtension, IERC165, AdminControl) returns (bool) {
+        return
+            interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
+            interfaceId == type(IManifoldERC721Edition).interfaceId ||
+            interfaceId == type(IAdminControl).interfaceId ||
+            CreatorExtension.supportsInterface(interfaceId);
     }
 
     /**
