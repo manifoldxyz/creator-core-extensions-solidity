@@ -52,18 +52,11 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         return _totalSupply[creatorCore][instanceId];
     }
 
-
-    /**
-     * @dev See {IManifoldERC721Edition-instanceExists}.
-     */
-    function instanceExists(address creatorCore, uint256 instanceId) external view override returns(bool) {
-        return _maxSupply[creatorCore][instanceId] > 0;
-    }
-
     /**
      * @dev See {IManifoldERC721Edition-maxSupply}.
      */
     function maxSupply(address creatorCore, uint256 instanceId) external view override returns(uint256) {
+        if (_maxSupply[creatorCore][instanceId] == 0) revert("Invalid instanceId");
         return _maxSupply[creatorCore][instanceId];
     }
 
