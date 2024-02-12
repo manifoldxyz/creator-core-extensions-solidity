@@ -136,11 +136,11 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      */
     function _tokenInstanceAndIndex(address creatorCore, uint256 tokenId) internal view returns(uint256, uint256) {
         // Go through all their series until we find the tokenId
-        for (uint256 i = 0; i < _creatorInstanceIds[creatorCore].length;) {
+        for (uint256 i; i < _creatorInstanceIds[creatorCore].length;) {
             uint256 instanceId = _creatorInstanceIds[creatorCore][i];
             IndexRange[] memory indexRanges = _indexRanges[creatorCore][instanceId];
             uint256 offset;
-            for (uint j = 0; j < indexRanges.length; j++) {
+            for (uint j; j < indexRanges.length; j++) {
                 IndexRange memory currentIndex = indexRanges[j];
                 if (tokenId < currentIndex.startIndex) break;
                 if (tokenId >= currentIndex.startIndex && tokenId < currentIndex.startIndex + currentIndex.count) {
