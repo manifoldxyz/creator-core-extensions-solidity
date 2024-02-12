@@ -27,7 +27,7 @@ contract ManifoldERC721EditionTest is Test {
     creatorCore2 = new ERC721Creator("Token", "NFT");
     creatorCore3 = new ERC721Creator("Token", "NFT");
 
-    example = new ManifoldERC721Edition(owner);
+    example = new ManifoldERC721Edition();
 
     creatorCore1.registerExtension(address(example), "");
     creatorCore2.registerExtension(address(example), "");
