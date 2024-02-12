@@ -9,35 +9,35 @@ pragma solidity ^0.8.0;
  */
 interface IManifoldERC721Edition {
 
-    event SeriesCreated(address caller, address creator, uint256 series, uint256 maxSupply);
+    event SeriesCreated(address caller, address creatorCore, uint256 series, uint256 maxSupply);
 
     /**
      * @dev Create a new series.  Returns the series id.
      */
-    function createSeries(address creator, uint256 maxSupply, string calldata prefix, uint256 instanceId) external returns(uint256);
+    function createSeries(address creatorCore, uint256 maxSupply, string calldata prefix, uint256 instanceId) external returns(uint256);
 
     /**
      * @dev Set the token uri prefix
      */
-    function setTokenURIPrefix(address creator, uint256 instanceId, string calldata prefix) external;
+    function setTokenURIPrefix(address creatorCore, uint256 instanceId, string calldata prefix) external;
     
     /**
      * @dev Mint NFTs to a single recipient
      */
-    function mint(address creator, uint256 instanceId, address recipient, uint16 count) external;
+    function mint(address creatorCore, uint256 instanceId, address recipient, uint16 count) external;
 
     /**
      * @dev Mint NFTS to the recipients
      */
-    function mint(address creator, uint256 instanceId, address[] calldata recipients) external;
+    function mint(address creatorCore, uint256 instanceId, address[] calldata recipients) external;
 
     /**
      * @dev Total supply of editions
      */
-    function totalSupply(uint256 instanceId) external view returns(uint256);
+    function totalSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
 
     /**
      * @dev Max supply of editions
      */
-    function maxSupply(uint256 instanceId) external view returns(uint256);
+    function maxSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
 }

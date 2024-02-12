@@ -93,24 +93,24 @@ contract ManifoldERC721EditionTest is Test {
     example.createSeries(address(creatorCore2), 200, "http://creator1series2/", 3);
     example.createSeries(address(creatorCore3), 300, "http://creator1series2/", 4);
 
-    assertEq(10, example.maxSupply(1));
-    assertEq(20, example.maxSupply(2));
-    assertEq(200, example.maxSupply(3));
-    assertEq(300, example.maxSupply(4));
+    assertEq(10, example.maxSupply(address(creatorCore1), 1));
+    assertEq(20, example.maxSupply(address(creatorCore1), 2));
+    assertEq(200, example.maxSupply(address(creatorCore2), 3));
+    assertEq(300, example.maxSupply(address(creatorCore3), 4));
 
     // Total supply should still be 0
-    assertEq(0, example.totalSupply(1));
-    assertEq(0, example.totalSupply(2));
-    assertEq(0, example.totalSupply(3));
-    assertEq(0, example.totalSupply(4));
+    assertEq(0, example.totalSupply(address(creatorCore1), 1));
+    assertEq(0, example.totalSupply(address(creatorCore1), 2));
+    assertEq(0, example.totalSupply(address(creatorCore2), 3));
+    assertEq(0, example.totalSupply(address(creatorCore3), 4));
 
     example.mint(address(creatorCore1), 1, operator, 2);
 
     // Total supply should now be 2
-    assertEq(2, example.totalSupply(1));
-    assertEq(0, example.totalSupply(2));
-    assertEq(0, example.totalSupply(3));
-    assertEq(0, example.totalSupply(4));
+    assertEq(2, example.totalSupply(address(creatorCore1), 1));
+    assertEq(0, example.totalSupply(address(creatorCore1), 2));
+    assertEq(0, example.totalSupply(address(creatorCore2), 3));
+    assertEq(0, example.totalSupply(address(creatorCore3), 4));
 
     // Mint some tokens in between
     creatorCore1.mintBaseBatch(owner, 10);
