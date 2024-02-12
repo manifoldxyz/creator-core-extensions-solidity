@@ -190,4 +190,16 @@ contract ManifoldERC721EditionTest is Test {
 
     vm.stopPrank();
   }
+
+  function testCreateAndMintSameTime() public {
+    vm.startPrank(owner);
+
+
+    address[] memory recipients = new address[](1);
+    recipients[0] = operator;
+
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, recipients);
+
+    vm.stopPrank();
+  }
 }
