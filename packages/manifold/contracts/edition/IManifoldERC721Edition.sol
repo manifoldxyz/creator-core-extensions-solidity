@@ -42,7 +42,7 @@ interface IManifoldERC721Edition {
     function maxSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
 
     /**
-     * @dev Get the instance id for a given creator core and instance id
+     * @dev Check if an instance exists
      */
-    function getInstance(address creatorCore, uint256 instanceId) external view returns(uint256, uint256, string memory);
+    function instanceExists(address creatorCore, uint256 instanceId) external view returns(bool);
 }

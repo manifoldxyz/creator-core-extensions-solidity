@@ -54,12 +54,10 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
 
 
     /**
-     * @dev See {IManifoldERC721Edition-getInstance}.
+     * @dev See {IManifoldERC721Edition-instanceExists}.
      */
-    function getInstance(address creatorCore, uint256 instanceId) external view override returns(uint256 maxSupply, uint256 totalSupply, string memory tokenPrefix) {
-        maxSupply = _maxSupply[creatorCore][instanceId];
-        totalSupply = _totalSupply[creatorCore][instanceId];
-        tokenPrefix = _tokenPrefix[creatorCore][instanceId];
+    function instanceExists(address creatorCore, uint256 instanceId) external view override returns(bool) {
+        return _maxSupply[creatorCore][instanceId] > 0;
     }
 
     /**
