@@ -111,15 +111,21 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
     /**
      * @dev See {IManifoldERC721Edition-createSeries}.
      */
-    function createSeries(address creatorCore, uint256 maxSupply_, string calldata prefix, uint256 instanceId, address[] memory recipients) external override creatorAdminRequired(creatorCore) returns(uint256) {
+    function createSeries(address creatorCore, uint256 maxSupply_, string calldata prefix, uint256 instanceId, address[] memory recipients, uint16 count) external override creatorAdminRequired(creatorCore) returns(uint256) {
         if (instanceId == 0 || maxSupply_ == 0 || _maxSupply[creatorCore][instanceId] != 0) revert("Invalid instance");
         _maxSupply[creatorCore][instanceId] = maxSupply_;
         _tokenPrefix[creatorCore][instanceId] = prefix;
         _creatorInstanceIds[creatorCore].push(instanceId);
         emit SeriesCreated(msg.sender, creatorCore, instanceId, maxSupply_);
 
-        // Mint to recipients
-        if (recipients.length > 0) {
+        // If non-zero count, then mint this count all to the 1 recipient
+        if (count != 0) {
+            if (recipients.length != 1) revert("Must have 1 recipient");
+            if (_totalSupply[creatorCore][instanceId]+count > _maxSupply[creatorCore][instanceId]) revert ("Too many requested");
+            uint256[] memory tokenIds = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[0], count);
+            _updateIndexRanges(creatorCore, instanceId, tokenIds[0], count);
+        } else if (recipients.length > 0) {
+            if (_totalSupply[creatorCore][instanceId]+recipients.length > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
             _mintTokens(creatorCore, recipients, instanceId);
         }
 

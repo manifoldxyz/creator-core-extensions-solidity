@@ -14,7 +14,7 @@ interface IManifoldERC721Edition {
     /**
      * @dev Create a new series.  Returns the series id.
      */
-    function createSeries(address creatorCore, uint256 maxSupply, string calldata prefix, uint256 instanceId, address[] memory recipients) external returns(uint256);
+    function createSeries(address creatorCore, uint256 maxSupply, string calldata prefix, uint256 instanceId, address[] memory recipients, uint16 count) external returns(uint256);
 
     /**
      * @dev Set the token uri prefix
