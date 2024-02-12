@@ -63,7 +63,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      * @dev See {IManifoldERC721Edition-createSeries}.
      */
     function createSeries(address creator, uint256 maxSupply_, string calldata prefix, uint256 instanceId) external override creatorAdminRequired(creator) returns(uint256) {
-        require(instanceId > 0 && _maxSupply[instanceId] == 0, "Invalid instanceId");
+        require(instanceId > 0 && maxSupply_ > 0 && _maxSupply[instanceId] == 0, "Invalid instance");
         _maxSupply[instanceId] = maxSupply_;
         _tokenPrefix[instanceId] = prefix;
         _creatorInstanceIds[creator].push(instanceId);

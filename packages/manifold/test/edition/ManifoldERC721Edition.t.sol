@@ -177,12 +177,15 @@ contract ManifoldERC721EditionTest is Test {
   function testCreatingInvalidSeries() public {
     vm.startPrank(owner);
 
-    vm.expectRevert("Invalid instanceId");
+    vm.expectRevert("Invalid instance");
     example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 0);
+
+    vm.expectRevert("Invalid instance");
+    example.createSeries(address(creatorCore1), 0, "hi", 1);
 
     example.createSeries(address(creatorCore1), 10, "hi", 1);
 
-    vm.expectRevert("Invalid instanceId");
+    vm.expectRevert("Invalid instance");
     example.createSeries(address(creatorCore1), 10, "hi", 1);
 
     vm.stopPrank();
