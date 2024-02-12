@@ -70,18 +70,6 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
     }
 
     /**
-     * @dev See {IManifoldERC721Edition-createSeries}.
-     */
-    function createSeries(address creatorCore, uint256 maxSupply_, string calldata prefix, uint256 instanceId) external override creatorAdminRequired(creatorCore) returns(uint256) {
-        require(instanceId > 0 && maxSupply_ > 0 && _maxSupply[creatorCore][instanceId] == 0, "Invalid instance");
-        _maxSupply[creatorCore][instanceId] = maxSupply_;
-        _tokenPrefix[creatorCore][instanceId] = prefix;
-        _creatorInstanceIds[creatorCore].push(instanceId);
-        emit SeriesCreated(msg.sender, creatorCore, instanceId, maxSupply_);
-        return instanceId;
-    }
-
-    /**
      * See {IManifoldERC721Edition-setTokenURIPrefix}.
      */
     function setTokenURIPrefix(address creatorCore, uint256 instanceId, string calldata prefix) external override creatorAdminRequired(creatorCore) {
@@ -121,6 +109,30 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             unchecked{++i;}
         }
         _updateIndexRanges(creatorCore, instanceId, startIndex, recipients.length);
+    }
+
+
+    /**
+     * @dev See {IManifoldERC721Edition-createSeries}.
+     */
+    function createSeries(address creatorCore, uint256 maxSupply_, string calldata prefix, uint256 instanceId, address[] memory recipients) external override creatorAdminRequired(creatorCore) returns(uint256) {
+        require(instanceId > 0 && maxSupply_ > 0 && _maxSupply[creatorCore][instanceId] == 0, "Invalid instance");
+        _maxSupply[creatorCore][instanceId] = maxSupply_;
+        _tokenPrefix[creatorCore][instanceId] = prefix;
+        _creatorInstanceIds[creatorCore].push(instanceId);
+        emit SeriesCreated(msg.sender, creatorCore, instanceId, maxSupply_);
+
+        // Mint to recipients
+        if (recipients.length > 0) {
+            uint256 startIndex = IERC721CreatorCore(creatorCore).mintExtension(recipients[0]);
+            for (uint256 i = 1; i < recipients.length;) {
+                IERC721CreatorCore(creatorCore).mintExtension(recipients[i]);
+                unchecked{++i;}
+            }
+            _updateIndexRanges(creatorCore, instanceId, startIndex, recipients.length);
+        }
+
+        return instanceId;
     }
 
     /**

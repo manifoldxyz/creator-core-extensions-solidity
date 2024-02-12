@@ -43,7 +43,7 @@ contract ManifoldERC721EditionTest is Test {
     vm.startPrank(operator);
 
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.createSeries(address(creatorCore1), 1, "", 1);
+    example.createSeries(address(creatorCore1), 1, "", 1, new address[](0));
     vm.expectRevert("Must be owner or admin of creator contract");
     example.setTokenURIPrefix(address(creatorCore1), 1, "");
     vm.stopPrank();
@@ -67,7 +67,7 @@ contract ManifoldERC721EditionTest is Test {
     vm.expectRevert("Too many requested");
     example.mint(address(creatorCore1), 1, operator, 1);
 
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, new address[](0));
 
     example.mint(address(creatorCore1), 1, operator, 2);
 
@@ -88,10 +88,10 @@ contract ManifoldERC721EditionTest is Test {
 
   function testEditionIndex() public {
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1);
-    example.createSeries(address(creatorCore1), 20, "http://creator1series2/", 2);
-    example.createSeries(address(creatorCore2), 200, "http://creator1series2/", 3);
-    example.createSeries(address(creatorCore3), 300, "http://creator1series2/", 4);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, new address[](0));
+    example.createSeries(address(creatorCore1), 20, "http://creator1series2/", 2, new address[](0));
+    example.createSeries(address(creatorCore2), 200, "http://creator1series2/", 3, new address[](0));
+    example.createSeries(address(creatorCore3), 300, "http://creator1series2/", 4, new address[](0));
 
     assertEq(10, example.maxSupply(address(creatorCore1), 1));
     assertEq(20, example.maxSupply(address(creatorCore1), 2));
@@ -145,7 +145,7 @@ contract ManifoldERC721EditionTest is Test {
 
   function testMintingNone() public {
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, new address[](0));
 
     vm.expectRevert("Invalid amount requested");
     example.mint(address(creatorCore1), 1, operator, 0);
@@ -159,7 +159,7 @@ contract ManifoldERC721EditionTest is Test {
 
   function testMintingTooMany() public {
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, new address[](0));
 
     vm.expectRevert("Too many requested");
     example.mint(address(creatorCore1), 1, operator, 11);
@@ -178,15 +178,15 @@ contract ManifoldERC721EditionTest is Test {
     vm.startPrank(owner);
 
     vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 0);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 0, new address[](0));
 
     vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 0, "hi", 1);
+    example.createSeries(address(creatorCore1), 0, "hi", 1, new address[](0));
 
-    example.createSeries(address(creatorCore1), 10, "hi", 1);
+    example.createSeries(address(creatorCore1), 10, "hi", 1, new address[](0));
 
     vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 10, "hi", 1);
+    example.createSeries(address(creatorCore1), 10, "hi", 1, new address[](0));
 
     vm.stopPrank();
   }
