@@ -136,7 +136,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      */
     function _tokenInstanceAndIndex(address creator, uint256 tokenId) internal view returns(uint256, uint256) {
         // Go through all their series until we find the tokenId
-        for (uint i = 0; i < _creatorInstanceIds[creator].length; i++) {
+        for (uint256 i = 0; i < _creatorInstanceIds[creator].length;) {
             uint256 instanceId = _creatorInstanceIds[creator][i];
             IndexRange[] memory indexRanges = _indexRanges[instanceId];
             uint256 offset;
@@ -148,6 +148,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
                 }
                 offset += currentIndex.count;
             }
+            unchecked{i++;}
         }
         revert("Invalid token");
     }
