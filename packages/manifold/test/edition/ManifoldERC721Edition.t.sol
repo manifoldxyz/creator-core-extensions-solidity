@@ -41,7 +41,23 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testAccess() public {
+  // Test helper...
+  function mockVersion() internal {
+      vm.mockCall(
+          address(creatorCore1),
+          abi.encodeWithSelector(bytes4(keccak256("VERSION()"))),
+          abi.encode(2)
+      );
+
+  }
+
+  function testAccess(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     vm.startPrank(operator);
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
@@ -65,7 +81,13 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testEdition() public {
+  function testEdition(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
@@ -104,7 +126,13 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testTokenURI() public {
+  function testTokenURI(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
@@ -131,7 +159,13 @@ contract ManifoldERC721EditionTest is Test {
   }
 
 
-  function testEditionIndex() public {
+  function testEditionIndex(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
@@ -201,7 +235,13 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testMintingNone() public {
+  function testMintingNone(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
@@ -214,7 +254,13 @@ contract ManifoldERC721EditionTest is Test {
   }
 
 
-  function testMintingTooMany() public {
+  function testMintingTooMany(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
@@ -237,7 +283,13 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testIncorrectSupply() public {
+  function testIncorrectSupply(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
@@ -254,7 +306,13 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testCreatingInvalidSeries() public {
+  function testCreatingInvalidSeries(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
@@ -281,7 +339,13 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testCreateAndMintSameTime() public {
+  function testCreateAndMintSameTime(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     vm.startPrank(owner);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
@@ -307,7 +371,13 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testMaxSupplyNonInitializedMint() public {
+  function testMaxSupplyNonInitializedMint(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     vm.startPrank(owner);
 
     vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
