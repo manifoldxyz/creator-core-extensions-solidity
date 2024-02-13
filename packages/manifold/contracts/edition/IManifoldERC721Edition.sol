@@ -11,10 +11,15 @@ interface IManifoldERC721Edition {
 
     event SeriesCreated(address caller, address creatorCore, uint256 series, uint256 maxSupply);
 
+    struct Recipient {
+        address recipient;
+        uint16 count;
+    }
+
     /**
      * @dev Create a new series.  Returns the series id.
      */
-    function createSeries(address creatorCore, uint256 maxSupply, string calldata prefix, uint256 instanceId, address[] memory recipients, uint16 count) external returns(uint256);
+    function createSeries(address creatorCore, uint256 maxSupply, string calldata prefix, uint256 instanceId, Recipient[] memory recipients) external returns(uint256);
 
     /**
      * @dev Set the token uri prefix
@@ -24,12 +29,7 @@ interface IManifoldERC721Edition {
     /**
      * @dev Mint NFTs to a single recipient
      */
-    function mint(address creatorCore, uint256 instanceId, address recipient, uint16 count) external;
-
-    /**
-     * @dev Mint NFTS to the recipients
-     */
-    function mint(address creatorCore, uint256 instanceId, address[] calldata recipients) external;
+    function mint(address creatorCore, uint256 instanceId, uint256 currentSupply, Recipient[] memory recipients) external;
 
     /**
      * @dev Total supply of editions

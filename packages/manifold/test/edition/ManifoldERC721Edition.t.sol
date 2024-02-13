@@ -41,9 +41,11 @@ contract ManifoldERC721EditionTest is Test {
 
   function testAccess() public {
     vm.startPrank(operator);
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
 
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.createSeries(address(creatorCore1), 1, "", 1, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 1, "", 1, _emptyRecipients);
     vm.expectRevert("Must be owner or admin of creator contract");
     example.setTokenURIPrefix(address(creatorCore1), 1, "");
     vm.stopPrank();
@@ -51,47 +53,63 @@ contract ManifoldERC721EditionTest is Test {
     vm.expectRevert("Invalid instanceId");
     example.setTokenURIPrefix(address(creatorCore1), 0, "");
     vm.stopPrank();
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 1;
     vm.startPrank(operator);
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.mint(address(creatorCore1), 1, operator, 1);
-    address[] memory recipients = new address[](1);
-    recipients[0] = operator;
+    example.mint(address(creatorCore1), 1, 0, recipients);
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.mint(address(creatorCore1), 1, recipients);
+    example.mint(address(creatorCore1), 1, 0, recipients);
     vm.stopPrank();
   }
 
   function testEdition() public {
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
     vm.startPrank(owner);
 
     vm.expectRevert("Too many requested");
-    example.mint(address(creatorCore1), 1, operator, 1);
+    example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
 
-    example.mint(address(creatorCore1), 1, operator, 2);
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 2;
 
-    address[] memory recipients = new address[](2);
-    recipients[0] = operator2;
-    recipients[1] = operator3;
+    example.mint(address(creatorCore1), 1, 0, recipients);
 
-    example.mint(address(creatorCore1), 1, recipients);
+    recipients = new IManifoldERC721Edition.Recipient[](2);
+
+    recipients[0].recipient = operator2;
+    recipients[0].count = 1;
+    recipients[1].recipient = operator3;
+    recipients[1].count = 1;
+
+    example.mint(address(creatorCore1), 1, 2, recipients);
 
     assertEq(creatorCore1.balanceOf(operator), 2);
     assertEq(creatorCore1.balanceOf(operator2), 1);
     assertEq(creatorCore1.balanceOf(operator3), 1);
 
+    recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 7;
+
     vm.expectRevert("Too many requested");
-    example.mint(address(creatorCore1), 1, operator, 7);
+    example.mint(address(creatorCore1), 1, 4, recipients);
     vm.stopPrank();
   }
 
   function testEditionIndex() public {
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, new address[](0), 0);
-    example.createSeries(address(creatorCore1), 20, "http://creator1series2/", 2, new address[](0), 0);
-    example.createSeries(address(creatorCore2), 200, "http://creator1series2/", 3, new address[](0), 0);
-    example.createSeries(address(creatorCore3), 300, "http://creator1series2/", 4, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
+    example.createSeries(address(creatorCore1), 20, "http://creator1series2/", 2, _emptyRecipients);
+    example.createSeries(address(creatorCore2), 200, "http://creator1series2/", 3, _emptyRecipients);
+    example.createSeries(address(creatorCore3), 300, "http://creator1series2/", 4, _emptyRecipients);
 
     assertEq(10, example.maxSupply(address(creatorCore1), 1));
     assertEq(20, example.maxSupply(address(creatorCore1), 2));
@@ -104,7 +122,11 @@ contract ManifoldERC721EditionTest is Test {
     assertEq(0, example.totalSupply(address(creatorCore2), 3));
     assertEq(0, example.totalSupply(address(creatorCore3), 4));
 
-    example.mint(address(creatorCore1), 1, operator, 2);
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 2;
+
+    example.mint(address(creatorCore1), 1, 0, recipients);
 
     // Total supply should now be 2
     assertEq(2, example.totalSupply(address(creatorCore1), 1));
@@ -114,17 +136,22 @@ contract ManifoldERC721EditionTest is Test {
 
     // Mint some tokens in between
     creatorCore1.mintBaseBatch(owner, 10);
-    example.mint(address(creatorCore1), 1, operator, 3);
+
+    recipients[0].count = 3;
+    example.mint(address(creatorCore1), 1, 2, recipients);
     assertEq("http://creator1series1/3", creatorCore1.tokenURI(13));
     assertEq("http://creator1series1/5", creatorCore1.tokenURI(15));
 
     // Mint series in between
-    example.mint(address(creatorCore1), 2, operator, 2);
-    example.mint(address(creatorCore1), 1, operator, 1);
+    recipients[0].count = 2;
+    example.mint(address(creatorCore1), 2, 0, recipients);
+    recipients[0].count = 1;
+    example.mint(address(creatorCore1), 1, 5, recipients);
 
     // Mint items from other creators in between
-    example.mint(address(creatorCore2), 3, operator, 2);
-    example.mint(address(creatorCore3), 4, operator, 2);
+    recipients[0].count = 2;
+    example.mint(address(creatorCore2), 3, 0, recipients);
+    example.mint(address(creatorCore3), 4, 0, recipients);
 
     assertEq("http://creator1series2/1", creatorCore1.tokenURI(16));
     assertEq("http://creator1series2/2", creatorCore1.tokenURI(17));
@@ -144,49 +171,50 @@ contract ManifoldERC721EditionTest is Test {
   }
 
   function testMintingNone() public {
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
 
-    vm.expectRevert("Invalid amount requested");
-    example.mint(address(creatorCore1), 1, operator, 0);
-
-    vm.expectRevert("Invalid amount requested");
-    example.mint(address(creatorCore1), 1, new address[](0));
+    vm.expectRevert("No recipients");
+    example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
     vm.stopPrank();
   }
 
 
   function testMintingTooMany() public {
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
+
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 11;
+
 
     vm.expectRevert("Too many requested");
-    example.mint(address(creatorCore1), 1, operator, 11);
-
-    address[] memory recipients = new address[](11);
-    for (uint i = 0; i < 11; i++) {
-      recipients[i] = operator;
-    }
-    vm.expectRevert("Too many requested");
-    example.mint(address(creatorCore1), 1, recipients);
+    example.mint(address(creatorCore1), 1, 0, recipients);
 
     vm.stopPrank();
   }
 
   function testCreatingInvalidSeries() public {
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
     vm.startPrank(owner);
 
     vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 0, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 0, _emptyRecipients);
 
     vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 0, "hi", 1, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 0, "hi", 1, _emptyRecipients);
 
-    example.createSeries(address(creatorCore1), 10, "hi", 1, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 10, "hi", 1, _emptyRecipients);
 
     vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 10, "hi", 1, new address[](0), 0);
+    example.createSeries(address(creatorCore1), 10, "hi", 1, _emptyRecipients);
 
     vm.stopPrank();
   }
@@ -194,36 +222,25 @@ contract ManifoldERC721EditionTest is Test {
   function testCreateAndMintSameTime() public {
     vm.startPrank(owner);
 
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 0;
 
-    address[] memory recipients = new address[](1);
-    recipients[0] = operator;
+    vm.expectRevert();
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, recipients);
 
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, recipients, 0);
+    recipients[0].count = 1;
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, recipients);
 
     // Too many recipients...
-    recipients = new address[](11);
+    recipients = new IManifoldERC721Edition.Recipient[](11);
     for (uint i = 0; i < 11; i++) {
-      recipients[i] = operator;
+      recipients[i].recipient = operator;
+      recipients[i].count = 1;
     }
 
     vm.expectRevert("Too many requested");
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 2, recipients, 0);
-
-    // Non-zero count
-    // Reverts too many recipients
-    vm.expectRevert("Must have 1 recipient");
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 3, recipients, 1);
-
-    vm.expectRevert("Must have 1 recipient");
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 3, new address[](0), 1);
-
-    recipients = new address[](1);
-    recipients[0] = operator;
-    vm.expectRevert("Too many requested");
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 3, recipients, 20);
-
-        example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 3, recipients, 10);
-
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 2, recipients);
     vm.stopPrank();
   }
 

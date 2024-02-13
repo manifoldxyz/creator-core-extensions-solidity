@@ -75,60 +75,48 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
      */
     function tokenURI(address creatorCore, uint256 tokenId) external view override returns (string memory) {
         (uint256 instanceId, uint256 index) = _tokenInstanceAndIndex(creatorCore, tokenId);
+        // which version of core
+        
         return string(abi.encodePacked(_tokenPrefix[creatorCore][instanceId], (index+1).toString()));
     }
     
     /**
      * @dev See {IManifoldERC721Edition-mint}.
      */
-    function mint(address creatorCore, uint256 instanceId, address recipient, uint16 count) external override nonReentrant creatorAdminRequired(creatorCore) {
-        if (count == 0) revert("Invalid amount requested");
-        if (_totalSupply[creatorCore][instanceId]+count > _maxSupply[creatorCore][instanceId]) revert ("Too many requested");
-        
-        uint256[] memory tokenIds = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipient, count);
-        _updateIndexRanges(creatorCore, instanceId, tokenIds[0], count);
-    }
-
-    /**
-     * @dev See {IManifoldERC721Edition-mint}.
-     */
-    function mint(address creatorCore, uint256 instanceId, address[] calldata recipients) external override nonReentrant creatorAdminRequired(creatorCore) {
-        if (recipients.length == 0) revert("Invalid amount requested");
-        if (_totalSupply[creatorCore][instanceId]+recipients.length > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
-        
+    function mint(address creatorCore, uint256 instanceId, uint256 currentSupply, IManifoldERC721Edition.Recipient[] memory recipients) external override nonReentrant creatorAdminRequired(creatorCore) {        
+        if (_totalSupply[creatorCore][instanceId] != currentSupply) revert("Incorrect supply");
         _mintTokens(creatorCore, recipients, instanceId);
     }
 
-    function _mintTokens(address creatorCore, address[] memory recipients, uint256 instanceId) private {
-        uint256 startIndex = IERC721CreatorCore(creatorCore).mintExtension(recipients[0]);
-        for (uint256 i = 1; i < recipients.length;) {
-            IERC721CreatorCore(creatorCore).mintExtension(recipients[i]);
+    function _mintTokens(address creatorCore, Recipient[] memory recipients, uint256 instanceId) private {
+        if (_totalSupply[creatorCore][instanceId]+1 > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
+        if (recipients.length == 0) revert("No recipients");
+
+        // Grab the start index by minting off a first token...
+        uint256 startIndex = IERC721CreatorCore(creatorCore).mintExtension(recipients[0].recipient);
+        --recipients[0].count; // will revert with underflow if you accidentally have a count of 0... this is good (I think)
+        uint count = 1;
+        for (uint256 i; i < recipients.length;) {
+            count += recipients[i].count;
+            if (_totalSupply[creatorCore][instanceId]+count > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
+            IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, recipients[i].count);
             unchecked{++i;}
         }
-        _updateIndexRanges(creatorCore, instanceId, startIndex, recipients.length);
+
+        _updateIndexRanges(creatorCore, instanceId, startIndex, count);
     }
 
     /**
      * @dev See {IManifoldERC721Edition-createSeries}.
      */
-    function createSeries(address creatorCore, uint256 maxSupply_, string calldata prefix, uint256 instanceId, address[] memory recipients, uint16 count) external override creatorAdminRequired(creatorCore) returns(uint256) {
+    function createSeries(address creatorCore, uint256 maxSupply_, string calldata prefix, uint256 instanceId, Recipient[] memory recipients) external override creatorAdminRequired(creatorCore) returns(uint256) {
         if (instanceId == 0 || maxSupply_ == 0 || _maxSupply[creatorCore][instanceId] != 0) revert("Invalid instance");
         _maxSupply[creatorCore][instanceId] = maxSupply_;
         _tokenPrefix[creatorCore][instanceId] = prefix;
         _creatorInstanceIds[creatorCore].push(instanceId);
         emit SeriesCreated(msg.sender, creatorCore, instanceId, maxSupply_);
 
-        // If non-zero count, then mint this count all to the 1 recipient
-        if (count != 0) {
-            if (recipients.length != 1) revert("Must have 1 recipient");
-            if (_totalSupply[creatorCore][instanceId]+count > _maxSupply[creatorCore][instanceId]) revert ("Too many requested");
-            uint256[] memory tokenIds = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[0], count);
-            _updateIndexRanges(creatorCore, instanceId, tokenIds[0], count);
-        } else if (recipients.length > 0) {
-            if (_totalSupply[creatorCore][instanceId]+recipients.length > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
-            _mintTokens(creatorCore, recipients, instanceId);
-        }
-
+        if (recipients.length > 0) _mintTokens(creatorCore, recipients, instanceId);
         return instanceId;
     }
 
