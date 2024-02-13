@@ -9,6 +9,11 @@ pragma solidity ^0.8.0;
  */
 interface IManifoldERC721Edition {
 
+    error InvalidEdition();
+    error InvalidInput();
+    error TooManyRequested();
+    error InvalidToken();
+
     event SeriesCreated(address caller, address creatorCore, uint256 series, uint256 maxSupply);
 
     struct Recipient {
@@ -16,20 +21,23 @@ interface IManifoldERC721Edition {
         uint16 count;
     }
 
+    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
+
+
     /**
      * @dev Create a new series.  Returns the series id.
      */
-    function createSeries(address creatorCore, uint256 maxSupply, string calldata prefix, uint256 instanceId, Recipient[] memory recipients) external returns(uint256);
+    function createSeries(address creatorCore, uint256 instanceId, uint24 maxSupply_, StorageProtocol storageProtocol, string calldata location, Recipient[] memory recipients) external;
 
     /**
      * @dev Set the token uri prefix
      */
-    function setTokenURIPrefix(address creatorCore, uint256 instanceId, string calldata prefix) external;
+    function setTokenURI(address creatorCore, uint256 instanceId, StorageProtocol storageProtocol, string calldata location) external;
     
     /**
      * @dev Mint NFTs to a single recipient
      */
-    function mint(address creatorCore, uint256 instanceId, uint256 currentSupply, Recipient[] memory recipients) external;
+    function mint(address creatorCore, uint256 instanceId, uint24 currentSupply, Recipient[] memory recipients) external;
 
     /**
      * @dev Total supply of editions

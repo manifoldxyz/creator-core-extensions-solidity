@@ -43,15 +43,14 @@ contract ManifoldERC721EditionTest is Test {
     vm.startPrank(operator);
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
-
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.createSeries(address(creatorCore1), 1, "", 1, _emptyRecipients);
+    example.createSeries(address(creatorCore1), 1, 1, IManifoldERC721Edition.StorageProtocol.NONE, "", _emptyRecipients);
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.setTokenURIPrefix(address(creatorCore1), 1, "");
+    example.setTokenURI(address(creatorCore1), 1, IManifoldERC721Edition.StorageProtocol.NONE, "");
     vm.stopPrank();
     vm.startPrank(owner);
-    vm.expectRevert("Invalid instanceId");
-    example.setTokenURIPrefix(address(creatorCore1), 0, "");
+    vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
+    example.setTokenURI(address(creatorCore1), 0, IManifoldERC721Edition.StorageProtocol.NONE, "");
     vm.stopPrank();
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
@@ -69,16 +68,17 @@ contract ManifoldERC721EditionTest is Test {
 
     vm.startPrank(owner);
 
-    vm.expectRevert("Too many requested");
+    vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
     example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", _emptyRecipients);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
     recipients[0].count = 2;
 
     example.mint(address(creatorCore1), 1, 0, recipients);
+    assertEq(example.totalSupply(address(creatorCore1), 1), 2);
 
     recipients = new IManifoldERC721Edition.Recipient[](2);
 
@@ -97,7 +97,7 @@ contract ManifoldERC721EditionTest is Test {
     recipients[0].recipient = operator;
     recipients[0].count = 7;
 
-    vm.expectRevert("Too many requested");
+    vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
     example.mint(address(creatorCore1), 1, 4, recipients);
     vm.stopPrank();
   }
@@ -106,10 +106,10 @@ contract ManifoldERC721EditionTest is Test {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
-    example.createSeries(address(creatorCore1), 20, "http://creator1series2/", 2, _emptyRecipients);
-    example.createSeries(address(creatorCore2), 200, "http://creator1series2/", 3, _emptyRecipients);
-    example.createSeries(address(creatorCore3), 300, "http://creator1series2/", 4, _emptyRecipients);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE,  "http://creator1series1/", _emptyRecipients);
+    example.createSeries(address(creatorCore1), 2, 20, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2/", _emptyRecipients);
+    example.createSeries(address(creatorCore2), 3, 200, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2/", _emptyRecipients);
+    example.createSeries(address(creatorCore3), 4, 300, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2/", _emptyRecipients);
 
     assertEq(10, example.maxSupply(address(creatorCore1), 1));
     assertEq(20, example.maxSupply(address(creatorCore1), 2));
@@ -157,13 +157,15 @@ contract ManifoldERC721EditionTest is Test {
     assertEq("http://creator1series2/2", creatorCore1.tokenURI(17));
     assertEq("http://creator1series1/6", creatorCore1.tokenURI(18));
 
-    vm.expectRevert("Invalid token");
+    vm.expectRevert(IManifoldERC721Edition.InvalidToken.selector);
     example.tokenURI(address(creatorCore1), 6);
-    vm.expectRevert("Invalid token");
+    vm.expectRevert(IManifoldERC721Edition.InvalidToken.selector);
     example.tokenURI(address(creatorCore1), 19);
 
     // Prefix change test
-    example.setTokenURIPrefix(address(creatorCore1), 1, "http://creator1series1new/");
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.setTokenURI(address(creatorCore1), 0, IManifoldERC721Edition.StorageProtocol.INVALID, "");
+    example.setTokenURI(address(creatorCore1), 1, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1new/");
     assertEq("http://creator1series1new/3", creatorCore1.tokenURI(13));
     assertEq("http://creator1series1new/5", creatorCore1.tokenURI(15));
 
@@ -174,9 +176,9 @@ contract ManifoldERC721EditionTest is Test {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", _emptyRecipients);
 
-    vm.expectRevert("No recipients");
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
     example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
     vm.stopPrank();
@@ -187,14 +189,14 @@ contract ManifoldERC721EditionTest is Test {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", _emptyRecipients);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
     recipients[0].count = 11;
 
 
-    vm.expectRevert("Too many requested");
+    vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
     example.mint(address(creatorCore1), 1, 0, recipients);
 
     vm.stopPrank();
@@ -204,14 +206,14 @@ contract ManifoldERC721EditionTest is Test {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", _emptyRecipients);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
     recipients[0].count = 1;
 
 
-    vm.expectRevert("Incorrect supply");
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
     example.mint(address(creatorCore1), 1, 10, recipients);
 
     vm.stopPrank();
@@ -222,16 +224,21 @@ contract ManifoldERC721EditionTest is Test {
 
     vm.startPrank(owner);
 
-    vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 0, _emptyRecipients);
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 0, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", _emptyRecipients);
 
-    vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 0, "hi", 1, _emptyRecipients);
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 1, 0, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
 
-    example.createSeries(address(creatorCore1), 10, "hi", 1, _emptyRecipients);
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.INVALID, "hi", _emptyRecipients);
 
-    vm.expectRevert("Invalid instance");
-    example.createSeries(address(creatorCore1), 10, "hi", 1, _emptyRecipients);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
+
+    // Can't create twice
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
+
 
     vm.stopPrank();
   }
@@ -243,11 +250,12 @@ contract ManifoldERC721EditionTest is Test {
     recipients[0].recipient = operator;
     recipients[0].count = 0;
 
-    vm.expectRevert();
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, recipients);
+    // Mint count 0
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 10, 1, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", recipients);
 
     recipients[0].count = 1;
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, recipients);
+    example.createSeries(address(creatorCore1), 10, 1, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", recipients);
 
     // Too many recipients...
     recipients = new IManifoldERC721Edition.Recipient[](11);
@@ -256,15 +264,15 @@ contract ManifoldERC721EditionTest is Test {
       recipients[i].count = 1;
     }
 
-    vm.expectRevert("Too many requested");
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 2, recipients);
+    vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
+    example.createSeries(address(creatorCore1), 11, 2, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", recipients);
     vm.stopPrank();
   }
 
   function testMaxSupplyNonInitializedMint() public {
     vm.startPrank(owner);
 
-    vm.expectRevert("Invalid instanceId");
+    vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
     example.maxSupply(address(creatorCore1), 69);
 
     vm.stopPrank();

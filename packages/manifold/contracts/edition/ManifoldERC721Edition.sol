@@ -12,6 +12,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
+import "../libraries/IERC721CreatorCoreVersion.sol";
 import "./IManifoldERC721Edition.sol";
 
 /**
@@ -25,9 +26,21 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         uint256 count;
     }
 
-    mapping(address => mapping(uint256 => string)) _tokenPrefix;
-    mapping(address => mapping(uint256 => uint256)) _maxSupply;
-    mapping(address => mapping(uint256 => uint256)) _totalSupply;
+    struct EditionInfo {
+        uint8 contractVersion;
+        uint24 totalSupply;
+        uint24 maxSupply;
+        StorageProtocol storageProtocol; 
+        string location;
+    }
+
+    string private constant ARWEAVE_PREFIX = "https://arweave.net/";
+    string private constant IPFS_PREFIX = "ipfs://";
+
+    uint256 private constant MAX_UINT_24 = 0xffffff;
+    uint256 private constant MAX_UINT_56 = 0xffffffffffffff;
+
+    mapping(address => mapping(uint256 => EditionInfo)) _editionInfo;
     mapping(address => mapping(uint256 => IndexRange[])) _indexRanges;
 
     mapping(address => uint256[]) _creatorInstanceIds;
@@ -47,83 +60,163 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             CreatorExtension.supportsInterface(interfaceId);
     }
 
+
+    /**
+     * @dev See {IManifoldERC721Edition-createSeries}.
+     */
+    function createSeries(address creatorCore, uint256 instanceId, uint24 maxSupply_, StorageProtocol storageProtocol, string calldata location, Recipient[] memory recipients) external override creatorAdminRequired(creatorCore) {
+        if (instanceId == 0 ||
+            instanceId > MAX_UINT_56 ||
+            maxSupply_ == 0 ||
+            storageProtocol == StorageProtocol.INVALID ||
+            _editionInfo[creatorCore][instanceId].storageProtocol != StorageProtocol.INVALID
+        ) revert InvalidInput();
+
+        uint8 creatorContractVersion;
+        try IERC721CreatorCoreVersion(creatorCore).VERSION() returns(uint256 version) {
+            require(version <= 255, "Unsupported contract version");
+            creatorContractVersion = uint8(version);
+        } catch {}
+
+        _editionInfo[creatorCore][instanceId] = EditionInfo({
+            maxSupply: maxSupply_,
+            totalSupply: 0,
+            contractVersion: creatorContractVersion,
+            storageProtocol: storageProtocol,
+            location: location
+        });
+        
+        emit SeriesCreated(msg.sender, creatorCore, instanceId, maxSupply_);
+
+        if (recipients.length > 0) _mintTokens(creatorCore, instanceId, _editionInfo[creatorCore][instanceId], recipients);
+    }
+
+
     /**
      * @dev See {IManifoldERC721Edition-totalSupply}.
      */
     function totalSupply(address creatorCore, uint256 instanceId) external view override returns(uint256) {
-        return _totalSupply[creatorCore][instanceId];
+        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
+        return info.totalSupply;
     }
 
     /**
      * @dev See {IManifoldERC721Edition-maxSupply}.
      */
     function maxSupply(address creatorCore, uint256 instanceId) external view override returns(uint256) {
-        if (_maxSupply[creatorCore][instanceId] == 0) revert("Invalid instanceId");
-        return _maxSupply[creatorCore][instanceId];
+        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
+        return info.maxSupply;
     }
 
     /**
-     * See {IManifoldERC721Edition-setTokenURIPrefix}.
+     * See {IManifoldERC721Edition-setTokenURI}.
      */
-    function setTokenURIPrefix(address creatorCore, uint256 instanceId, string calldata prefix) external override creatorAdminRequired(creatorCore) {
-        if (_maxSupply[creatorCore][instanceId] == 0) revert("Invalid instanceId");
-        _tokenPrefix[creatorCore][instanceId] = prefix;
+    function setTokenURI(address creatorCore, uint256 instanceId, StorageProtocol storageProtocol, string calldata location) external override creatorAdminRequired(creatorCore) {
+        if (storageProtocol == StorageProtocol.INVALID) revert InvalidInput();
+        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
+        info.storageProtocol = storageProtocol;
+        info.location = location;
+    }
+
+    function _getEditionInfo(address creatorCore, uint256 instanceId) private view returns(EditionInfo storage info) {
+        info = _editionInfo[creatorCore][instanceId];
+        if (info.storageProtocol == StorageProtocol.INVALID) revert InvalidEdition();
     }
     
     /**
      * @dev See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorCore, uint256 tokenId) external view override returns (string memory) {
-        (uint256 instanceId, uint256 index) = _tokenInstanceAndIndex(creatorCore, tokenId);
-        // which version of core
+        uint8 creatorContractVersion;
+        try IERC721CreatorCoreVersion(creatorCore).VERSION() returns(uint256 version) {
+            require(version <= 255, "Unsupported contract version");
+            creatorContractVersion = uint8(version);
+        } catch {}
+
+        uint256 instanceId;
+        uint256 index;
+        if (creatorContractVersion >= 3) {
+            // Contract versions 3+ support storage of data with the token mint, so use that
+            uint80 tokenData = IERC721CreatorCore(creatorCore).tokenData(tokenId);
+            instanceId = uint56(tokenData >> 24);
+            if (instanceId == 0) revert InvalidToken();
+            index = uint256(tokenData & MAX_UINT_24);
+        } else {
+            (instanceId, index) = _tokenInstanceAndIndex(creatorCore, tokenId);
+        }
         
-        return string(abi.encodePacked(_tokenPrefix[creatorCore][instanceId], (index+1).toString()));
+        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
+
+        string memory prefix = "";
+        if (info.storageProtocol == StorageProtocol.ARWEAVE) {
+            prefix = ARWEAVE_PREFIX;
+        } else if (info.storageProtocol == StorageProtocol.IPFS) {
+            prefix = IPFS_PREFIX;
+        }
+        return string(abi.encodePacked(prefix, info.location, (index+1).toString()));
     }
     
     /**
      * @dev See {IManifoldERC721Edition-mint}.
      */
-    function mint(address creatorCore, uint256 instanceId, uint256 currentSupply, IManifoldERC721Edition.Recipient[] memory recipients) external override nonReentrant creatorAdminRequired(creatorCore) {        
-        if (_totalSupply[creatorCore][instanceId] != currentSupply) revert("Incorrect supply");
-        _mintTokens(creatorCore, recipients, instanceId);
+    function mint(address creatorCore, uint256 instanceId, uint24 currentSupply, Recipient[] memory recipients) external override nonReentrant creatorAdminRequired(creatorCore) {        
+        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
+        if (currentSupply != info.totalSupply) revert InvalidInput();
+        _mintTokens(creatorCore, instanceId, info, recipients);
     }
 
-    function _mintTokens(address creatorCore, Recipient[] memory recipients, uint256 instanceId) private {
-        if (_totalSupply[creatorCore][instanceId]+1 > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
-        if (recipients.length == 0) revert("No recipients");
+    function _mintTokens(address creatorCore, uint256 instanceId, EditionInfo storage info, Recipient[] memory recipients) private {
+        if (recipients.length == 0) revert InvalidInput();
+        if (info.totalSupply+1 > info.maxSupply) revert TooManyRequested();
 
-        uint256 startIndex;
-        uint256 count = 0;
-        uint256[] memory tokenIdResults;
-        for (uint256 i; i < recipients.length;) {
-            if (recipients[i].count == 0) revert("Invalid count");
-            count += recipients[i].count;
-            if (_totalSupply[creatorCore][instanceId]+count > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
-            tokenIdResults = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, recipients[i].count);
-            if (i == 0) startIndex = tokenIdResults[0];
-            unchecked{++i;}
+        if (info.contractVersion >= 3) {
+            uint16 count = 0;
+            uint24 totalSupply_ = info.totalSupply;
+            uint24 maxSupply_ = info.maxSupply;
+            uint256 newMintIndex = totalSupply_;
+            // Contract versions 3+ support storage of data with the token mint, so use that
+            // to avoid additional storage costs
+            for (uint256 i; i < recipients.length;) {
+                uint16 mintCount = recipients[i].count;
+                if (mintCount == 0) revert InvalidInput();
+                count += mintCount;
+                if (totalSupply_+count > maxSupply_) revert TooManyRequested();
+                uint80[] memory tokenDatas = new uint80[](mintCount);
+                for (uint256 j; j < mintCount;) {
+                    tokenDatas[j] = uint56(instanceId) << 24 | uint24(newMintIndex+j);
+                    unchecked { ++j; }
+                }
+                // Airdrop the tokens
+                IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, tokenDatas);
+
+                // Increment newMintIndex for the next airdrop
+                unchecked{ newMintIndex += mintCount; }
+
+                unchecked{ ++i; }
+            }
+            info.totalSupply += count;
+        } else {
+            uint256 startIndex;
+            uint16 count = 0;
+            uint256[] memory tokenIdResults;
+            uint24 totalSupply_ = info.totalSupply;
+            uint24 maxSupply_ = info.maxSupply;
+            for (uint256 i; i < recipients.length;) {
+                if (recipients[i].count == 0) revert InvalidInput();
+                count += recipients[i].count;
+                if (totalSupply_+count > maxSupply_) revert TooManyRequested();
+                tokenIdResults = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, recipients[i].count);
+                if (i == 0) startIndex = tokenIdResults[0];
+                unchecked{++i;}
+            }
+            _updateIndexRanges(creatorCore, instanceId, info, startIndex, count);
         }
-        _updateIndexRanges(creatorCore, instanceId, startIndex, count);
-    }
-
-    /**
-     * @dev See {IManifoldERC721Edition-createSeries}.
-     */
-    function createSeries(address creatorCore, uint256 maxSupply_, string calldata prefix, uint256 instanceId, Recipient[] memory recipients) external override creatorAdminRequired(creatorCore) returns(uint256) {
-        if (instanceId == 0 || maxSupply_ == 0 || _maxSupply[creatorCore][instanceId] != 0) revert("Invalid instance");
-        _maxSupply[creatorCore][instanceId] = maxSupply_;
-        _tokenPrefix[creatorCore][instanceId] = prefix;
-        _creatorInstanceIds[creatorCore].push(instanceId);
-        emit SeriesCreated(msg.sender, creatorCore, instanceId, maxSupply_);
-
-        if (recipients.length > 0) _mintTokens(creatorCore, recipients, instanceId);
-        return instanceId;
     }
 
     /**
      * @dev Update the index ranges, which is used to figure out the index from a tokenId
      */
-    function _updateIndexRanges(address creatorCore, uint256 instanceId, uint256 startIndex, uint256 count) internal {
+    function _updateIndexRanges(address creatorCore, uint256 instanceId, EditionInfo storage info, uint256 startIndex, uint16 count) internal {
         IndexRange[] storage indexRanges = _indexRanges[creatorCore][instanceId];
         if (indexRanges.length == 0) {
            indexRanges.push(IndexRange(startIndex, count));
@@ -135,7 +228,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             indexRanges.push(IndexRange(startIndex, count));
           }
         }
-        _totalSupply[creatorCore][instanceId] += count;
+        info.totalSupply += count;
     }
 
     /**
@@ -158,7 +251,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             }
             unchecked{++i;}
         }
-        revert("Invalid token");
+        revert InvalidToken();
     }
 
 }
