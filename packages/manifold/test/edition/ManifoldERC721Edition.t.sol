@@ -104,6 +104,33 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
+  function testTokenURI() public {
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
+    vm.startPrank(owner);
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
+    example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
+
+    // Create with arweave
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.ARWEAVE, "abcdefgh/", _emptyRecipients);
+
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 2;
+
+    example.mint(address(creatorCore1), 1, 0, recipients);
+    assertEq(example.tokenURI(address(creatorCore1), 1), "https://arweave.net/abcdefgh/1");
+
+    // Change to be IPFS based
+    example.setTokenURI(address(creatorCore1), 1, IManifoldERC721Edition.StorageProtocol.IPFS, "abcdefgh/");
+    assertEq(example.tokenURI(address(creatorCore1), 1), "ipfs://abcdefgh/1");
+
+
+    vm.stopPrank();
+  }
+
+
   function testEditionIndex() public {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
