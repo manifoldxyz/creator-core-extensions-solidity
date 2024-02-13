@@ -92,17 +92,17 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         if (_totalSupply[creatorCore][instanceId]+1 > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
         if (recipients.length == 0) revert("No recipients");
 
-        // Grab the start index by minting off a first token...
-        uint256 startIndex = IERC721CreatorCore(creatorCore).mintExtension(recipients[0].recipient);
-        --recipients[0].count; // will revert with underflow if you accidentally have a count of 0... this is good (I think)
-        uint count = 1;
+        uint256 startIndex;
+        uint256 count = 0;
+        uint256[] memory tokenIdResults;
         for (uint256 i; i < recipients.length;) {
+            if (recipients[i].count == 0) revert("Invalid count");
             count += recipients[i].count;
             if (_totalSupply[creatorCore][instanceId]+count > _maxSupply[creatorCore][instanceId]) revert("Too many requested");
-            IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, recipients[i].count);
+            tokenIdResults = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, recipients[i].count);
+            if (i == 0) startIndex = tokenIdResults[0];
             unchecked{++i;}
         }
-
         _updateIndexRanges(creatorCore, instanceId, startIndex, count);
     }
 
