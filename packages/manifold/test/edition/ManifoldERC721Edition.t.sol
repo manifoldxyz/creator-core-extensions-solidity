@@ -200,6 +200,23 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
+  function testIncorrectSupply() public {
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
+    vm.startPrank(owner);
+    example.createSeries(address(creatorCore1), 10, "http://creator1series1/", 1, _emptyRecipients);
+
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 1;
+
+
+    vm.expectRevert("Incorrect supply");
+    example.mint(address(creatorCore1), 1, 10, recipients);
+
+    vm.stopPrank();
+  }
+
   function testCreatingInvalidSeries() public {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
