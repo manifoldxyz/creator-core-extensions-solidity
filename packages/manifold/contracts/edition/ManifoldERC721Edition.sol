@@ -60,7 +60,6 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             CreatorExtension.supportsInterface(interfaceId);
     }
 
-
     /**
      * @dev See {IManifoldERC721Edition-createSeries}.
      */

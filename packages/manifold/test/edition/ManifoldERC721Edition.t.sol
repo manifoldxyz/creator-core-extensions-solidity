@@ -20,6 +20,8 @@ contract ManifoldERC721EditionTest is Test {
 
   address public zeroAddress = address(0);
   address public deadAddress = 0x000000000000000000000000000000000000dEaD;
+  uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+
 
   function setUp() public {
     vm.startPrank(owner);
@@ -229,6 +231,9 @@ contract ManifoldERC721EditionTest is Test {
 
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
     example.createSeries(address(creatorCore1), 1, 0, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), MAX_UINT_256, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
 
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
     example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.INVALID, "hi", _emptyRecipients);
