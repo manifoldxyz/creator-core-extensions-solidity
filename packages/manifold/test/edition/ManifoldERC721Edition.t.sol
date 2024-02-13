@@ -224,9 +224,15 @@ contract ManifoldERC721EditionTest is Test {
     recipients[0].recipient = operator;
     recipients[0].count = 11;
 
-
     vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
     example.mint(address(creatorCore1), 1, 0, recipients);
+
+    recipients[0].count = 10;
+    example.mint(address(creatorCore1), 1, 0, recipients);
+
+    recipients[0].count = 1;
+    vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
+    example.mint(address(creatorCore1), 1, 10, recipients);
 
     vm.stopPrank();
   }
