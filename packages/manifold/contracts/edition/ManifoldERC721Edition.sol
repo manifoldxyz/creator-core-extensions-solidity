@@ -84,6 +84,10 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             storageProtocol: storageProtocol,
             location: location
         });
+
+        if (creatorContractVersion < 3) {
+            _creatorInstanceIds[creatorCore].push(instanceId);
+        }
         
         emit SeriesCreated(msg.sender, creatorCore, instanceId, maxSupply_);
 

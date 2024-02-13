@@ -154,7 +154,6 @@ contract ManifoldERC721EditionTest is Test {
     example.setTokenURI(address(creatorCore1), 1, IManifoldERC721Edition.StorageProtocol.IPFS, "abcdefgh/");
     assertEq(example.tokenURI(address(creatorCore1), 1), "ipfs://abcdefgh/1");
 
-
     vm.stopPrank();
   }
 
