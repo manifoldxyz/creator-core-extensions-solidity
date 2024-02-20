@@ -39,9 +39,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     // solhint-disable-next-line
     address public immutable DELEGATION_REGISTRY_V2;
 
-    uint256 public constant MINT_FEE = 500000000000000;
-    uint256 public constant MINT_FEE_MERKLE = 690000000000000;
-    // solhint-disable-next-line
+    uint256 public immutable MINT_FEE;
+    uint256 public immutable MINT_FEE_MERKLE;
     address public MEMBERSHIP_ADDRESS;
 
     uint256 internal constant MAX_UINT_24 = 0xffffff;
@@ -72,12 +71,13 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         _;
     }
 
-    constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2) {
+    constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2, uint256 mintFee, uint256 mintFeeMerkle) {
         _transferOwnership(initialOwner);
         DELEGATION_REGISTRY = delegationRegistry;
         DELEGATION_REGISTRY_V2 = delegationRegistryV2;
+        MINT_FEE = mintFee;
+        MINT_FEE_MERKLE = mintFeeMerkle;
     }
-
     /**
      * See {ILazyPayableClaim-withdraw}.
      */
