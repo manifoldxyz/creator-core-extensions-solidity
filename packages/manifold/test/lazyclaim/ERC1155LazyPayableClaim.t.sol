@@ -33,7 +33,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     creatorCore = new ERC1155Creator("Token", "NFT");
     delegationRegistry = new DelegationRegistry();
     delegationRegistryV2 = new DelegationRegistryV2();
-    example = new ERC1155LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2), MINT_FEE, MINT_FEE_MERKLE);
+    example = new ERC1155LazyPayableClaim(MINT_FEE, MINT_FEE_MERKLE, owner, address(delegationRegistry), address(delegationRegistryV2));
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
 
@@ -942,11 +942,11 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.startPrank(owner);
 
     ERC1155LazyPayableClaim claim = new ERC1155LazyPayableClaim(
+      MINT_FEE,
+      MINT_FEE_MERKLE,
       address(creatorCore),
       address(0x00000000000076A84feF008CDAbe6409d2FE638B),
-      address(0x00000000000000447e69651d841bD8D104Bed493),
-      MINT_FEE,
-      MINT_FEE_MERKLE
+      address(0x00000000000000447e69651d841bD8D104Bed493)
     );
     address onChainAddress = claim.DELEGATION_REGISTRY();
     assertEq(0x00000000000076A84feF008CDAbe6409d2FE638B, onChainAddress);

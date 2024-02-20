@@ -43,7 +43,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         delegationRegistry = new DelegationRegistry();
         delegationRegistryV2 = new DelegationRegistryV2();
         example = new ERC1155LazyPayableClaim(
-          owner, address(delegationRegistry), address(delegationRegistryV2), MINT_FEE, MINT_FEE_MERKLE
+          MINT_FEE, MINT_FEE_MERKLE, owner, address(delegationRegistry), address(delegationRegistryV2)
         );
         manifoldMembership = new MockManifoldMembership();
         example.setMembershipAddress(address(manifoldMembership));
