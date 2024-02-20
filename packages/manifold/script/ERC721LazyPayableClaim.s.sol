@@ -20,10 +20,19 @@ contract DeployERC721LazyPayableClaim is Script {
     uint256 MINT_FEE = 500000000000000;
     uint256 MINT_FEE_MERKLE = 690000000000000;
 
+    uint256 MATIC_MINT_FEE = 1000000000000000000;
+    uint256 MATIC_MINT_FEE_MERKLE = 1100000000000000000;
+
     address DELEGATION_REGISTRY = 0x00000000000076A84feF008CDAbe6409d2FE638B;
     address DELEGATION_REGISTRY_V2 = 0x00000000000000447e69651d841bD8D104Bed493;
-    
+
     function run() external {
+        uint256 networkId = vm.envUint("NETWORK_ID");
+        if (networkId == 137) { // Polygon network
+            MINT_FEE = MATIC_MINT_FEE;
+            MINT_FEE_MERKLE = MATIC_MINT_FEE_MERKLE;
+        }
+
         // address initialOwner = <your wallet address>; // uncomment this and put in your wallet on goerli
         address initialOwner = vm.envAddress("INITIAL_OWNER"); // comment this out on goerli
 
@@ -37,7 +46,7 @@ contract DeployERC721LazyPayableClaim is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY"); // comment this out when testing on goerli
         vm.startBroadcast(deployerPrivateKey);
         // forge script scripts/ERC721LazyPayableClaim.s.sol --optimizer-runs 1000 --rpc-url <YOUR_NODE> --broadcast
-        // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain goerli <DEPLOYED_ADDRESS> contracts/lazyclaim/ERC721LazyPayableClaim.sol:ERC721LazyPayableClaim --constructor-args $(cast abi-encode "constructor(uint256, uint256, address,address,address)" "500000000000000" "690000000000000", "${INITIAL_OWNER}" "0x00000000000076A84feF008CDAbe6409d2FE638B" "0x00000000000000447e69651d841bD8D104Bed493") --watch
+        // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain goerli <DEPLOYED_ADDRESS> contracts/lazyclaim/ERC721LazyPayableClaim.sol:ERC721LazyPayableClaim --constructor-args $(cast abi-encode "constructor(uint256,uint256,address,address,address)" "500000000000000" "690000000000000" "${INITIAL_OWNER}" "0x00000000000076A84feF008CDAbe6409d2FE638B" "0x00000000000000447e69651d841bD8D104Bed493") --watch
         new ERC721LazyPayableClaim{salt: 0x4552433732314c617a7950617961626c65436c61696d4552433732314c617a79}(MINT_FEE, MINT_FEE_MERKLE, initialOwner, DELEGATION_REGISTRY, DELEGATION_REGISTRY_V2);
         vm.stopBroadcast();
     }

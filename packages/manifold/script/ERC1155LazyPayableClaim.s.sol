@@ -20,10 +20,19 @@ import "../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
     uint256 MINT_FEE = 500000000000000;
     uint256 MINT_FEE_MERKLE = 690000000000000;
 
+    uint256 MATIC_MINT_FEE = 1000000000000000000;
+    uint256 MATIC_MINT_FEE_MERKLE = 1100000000000000000;
+
     address DELEGATION_REGISTRY = 0x00000000000076A84feF008CDAbe6409d2FE638B;
     address DELEGATION_REGISTRY_V2 = 0x00000000000000447e69651d841bD8D104Bed493;
 
     function run() external {
+        uint256 networkId = vm.envUint("NETWORK_ID");
+        if (networkId == 137) { // Polygon network
+            MINT_FEE = MATIC_MINT_FEE;
+            MINT_FEE_MERKLE = MATIC_MINT_FEE_MERKLE;
+        }
+
         // address initialOwner = <your wallet address>; // uncomment this and put in your wallet on goerli
         address initialOwner = vm.envAddress("INITIAL_OWNER"); // comment this out on goerli
 
