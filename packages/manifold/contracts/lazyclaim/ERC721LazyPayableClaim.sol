@@ -47,7 +47,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
             interfaceId == type(IERC165).interfaceId;
     }
 
-    constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2) LazyPayableClaim(initialOwner, delegationRegistry, delegationRegistryV2) {}
+    constructor(uint256 mintFee, uint256 mintFeeMerkle, address initialOwner, address delegationRegistry, address delegationRegistryV2) LazyPayableClaim(mintFee, mintFeeMerkle, initialOwner, delegationRegistry, delegationRegistryV2) {}
 
     /**
      * See {IERC721LazyClaim-initializeClaim}.
