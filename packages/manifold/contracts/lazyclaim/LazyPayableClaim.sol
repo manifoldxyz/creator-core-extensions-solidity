@@ -41,6 +41,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     uint256 public immutable MINT_FEE;
     uint256 public immutable MINT_FEE_MERKLE;
+    // solhint-disable-next-line
     address public MEMBERSHIP_ADDRESS;
 
     uint256 internal constant MAX_UINT_24 = 0xffffff;
