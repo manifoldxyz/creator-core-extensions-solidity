@@ -9,40 +9,43 @@ pragma solidity ^0.8.0;
  */
 interface IManifoldERC721Edition {
 
-    event SeriesCreated(address caller, address creator, uint256 series, uint256 maxSupply);
+    error InvalidEdition();
+    error InvalidInput();
+    error TooManyRequested();
+    error InvalidToken();
+
+    event SeriesCreated(address caller, address creatorCore, uint256 series, uint256 maxSupply);
+
+    struct Recipient {
+        address recipient;
+        uint16 count;
+    }
+
+    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
+
 
     /**
      * @dev Create a new series.  Returns the series id.
      */
-    function createSeries(address creator, uint256 maxSupply, string calldata prefix) external returns(uint256);
-
-    /**
-     * @dev Get the latest series created.
-     */
-    function latestSeries(address creator) external view returns(uint256);
+    function createSeries(address creatorCore, uint256 instanceId, uint24 maxSupply_, StorageProtocol storageProtocol, string calldata location, Recipient[] memory recipients) external;
 
     /**
      * @dev Set the token uri prefix
      */
-    function setTokenURIPrefix(address creator, uint256 series, string calldata prefix) external;
+    function setTokenURI(address creatorCore, uint256 instanceId, StorageProtocol storageProtocol, string calldata location) external;
     
     /**
      * @dev Mint NFTs to a single recipient
      */
-    function mint(address creator, uint256 series, address recipient, uint16 count) external;
-
-    /**
-     * @dev Mint NFTS to the recipients
-     */
-    function mint(address creator, uint256 series, address[] calldata recipients) external;
+    function mint(address creatorCore, uint256 instanceId, uint24 currentSupply, Recipient[] memory recipients) external;
 
     /**
      * @dev Total supply of editions
      */
-    function totalSupply(address creator, uint256 series) external view returns(uint256);
+    function totalSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
 
     /**
      * @dev Max supply of editions
      */
-    function maxSupply(address creator, uint256 series) external view returns(uint256);
+    function maxSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
 }
