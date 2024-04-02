@@ -23,6 +23,13 @@ interface IManifoldERC721Edition {
 
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
 
+    struct EditionInfo {
+        uint8 contractVersion;
+        uint24 totalSupply;
+        uint24 maxSupply;
+        StorageProtocol storageProtocol; 
+        string location;
+    }
 
     /**
      * @dev Create a new series.  Returns the series id.
@@ -40,12 +47,7 @@ interface IManifoldERC721Edition {
     function mint(address creatorCore, uint256 instanceId, uint24 currentSupply, Recipient[] memory recipients) external;
 
     /**
-     * @dev Total supply of editions
+     * @dev Get the EditionInfo for a Series
      */
-    function totalSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
-
-    /**
-     * @dev Max supply of editions
-     */
-    function maxSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
+    function getEditionInfo(address creatorCore, uint256 instanceId) external view returns(EditionInfo memory);
 }
