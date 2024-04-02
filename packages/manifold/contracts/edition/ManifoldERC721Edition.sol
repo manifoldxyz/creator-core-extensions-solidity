@@ -86,23 +86,6 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         if (recipients.length > 0) _mintTokens(creatorCore, instanceId, _editionInfo[creatorCore][instanceId], recipients);
     }
 
-
-    /**
-     * @dev See {IManifoldERC721Edition-totalSupply}.
-     */
-    function totalSupply(address creatorCore, uint256 instanceId) external view override returns(uint256) {
-        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
-        return info.totalSupply;
-    }
-
-    /**
-     * @dev See {IManifoldERC721Edition-maxSupply}.
-     */
-    function maxSupply(address creatorCore, uint256 instanceId) external view override returns(uint256) {
-        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
-        return info.maxSupply;
-    }
-
     /**
      * See {IManifoldERC721Edition-setTokenURI}.
      */

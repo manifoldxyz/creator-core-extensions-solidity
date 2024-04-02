@@ -102,7 +102,6 @@ contract ManifoldERC721EditionTest is Test {
     recipients[0].count = 2;
 
     example.mint(address(creatorCore1), 1, 0, recipients);
-    assertEq(example.totalSupply(address(creatorCore1), 1), 2);
     
     // Check the getEdition works
     ManifoldERC721Edition.EditionInfo memory edition = example.getEditionInfo(address(creatorCore1), 1);
@@ -178,16 +177,22 @@ contract ManifoldERC721EditionTest is Test {
     example.createSeries(address(creatorCore2), 3, 200, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2/", _emptyRecipients);
     example.createSeries(address(creatorCore3), 4, 300, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2/", _emptyRecipients);
 
-    assertEq(10, example.maxSupply(address(creatorCore1), 1));
-    assertEq(20, example.maxSupply(address(creatorCore1), 2));
-    assertEq(200, example.maxSupply(address(creatorCore2), 3));
-    assertEq(300, example.maxSupply(address(creatorCore3), 4));
+    // Get the edition info
+    ManifoldERC721Edition.EditionInfo memory edition = example.getEditionInfo(address(creatorCore1), 1);
+    assertEq(edition.maxSupply, 10);
+    assertEq(edition.totalSupply, 0);
 
-    // Total supply should still be 0
-    assertEq(0, example.totalSupply(address(creatorCore1), 1));
-    assertEq(0, example.totalSupply(address(creatorCore1), 2));
-    assertEq(0, example.totalSupply(address(creatorCore2), 3));
-    assertEq(0, example.totalSupply(address(creatorCore3), 4));
+    edition = example.getEditionInfo(address(creatorCore1), 2);
+    assertEq(edition.maxSupply, 20);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore2), 3);
+    assertEq(edition.maxSupply, 200);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore3), 4);
+    assertEq(edition.maxSupply, 300);
+    assertEq(edition.totalSupply, 0);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
@@ -195,11 +200,22 @@ contract ManifoldERC721EditionTest is Test {
 
     example.mint(address(creatorCore1), 1, 0, recipients);
 
-    // Total supply should now be 2
-    assertEq(2, example.totalSupply(address(creatorCore1), 1));
-    assertEq(0, example.totalSupply(address(creatorCore1), 2));
-    assertEq(0, example.totalSupply(address(creatorCore2), 3));
-    assertEq(0, example.totalSupply(address(creatorCore3), 4));
+    // Get the edition info
+    edition = example.getEditionInfo(address(creatorCore1), 1);
+    assertEq(edition.maxSupply, 10);
+    assertEq(edition.totalSupply, 2);
+
+    edition = example.getEditionInfo(address(creatorCore1), 2);
+    assertEq(edition.maxSupply, 20);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore2), 3);
+    assertEq(edition.maxSupply, 200);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore3), 4);
+    assertEq(edition.maxSupply, 300);
+    assertEq(edition.totalSupply, 0);
 
     // Mint some tokens in between
     creatorCore1.mintBaseBatch(owner, 10);
@@ -385,7 +401,7 @@ contract ManifoldERC721EditionTest is Test {
     vm.startPrank(owner);
 
     vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
-    example.maxSupply(address(creatorCore1), 69);
+    example.getEditionInfo(address(creatorCore1), 69);
 
     vm.stopPrank();
   }

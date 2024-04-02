@@ -47,16 +47,6 @@ interface IManifoldERC721Edition {
     function mint(address creatorCore, uint256 instanceId, uint24 currentSupply, Recipient[] memory recipients) external;
 
     /**
-     * @dev Total supply of editions
-     */
-    function totalSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
-
-    /**
-     * @dev Max supply of editions
-     */
-    function maxSupply(address creatorCore, uint256 instanceId) external view returns(uint256);
-
-    /**
      * @dev Get the EditionInfo for a Series
      */
     function getEditionInfo(address creatorCore, uint256 instanceId) external view returns(EditionInfo memory);
