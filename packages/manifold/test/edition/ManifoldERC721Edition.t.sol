@@ -103,6 +103,11 @@ contract ManifoldERC721EditionTest is Test {
 
     example.mint(address(creatorCore1), 1, 0, recipients);
     assertEq(example.totalSupply(address(creatorCore1), 1), 2);
+    
+    // Check the getEdition works
+    ManifoldERC721Edition.EditionInfo memory edition = example.getEditionInfo(address(creatorCore1), 1);
+    assertEq(edition.maxSupply, 10);
+    assertEq(edition.totalSupply, 2);
 
     recipients = new IManifoldERC721Edition.Recipient[](2);
 

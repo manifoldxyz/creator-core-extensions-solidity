@@ -26,14 +26,6 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         uint256 count;
     }
 
-    struct EditionInfo {
-        uint8 contractVersion;
-        uint24 totalSupply;
-        uint24 maxSupply;
-        StorageProtocol storageProtocol; 
-        string location;
-    }
-
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
 
@@ -125,7 +117,18 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         info = _editionInfo[creatorCore][instanceId];
         if (info.storageProtocol == StorageProtocol.INVALID) revert InvalidEdition();
     }
-    
+
+    /**
+     * @dev See {IManifoldERC721Edition-getEditionInfo}.
+     *
+     * This is the public version of the above internal function. Separate function because it returns EditionInfo
+     * memory instead of storage.
+     */
+    function getEditionInfo(address creatorCore, uint256 instanceId) public view returns(EditionInfo memory info) {
+        info = _editionInfo[creatorCore][instanceId];
+        if (info.storageProtocol == StorageProtocol.INVALID) revert InvalidEdition();
+    }
+
     /**
      * @dev See {ICreatorExtensionTokenURI-tokenURI}.
      */
