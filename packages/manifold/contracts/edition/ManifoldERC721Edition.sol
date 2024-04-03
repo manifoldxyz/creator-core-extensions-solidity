@@ -26,14 +26,6 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         uint256 count;
     }
 
-    struct EditionInfo {
-        uint8 contractVersion;
-        uint24 totalSupply;
-        uint24 maxSupply;
-        StorageProtocol storageProtocol; 
-        string location;
-    }
-
     string private constant ARWEAVE_PREFIX = "https://arweave.net/";
     string private constant IPFS_PREFIX = "ipfs://";
 
@@ -94,23 +86,6 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         if (recipients.length > 0) _mintTokens(creatorCore, instanceId, _editionInfo[creatorCore][instanceId], recipients);
     }
 
-
-    /**
-     * @dev See {IManifoldERC721Edition-totalSupply}.
-     */
-    function totalSupply(address creatorCore, uint256 instanceId) external view override returns(uint256) {
-        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
-        return info.totalSupply;
-    }
-
-    /**
-     * @dev See {IManifoldERC721Edition-maxSupply}.
-     */
-    function maxSupply(address creatorCore, uint256 instanceId) external view override returns(uint256) {
-        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
-        return info.maxSupply;
-    }
-
     /**
      * See {IManifoldERC721Edition-setTokenURI}.
      */
@@ -125,7 +100,18 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         info = _editionInfo[creatorCore][instanceId];
         if (info.storageProtocol == StorageProtocol.INVALID) revert InvalidEdition();
     }
-    
+
+    /**
+     * @dev See {IManifoldERC721Edition-getEditionInfo}.
+     *
+     * This is the public version of the above internal function. Separate function because it returns EditionInfo
+     * memory instead of storage.
+     */
+    function getEditionInfo(address creatorCore, uint256 instanceId) public view returns(EditionInfo memory info) {
+        info = _editionInfo[creatorCore][instanceId];
+        if (info.storageProtocol == StorageProtocol.INVALID) revert InvalidEdition();
+    }
+
     /**
      * @dev See {ICreatorExtensionTokenURI-tokenURI}.
      */
