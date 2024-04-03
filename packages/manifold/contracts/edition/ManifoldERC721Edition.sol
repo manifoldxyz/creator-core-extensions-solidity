@@ -40,10 +40,10 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
     uint256 private constant MAX_UINT_24 = 0xffffff;
     uint256 private constant MAX_UINT_56 = 0xffffffffffffff;
 
-    mapping(address => mapping(uint256 => EditionInfo)) _editionInfo;
-    mapping(address => mapping(uint256 => IndexRange[])) _indexRanges;
+    mapping(address => mapping(uint256 => EditionInfo)) private _editionInfo;
+    mapping(address => mapping(uint256 => IndexRange[])) private _indexRanges;
 
-    mapping(address => uint256[]) _creatorInstanceIds;
+    mapping(address => uint256[]) private _creatorInstanceIds;
 
     /**
      * @dev Only allows approved admins to call the specified function
