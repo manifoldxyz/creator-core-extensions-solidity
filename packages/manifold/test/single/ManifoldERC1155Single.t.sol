@@ -36,45 +36,34 @@ contract ManifoldERC1155SingleTest is Test {
     uint256[] memory amounts = new uint256[](1);
     vm.startPrank(operator);
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.mintNew(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "", recipients, amounts);
-    vm.expectRevert("Must be owner or admin of creator contract");
-    example.setTokenURI(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "");
-    vm.stopPrank();
-    vm.startPrank(owner);
-    vm.expectRevert(IManifoldSingleCore.InvalidToken.selector);
-    example.setTokenURI(address(creatorCore), 0, IManifoldSingleCore.StorageProtocol.ARWEAVE, "");
+    example.mint(address(creatorCore), 1, "", recipients, amounts);
     vm.stopPrank();
   }
 
   function testMint() public {
-
     vm.startPrank(owner);
+    creatorCore.approveAdmin(address(example));
     address[] memory recipients = new address[](1);
     uint256[] memory amounts = new uint256[](1);
     recipients[0] = operator;
     amounts[0] = 2;
-    example.mintNew(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "", recipients, amounts);
+    example.mint(address(creatorCore), 1, "", recipients, amounts);
     assertEq(creatorCore.balanceOf(operator, 1), 2);
     // Can't mint same instance twice
-    vm.expectRevert(IManifoldSingleCore.InvalidInput.selector);
-    example.mintNew(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "", recipients, amounts);
+    vm.expectRevert(IManifoldERC1155Single.InvalidInput.selector);
+    example.mint(address(creatorCore), 1, "", recipients, amounts);
     vm.stopPrank();
   }
 
   function testTokenURI() public {
     vm.startPrank(owner);
     creatorCore.approveAdmin(address(example));
-  
     address[] memory recipients = new address[](1);
     uint256[] memory amounts = new uint256[](1);
     recipients[0] = operator;
     amounts[0] = 2;
-    example.mintNew(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "1hRadwN29sN5UDl_BBgH4RhCc2TjknMpuzGsP1t3wEM", recipients, amounts);
+    example.mint(address(creatorCore), 1, "https://arweave.net/1hRadwN29sN5UDl_BBgH4RhCc2TjknMpuzGsP1t3wEM", recipients, amounts);
     assertEq(creatorCore.uri(1), "https://arweave.net/1hRadwN29sN5UDl_BBgH4RhCc2TjknMpuzGsP1t3wEM");
-
-    // Change to be IPFS based
-    example.setTokenURI(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.IPFS, "bafybeie45qu5so23umooeq67lnjijqed6khqlxjrjkjuirvzi7llacdt3a");
-    assertEq(creatorCore.uri(1), "ipfs://bafybeie45qu5so23umooeq67lnjijqed6khqlxjrjkjuirvzi7llacdt3a");
     vm.stopPrank();
   }
 

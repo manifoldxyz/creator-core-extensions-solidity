@@ -4,26 +4,15 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "./IManifoldSingleCore.sol";
-
 /**
  * Manifold ERC1155 Single Mint interface
  */
-interface IManifoldERC1155Single is IManifoldSingleCore {
+interface IManifoldERC1155Single {
 
-    struct Recipient {
-        address recipient;
-        uint256 amount;
-    }
+    error InvalidInput();
 
     /**
      * @dev Mint a new token
      */
-    function mintNew(address creatorCore, uint256 instanceId, StorageProtocol storageProtocol, bytes calldata storageData, address[] calldata recipients, uint256[] calldata amounts) external;
-
-    /**
-     * @dev Mint an existing token
-     */
-    function mintExisting(address creatorCore, uint256 tokenId, address[] calldata recipients, uint256[] calldata amounts) external;
-
+    function mint(address creatorCore, uint256 expectedTokenId, string calldata uri, address[] calldata recipients, uint256[] calldata amounts) external;
 }

@@ -32,67 +32,30 @@ contract ManifoldERC721SingleTest is Test {
     vm.stopPrank();
   }
 
-  // Test helper...
-  function mockVersion() internal {
-      vm.mockCall(
-          address(creatorCore),
-          abi.encodeWithSelector(bytes4(keccak256("VERSION()"))),
-          abi.encode(2)
-      );
-  }
-
-  function testAccess(bool withMock) public {
-    if (withMock) {
-      mockVersion();
-    } else {
-      vm.clearMockedCalls();
-    }
-
+  function testAccess() public {
     vm.startPrank(operator);
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.mint(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "", address(0));
-    vm.expectRevert("Must be owner or admin of creator contract");
-    example.setTokenURI(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "");
-    vm.stopPrank();
-    vm.startPrank(owner);
-    vm.expectRevert(IManifoldSingleCore.InvalidToken.selector);
-    example.setTokenURI(address(creatorCore), 0, IManifoldSingleCore.StorageProtocol.ARWEAVE, "");
+    example.mint(address(creatorCore), 1, "", address(0));
     vm.stopPrank();
   }
 
-  function testMint(bool withMock) public {
-    if (withMock) {
-      mockVersion();
-    } else {
-      vm.clearMockedCalls();
-    }
-
-    vm.startPrank(owner);
-    example.mint(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "", operator);
-    assertEq(creatorCore.balanceOf(operator), 1);
-    // Can't mint same instance twice
-    vm.expectRevert(IManifoldSingleCore.InvalidInput.selector);
-    example.mint(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "", operator);
-    vm.stopPrank();
-  }
-
-  function testTokenURI(bool withMock) public {
-    if (withMock) {
-      mockVersion();
-    } else {
-      vm.clearMockedCalls();
-    }
+  function testMint() public {
     vm.startPrank(owner);
     creatorCore.approveAdmin(address(example));
-  
-    example.mint(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.ARWEAVE, "1hRadwN29sN5UDl_BBgH4RhCc2TjknMpuzGsP1t3wEM", operator);
+    example.mint(address(creatorCore), 1, "", operator);
+    assertEq(creatorCore.balanceOf(operator), 1);
+    // Can't mint same instance twice
+    vm.expectRevert(IManifoldERC721Single.InvalidInput.selector);
+    example.mint(address(creatorCore), 1, "", operator);
+    vm.stopPrank();
+  }
+
+  function testTokenURI() public {
+    vm.startPrank(owner);
+    creatorCore.approveAdmin(address(example));  
+    example.mint(address(creatorCore), 1, "https://arweave.net/1hRadwN29sN5UDl_BBgH4RhCc2TjknMpuzGsP1t3wEM", operator);
     assertEq(creatorCore.balanceOf(operator), 1);
     assertEq(creatorCore.tokenURI(1), "https://arweave.net/1hRadwN29sN5UDl_BBgH4RhCc2TjknMpuzGsP1t3wEM");
-
-    // Change to be IPFS based
-    example.setTokenURI(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.IPFS, "bafybeie45qu5so23umooeq67lnjijqed6khqlxjrjkjuirvzi7llacdt3a");
-    assertEq(creatorCore.tokenURI(1), "ipfs://bafybeie45qu5so23umooeq67lnjijqed6khqlxjrjkjuirvzi7llacdt3a");
-
     vm.stopPrank();
   }
 
