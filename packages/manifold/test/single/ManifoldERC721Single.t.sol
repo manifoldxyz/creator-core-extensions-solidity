@@ -91,7 +91,7 @@ contract ManifoldERC721SingleTest is Test {
 
     // Change to be IPFS based
     example.setTokenURI(address(creatorCore), 1, IManifoldSingleCore.StorageProtocol.IPFS, "bafybeie45qu5so23umooeq67lnjijqed6khqlxjrjkjuirvzi7llacdt3a");
-    assertEq(example.tokenURI(address(creatorCore), 1), "ipfs://bafybeie45qu5so23umooeq67lnjijqed6khqlxjrjkjuirvzi7llacdt3a");
+    assertEq(creatorCore.tokenURI(1), "ipfs://bafybeie45qu5so23umooeq67lnjijqed6khqlxjrjkjuirvzi7llacdt3a");
 
     vm.stopPrank();
   }
