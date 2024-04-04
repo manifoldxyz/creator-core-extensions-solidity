@@ -15,5 +15,4 @@ interface IManifoldERC721Single is IManifoldSingleCore {
      * @dev Mint a token
      */
     function mint(address creatorCore, uint256 instanceId, StorageProtocol storageProtocol, bytes calldata storageData, address recipient) external;
-
 }

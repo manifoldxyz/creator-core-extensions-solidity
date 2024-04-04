@@ -23,4 +23,10 @@ interface IManifoldSingleCore {
      * @dev Set the token uri prefix
      */
     function setTokenURI(address creatorCore, uint256 instanceId, StorageProtocol storageProtocol, bytes calldata storageData) external;
+
+    /**
+     * @dev Get the instance id for a given token
+     */
+    function getInstanceId(address creatorCore, uint256 tokenId) external view returns (uint256);
+
 }

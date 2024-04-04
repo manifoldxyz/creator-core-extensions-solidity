@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/CreatorExtension.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
@@ -43,6 +42,25 @@ contract ManifoldERC721Single is CreatorExtension, ManifoldSingleCore, ICreatorE
 
         _tokenData[creatorCore][instanceId] = abi.encodePacked(uint8(storageProtocol), storageData);
         _mintToken(creatorCore, instanceId, contractVersion, recipient);
+    }
+
+    /**
+     * @dev See {IManifoldSingleCore-getInstanceId}.
+     */
+    function getInstanceId(address creatorCore, uint256 tokenId) external view override returns (uint256 instanceId) {
+        uint8 contractVersion;
+        try IERC721CreatorCoreVersion(creatorCore).VERSION() returns(uint256 version) {
+            require(version <= 255, "Unsupported contract version");
+            contractVersion = uint8(version);
+        } catch {}
+
+        if (contractVersion >= 3) {
+            // Contract versions 3+ support storage of data with the token mint, so use that
+            instanceId = IERC721CreatorCore(creatorCore).tokenData(tokenId);
+        } else {
+            instanceId = _creatorInstanceIds[creatorCore][tokenId];
+        }
+        if (instanceId == 0) revert InvalidToken();
     }
     
     /**
