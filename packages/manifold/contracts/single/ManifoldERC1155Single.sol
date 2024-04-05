@@ -27,7 +27,7 @@ contract ManifoldERC1155Single is IManifoldERC1155Single {
     function mint(address creatorCore, uint256 expectedTokenId, string calldata uri, address[] calldata recipients, uint256[] calldata amounts) external override creatorAdminRequired(creatorCore) {
         string[] memory uris = new string[](1);
         uris[0] = uri;
-        uint256[] memory tokenIds = IERC1155CreatorCore(creatorCore).mintExtensionNew(recipients, amounts, uris);
+        uint256[] memory tokenIds = IERC1155CreatorCore(creatorCore).mintBaseNew(recipients, amounts, uris);
         if (tokenIds.length != 1 || tokenIds[0] != expectedTokenId) {
             revert InvalidInput();
         }
