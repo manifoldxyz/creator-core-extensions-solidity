@@ -142,7 +142,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         } else if (info.storageProtocol == StorageProtocol.IPFS) {
             prefix = IPFS_PREFIX;
         }
-        return string(abi.encodePacked(prefix, info.location, (index+1).toString()));
+        return string(abi.encodePacked(prefix, info.location, "/", (index+1).toString()));
     }
     
     /**
