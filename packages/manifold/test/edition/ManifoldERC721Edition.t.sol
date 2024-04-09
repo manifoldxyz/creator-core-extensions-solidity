@@ -252,6 +252,31 @@ contract ManifoldERC721EditionTest is Test {
     assertEq("http://creator1series1new/3", creatorCore1.tokenURI(13));
     assertEq("http://creator1series1new/5", creatorCore1.tokenURI(15));
 
+    // Test get tokens for instance
+    uint256[] memory tokens = example.getInstanceTokenIds(address(creatorCore1), 1);
+    assertEq(tokens.length, 6);
+    assertEq(tokens[0], 1);
+    assertEq(tokens[1], 2);
+    assertEq(tokens[2], 13);
+    assertEq(tokens[3], 14);
+    assertEq(tokens[4], 15);
+    assertEq(tokens[5], 18);
+
+    // Test getting instanceIds for tokens
+    uint256[] memory searchTokens = new uint256[](3);
+    searchTokens[0] = 1;
+    searchTokens[1] = 3;
+    searchTokens[2] = 16;
+    uint256[] memory instanceIds = example.getInstanceIdsForTokens(address(creatorCore1), searchTokens);
+    assertEq(instanceIds.length, 3);
+    assertEq(instanceIds[0], 1);
+    assertEq(instanceIds[1], 0);
+    assertEq(instanceIds[2], 2);
+
+    // Test getting first token id
+    edition = example.getEditionInfo(address(creatorCore1), 2);
+    assertEq(edition.firstTokenId, 16);
+
     vm.stopPrank();
   }
 

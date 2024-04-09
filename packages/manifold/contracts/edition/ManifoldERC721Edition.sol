@@ -31,6 +31,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
 
     uint256 private constant MAX_UINT_24 = 0xffffff;
     uint256 private constant MAX_UINT_56 = 0xffffffffffffff;
+    uint256 private constant MAX_UINT_192 = 0xffffffffffffffffffffffffffffffffffffffffffffffff;
 
     mapping(address => mapping(uint256 => EditionInfo)) _editionInfo;
     mapping(address => mapping(uint256 => IndexRange[])) _indexRanges;
@@ -74,7 +75,8 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
             totalSupply: 0,
             contractVersion: creatorContractVersion,
             storageProtocol: storageProtocol,
-            location: location
+            location: location,
+            firstTokenId: 0
         });
 
         if (creatorContractVersion < 3) {
@@ -113,13 +115,81 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
     }
 
     /**
+     * @dev See {IManifoldERC721Edition-getInstanceIdsForTokens}.
+     */
+    function getInstanceIdsForTokens(address creatorCore, uint256[] calldata tokenIds) external view override returns(uint256[] memory instanceIds) {
+        instanceIds = new uint256[](tokenIds.length);
+        for (uint256 i; i < tokenIds.length;) {
+            uint256 tokenId = tokenIds[i];
+            try IERC721CreatorCore(creatorCore).tokenExtension(tokenId) returns(address tokenExtension) {
+                if (tokenExtension == address(this)) {
+                    uint256 creatorContractVersion;
+                    uint256 instanceId;
+                    try IERC721CreatorCoreVersion(creatorCore).VERSION() returns(uint256 version) {
+                        creatorContractVersion = version;
+                    } catch {}
+                    if (creatorContractVersion >= 3) {
+                        // Contract versions 3+ support storage of data with the token mint, so use that
+                        uint80 tokenData = IERC721CreatorCore(creatorCore).tokenData(tokenId);
+                        instanceId = uint56(tokenData >> 24);
+                    } else {
+                        (instanceId, ) = _tokenInstanceAndIndex(creatorCore, tokenId);
+                    }
+                    instanceIds[i] = instanceId;
+                }
+            } catch {}
+            unchecked{++i;}
+        }
+    }
+
+    /**
+     * @dev See {IManifoldERC721Edition-getInstanceTokenIds}.
+     */
+    function getInstanceTokenIds(address creatorCore, uint256 instanceId) external view returns(uint256[] memory tokenIds) {
+        EditionInfo storage info = _getEditionInfo(creatorCore, instanceId);
+        uint256 creatorContractVersion;
+        tokenIds = new uint256[](info.totalSupply);
+        try IERC721CreatorCoreVersion(creatorCore).VERSION() returns(uint256 version) {
+            creatorContractVersion = version;
+        } catch {}
+        if (creatorContractVersion >= 3) {
+            // We do not have index ranges, so seek based on first tokenId
+            uint256 tokenId = info.firstTokenId;
+            uint256 foundTokens;
+            while (foundTokens < info.totalSupply) {
+                try IERC721CreatorCore(creatorCore).tokenExtension(tokenId) returns(address tokenExtension) {
+                    if (tokenExtension == address(this)) {
+                        uint80 tokenData = IERC721CreatorCore(creatorCore).tokenData(tokenId);
+                        if (instanceId == uint56(tokenData >> 24)) {
+                            tokenIds[foundTokens] = tokenId;
+                            unchecked{++foundTokens;}
+                        }
+                    }
+                } catch {}
+                unchecked{++tokenId;}
+            }
+        } else {
+            // We have index ranges, so we can just iterate through them
+            IndexRange[] memory indexRanges = _indexRanges[creatorCore][instanceId];
+            uint256 current;
+            for (uint256 i; i < indexRanges.length;) {
+                IndexRange memory currentIndex = indexRanges[i];
+                for (uint256 j; j < currentIndex.count;) {
+                    tokenIds[current] = currentIndex.startIndex + j;
+                    unchecked{++current; ++j;}
+                }
+                unchecked{++i;}
+            }
+        }
+    }
+
+    /**
      * @dev See {ICreatorExtensionTokenURI-tokenURI}.
      */
     function tokenURI(address creatorCore, uint256 tokenId) external view override returns (string memory) {
-        uint8 creatorContractVersion;
+        uint256 creatorContractVersion;
         try IERC721CreatorCoreVersion(creatorCore).VERSION() returns(uint256 version) {
-            require(version <= 255, "Unsupported contract version");
-            creatorContractVersion = uint8(version);
+            creatorContractVersion = version;
         } catch {}
 
         uint256 instanceId;
@@ -158,6 +228,7 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
         if (recipients.length == 0) revert InvalidInput();
         if (info.totalSupply+1 > info.maxSupply) revert TooManyRequested();
 
+        uint256[] memory tokenIdResults;
         if (info.contractVersion >= 3) {
             uint16 count = 0;
             uint24 totalSupply_ = info.totalSupply;
@@ -173,21 +244,23 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
                 uint80[] memory tokenDatas = new uint80[](mintCount);
                 for (uint256 j; j < mintCount;) {
                     tokenDatas[j] = uint56(instanceId) << 24 | uint24(newMintIndex+j);
-                    unchecked { ++j; }
+                    unchecked {++j;}
                 }
                 // Airdrop the tokens
-                IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, tokenDatas);
-
+                tokenIdResults = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, tokenDatas);
+                if (i == 0 && info.firstTokenId == 0) {
+                    if (tokenIdResults[0] > MAX_UINT_192) revert InvalidInput();
+                    info.firstTokenId = uint192(tokenIdResults[0]);
+                }
                 // Increment newMintIndex for the next airdrop
-                unchecked{ newMintIndex += mintCount; }
+                unchecked{newMintIndex += mintCount;}
 
-                unchecked{ ++i; }
+                unchecked{++i;}
             }
             info.totalSupply += count;
         } else {
             uint256 startIndex;
             uint16 count = 0;
-            uint256[] memory tokenIdResults;
             uint24 totalSupply_ = info.totalSupply;
             uint24 maxSupply_ = info.maxSupply;
             for (uint256 i; i < recipients.length;) {
@@ -195,7 +268,13 @@ contract ManifoldERC721Edition is CreatorExtension, ICreatorExtensionTokenURI, I
                 count += recipients[i].count;
                 if (totalSupply_+count > maxSupply_) revert TooManyRequested();
                 tokenIdResults = IERC721CreatorCore(creatorCore).mintExtensionBatch(recipients[i].recipient, recipients[i].count);
-                if (i == 0) startIndex = tokenIdResults[0];
+                if (i == 0) {
+                    startIndex = tokenIdResults[0];
+                    if (info.firstTokenId == 0) {
+                        if (startIndex > MAX_UINT_192) revert InvalidInput();
+                        info.firstTokenId = uint192(startIndex);
+                    }
+                }
                 unchecked{++i;}
             }
             _updateIndexRanges(creatorCore, instanceId, info, startIndex, count);
