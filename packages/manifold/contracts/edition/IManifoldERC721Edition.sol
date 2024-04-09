@@ -24,6 +24,7 @@ interface IManifoldERC721Edition {
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
 
     struct EditionInfo {
+        uint192 firstTokenId;
         uint8 contractVersion;
         uint24 totalSupply;
         uint24 maxSupply;
@@ -50,4 +51,14 @@ interface IManifoldERC721Edition {
      * @dev Get the EditionInfo for a Series
      */
     function getEditionInfo(address creatorCore, uint256 instanceId) external view returns(EditionInfo memory);
+
+    /**
+     * @dev Get the instance ids for a set of token
+     */
+    function getInstanceIdsForTokens(address creatorCore, uint256[] calldata tokenIds) external view returns(uint256[] memory);
+
+    /**
+     * @dev Get all the token ids for an instance
+     */
+    function getInstanceTokenIds(address creatorCore, uint256 instanceId) external view returns(uint256[] memory);
 }
