@@ -22,6 +22,7 @@ contract ManifoldERC721EditionTest is Test {
   address public deadAddress = 0x000000000000000000000000000000000000dEaD;
   uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
+
   function setUp() public {
     vm.startPrank(owner);
     creatorCore1 = new ERC721Creator("Token", "NFT");
@@ -42,7 +43,12 @@ contract ManifoldERC721EditionTest is Test {
 
   // Test helper...
   function mockVersion() internal {
-    vm.mockCall(address(creatorCore1), abi.encodeWithSelector(bytes4(keccak256("VERSION()"))), abi.encode(2));
+      vm.mockCall(
+          address(creatorCore1),
+          abi.encodeWithSelector(bytes4(keccak256("VERSION()"))),
+          abi.encode(2)
+      );
+
   }
 
   function testAccess(bool withMock) public {
@@ -89,21 +95,14 @@ contract ManifoldERC721EditionTest is Test {
     vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
     example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
-    example.createSeries(
-      address(creatorCore1),
-      1,
-      10,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1/",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", _emptyRecipients);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
     recipients[0].count = 2;
 
     example.mint(address(creatorCore1), 1, 0, recipients);
-
+    
     // Check the getEdition works
     ManifoldERC721Edition.EditionInfo memory edition = example.getEditionInfo(address(creatorCore1), 1);
     assertEq(edition.maxSupply, 10);
@@ -146,14 +145,7 @@ contract ManifoldERC721EditionTest is Test {
     example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
     // Create with arweave
-    example.createSeries(
-      address(creatorCore1),
-      1,
-      10,
-      IManifoldERC721Edition.StorageProtocol.ARWEAVE,
-      "abcdefgh",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.ARWEAVE, "abcdefgh", _emptyRecipients);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
@@ -169,6 +161,7 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
+
   function testEditionIndex(bool withMock) public {
     if (withMock) {
       mockVersion();
@@ -179,38 +172,10 @@ contract ManifoldERC721EditionTest is Test {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
-    example.createSeries(
-      address(creatorCore1),
-      1,
-      10,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1",
-      _emptyRecipients
-    );
-    example.createSeries(
-      address(creatorCore1),
-      2,
-      20,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series2",
-      _emptyRecipients
-    );
-    example.createSeries(
-      address(creatorCore2),
-      3,
-      200,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series2",
-      _emptyRecipients
-    );
-    example.createSeries(
-      address(creatorCore3),
-      4,
-      300,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series2",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE,  "http://creator1series1", _emptyRecipients);
+    example.createSeries(address(creatorCore1), 2, 20, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2", _emptyRecipients);
+    example.createSeries(address(creatorCore2), 3, 200, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2", _emptyRecipients);
+    example.createSeries(address(creatorCore3), 4, 300, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2", _emptyRecipients);
 
     // Get the edition info
     ManifoldERC721Edition.EditionInfo memory edition = example.getEditionInfo(address(creatorCore1), 1);
@@ -287,30 +252,30 @@ contract ManifoldERC721EditionTest is Test {
     assertEq("http://creator1series1new/3", creatorCore1.tokenURI(13));
     assertEq("http://creator1series1new/5", creatorCore1.tokenURI(15));
 
-    // // Test get tokens for instance
-    // uint256[] memory tokens = example.getInstanceTokenIds(address(creatorCore1), 1);
-    // assertEq(tokens.length, 6);
-    // assertEq(tokens[0], 1);
-    // assertEq(tokens[1], 2);
-    // assertEq(tokens[2], 13);
-    // assertEq(tokens[3], 14);
-    // assertEq(tokens[4], 15);
-    // assertEq(tokens[5], 18);
+    // Test get tokens for instance
+    uint256[] memory tokens = example.getInstanceTokenIds(address(creatorCore1), 1);
+    assertEq(tokens.length, 6);
+    assertEq(tokens[0], 1);
+    assertEq(tokens[1], 2);
+    assertEq(tokens[2], 13);
+    assertEq(tokens[3], 14);
+    assertEq(tokens[4], 15);
+    assertEq(tokens[5], 18);
 
-    // // Test getting instanceIds for tokens
-    // uint256[] memory searchTokens = new uint256[](3);
-    // searchTokens[0] = 1;
-    // searchTokens[1] = 3;
-    // searchTokens[2] = 16;
-    // uint256[] memory instanceIds = example.getInstanceIdsForTokens(address(creatorCore1), searchTokens);
-    // assertEq(instanceIds.length, 3);
-    // assertEq(instanceIds[0], 1);
-    // assertEq(instanceIds[1], 0);
-    // assertEq(instanceIds[2], 2);
+    // Test getting instanceIds for tokens
+    uint256[] memory searchTokens = new uint256[](3);
+    searchTokens[0] = 1;
+    searchTokens[1] = 3;
+    searchTokens[2] = 16;
+    uint256[] memory instanceIds = example.getInstanceIdsForTokens(address(creatorCore1), searchTokens);
+    assertEq(instanceIds.length, 3);
+    assertEq(instanceIds[0], 1);
+    assertEq(instanceIds[1], 0);
+    assertEq(instanceIds[2], 2);
 
-    // // Test getting first token id
-    // edition = example.getEditionInfo(address(creatorCore1), 2);
-    // assertEq(edition.firstTokenId, 16);
+    // Test getting first token id
+    edition = example.getEditionInfo(address(creatorCore1), 2);
+    assertEq(edition.firstTokenId, 16);
 
     vm.stopPrank();
   }
@@ -325,20 +290,14 @@ contract ManifoldERC721EditionTest is Test {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
-    example.createSeries(
-      address(creatorCore1),
-      1,
-      10,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", _emptyRecipients);
 
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
     example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
     vm.stopPrank();
   }
+
 
   function testMintingTooMany(bool withMock) public {
     if (withMock) {
@@ -350,14 +309,7 @@ contract ManifoldERC721EditionTest is Test {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
-    example.createSeries(
-      address(creatorCore1),
-      1,
-      10,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", _emptyRecipients);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
@@ -386,18 +338,12 @@ contract ManifoldERC721EditionTest is Test {
     IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.startPrank(owner);
-    example.createSeries(
-      address(creatorCore1),
-      1,
-      10,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", _emptyRecipients);
 
     IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
     recipients[0].recipient = operator;
     recipients[0].count = 1;
+
 
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
     example.mint(address(creatorCore1), 1, 10, recipients);
@@ -417,43 +363,23 @@ contract ManifoldERC721EditionTest is Test {
     vm.startPrank(owner);
 
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
-    example.createSeries(
-      address(creatorCore1),
-      0,
-      10,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), 0, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", _emptyRecipients);
 
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
     example.createSeries(address(creatorCore1), 1, 0, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
 
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
-    example.createSeries(
-      address(creatorCore1),
-      MAX_UINT_256,
-      10,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "hi",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), MAX_UINT_256, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
 
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
-    example.createSeries(
-      address(creatorCore1),
-      1,
-      10,
-      IManifoldERC721Edition.StorageProtocol.INVALID,
-      "hi",
-      _emptyRecipients
-    );
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.INVALID, "hi", _emptyRecipients);
 
     example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
 
     // Can't create twice
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
     example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
+
 
     vm.stopPrank();
   }
@@ -473,24 +399,10 @@ contract ManifoldERC721EditionTest is Test {
 
     // Mint count 0
     vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
-    example.createSeries(
-      address(creatorCore1),
-      10,
-      1,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1",
-      recipients
-    );
+    example.createSeries(address(creatorCore1), 10, 1, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", recipients);
 
     recipients[0].count = 1;
-    example.createSeries(
-      address(creatorCore1),
-      10,
-      1,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1",
-      recipients
-    );
+    example.createSeries(address(creatorCore1), 10, 1, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", recipients);
 
     // Too many recipients...
     recipients = new IManifoldERC721Edition.Recipient[](11);
@@ -500,14 +412,7 @@ contract ManifoldERC721EditionTest is Test {
     }
 
     vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
-    example.createSeries(
-      address(creatorCore1),
-      11,
-      2,
-      IManifoldERC721Edition.StorageProtocol.NONE,
-      "http://creator1series1",
-      recipients
-    );
+    example.createSeries(address(creatorCore1), 11, 2, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", recipients);
     vm.stopPrank();
   }
 
