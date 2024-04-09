@@ -273,6 +273,10 @@ contract ManifoldERC721EditionTest is Test {
     assertEq(instanceIds[1], 0);
     assertEq(instanceIds[2], 2);
 
+    // Test getting first token id
+    edition = example.getEditionInfo(address(creatorCore1), 2);
+    assertEq(edition.firstTokenId, 16);
+
     vm.stopPrank();
   }
 
