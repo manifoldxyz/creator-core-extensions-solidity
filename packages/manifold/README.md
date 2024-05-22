@@ -87,6 +87,9 @@ See the [developer documentation](https://docs.manifold.xyz/v/manifold-for-devel
 npm install
 ```
 
+Make sure you have foundry installed. If not, follow the instructions here: https://book.getfoundry.sh/getting-started/installation.
+
+
 ### Compile
 ```
 forge build
