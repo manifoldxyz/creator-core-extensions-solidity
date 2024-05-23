@@ -441,7 +441,7 @@ abstract contract BurnRedeemCore is ERC165, AdminControl, ReentrancyGuard, IBurn
         for (uint256 i; i < burnTokens.length;) {
             BurnToken memory burnToken = burnTokens[i];
             BurnItem memory burnItem = burnRedeemInstance.burnSet[burnToken.groupIndex].items[burnToken.itemIndex];
-            if (burnToken.id != tokenIds[i]) {
+            if (burnToken.contractAddress != msg.sender || burnToken.id != tokenIds[i]) {
                 revert InvalidToken(tokenIds[i]);
             }
             if (burnItem.amount * burnRedeemCount != values[i]) {

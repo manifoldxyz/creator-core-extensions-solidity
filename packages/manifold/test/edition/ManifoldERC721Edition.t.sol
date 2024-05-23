@@ -20,6 +20,8 @@ contract ManifoldERC721EditionTest is Test {
 
   address public zeroAddress = address(0);
   address public deadAddress = 0x000000000000000000000000000000000000dEaD;
+  uint256 private constant MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+
 
   function setUp() public {
     vm.startPrank(owner);
@@ -39,93 +41,392 @@ contract ManifoldERC721EditionTest is Test {
     vm.stopPrank();
   }
 
-  function testAccess() public {
+  // Test helper...
+  function mockVersion() internal {
+      vm.mockCall(
+          address(creatorCore1),
+          abi.encodeWithSelector(bytes4(keccak256("VERSION()"))),
+          abi.encode(2)
+      );
+
+  }
+
+  function testAccess(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
     vm.startPrank(operator);
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
 
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.createSeries(address(creatorCore1), 1, "");
+    example.createSeries(address(creatorCore1), 1, 1, IManifoldERC721Edition.StorageProtocol.NONE, "", _emptyRecipients);
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.setTokenURIPrefix(address(creatorCore1), 1, "");
+    example.setTokenURI(address(creatorCore1), 1, IManifoldERC721Edition.StorageProtocol.NONE, "");
     vm.stopPrank();
     vm.startPrank(owner);
-    vm.expectRevert("Invalid series");
-    example.setTokenURIPrefix(address(creatorCore1), 0, "");
+    vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
+    example.setTokenURI(address(creatorCore1), 0, IManifoldERC721Edition.StorageProtocol.NONE, "");
     vm.stopPrank();
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 1;
     vm.startPrank(operator);
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.mint(address(creatorCore1), 1, operator, 1);
-    address[] memory recipients = new address[](1);
-    recipients[0] = operator;
+    example.mint(address(creatorCore1), 1, 0, recipients);
     vm.expectRevert("Must be owner or admin of creator contract");
-    example.mint(address(creatorCore1), 1, recipients);
+    example.mint(address(creatorCore1), 1, 0, recipients);
     vm.stopPrank();
   }
 
-  function testEdition() public {
+  function testEdition(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
     vm.startPrank(owner);
 
-    vm.expectRevert("Too many requested");
-    example.mint(address(creatorCore1), 1, operator, 1);
+    vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
+    example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/");
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1/", _emptyRecipients);
 
-    example.mint(address(creatorCore1), 1, operator, 2);
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 2;
 
-    address[] memory recipients = new address[](2);
-    recipients[0] = operator2;
-    recipients[1] = operator3;
+    example.mint(address(creatorCore1), 1, 0, recipients);
+    
+    // Check the getEdition works
+    ManifoldERC721Edition.EditionInfo memory edition = example.getEditionInfo(address(creatorCore1), 1);
+    assertEq(edition.maxSupply, 10);
+    assertEq(edition.totalSupply, 2);
 
-    example.mint(address(creatorCore1), 1, recipients);
+    recipients = new IManifoldERC721Edition.Recipient[](2);
+
+    recipients[0].recipient = operator2;
+    recipients[0].count = 1;
+    recipients[1].recipient = operator3;
+    recipients[1].count = 1;
+
+    example.mint(address(creatorCore1), 1, 2, recipients);
 
     assertEq(creatorCore1.balanceOf(operator), 2);
     assertEq(creatorCore1.balanceOf(operator2), 1);
     assertEq(creatorCore1.balanceOf(operator3), 1);
 
-    vm.expectRevert("Too many requested");
-    example.mint(address(creatorCore1), 1, operator, 7);
+    recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 7;
+
+    vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
+    example.mint(address(creatorCore1), 1, 4, recipients);
     vm.stopPrank();
   }
 
-  function testEditionIndex() public {
+  function testTokenURI(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
     vm.startPrank(owner);
-    example.createSeries(address(creatorCore1), 10, "http://creator1series1/");
-    example.createSeries(address(creatorCore1), 20, "http://creator1series2/");
-    example.createSeries(address(creatorCore2), 200, "http://creator1series2/");
-    example.createSeries(address(creatorCore3), 300, "http://creator1series2/");
 
-    assertEq(10, example.maxSupply(address(creatorCore1), 1));
-    assertEq(20, example.maxSupply(address(creatorCore1), 2));
-    assertEq(200, example.maxSupply(address(creatorCore2), 1));
-    assertEq(300, example.maxSupply(address(creatorCore3), 1));
+    vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
+    example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
 
-    example.mint(address(creatorCore1), 1, operator, 2);
+    // Create with arweave
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.ARWEAVE, "abcdefgh", _emptyRecipients);
+
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 2;
+
+    example.mint(address(creatorCore1), 1, 0, recipients);
+    assertEq(example.tokenURI(address(creatorCore1), 1), "https://arweave.net/abcdefgh/1");
+
+    // Change to be IPFS based
+    example.setTokenURI(address(creatorCore1), 1, IManifoldERC721Edition.StorageProtocol.IPFS, "abcdefgh");
+    assertEq(example.tokenURI(address(creatorCore1), 1), "ipfs://abcdefgh/1");
+
+    vm.stopPrank();
+  }
+
+
+  function testEditionIndex(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
+    vm.startPrank(owner);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE,  "http://creator1series1", _emptyRecipients);
+    example.createSeries(address(creatorCore1), 2, 20, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2", _emptyRecipients);
+    example.createSeries(address(creatorCore2), 3, 200, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2", _emptyRecipients);
+    example.createSeries(address(creatorCore3), 4, 300, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series2", _emptyRecipients);
+
+    // Get the edition info
+    ManifoldERC721Edition.EditionInfo memory edition = example.getEditionInfo(address(creatorCore1), 1);
+    assertEq(edition.maxSupply, 10);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore1), 2);
+    assertEq(edition.maxSupply, 20);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore2), 3);
+    assertEq(edition.maxSupply, 200);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore3), 4);
+    assertEq(edition.maxSupply, 300);
+    assertEq(edition.totalSupply, 0);
+
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 2;
+
+    example.mint(address(creatorCore1), 1, 0, recipients);
+
+    // Get the edition info
+    edition = example.getEditionInfo(address(creatorCore1), 1);
+    assertEq(edition.maxSupply, 10);
+    assertEq(edition.totalSupply, 2);
+
+    edition = example.getEditionInfo(address(creatorCore1), 2);
+    assertEq(edition.maxSupply, 20);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore2), 3);
+    assertEq(edition.maxSupply, 200);
+    assertEq(edition.totalSupply, 0);
+
+    edition = example.getEditionInfo(address(creatorCore3), 4);
+    assertEq(edition.maxSupply, 300);
+    assertEq(edition.totalSupply, 0);
+
     // Mint some tokens in between
     creatorCore1.mintBaseBatch(owner, 10);
-    example.mint(address(creatorCore1), 1, operator, 3);
+
+    recipients[0].count = 3;
+    example.mint(address(creatorCore1), 1, 2, recipients);
     assertEq("http://creator1series1/3", creatorCore1.tokenURI(13));
     assertEq("http://creator1series1/5", creatorCore1.tokenURI(15));
 
     // Mint series in between
-    example.mint(address(creatorCore1), 2, operator, 2);
-    example.mint(address(creatorCore1), 1, operator, 1);
+    recipients[0].count = 2;
+    example.mint(address(creatorCore1), 2, 0, recipients);
+    recipients[0].count = 1;
+    example.mint(address(creatorCore1), 1, 5, recipients);
 
     // Mint items from other creators in between
-    example.mint(address(creatorCore2), 1, operator, 2);
-    example.mint(address(creatorCore3), 1, operator, 2);
+    recipients[0].count = 2;
+    example.mint(address(creatorCore2), 3, 0, recipients);
+    example.mint(address(creatorCore3), 4, 0, recipients);
 
     assertEq("http://creator1series2/1", creatorCore1.tokenURI(16));
     assertEq("http://creator1series2/2", creatorCore1.tokenURI(17));
     assertEq("http://creator1series1/6", creatorCore1.tokenURI(18));
 
-    vm.expectRevert("Invalid token");
+    vm.expectRevert(IManifoldERC721Edition.InvalidToken.selector);
     example.tokenURI(address(creatorCore1), 6);
-    vm.expectRevert("Invalid token");
+    vm.expectRevert(IManifoldERC721Edition.InvalidToken.selector);
     example.tokenURI(address(creatorCore1), 19);
 
     // Prefix change test
-    example.setTokenURIPrefix(address(creatorCore1), 1, "http://creator1series1new/");
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.setTokenURI(address(creatorCore1), 0, IManifoldERC721Edition.StorageProtocol.INVALID, "");
+    example.setTokenURI(address(creatorCore1), 1, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1new");
     assertEq("http://creator1series1new/3", creatorCore1.tokenURI(13));
     assertEq("http://creator1series1new/5", creatorCore1.tokenURI(15));
+
+    // Test get tokens for instance
+    uint256[] memory tokens = example.getInstanceTokenIds(address(creatorCore1), 1);
+    assertEq(tokens.length, 6);
+    assertEq(tokens[0], 1);
+    assertEq(tokens[1], 2);
+    assertEq(tokens[2], 13);
+    assertEq(tokens[3], 14);
+    assertEq(tokens[4], 15);
+    assertEq(tokens[5], 18);
+
+    // Test getting instanceIds for tokens
+    uint256[] memory searchTokens = new uint256[](3);
+    searchTokens[0] = 1;
+    searchTokens[1] = 3;
+    searchTokens[2] = 16;
+    uint256[] memory instanceIds = example.getInstanceIdsForTokens(address(creatorCore1), searchTokens);
+    assertEq(instanceIds.length, 3);
+    assertEq(instanceIds[0], 1);
+    assertEq(instanceIds[1], 0);
+    assertEq(instanceIds[2], 2);
+
+    // Test getting first token id
+    edition = example.getEditionInfo(address(creatorCore1), 2);
+    assertEq(edition.firstTokenId, 16);
+
+    vm.stopPrank();
+  }
+
+  function testMintingNone(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
+    vm.startPrank(owner);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", _emptyRecipients);
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.mint(address(creatorCore1), 1, 0, new IManifoldERC721Edition.Recipient[](0));
+
+    vm.stopPrank();
+  }
+
+
+  function testMintingTooMany(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
+    vm.startPrank(owner);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", _emptyRecipients);
+
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 11;
+
+    vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
+    example.mint(address(creatorCore1), 1, 0, recipients);
+
+    recipients[0].count = 10;
+    example.mint(address(creatorCore1), 1, 0, recipients);
+
+    recipients[0].count = 1;
+    vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
+    example.mint(address(creatorCore1), 1, 10, recipients);
+
+    vm.stopPrank();
+  }
+
+  function testIncorrectSupply(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
+    vm.startPrank(owner);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", _emptyRecipients);
+
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 1;
+
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.mint(address(creatorCore1), 1, 10, recipients);
+
+    vm.stopPrank();
+  }
+
+  function testCreatingInvalidSeries(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    IManifoldERC721Edition.Recipient[] memory _emptyRecipients = new IManifoldERC721Edition.Recipient[](0);
+
+    vm.startPrank(owner);
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 0, 10, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", _emptyRecipients);
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 1, 0, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), MAX_UINT_256, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.INVALID, "hi", _emptyRecipients);
+
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
+
+    // Can't create twice
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 1, 10, IManifoldERC721Edition.StorageProtocol.NONE, "hi", _emptyRecipients);
+
+
+    vm.stopPrank();
+  }
+
+  function testCreateAndMintSameTime(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    vm.startPrank(owner);
+
+    IManifoldERC721Edition.Recipient[] memory recipients = new IManifoldERC721Edition.Recipient[](1);
+    recipients[0].recipient = operator;
+    recipients[0].count = 0;
+
+    // Mint count 0
+    vm.expectRevert(IManifoldERC721Edition.InvalidInput.selector);
+    example.createSeries(address(creatorCore1), 10, 1, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", recipients);
+
+    recipients[0].count = 1;
+    example.createSeries(address(creatorCore1), 10, 1, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", recipients);
+
+    // Too many recipients...
+    recipients = new IManifoldERC721Edition.Recipient[](11);
+    for (uint i = 0; i < 11; i++) {
+      recipients[i].recipient = operator;
+      recipients[i].count = 1;
+    }
+
+    vm.expectRevert(IManifoldERC721Edition.TooManyRequested.selector);
+    example.createSeries(address(creatorCore1), 11, 2, IManifoldERC721Edition.StorageProtocol.NONE, "http://creator1series1", recipients);
+    vm.stopPrank();
+  }
+
+  function testMaxSupplyNonInitializedMint(bool withMock) public {
+    if (withMock) {
+      mockVersion();
+    } else {
+      vm.clearMockedCalls();
+    }
+
+    vm.startPrank(owner);
+
+    vm.expectRevert(IManifoldERC721Edition.InvalidEdition.selector);
+    example.getEditionInfo(address(creatorCore1), 69);
 
     vm.stopPrank();
   }

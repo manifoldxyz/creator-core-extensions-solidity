@@ -9,40 +9,56 @@ pragma solidity ^0.8.0;
  */
 interface IManifoldERC721Edition {
 
-    event SeriesCreated(address caller, address creator, uint256 series, uint256 maxSupply);
+    error InvalidEdition();
+    error InvalidInput();
+    error TooManyRequested();
+    error InvalidToken();
+
+    event SeriesCreated(address caller, address creatorCore, uint256 series, uint256 maxSupply);
+
+    struct Recipient {
+        address recipient;
+        uint16 count;
+    }
+
+    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
+
+    struct EditionInfo {
+        uint192 firstTokenId;
+        uint8 contractVersion;
+        uint24 totalSupply;
+        uint24 maxSupply;
+        StorageProtocol storageProtocol; 
+        string location;
+    }
 
     /**
      * @dev Create a new series.  Returns the series id.
      */
-    function createSeries(address creator, uint256 maxSupply, string calldata prefix) external returns(uint256);
-
-    /**
-     * @dev Get the latest series created.
-     */
-    function latestSeries(address creator) external view returns(uint256);
+    function createSeries(address creatorCore, uint256 instanceId, uint24 maxSupply_, StorageProtocol storageProtocol, string calldata location, Recipient[] memory recipients) external;
 
     /**
      * @dev Set the token uri prefix
      */
-    function setTokenURIPrefix(address creator, uint256 series, string calldata prefix) external;
+    function setTokenURI(address creatorCore, uint256 instanceId, StorageProtocol storageProtocol, string calldata location) external;
     
     /**
      * @dev Mint NFTs to a single recipient
      */
-    function mint(address creator, uint256 series, address recipient, uint16 count) external;
+    function mint(address creatorCore, uint256 instanceId, uint24 currentSupply, Recipient[] memory recipients) external;
 
     /**
-     * @dev Mint NFTS to the recipients
+     * @dev Get the EditionInfo for a Series
      */
-    function mint(address creator, uint256 series, address[] calldata recipients) external;
+    function getEditionInfo(address creatorCore, uint256 instanceId) external view returns(EditionInfo memory);
 
     /**
-     * @dev Total supply of editions
+     * @dev Get the instance ids for a set of token
      */
-    function totalSupply(address creator, uint256 series) external view returns(uint256);
+    function getInstanceIdsForTokens(address creatorCore, uint256[] calldata tokenIds) external view returns(uint256[] memory);
 
     /**
-     * @dev Max supply of editions
+     * @dev Get all the token ids for an instance
      */
-    function maxSupply(address creator, uint256 series) external view returns(uint256);
+    function getInstanceTokenIds(address creatorCore, uint256 instanceId) external view returns(uint256[] memory);
 }
