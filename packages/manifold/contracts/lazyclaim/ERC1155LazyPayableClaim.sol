@@ -86,8 +86,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         uint256 instanceId,
         ClaimParameters memory claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        Claim memory claim = _claims[creatorContractAddress][instanceId];
-        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
+        Claim memory claim = _getClaim(creatorContractAddress, instanceId);
         require(claimParameters.storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
         require(claimParameters.endDate == 0 || claimParameters.startDate < claimParameters.endDate, "Cannot have startDate greater than or equal to endDate");
         require(claimParameters.erc20 == claim.erc20, "Cannot change payment token");
@@ -122,8 +121,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         StorageProtocol storageProtocol,
         string calldata location
     ) external override creatorAdminRequired(creatorContractAddress) {
-        Claim storage claim = _claims[creatorContractAddress][instanceId];
-        require(claim.storageProtocol != StorageProtocol.INVALID, "Claim not initialized");
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         require(storageProtocol != StorageProtocol.INVALID, "Cannot set invalid storage protocol");
 
         claim.storageProtocol = storageProtocol;
@@ -138,7 +136,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         address creatorContractAddress, uint256 instanceId,
         string calldata locationChunk
     ) external override creatorAdminRequired(creatorContractAddress) {
-        Claim storage claim = _claims[creatorContractAddress][instanceId];
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         require(claim.storageProtocol == StorageProtocol.NONE, "Invalid storage protocol");
         claim.location = string(abi.encodePacked(claim.location, locationChunk));
     }
@@ -308,7 +306,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         require(recipients.length == amounts.length, "Unequal number of recipients and amounts provided");
 
         // Fetch the claim
-        Claim storage claim = _claims[creatorContractAddress][instanceId];
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         uint256 totalAmount;
         for (uint256 i; i < amounts.length;) {

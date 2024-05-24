@@ -103,7 +103,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         ClaimParameters memory claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
         // Sanity checks
-        Claim memory claim = _claims[creatorContractAddress][instanceId];
+        Claim memory claim = _getClaim(creatorContractAddress, instanceId);
         if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
         if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
         if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate) revert InvalidStartDate();
@@ -141,8 +141,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         bool identical,
         string calldata location
     ) external override creatorAdminRequired(creatorContractAddress) {
-        Claim storage claim = _claims[creatorContractAddress][instanceId];
-        if (_claims[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         if (storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
 
         claim.storageProtocol = storageProtocol;
@@ -158,7 +157,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         address creatorContractAddress, uint256 instanceId,
         string calldata locationChunk
     ) external override creatorAdminRequired(creatorContractAddress) {
-        Claim storage claim = _claims[creatorContractAddress][instanceId];
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         if (claim.storageProtocol != StorageProtocol.NONE || !claim.identical) revert InvalidStorageProtocol();
         claim.location = string(abi.encodePacked(claim.location, locationChunk));
         emit ClaimUpdated(creatorContractAddress, instanceId);
@@ -342,7 +341,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         if (recipients.length != amounts.length) revert InvalidAirdrop();
 
         // Fetch the claim, create newMintIndex to keep track of token ids created by the airdrop
-        Claim storage claim = _claims[creatorContractAddress][instanceId];
+        Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         uint256 newMintIndex = claim.total+1;
 
         if (claim.contractVersion >= 3) {
