@@ -38,7 +38,8 @@ interface IGachaLazyClaim {
         
     struct ItemProbability {
         uint32 itemIndex; // this is also the same as arweave index
-        uint16 rate;
+        uint16 rate; // given in basis pts
+        string tier;
     }
 
     struct ClaimParameters {
@@ -50,6 +51,8 @@ interface IGachaLazyClaim {
         address payable paymentReceiver;
         address erc20;
         uint256 cost;
+        uint256 startingTokenId;
+        ItemProbability[] itemProbabilities;
     }
 
     /**
