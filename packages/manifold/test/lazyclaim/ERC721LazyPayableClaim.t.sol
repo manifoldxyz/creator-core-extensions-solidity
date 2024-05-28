@@ -4,15 +4,27 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../../contracts/lazyclaim/ERC721LazyPayableClaim.sol";
 import "../../contracts/lazyclaim/IERC721LazyPayableClaim.sol";
+import "../../contracts/lazyclaim/IERC721LazyPayableClaimMetadata.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "../mocks/delegation-registry/DelegationRegistry.sol";
 import "../mocks/delegation-registry/DelegationRegistryV2.sol";
 import "../mocks/Mock.sol";
 import "../../lib/murky/src/Merkle.sol";
 
+contract ERC721LazyPayableClaimMetadata is IERC721LazyPayableClaimMetadata {
+  using Strings for uint256;
+
+  function tokenURI(address creatorContract, uint256 tokenId, uint256 instanceId, uint24 mintOrder) external pure override returns (string memory) {
+    return string(abi.encodePacked(uint256(uint160(creatorContract)).toString(), "/", tokenId.toString(), "/", instanceId.toString(), "/", uint256(mintOrder).toString()));
+  }
+}
+
 contract ERC721LazyPayableClaimTest is Test {
+  using Strings for uint256;
+
   ERC721LazyPayableClaim public example;
   ERC721Creator public creatorCore;
+  ERC721LazyPayableClaimMetadata public metadata;
   DelegationRegistry public delegationRegistry;
   DelegationRegistryV2 public delegationRegistryV2;
   MockManifoldMembership public manifoldMembership;
@@ -33,6 +45,7 @@ contract ERC721LazyPayableClaimTest is Test {
     example = new ERC721LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
+    metadata = new ERC721LazyPayableClaimMetadata();
 
     creatorCore.registerExtension(address(example), "override");
     merkle = new Merkle();
@@ -147,12 +160,16 @@ contract ERC721LazyPayableClaimTest is Test {
       signingAddress: zeroAddress
     });
 
-    vm.expectRevert(InvalidStorageProtocol.selector);
+    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
+    example.initializeClaim(address(creatorCore), 1, claimP);
+
+    claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ADDRESS;
+    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     claimP.startDate = nowC + 2000;
     claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ARWEAVE;
-    vm.expectRevert(InvalidStartDate.selector);
+    vm.expectRevert(ILazyPayableClaim.InvalidStartDate.selector);
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     claimP.startDate = nowC;
@@ -161,7 +178,7 @@ contract ERC721LazyPayableClaimTest is Test {
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     claimP.merkleRoot = "";
-    vm.expectRevert(ClaimNotInitialized.selector);
+    vm.expectRevert(ILazyPayableClaim.ClaimNotInitialized.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
 
     vm.stopPrank();
@@ -190,18 +207,28 @@ contract ERC721LazyPayableClaimTest is Test {
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.INVALID;
-    vm.expectRevert(InvalidStorageProtocol.selector);
+    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
 
+    claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ADDRESS;
+    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
+    example.updateClaim(address(creatorCore), 1, claimP);
+    
     claimP.startDate = nowC + 2000;
     claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ARWEAVE;
-    vm.expectRevert(InvalidStartDate.selector);
+    vm.expectRevert(ILazyPayableClaim.InvalidStartDate.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
 
     claimP.startDate = nowC;
     claimP.erc20 = 0x0000000000000000000000000000000000000001;
-    vm.expectRevert("Cannot change payment token");
+    vm.expectRevert(ILazyPayableClaim.CannotChangePaymentToken.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
+
+    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
+    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaim.StorageProtocol.INVALID, true, "");
+
+    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
+    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaim.StorageProtocol.ADDRESS, true, "");
 
     vm.stopPrank();
   }
@@ -275,7 +302,7 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.startPrank(other3);
     bytes32[] memory merkleProof4 = merkle.getProof(allowListTuples, uint32(3));
 
-    vm.expectRevert(TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
     example.mint{ value: mintFee }(address(creatorCore), 1, 3, merkleProof4, other3);
 
     claimP.totalMax = 4;
@@ -330,14 +357,14 @@ contract ERC721LazyPayableClaimTest is Test {
     bytes32[][] memory proofsInput = new bytes32[][](1);
     proofsInput[0] = merkleProof1;
 
-    vm.expectRevert(InvalidInput.selector);
+    vm.expectRevert(ILazyPayableClaim.InvalidInput.selector);
     example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, owner);
 
     amountsInput = new uint32[](2);
     amountsInput[0] = 0;
     amountsInput[1] = 0;
 
-    vm.expectRevert(InvalidInput.selector);
+    vm.expectRevert(ILazyPayableClaim.InvalidInput.selector);
     example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
 
     amountsInput = new uint32[](1);
@@ -345,7 +372,7 @@ contract ERC721LazyPayableClaimTest is Test {
     proofsInput = new bytes32[][](2);
     proofsInput[0] = merkleProof1;
     proofsInput[1] = merkleProof1;
-    vm.expectRevert(InvalidInput.selector);
+    vm.expectRevert(ILazyPayableClaim.InvalidInput.selector);
     example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
 
     proofsInput = new bytes32[][](1);
@@ -401,7 +428,7 @@ contract ERC721LazyPayableClaimTest is Test {
 
     proofsInput = new bytes32[][](1);
     proofsInput[0] = merkleProof4;
-    vm.expectRevert(TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
     example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, other3);
 
     vm.stopPrank();
@@ -418,7 +445,7 @@ contract ERC721LazyPayableClaimTest is Test {
     proofsInput = new bytes32[][](2);
     proofsInput[0] = merkleProof4;
     proofsInput[1] = merkleProof5;
-    vm.expectRevert(TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
     example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other3);
 
     vm.stopPrank();
@@ -483,17 +510,17 @@ contract ERC721LazyPayableClaimTest is Test {
 
     vm.stopPrank();
     vm.startPrank(owner);
-    vm.expectRevert(TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
     example.mintBatch{ value: mintFee * 4 }(address(creatorCore), 1, 4, new uint32[](0), new bytes32[][](0), owner);
 
     example.mintBatch{ value: mintFee * 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
 
-    vm.expectRevert(TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
     example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
 
     vm.stopPrank();
     vm.startPrank(other2);
-    vm.expectRevert(TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
     example.mintBatch{ value: mintFee * 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other2);
 
     example.mintBatch{ value: mintFee * 2 }(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), other2);
@@ -585,7 +612,7 @@ contract ERC721LazyPayableClaimTest is Test {
       startDate: nowC,
       endDate: later,
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
-      identical: true,
+      identical: false,
       cost: 1,
       paymentReceiver: payable(owner),
       erc20: zeroAddress,
@@ -618,7 +645,65 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.stopPrank();
     vm.startPrank(other3);
     example.mint{ value: mintFee }(address(creatorCore), 1, 0, new bytes32[](0), other3);
-    assertEq("1", creatorCore.tokenURI(1));
+    assertEq("https://arweave.net/XXX/1", creatorCore.tokenURI(2));
+    assertEq("https://arweave.net/XXX/2", creatorCore.tokenURI(3));
+    assertEq("https://arweave.net/XXX/3", creatorCore.tokenURI(5));
+
+    vm.stopPrank();
+  }
+
+
+  function testTokenURIAddress() public {
+    vm.startPrank(owner);
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    uint mintFee = example.MINT_FEE() + 1;
+    uint256 instanceId = 101;
+
+    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
+      merkleRoot: "",
+      location: abi.encodePacked(address(metadata)),
+      totalMax: 11,
+      walletMax: 3,
+      startDate: nowC,
+      endDate: later,
+      storageProtocol: ILazyPayableClaim.StorageProtocol.ADDRESS,
+      identical: true,
+      cost: 1,
+      paymentReceiver: payable(owner),
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
+    });
+
+    example.initializeClaim(address(creatorCore), instanceId, claimP);
+
+    address[] memory recipientsInput = new address[](1);
+    recipientsInput[0] = other;
+    uint16[] memory amountsInput = new uint16[](1);
+    amountsInput[0] = 1;
+    string[] memory urisInput = new string[](1);
+    urisInput[0] = "";
+    // Mint a token using creator contract, to test breaking up extension's indexRange
+    creatorCore.mintBase(other);
+
+    vm.stopPrank();
+    vm.startPrank(other);
+    // Mint 2 tokens using the extension
+    example.mint{ value: mintFee }(address(creatorCore), instanceId, 0, new bytes32[](0), other);
+    vm.stopPrank();
+    vm.startPrank(other2);
+    example.mint{ value: mintFee }(address(creatorCore), instanceId, 0, new bytes32[](0), other2);
+    // Mint a token using creator contract, to test breaking up extension's indexRange
+    vm.stopPrank();
+    vm.startPrank(owner);
+    creatorCore.mintBase(other);
+    // Mint 1 token using the extension
+    vm.stopPrank();
+    vm.startPrank(other3);
+    example.mint{ value: mintFee }(address(creatorCore), instanceId, 0, new bytes32[](0), other3);
+    assertEq(string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/2/101/1")), creatorCore.tokenURI(2));
+    assertEq(string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/3/101/2")), creatorCore.tokenURI(3));
+    assertEq(string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/5/101/3")), creatorCore.tokenURI(5));
 
     vm.stopPrank();
   }
@@ -659,7 +744,7 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.stopPrank();
     vm.startPrank(owner);
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
-    vm.expectRevert(ClaimNotInitialized.selector);
+    vm.expectRevert(ILazyPayableClaim.ClaimNotInitialized.selector);
     example.mint(address(creatorCore), 1, 0, merkleProof1, owner);
 
     example.initializeClaim(address(creatorCore), 1, claimP);
@@ -691,7 +776,7 @@ contract ERC721LazyPayableClaimTest is Test {
     // Mint a token to random wallet
     vm.stopPrank();
     vm.startPrank(owner);
-    vm.expectRevert(ClaimInactive.selector);
+    vm.expectRevert(ILazyPayableClaim.ClaimInactive.selector);
     example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, owner);
 
     vm.warp(nowC + 501);
@@ -732,7 +817,7 @@ contract ERC721LazyPayableClaimTest is Test {
 
     // Optional parameters - using claim 2
     // Cannot mint for someone else
-    vm.expectRevert(InvalidInput.selector);
+    vm.expectRevert(ILazyPayableClaim.InvalidInput.selector);
     example.mint{ value: mintFee }(address(creatorCore), 2, 0, new bytes32[](0), other);
 
     example.mint{ value: mintFee + 1 }(address(creatorCore), 2, 0, new bytes32[](0), owner);
@@ -748,7 +833,7 @@ contract ERC721LazyPayableClaimTest is Test {
 
     vm.stopPrank();
     vm.startPrank(other2);
-    vm.expectRevert(ClaimInactive.selector);
+    vm.expectRevert(ILazyPayableClaim.ClaimInactive.selector);
     example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 2, merkleProof3, other2);
 
     // Passes with valid withdrawal amount from owner
@@ -786,13 +871,15 @@ contract ERC721LazyPayableClaimTest is Test {
       erc20: zeroAddress,
       signingAddress: zeroAddress
     });
-
-    example.initializeClaim(address(creatorCore), 1, claimP);
-
     address[] memory receivers = new address[](1);
     receivers[0] = other;
     uint16[] memory amounts = new uint16[](1);
     amounts[0] = 1;
+
+    vm.expectRevert(ILazyPayableClaim.ClaimNotInitialized.selector);
+    example.airdrop(address(creatorCore), 1, receivers, amounts);
+
+    example.initializeClaim(address(creatorCore), 1, claimP);
     // Perform an airdrop
     example.airdrop(address(creatorCore), 1, receivers, amounts);
 

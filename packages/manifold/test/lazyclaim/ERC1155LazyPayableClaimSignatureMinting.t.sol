@@ -92,7 +92,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       uint16 mintCount = uint16(3);
       bytes32 nonce = "1";
       uint expiration = uint(block.timestamp) + uint(120);
-      bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
+      bytes32 message = keccak256(abi.encodePacked(address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
 
       (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
       bytes memory signature = abi.encodePacked(r, s, v);
@@ -123,7 +123,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         expiration
       );
 
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other, expiration, mintCount));
+      message = keccak256(abi.encodePacked(address(creatorCore), uint256(1), nonce, other, expiration, mintCount));
 
       // Cannot replay same tx with same nonce, even with different mintfor
       vm.expectRevert("Cannot replay transaction");
@@ -139,7 +139,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       );
 
       expiration = uint(block.timestamp) + uint(121);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked(address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
 
       // Cannot replay same tx with same nonce, even with different expiration
       vm.expectRevert("Cannot replay transaction");
@@ -157,12 +157,12 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       // Bad message signed
       nonce = "2";
       expiration = uint(block.timestamp) + uint(120);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), nonce, uint256(1), other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked(address(creatorCore), nonce, uint256(1), other2, expiration, mintCount));
 
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
 
-      vm.expectRevert(InvalidSignature.selector);
+      vm.expectRevert(ILazyPayableClaim.InvalidSignature.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
@@ -177,10 +177,10 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       // Correct message, wrong signer
       nonce = "2";
       expiration = uint(block.timestamp) + uint(120);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked(address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
-      vm.expectRevert(InvalidSignature.selector);
+      vm.expectRevert(ILazyPayableClaim.InvalidSignature.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
@@ -195,10 +195,10 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       // Expired signature
       nonce = "2";
       expiration = uint(0);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked(address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
-      vm.expectRevert(ExpiredSignature.selector);
+      vm.expectRevert(ILazyPayableClaim.ExpiredSignature.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
@@ -214,13 +214,13 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       assertEq(3, creatorCore.balanceOf(other2, 1));
 
       // Cannot mint other ways when signature is non-zero
-      vm.expectRevert(MustUseSignatureMinting.selector);
+      vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mint{ value: mintFee * 3 }(address(creatorCore), 1, uint16(3), new bytes32[](0), other);
 
-      vm.expectRevert(MustUseSignatureMinting.selector);
+      vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mintBatch{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
 
-      vm.expectRevert(MustUseSignatureMinting.selector);
+      vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mintProxy{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
 
       // Other owns none because all mints with other methods failed
@@ -239,10 +239,10 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       vm.startPrank(other);
       nonce = "2";
       expiration = uint(block.timestamp) + uint(120);
-      message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
+      message = keccak256(abi.encodePacked(address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
-      vm.expectRevert(MustUseSignatureMinting.selector);
+      vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
