@@ -8,7 +8,22 @@ pragma solidity ^0.8.0;
  * Lazy Payable Claim interface
  */
 interface ILazyPayableClaim {
-    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS }
+    error InvalidStorageProtocol();
+    error ClaimNotInitialized();
+    error InvalidStartDate();
+    error InvalidAirdrop();
+    error TokenDNE();
+    error InvalidInstance();
+    error InvalidInput();
+    error ClaimInactive();
+    error TooManyRequested();
+    error MustUseSignatureMinting();
+    error FailedToTransfer();
+    error InvalidSignature();
+    error ExpiredSignature();
+    error CannotChangePaymentToken();
+
+    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS, ADDRESS }
     
     event ClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
     event ClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);

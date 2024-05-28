@@ -13,14 +13,6 @@ import ".././libraries/manifold-membership/IManifoldMembership.sol";
 
 import "./ILazyPayableClaim.sol";
 
-error InvalidInput();
-error ClaimInactive();
-error TooManyRequested();
-error MustUseSignatureMinting();
-error FailedToTransfer();
-error InvalidSignature();
-error ExpiredSignature();
-
 /**
  * @title Lazy Payable Claim
  * @author manifold.xyz
@@ -83,7 +75,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
      */
     function withdraw(address payable receiver, uint256 amount) external override adminRequired {
         (bool sent, ) = receiver.call{value: amount}("");
-        if (!sent) revert FailedToTransfer();
+        if (!sent) revert ILazyPayableClaim.FailedToTransfer();
     }
 
     /**
@@ -120,7 +112,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         if (erc20 == ADDRESS_ZERO && cost != 0) {
             // solhint-disable-next-line
             (bool sent, ) = recipient.call{value: cost}("");
-            if (!sent) revert FailedToTransfer();
+            if (!sent) revert ILazyPayableClaim.FailedToTransfer();
         }
     }
 
@@ -134,47 +126,47 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) internal {
         // Check timestamps
-        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
+        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ILazyPayableClaim.ClaimInactive();
         
         if (merkleRoot != "") {
             // Merkle mint
             _checkMerkleAndUpdate(msg.sender, creatorContractAddress, instanceId, merkleRoot, mintIndex, merkleProof, mintFor);
         } else {
-            if (mintFor != msg.sender) revert InvalidInput();
+            if (mintFor != msg.sender) revert ILazyPayableClaim.InvalidInput();
             // Non-merkle mint
             if (walletMax != 0) {
-                if (++_mintsPerWallet[creatorContractAddress][instanceId][msg.sender] > walletMax) revert TooManyRequested();
+                if (++_mintsPerWallet[creatorContractAddress][instanceId][msg.sender] > walletMax) revert ILazyPayableClaim.TooManyRequested();
             }
         }
     }
 
     function _validateMint(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
-        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
+        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ILazyPayableClaim.ClaimInactive();
         
         if (merkleRoot != "") {
-            if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) revert InvalidInput();
+            if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) revert ILazyPayableClaim.InvalidInput();
             // Merkle mint
             for (uint256 i; i < mintCount;) {
                 _checkMerkleAndUpdate(msg.sender, creatorContractAddress, instanceId, merkleRoot, mintIndices[i], merkleProofs[i], mintFor);
                 unchecked { ++i; }
             }
         } else {
-            if (mintFor != msg.sender) revert InvalidInput();
+            if (mintFor != msg.sender) revert ILazyPayableClaim.InvalidInput();
             // Non-merkle mint
             if (walletMax != 0) {
                 _mintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
-                if (_mintsPerWallet[creatorContractAddress][instanceId][mintFor] > walletMax) revert TooManyRequested();
+                if (_mintsPerWallet[creatorContractAddress][instanceId][mintFor] > walletMax) revert ILazyPayableClaim.TooManyRequested();
             }
         }
     }
 
     function _validateMintProxy(address creatorContractAddress, uint256 instanceId, uint48 startDate, uint48 endDate, uint32 walletMax, bytes32 merkleRoot, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) internal {
         // Check timestamps
-        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
+        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ILazyPayableClaim.ClaimInactive();
         
         if (merkleRoot != "") {
-            if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) revert InvalidInput();
+            if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) revert ILazyPayableClaim.InvalidInput();
             // Merkle mint
             for (uint256 i; i < mintCount;) {
                 // Proxy mints treat the mintFor as the transaction sender
@@ -185,16 +177,16 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
             // Non-merkle mint
             if (walletMax != 0) {
                 _mintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
-                if (_mintsPerWallet[creatorContractAddress][instanceId][mintFor] > walletMax) revert TooManyRequested();
+                if (_mintsPerWallet[creatorContractAddress][instanceId][mintFor] > walletMax) revert ILazyPayableClaim.TooManyRequested();
             }
         }
     }
 
     function _validateMintSignature(uint48 startDate, uint48 endDate, bytes calldata signature, address signingAddress) internal view {
-        if (signingAddress == address(0)) revert MustUseSignatureMinting();
-        if (signature.length <= 0) revert InvalidInput();
+        if (signingAddress == address(0)) revert ILazyPayableClaim.MustUseSignatureMinting();
+        if (signature.length <= 0) revert ILazyPayableClaim.InvalidInput();
         // Check timestamps
-        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ClaimInactive();
+        if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert ILazyPayableClaim.ClaimInactive();
     }
 
     function _checkMerkleAndUpdate(address sender, address creatorContractAddress, uint256 instanceId, bytes32 merkleRoot, uint32 mintIndex, bytes32[] memory merkleProof, address mintFor) private {
@@ -228,14 +220,20 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         // Verify nonce usage/re-use
         require(!_usedMessages[creatorContractAddress][instanceId][nonce], "Cannot replay transaction");
         address signer = message.recover(signature);
-        if (message != expectedMessage || signer != signingAddress) revert InvalidSignature();
-        if (block.timestamp > expiration)  revert ExpiredSignature();
+        if (message != expectedMessage || signer != signingAddress) revert ILazyPayableClaim.InvalidSignature();
+        if (block.timestamp > expiration)  revert ILazyPayableClaim.ExpiredSignature();
         _usedMessages[creatorContractAddress][instanceId][nonce] = true;
     }
 
     function _getTotalMints(uint32 walletMax, address minter, address creatorContractAddress, uint256 instanceId) internal view returns(uint32) {
         require(walletMax != 0, "Can only retrieve for non-merkle claims with walletMax");
         return uint32(_mintsPerWallet[creatorContractAddress][instanceId][minter]);
+    }
+
+    function _bytesToAddress(bytes memory b) internal pure returns (address a) {
+        assembly {
+            a := mload(add(b,20))
+        } 
     }
 
 }

@@ -163,7 +163,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
 
-      vm.expectRevert(InvalidSignature.selector);
+      vm.expectRevert(ILazyPayableClaim.InvalidSignature.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
@@ -181,7 +181,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
-      vm.expectRevert(InvalidSignature.selector);
+      vm.expectRevert(ILazyPayableClaim.InvalidSignature.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
@@ -199,7 +199,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
-      vm.expectRevert(ExpiredSignature.selector);
+      vm.expectRevert(ILazyPayableClaim.ExpiredSignature.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
@@ -215,13 +215,13 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       assertEq(3, creatorCore.balanceOf(other2));
 
       // Cannot mint other ways when signature is non-zero
-      vm.expectRevert(MustUseSignatureMinting.selector);
+      vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mint{ value: mintFee * 3 }(address(creatorCore), 1, uint16(3), new bytes32[](0), other);
 
-      vm.expectRevert(MustUseSignatureMinting.selector);
+      vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mintBatch{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
 
-      vm.expectRevert(MustUseSignatureMinting.selector);
+      vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mintProxy{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
 
       // Other owns none because all mints with other methods failed
@@ -243,7 +243,7 @@ contract ERC721LazyPayableClaimSignatureMintingTest is Test {
       message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", address(creatorCore), uint256(1), nonce, other2, expiration, mintCount));
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
-      vm.expectRevert(MustUseSignatureMinting.selector);
+      vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mintSignature{value: mintFee*3}(
         address(creatorCore),
         1,
