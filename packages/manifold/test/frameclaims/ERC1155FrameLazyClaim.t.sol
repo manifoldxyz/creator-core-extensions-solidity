@@ -544,8 +544,7 @@ contract ERC1155FrameLazyClaimTest is Test {
     }
 
     function _constructSubmission(IFramePaymaster.ExtensionMint[] memory extensionMints, uint256 fid, uint256 expiration, uint256 nonce, uint256 totalAmount) internal view returns (IFramePaymaster.MintSubmission memory submission) {
-        bytes memory messageData = abi.encode(extensionMints, fid, expiration, nonce, totalAmount);
-        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageData));
+        bytes32 message = keccak256(abi.encode(extensionMints, fid, expiration, nonce, totalAmount));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
         bytes memory signature = abi.encodePacked(r, s, v);
