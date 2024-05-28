@@ -103,8 +103,7 @@ contract PhysicalClaim is IPhysicalClaim, ReentrancyGuard, AdminControl {
     function _validateSubmission(BurnSubmission memory submission) private {
         if (block.timestamp > submission.expiration) revert ExpiredSignature();
         // Verify valid message based on input variables
-        bytes memory messageData = abi.encode(submission.instanceId, submission.burnTokens, submission.variation, submission.variationLimit, submission.totalLimit, submission.erc20, submission.price, submission.fundsRecipient, submission.expiration, submission.nonce);
-        bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageData));
+        bytes32 expectedMessage = keccak256(abi.encode(submission.instanceId, submission.burnTokens, submission.variation, submission.variationLimit, submission.totalLimit, submission.erc20, submission.price, submission.fundsRecipient, submission.expiration, submission.nonce));
         address signer = submission.message.recover(submission.signature);
         if (submission.message != expectedMessage || signer != _signingAddress) revert InvalidSignature();
         if (_usedNonces[submission.instanceId][submission.nonce]) revert InvalidNonce();

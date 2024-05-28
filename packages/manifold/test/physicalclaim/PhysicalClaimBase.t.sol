@@ -15,8 +15,7 @@ abstract contract PhysicalClaimBase is Test {
     }
 
     function _constructSubmission(uint256 instanceId, IPhysicalClaim.BurnToken[] memory burnTokens, uint8 variation, uint64 variationLimit, uint64 totalLimit, address erc20, uint256 price, address payable fundsRecipient, uint160 expiration, bytes32 nonce) internal view returns (IPhysicalClaim.BurnSubmission memory submission) {
-        bytes memory messageData = abi.encode(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce);
-        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageData));
+        bytes32 message = keccak256(abi.encode(instanceId, burnTokens, variation, variationLimit, totalLimit, erc20, price, fundsRecipient, expiration, nonce));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
         bytes memory signature = abi.encodePacked(r, s, v);
