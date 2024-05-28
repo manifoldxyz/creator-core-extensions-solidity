@@ -96,8 +96,7 @@ contract FramePaymaster is IFramePaymaster, AdminControl {
     function _validateCheckout(MintSubmission calldata submission) private {
         if (block.timestamp > submission.expiration) revert ExpiredSignature();
         // Verify valid message based on input variables
-        bytes memory messageData = abi.encode(submission.extensionMints, submission.fid, submission.expiration, submission.nonce, msg.value);
-        bytes32 expectedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageData));
+        bytes32 expectedMessage = keccak256(abi.encodePacked(abi.encode(submission.extensionMints, submission.fid, submission.expiration, submission.nonce, msg.value)));
         address signer = submission.message.recover(submission.signature);
         if (submission.message != expectedMessage || signer != _signer) revert InvalidSignature();
         if (_usedNonces[submission.fid][submission.nonce]) revert InvalidNonce();
