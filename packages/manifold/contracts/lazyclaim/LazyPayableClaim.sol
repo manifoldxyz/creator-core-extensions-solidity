@@ -216,7 +216,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
 
     function _checkSignatureAndUpdate(address creatorContractAddress, uint256 instanceId, bytes calldata signature, bytes32 message, bytes32 nonce, address signingAddress, address mintFor, uint256 expiration, uint16 mintCount) internal {
         // Verify valid message based on input variables
-        bytes32 expectedMessage = keccak256(abi.encode(creatorContractAddress, instanceId, nonce, mintFor, expiration, mintCount));
+        bytes32 expectedMessage = keccak256(abi.encodePacked(creatorContractAddress, instanceId, nonce, mintFor, expiration, mintCount));
         // Verify nonce usage/re-use
         require(!_usedMessages[creatorContractAddress][instanceId][nonce], "Cannot replay transaction");
         address signer = message.recover(signature);
