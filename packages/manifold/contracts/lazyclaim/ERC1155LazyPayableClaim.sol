@@ -49,7 +49,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
 
         // Sanity checks
         if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert ILazyPayableClaim.InvalidStorageProtocol();
-        if (claimParameters.storageProtocol == StorageProtocol.ADDRESS && claimParameters.location.length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
+        if (claimParameters.storageProtocol == StorageProtocol.ADDRESS && bytes(claimParameters.location).length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
         if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate) revert ILazyPayableClaim.InvalidStartDate();
         require(claimParameters.merkleRoot == "" || claimParameters.walletMax == 0, "Cannot provide both walletMax and merkleRoot");
 
@@ -90,7 +90,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     ) external override creatorAdminRequired(creatorContractAddress) {
         Claim memory claim = _getClaim(creatorContractAddress, instanceId);
         if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert ILazyPayableClaim.InvalidStorageProtocol();
-        if (claimParameters.storageProtocol == StorageProtocol.ADDRESS && claimParameters.location.length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
+        if (claimParameters.storageProtocol == StorageProtocol.ADDRESS && bytes(claimParameters.location).length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
         if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate) revert ILazyPayableClaim.InvalidStartDate();
         if (claimParameters.erc20 != claim.erc20) revert ILazyPayableClaim.CannotChangePaymentToken();
         if (claimParameters.totalMax != 0 && claim.total > claimParameters.totalMax) {
@@ -122,11 +122,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
     function updateTokenURIParams(
         address creatorContractAddress, uint256 instanceId,
         StorageProtocol storageProtocol,
-        bytes calldata location
+        string calldata location
     ) external override creatorAdminRequired(creatorContractAddress) {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         if (storageProtocol == StorageProtocol.INVALID) revert ILazyPayableClaim.InvalidStorageProtocol();
-        if (storageProtocol == StorageProtocol.ADDRESS && location.length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
+        if (storageProtocol == StorageProtocol.ADDRESS && bytes(location).length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
 
         claim.storageProtocol = storageProtocol;
         claim.location = location;
@@ -138,11 +138,11 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
      */
     function extendTokenURI(
         address creatorContractAddress, uint256 instanceId,
-        bytes calldata locationChunk
+        string calldata locationChunk
     ) external override creatorAdminRequired(creatorContractAddress) {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         if (claim.storageProtocol != StorageProtocol.NONE) revert ILazyPayableClaim.InvalidStorageProtocol();
-        claim.location = abi.encodePacked(claim.location, locationChunk);
+        claim.location = string(abi.encodePacked(claim.location, locationChunk));
     }
 
     /**
@@ -345,7 +345,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         Claim memory claim = _claims[creatorContractAddress][instanceId];
 
         if (claim.storageProtocol == StorageProtocol.ADDRESS) {
-            return IERC1155LazyPayableClaimMetadata(_bytesToAddress(claim.location)).tokenURI(creatorContractAddress, tokenId, instanceId);
+            return IERC1155LazyPayableClaimMetadata(_bytesToAddress(bytes(claim.location))).tokenURI(creatorContractAddress, tokenId, instanceId);
         }
 
         string memory prefix = "";

@@ -642,7 +642,7 @@ contract ERC1155LazyPayableClaimTest is Test {
 
     IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
       merkleRoot: "",
-      location: abi.encodePacked(address(metadata)),
+      location: string(abi.encodePacked(address(metadata))),
       totalMax: 11,
       walletMax: 3,
       startDate: nowC,
