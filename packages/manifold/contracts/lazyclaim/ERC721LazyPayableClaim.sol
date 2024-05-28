@@ -58,7 +58,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
 
         // Sanity checks
         if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert ILazyPayableClaim.InvalidStorageProtocol();
-        if (claimParameters.storageProtocol == StorageProtocol.ADDRESS && claimParameters.location.length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
+        if (claimParameters.storageProtocol == StorageProtocol.ADDRESS && bytes(claimParameters.location).length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
         if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate) revert ILazyPayableClaim.InvalidStartDate();
         require(claimParameters.merkleRoot == "" || claimParameters.walletMax == 0, "Cannot provide both walletMax and merkleRoot");
 
@@ -100,7 +100,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         // Sanity checks
         Claim memory claim = _getClaim(creatorContractAddress, instanceId);
         if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert ILazyPayableClaim.InvalidStorageProtocol();
-        if (claimParameters.storageProtocol == StorageProtocol.ADDRESS && claimParameters.location.length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
+        if (claimParameters.storageProtocol == StorageProtocol.ADDRESS && bytes(claimParameters.location).length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
         if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate) revert ILazyPayableClaim.InvalidStartDate();
         if (claimParameters.erc20 != claim.erc20) revert ILazyPayableClaim.CannotChangePaymentToken();
         if (claimParameters.totalMax != 0 && claim.total > claimParameters.totalMax) {
@@ -134,11 +134,11 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         address creatorContractAddress, uint256 instanceId,
         StorageProtocol storageProtocol,
         bool identical,
-        bytes calldata location
+        string calldata location
     ) external override creatorAdminRequired(creatorContractAddress) {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         if (storageProtocol == StorageProtocol.INVALID) revert ILazyPayableClaim.InvalidStorageProtocol();
-        if (storageProtocol == StorageProtocol.ADDRESS && location.length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
+        if (storageProtocol == StorageProtocol.ADDRESS && bytes(location).length != 20) revert ILazyPayableClaim.InvalidStorageProtocol();
 
         claim.storageProtocol = storageProtocol;
         claim.location = location;
@@ -151,11 +151,11 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
      */
     function extendTokenURI(
         address creatorContractAddress, uint256 instanceId,
-        bytes calldata locationChunk
+        string calldata locationChunk
     ) external override creatorAdminRequired(creatorContractAddress) {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
         if (claim.storageProtocol != StorageProtocol.NONE || !claim.identical) revert ILazyPayableClaim.InvalidStorageProtocol();
-        claim.location = abi.encodePacked(claim.location, locationChunk);
+        claim.location = string(abi.encodePacked(claim.location, locationChunk));
         emit ClaimUpdated(creatorContractAddress, instanceId);
     }
 
@@ -403,7 +403,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         }
 
         if (claim.storageProtocol == StorageProtocol.ADDRESS) {
-            return IERC721LazyPayableClaimMetadata(_bytesToAddress(claim.location)).tokenURI(creatorContractAddress, tokenId, instanceId, mintOrder);
+            return IERC721LazyPayableClaimMetadata(_bytesToAddress(bytes(claim.location))).tokenURI(creatorContractAddress, tokenId, instanceId, mintOrder);
         }
 
         string memory prefix = "";

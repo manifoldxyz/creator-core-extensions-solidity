@@ -18,7 +18,7 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
         uint48 endDate;
         StorageProtocol storageProtocol;
         bytes32 merkleRoot;
-        bytes location;
+        string location;
         uint256 cost;
         address payable paymentReceiver;
         address erc20;
@@ -33,7 +33,7 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
         uint48 endDate;
         StorageProtocol storageProtocol;
         bytes32 merkleRoot;
-        bytes location;
+        string location;
         uint256 tokenId;
         uint256 cost;
         address payable paymentReceiver;
@@ -64,7 +64,7 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
      * @param storageProtocol           the new storage protocol
      * @param location                  the new location
      */
-    function updateTokenURIParams(address creatorContractAddress, uint256 instanceId, StorageProtocol storageProtocol, bytes calldata location) external;
+    function updateTokenURIParams(address creatorContractAddress, uint256 instanceId, StorageProtocol storageProtocol, string calldata location) external;
 
     /**
      * @notice extend tokenURI parameters for an existing claim at instanceId.  Must have NONE StorageProtocol
@@ -72,7 +72,7 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
      * @param instanceId                the claim instanceId for the creator contract
      * @param locationChunk             the additional location chunk
      */
-    function extendTokenURI(address creatorContractAddress, uint256 instanceId, bytes calldata locationChunk) external;
+    function extendTokenURI(address creatorContractAddress, uint256 instanceId, string calldata locationChunk) external;
 
     /**
      * @notice get a claim corresponding to a creator contract and instanceId
