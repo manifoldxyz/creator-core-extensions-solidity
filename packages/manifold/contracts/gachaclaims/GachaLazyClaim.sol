@@ -24,12 +24,9 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
   address internal constant ADDRESS_ZERO = 0x0000000000000000000000000000000000000000;
 
   // { contractAddress => { instanceId => { walletAddress => reservedMints } } }
-  mapping(address => mapping(uint256 => mapping(address => uint64))) internal _reservedMintsPerWallet;
+  mapping(address => mapping(uint256 => mapping(address => uint32))) internal _reservedMintsPerWallet;
   // { contractAddress => { instanceId => { walletAddress => deliveredMints } } }
-  mapping(address => mapping(uint256 => mapping(address => uint64))) internal _deliveredMintsPerWallet;
-
-  //   // { creatorContractAddress => { instanceId => nonce => t/f  } }
-  //   mapping(address => mapping(uint256 => mapping(bytes32 => bool))) internal _usedMessages;
+  mapping(address => mapping(uint256 => mapping(address => uint32))) internal _deliveredMintsPerWallet;
 
   constructor(address initialOwner) {
     _transferOwnership(initialOwner);
@@ -58,7 +55,7 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
    */
   function withdraw(address payable receiver, uint256 amount) external override adminRequired {
     (bool sent, ) = receiver.call{ value: amount }("");
-    if (!sent) revert FailedToTransfer();
+    if (!sent) revert IGachaLazyClaim.FailedToTransfer();
   }
 
   /**
@@ -69,7 +66,7 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
   }
 
   function _validateSigner() internal view {
-    if (msg.sender != _signer) revert InvalidSignature();
+    if (msg.sender != _signer) revert IGachaLazyClaim.InvalidSignature();
   }
 
 // do we need?
@@ -83,7 +80,6 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
     uint256 instanceId
   ) internal view returns (UserMint memory) {
     UserMint memory userMint = UserMint({
-      receiver: minter,
       reservedCount: _reservedMintsPerWallet[creatorContractAddress][instanceId][minter],
       deliveredCount: _deliveredMintsPerWallet[creatorContractAddress][instanceId][minter]
     });

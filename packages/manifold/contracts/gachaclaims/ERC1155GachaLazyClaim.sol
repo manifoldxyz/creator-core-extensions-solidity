@@ -6,6 +6,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.so
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./GachaLazyClaim.sol";
 import "./IERC1155GachaLazyClaim.sol";
@@ -23,10 +24,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   mapping(address => mapping(uint256 => Claim)) private _claims;
 
   // { contractAddress => { tokenId => { instanceId } }
-  mapping(address => mapping(uint256 => uint256)) private _claimTokenIds;
-
-  // Nonce usage tracking: mapping of fid to nonce to used status
-  mapping(uint256 => mapping(uint256 => bool)) private _usedNonces;
+  mapping(address => mapping(uint256 => uint256)) private _tokenInstances;
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, AdminControl) returns (bool) {
     return
@@ -52,17 +50,15 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     if (_claims[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID)
       revert IGachaLazyClaim.ClaimAlreadyInitialized();
 
-    // Sanity checks
+    // Checks
     if (claimParameters.storageProtocol != StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
     address[] memory receivers = new address[](1);
     receivers[0] = msg.sender;
-    string[] memory uris = new string[](1);
-    // TODO check on logic to reserve tokenIds for claim itemVariations
     uint256[] memory amounts = new uint256[](claimParameters.itemVariations);
+    string[] memory uris = new string[](claimParameters.itemVariations);
     uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
 
     require(newTokenIds[0] <= type(uint112).max, "Token ID exceeds uint112 range");
-
 
     // Create the claim
     _claims[creatorContractAddress][instanceId] = Claim({
@@ -71,15 +67,15 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
       totalMax: claimParameters.totalMax,
       startDate: claimParameters.startDate,
       endDate: claimParameters.endDate,
-      startingTokenId: uint112(newTokenIds[0]),
+      startingTokenId: uint80(newTokenIds[0]),
       itemVariations: claimParameters.itemVariations,
       location: claimParameters.location,
       paymentReceiver: claimParameters.paymentReceiver,
-      erc20: claimParameters.erc20,
-      cost: claimParameters.cost
+      cost: claimParameters.cost,
+      erc20: claimParameters.erc20
     });
     for (uint8 i; i < claimParameters.itemVariations; i++) {
-      _claimTokenIds[creatorContractAddress][newTokenIds[i]] = instanceId;
+      _tokenInstances[creatorContractAddress][newTokenIds[i]] = instanceId;
     }
 
     emit GachaClaimInitialized(creatorContractAddress, instanceId, msg.sender);
@@ -117,8 +113,8 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
       itemVariations: claim.itemVariations,
       location: claim.location,
       paymentReceiver: claim.paymentReceiver,
-      erc20: claim.erc20,
-      cost: claimParameters.cost
+      cost: claimParameters.cost,
+      erc20: claim.erc20
     });
     emit GachaClaimUpdated(creatorContractAddress, instanceId);
   }
@@ -137,7 +133,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     address creatorContractAddress,
     uint256 tokenId
   ) external view override returns (uint256 instanceId, Claim memory claim) {
-    instanceId = _claimTokenIds[creatorContractAddress][tokenId];
+    instanceId = _tokenInstances[creatorContractAddress][tokenId];
     claim = _getClaim(creatorContractAddress, instanceId);
   }
 
@@ -149,50 +145,20 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   /**
    * See {IGachaLazyClaim-mintReserve}.
    */
-  function mintReserve(MintReservation calldata mintReservation) external payable override {
+  function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override {
     // _validateEOA(); do we need a validate EOA or validateSigner?
-    _mintReserve(mintReservation);
+    _mintReserve(creatorContractAddress, instanceId, mintCount);
   }
 
-  function _mintReserve(MintReservation calldata mintReservation) private {
-    _validateMintReserve(mintReservation);
+  function _mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) private {
     // Checks for reserving
-
-    // for (uint256 i; i < mintReservation.mints.length; ) {
-    //   Mint calldata mintData = mintReservation.mints[i];
-    //   if (mintData.instanceId != mintReservation.gid) revert IGachaLazyClaim.InvalidInput();
-    //   if (mintData.instanceId != mintReservation.nonce) revert IGachaLazyClaim.InvalidInput();
-    //   if (mintData.recipients[i].receiver != mintReservation.message.recover(mintReservation.signature)) revert IGachaLazyClaim.InvalidInput();
-    //   unchecked {
-    //     ++i;
-    //   }
-    // }
-    // Updating the total reserved and mapping
-    // uint256 paymentReceived = msg.value;
-  }
-
-  function _validateMintReserve(MintReservation calldata mintReservation) private {
-    if (block.timestamp > mintReservation.expiration) revert ExpiredSignature();
-    // Verify valid message based on input variables
-    bytes32 expectedMessage = keccak256(
-      abi.encodePacked(
-        abi.encode(mintReservation.mints, mintReservation.gid, mintReservation.expiration, mintReservation.nonce, msg.value)
-      )
-    );
-        // address signer = mintReservation.message.recover(mintReservation.signature);
-    if (mintReservation.message != expectedMessage || msg.sender != _signer) revert InvalidSignature();
-    if (_usedNonces[mintReservation.gid][mintReservation.nonce]) revert InvalidNonce();
-    _usedNonces[mintReservation.gid][mintReservation.nonce] = true;
   }
 
   function _mint(Mint[] calldata mints) private {
     for (uint256 i; i < mints.length; ) {
       Mint calldata mintData = mints[i];
       _mintClaim(mintData);
-      if (_deliveredMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver] + 1 > _reservedMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver])
-        revert IGachaLazyClaim.CannotMintMoreThanReserved();
-      _deliveredMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver] ++;
-      emit GachaClaimMintDelivered(mintData.creatorContractAddress, mintData.instanceId, mintData.recipients[i].receiver);
+      _deliveredMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver]++;
       unchecked {
         ++i;
       }
@@ -211,11 +177,19 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
    * Mint a claim
    */
   function _mintClaim(Mint calldata mintData) private {
+    Claim memory claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
     uint256[] memory tokenIds = new uint256[](1);
-    tokenIds[0] = mintData.tokenId;
+    if (mintData.variationIndex > claim.itemVariations || mintData.variationIndex < 1)
+      revert IGachaLazyClaim.InvalidVariationIndex();
+    tokenIds[0] = claim.startingTokenId + mintData.variationIndex - 1;
     address[] memory receivers = new address[](mintData.recipients.length);
     uint256[] memory amounts = new uint256[](mintData.recipients.length);
     for (uint256 i; i < mintData.recipients.length; ) {
+      if (
+        _deliveredMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver] +
+          mintData.recipients[i].mintCount >
+        _reservedMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver]
+      ) revert IGachaLazyClaim.CannotMintMoreThanReserved();
       receivers[i] = mintData.recipients[i].receiver;
       amounts[i] = mintData.recipients[i].mintCount;
       unchecked {
@@ -224,8 +198,6 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     }
     IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
   }
-
-  // airdrop?
 
   /**
    * See {IGachaLazyClaim-getUserMints}.
@@ -242,9 +214,9 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
    * See {ICreatorExtensionTokenURI-tokenURI}.
    */
   function tokenURI(address creatorContractAddress, uint256 tokenId) external view override returns (string memory uri) {
-    uint224 tokenClaim = uint224(_claimTokenIds[creatorContractAddress][tokenId]);
-    if (tokenClaim == 0) revert IGachaLazyClaim.TokenDNE();
-    Claim memory claim = _claims[creatorContractAddress][tokenClaim];
+    uint256 instanceId = _tokenInstances[creatorContractAddress][tokenId];
+    if (instanceId == 0) revert IGachaLazyClaim.TokenDNE();
+    Claim memory claim = _getClaim(creatorContractAddress, instanceId);
 
     string memory prefix = "";
     if (claim.storageProtocol == StorageProtocol.ARWEAVE) {
@@ -252,6 +224,6 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     } else if (claim.storageProtocol == StorageProtocol.IPFS) {
       prefix = IPFS_PREFIX;
     }
-    uri = string(abi.encodePacked(prefix, claim.location));
+    uri = string(abi.encodePacked(prefix, claim.location, "/", Strings.toString(tokenId - claim.startingTokenId + 1)));
   }
 }

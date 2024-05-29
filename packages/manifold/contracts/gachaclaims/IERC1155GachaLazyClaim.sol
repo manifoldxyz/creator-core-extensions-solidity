@@ -16,25 +16,25 @@ interface IERC1155GachaLazyClaim is IGachaLazyClaim {
     uint32 totalMax;
     uint48 startDate;
     uint48 endDate;
-    uint112 startingTokenId;
+    uint80 startingTokenId;
     uint8 itemVariations;
     string location;
     address payable paymentReceiver;
+    uint96 cost;
     address erc20;
-    uint256 cost;
   }
 
   struct ClaimParameters {
+    StorageProtocol storageProtocol;
     uint32 totalMax;
     uint48 startDate;
     uint48 endDate;
-    uint112 startingTokenId;
+    uint80 startingTokenId;
     uint8 itemVariations;
-    StorageProtocol storageProtocol;
     string location;
     address payable paymentReceiver;
+    uint96 cost;
     address erc20;
-    uint256 cost;
   }
 
   /**
