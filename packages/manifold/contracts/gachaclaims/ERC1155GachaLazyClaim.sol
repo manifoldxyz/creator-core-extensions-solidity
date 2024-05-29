@@ -150,7 +150,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
    * See {IGachaLazyClaim-mintReserve}.
    */
   function mintReserve(MintReservation calldata mintReservation) external payable override {
-    _validateSigner();
+    // _validateEOA(); do we need a validate EOA or validateSigner?
     _mintReserve(mintReservation);
   }
 
@@ -158,6 +158,15 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     _validateMintReserve(mintReservation);
     // Checks for reserving
 
+    // for (uint256 i; i < mintReservation.mints.length; ) {
+    //   Mint calldata mintData = mintReservation.mints[i];
+    //   if (mintData.instanceId != mintReservation.gid) revert IGachaLazyClaim.InvalidInput();
+    //   if (mintData.instanceId != mintReservation.nonce) revert IGachaLazyClaim.InvalidInput();
+    //   if (mintData.recipients[i].receiver != mintReservation.message.recover(mintReservation.signature)) revert IGachaLazyClaim.InvalidInput();
+    //   unchecked {
+    //     ++i;
+    //   }
+    // }
     // Updating the total reserved and mapping
     // uint256 paymentReceived = msg.value;
   }
@@ -167,19 +176,22 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     // Verify valid message based on input variables
     bytes32 expectedMessage = keccak256(
       abi.encodePacked(
-        abi.encode(mintReservation.mints, mintReservation.fid, mintReservation.expiration, mintReservation.nonce, msg.value)
+        abi.encode(mintReservation.mints, mintReservation.gid, mintReservation.expiration, mintReservation.nonce, msg.value)
       )
     );
         // address signer = mintReservation.message.recover(mintReservation.signature);
     if (mintReservation.message != expectedMessage || msg.sender != _signer) revert InvalidSignature();
-    if (_usedNonces[mintReservation.fid][mintReservation.nonce]) revert InvalidNonce();
-    _usedNonces[mintReservation.fid][mintReservation.nonce] = true;
+    if (_usedNonces[mintReservation.gid][mintReservation.nonce]) revert InvalidNonce();
+    _usedNonces[mintReservation.gid][mintReservation.nonce] = true;
   }
 
   function _mint(Mint[] calldata mints) private {
     for (uint256 i; i < mints.length; ) {
       Mint calldata mintData = mints[i];
       _mintClaim(mintData);
+      if (_deliveredMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver] + 1 > _reservedMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver])
+        revert IGachaLazyClaim.CannotMintMoreThanReserved();
+      _deliveredMintsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver] ++;
       emit GachaClaimMintDelivered(mintData.creatorContractAddress, mintData.instanceId, mintData.recipients[i].receiver);
       unchecked {
         ++i;
@@ -191,7 +203,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
    * See {IGachaLazyClaim-deliver}.
    */
   function deliverMints(IGachaLazyClaim.Mint[] calldata mints) external override {
-    if (msg.sender != _signer) revert InvalidSignature();
+    _validateSigner();
     _mint(mints);
   }
 

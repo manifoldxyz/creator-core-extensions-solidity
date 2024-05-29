@@ -72,6 +72,11 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
     if (msg.sender != _signer) revert InvalidSignature();
   }
 
+// do we need?
+//   function _validateEOA() internal view {
+//     if (msg.sender == tx.origin) revert MustUseSignatureMinting();
+//   }
+
   function _getUserMints(
     address minter,
     address creatorContractAddress,

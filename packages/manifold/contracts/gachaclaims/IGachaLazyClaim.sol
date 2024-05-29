@@ -17,7 +17,7 @@ interface IGachaLazyClaim {
 
   error InvalidStorageProtocol();
   error InvalidStartDate();
-  error InvalidAirdrop();
+  // error InvalidAirdrop();
   error InvalidInstance();
   error InvalidInput();
   error ClaimAlreadyInitialized();
@@ -32,7 +32,9 @@ interface IGachaLazyClaim {
   error CannotChangeLocation();
   error CannotChangePaymentReceiver();
   error CannotChangePaymentToken();
+  error CannotMintMoreThanReserved();
 
+  error MustUseSignatureMinting();
   error InvalidSignature();
   error ExpiredSignature();
   error InvalidNonce();
@@ -53,16 +55,13 @@ interface IGachaLazyClaim {
     address indexed creatorContract,
     uint256 indexed instanceId,
     address indexed collector,
-    uint256 mintCount
+    uint256 mintCount,
+    uint
   );
 
   struct MintReservation {
-    Mint[] mints;
-    uint256 fid;
-    uint256 nonce;
-    uint256 expiration;
-    bytes32 message;
-    bytes signature;
+    address creatorContractAddress;
+    uint256 instanceId;
   }
 
   struct Recipient {
