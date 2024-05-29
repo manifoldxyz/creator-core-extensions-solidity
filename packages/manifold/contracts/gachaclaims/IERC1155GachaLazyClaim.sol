@@ -10,43 +10,70 @@ import "./IGachaLazyClaim.sol";
  * Gacha 1155 Lazy Claim interface
  */
 interface IERC1155GachaLazyClaim is IGachaLazyClaim {
+  struct Claim {
+    StorageProtocol storageProtocol;
+    uint32 total;
+    uint32 totalMax;
+    uint48 startDate;
+    uint48 endDate;
+    uint112 startingTokenId;
+    uint8 itemVariations;
+    string location;
+    address payable paymentReceiver;
+    address erc20;
+    uint256 cost;
+  }
 
-    struct Claim {
-        StorageProtocol storageProtocol;
-        uint32 total;
-        uint32 totalMax;
-        string location;
-        uint48 startDate;
-        uint48 endDate;
-        address payable paymentReceiver;
-        address erc20;
-        uint256 cost;
-        uint256 startingTokenId;
-        ItemProbability[] itemProbabilities;
-    }
+  struct ClaimParameters {
+    uint32 totalMax;
+    uint48 startDate;
+    uint48 endDate;
+    uint112 startingTokenId;
+    uint8 itemVariations;
+    StorageProtocol storageProtocol;
+    string location;
+    address payable paymentReceiver;
+    address erc20;
+    uint256 cost;
+  }
 
-    /**
-    * @notice initialize a new claim, emit initialize event
-    * @param creatorContractAddress    the creator contract the claim will mint tokens for
-    * @param instanceId                the claim instanceId for the creator contract
-    * @param claimParameters           the parameters which will affect the minting behavior of the claim
-    */
-    function initializeClaim(address creatorContractAddress, uint256 instanceId, ClaimParameters calldata claimParameters) external payable;
+  /**
+   * @notice initialize a new claim, emit initialize event
+   * @param creatorContractAddress    the creator contract the claim will mint tokens for
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param claimParameters           the parameters which will affect the minting behavior of the claim
+   */
+  function initializeClaim(
+    address creatorContractAddress,
+    uint256 instanceId,
+    ClaimParameters calldata claimParameters
+  ) external payable;
 
-    /**
-    * @notice get a claim corresponding to a creator contract and instanceId
-    * @param creatorContractAddress    the address of the creator contract
-    * @param instanceId                the claim instanceId for the creator contract
-    * @return                          the claim object
-    */
-    function getClaim(address creatorContractAddress, uint256 instanceId) external view returns(Claim memory);
+  /**
+   * @notice update an existing claim at instanceId
+   * @param creatorContractAddress    the creator contract corresponding to the claim
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param claimParameters           the parameters which will affect the minting behavior of the claim
+   */
+  function updateClaim(
+    address creatorContractAddress,
+    uint256 instanceId,
+    ClaimParameters calldata claimParameters
+  ) external;
 
-    /**
-     * @notice get a claim corresponding to a token
-     * @param creatorContractAddress    the address of the creator contract
-     * @param tokenId                   the tokenId of the claim
-     * @return                          the claim instanceId and claim object
-     */
-    function getClaimForToken(address creatorContractAddress, uint256 tokenId) external view returns(uint256, Claim memory);
+  /**
+   * @notice get a claim corresponding to a creator contract and instanceId
+   * @param creatorContractAddress    the address of the creator contract
+   * @param instanceId                the claim instanceId for the creator contract
+   * @return                          the claim object
+   */
+  function getClaim(address creatorContractAddress, uint256 instanceId) external view returns (Claim memory);
 
+  /**
+   * @notice get a claim corresponding to a token
+   * @param creatorContractAddress    the address of the creator contract
+   * @param tokenId                   the tokenId of the claim
+   * @return                          the claim instanceId and claim object
+   */
+  function getClaimForToken(address creatorContractAddress, uint256 tokenId) external view returns (uint256, Claim memory);
 }
