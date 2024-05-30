@@ -16,9 +16,10 @@ interface IGachaLazyClaim {
   }
 
   error InvalidStorageProtocol();
-  error InvalidStartDate();
+  error InvalidDate();
   error InvalidInstance();
   error InvalidInput();
+  error InvalidPayment();
   error InvalidSignature();
   error InvalidVariationIndex();
   error ClaimAlreadyInitialized();

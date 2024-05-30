@@ -52,7 +52,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
 
     // Checks
     if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
-    if (claimParameters.startDate >= claimParameters.endDate) revert IGachaLazyClaim.InvalidStartDate();
+    if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate) revert IGachaLazyClaim.InvalidDate();
     
     address[] memory receivers = new address[](1);
     receivers[0] = msg.sender;
@@ -93,11 +93,11 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   ) external override adminRequired {
     Claim memory claim = _getClaim(creatorContractAddress, instanceId);
     if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate)
-      revert IGachaLazyClaim.InvalidStartDate();
+      revert IGachaLazyClaim.InvalidDate();
     if (claimParameters.totalMax != claim.totalMax) revert IGachaLazyClaim.CannotChangeTotalMax();
     if (claimParameters.startingTokenId != claim.startingTokenId) revert IGachaLazyClaim.CannotChangeStartingTokenId();
     if (claimParameters.itemVariations != claim.itemVariations) revert IGachaLazyClaim.CannotChangeItemVariations();
-    if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
+    if (claimParameters.storageProtocol != claim.storageProtocol) revert IGachaLazyClaim.CannotChangeStorageProtocol();
     if (keccak256(abi.encodePacked(claimParameters.location)) != keccak256(abi.encodePacked(claim.location))) {
       revert IGachaLazyClaim.CannotChangeLocation();
     }
@@ -156,8 +156,8 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     Claim storage claim = _getClaim(creatorContractAddress, instanceId);
     // Checks for reserving
     if (claim.startDate > block.timestamp) revert IGachaLazyClaim.ClaimInactive();
-    if (claim.endDate > 0 && claim.endDate < block.timestamp) revert IGachaLazyClaim.ClaimInactive();
-    require(msg.value == (claim.cost + MINT_FEE) * mintCount, "Incorrect payment amount");
+    if (claim.endDate > 0 && claim.endDate <= block.timestamp) revert IGachaLazyClaim.ClaimInactive();
+    if (msg.value < (claim.cost + MINT_FEE) * mintCount) revert IGachaLazyClaim.InvalidPayment();
     uint32 amountAvailable = claim.totalMax - claim.total;
     if (amountAvailable == 0 ) revert IGachaLazyClaim.ClaimSoldOut();
 
@@ -167,8 +167,8 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     _reservedMintsPerWallet[creatorContractAddress][instanceId][msg.sender] += amountToReserve;
 
     // Refund any overpayment
-    if (amountToReserve < mintCount) {
-      uint256 refundAmount = (mintCount - amountToReserve) * (claim.cost + MINT_FEE);
+    if (msg.value > (claim.cost + MINT_FEE) * amountToReserve){
+      uint256 refundAmount = msg.value - (claim.cost + MINT_FEE) * amountToReserve;
       _sendFunds(payable(msg.sender), refundAmount);
     }
     emit GachaClaimMintReserved(creatorContractAddress, instanceId, msg.sender, amountToReserve);
