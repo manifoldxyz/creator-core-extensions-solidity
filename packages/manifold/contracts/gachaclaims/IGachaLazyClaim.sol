@@ -24,6 +24,7 @@ interface IGachaLazyClaim {
   error ClaimAlreadyInitialized();
   error ClaimNotInitialized();
   error ClaimInactive();
+  error ClaimSoldOut();
   error TokenDNE();
   error FailedToTransfer();
   error TooManyRequested();
@@ -82,7 +83,9 @@ interface IGachaLazyClaim {
   function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable;
 
   /**
-   * @notice Deliver NFTs
+   * @notice                          Deliver NFTs 
+   *                                  initiated after be has handled randomization
+   * @param mints                     the mints to deliver including variation, receiver, and count
    */
   function deliverMints(Mint[] calldata mints) external;
 

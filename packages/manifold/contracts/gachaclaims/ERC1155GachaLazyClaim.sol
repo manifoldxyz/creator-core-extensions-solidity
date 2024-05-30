@@ -7,6 +7,9 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 
 import "./GachaLazyClaim.sol";
 import "./IERC1155GachaLazyClaim.sol";
@@ -46,19 +49,18 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     ClaimParameters calldata claimParameters
   ) external payable override adminRequired {
     if (instanceId == 0 || instanceId > MAX_UINT_56) revert IGachaLazyClaim.InvalidInstance();
-    // Revert if claim at instanceId already exists
-    if (_claims[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID)
-      revert IGachaLazyClaim.ClaimAlreadyInitialized();
 
     // Checks
-    if (claimParameters.storageProtocol != StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
+    if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
+    if (claimParameters.startDate >= claimParameters.endDate) revert IGachaLazyClaim.InvalidStartDate();
+    
     address[] memory receivers = new address[](1);
     receivers[0] = msg.sender;
     uint256[] memory amounts = new uint256[](claimParameters.itemVariations);
     string[] memory uris = new string[](claimParameters.itemVariations);
     uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
 
-    require(newTokenIds[0] <= type(uint112).max, "Token ID exceeds uint112 range");
+    require(newTokenIds[0] <= MAX_UINT_80, "Token ID exceeds uint80 range");
 
     // Create the claim
     _claims[creatorContractAddress][instanceId] = Claim({
@@ -146,12 +148,38 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
    * See {IGachaLazyClaim-mintReserve}.
    */
   function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override {
-    // _validateEOA(); do we need a validate EOA or validateSigner?
+    require(!Address.isContract(msg.sender), "Only EOAs can reserve a mint.");
     _mintReserve(creatorContractAddress, instanceId, mintCount);
   }
 
   function _mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) private {
+    Claim storage claim = _getClaim(creatorContractAddress, instanceId);
     // Checks for reserving
+    if (claim.startDate > block.timestamp) revert IGachaLazyClaim.ClaimInactive();
+    if (claim.endDate > 0 && claim.endDate < block.timestamp) revert IGachaLazyClaim.ClaimInactive();
+    require(msg.value == (claim.cost + MINT_FEE) * mintCount, "Incorrect payment amount");
+    uint32 amountAvailable = claim.totalMax - claim.total;
+    if (amountAvailable == 0 ) revert IGachaLazyClaim.ClaimSoldOut();
+
+    // calculate the amount to reserve and update totals
+    uint32 amountToReserve = uint32(Math.min(mintCount, amountAvailable));
+    claim.total += amountToReserve;
+    _reservedMintsPerWallet[creatorContractAddress][instanceId][msg.sender] += amountToReserve;
+
+    // Refund any overpayment
+    if (amountToReserve < mintCount) {
+      uint256 refundAmount = (mintCount - amountToReserve) * (claim.cost + MINT_FEE);
+      _sendFunds(payable(msg.sender), refundAmount);
+    }
+    emit GachaClaimMintReserved(creatorContractAddress, instanceId, msg.sender, amountToReserve);
+  }
+
+  /**
+   * See {IGachaLazyClaim-deliverMints}.
+   */
+  function deliverMints(IGachaLazyClaim.Mint[] calldata mints) external override {
+    _validateSigner();
+    _mint(mints);
   }
 
   function _mint(Mint[] calldata mints) private {
@@ -166,15 +194,8 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   }
 
   /**
-   * See {IGachaLazyClaim-deliver}.
-   */
-  function deliverMints(IGachaLazyClaim.Mint[] calldata mints) external override {
-    _validateSigner();
-    _mint(mints);
-  }
-
-  /**
    * Mint a claim
+   * at this point we have already accepted payment and now it's time to deliver the token with be generated variation
    */
   function _mintClaim(Mint calldata mintData) private {
     Claim memory claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
