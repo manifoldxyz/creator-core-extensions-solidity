@@ -26,31 +26,11 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
 
   uint256 public constant MINT_FEE = 500000000000000;
 
-  // { contractAddress => { instanceId => { walletAddress => reservedMints } } }
-  mapping(address => mapping(uint256 => mapping(address => uint32))) internal _reservedMintsPerWallet;
-  // { contractAddress => { instanceId => { walletAddress => deliveredMints } } }
-  mapping(address => mapping(uint256 => mapping(address => uint32))) internal _deliveredMintsPerWallet;
+  // { contractAddress => { instanceId => { walletAddress => UserMint } } }
+  mapping(address => mapping(uint256 => mapping(address => UserMint))) internal _mintDetailsPerWallet;
 
   constructor(address initialOwner) {
     _transferOwnership(initialOwner);
-  }
-
-  function _validateMintReserve(
-    address creatorContractAddress,
-    uint256 instanceId,
-    uint48 startDate,
-    uint48 endDate,
-    uint32 walletMax,
-    uint16 mintCount,
-    address mintFor
-  ) internal {
-    if ((startDate > block.timestamp) || (endDate > 0 && endDate < block.timestamp)) revert IGachaLazyClaim.ClaimInactive();
-    if (mintFor != msg.sender) revert IGachaLazyClaim.InvalidInput();
-    if (walletMax != 0) {
-      _reservedMintsPerWallet[creatorContractAddress][instanceId][mintFor] += mintCount;
-      if (_reservedMintsPerWallet[creatorContractAddress][instanceId][mintFor] > walletMax)
-        revert IGachaLazyClaim.TooManyRequested();
-    }
   }
 
   /**
@@ -77,11 +57,7 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
     address creatorContractAddress,
     uint256 instanceId
   ) internal view returns (UserMint memory) {
-    UserMint memory userMint = UserMint({
-      reservedCount: _reservedMintsPerWallet[creatorContractAddress][instanceId][minter],
-      deliveredCount: _deliveredMintsPerWallet[creatorContractAddress][instanceId][minter]
-    });
-    return (userMint);
+    return (_mintDetailsPerWallet[creatorContractAddress][instanceId][minter]);
   }
 
   function _sendFunds(address payable recipient, uint256 amount) internal {

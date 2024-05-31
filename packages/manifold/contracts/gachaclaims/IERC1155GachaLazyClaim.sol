@@ -29,7 +29,6 @@ interface IERC1155GachaLazyClaim is IGachaLazyClaim {
     uint32 totalMax;
     uint48 startDate;
     uint48 endDate;
-    uint80 startingTokenId;
     uint8 itemVariations;
     string location;
     address payable paymentReceiver;
@@ -76,4 +75,18 @@ interface IERC1155GachaLazyClaim is IGachaLazyClaim {
    * @return                          the claim instanceId and claim object
    */
   function getClaimForToken(address creatorContractAddress, uint256 tokenId) external view returns (uint256, Claim memory);
+
+  /**
+   * @notice update tokenURI for an existing token
+   * @param creatorContractAddress    the creator contract corresponding to the burn redeem
+   * @param instanceId                the instanceId of the burnRedeem for the creator contract
+   * @param storageProtocol           the storage protocol for the metadata
+   * @param location                  the location of the metadata
+   */
+  function updateTokenURIParams(
+    address creatorContractAddress,
+    uint256 instanceId,
+    StorageProtocol storageProtocol,
+    string calldata location
+  ) external;
 }

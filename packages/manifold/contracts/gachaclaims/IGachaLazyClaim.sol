@@ -22,6 +22,7 @@ interface IGachaLazyClaim {
   error InvalidPayment();
   error InvalidSignature();
   error InvalidVariationIndex();
+  error InvalidStartingTokenId();
   error ClaimAlreadyInitialized();
   error ClaimNotInitialized();
   error ClaimInactive();
@@ -29,14 +30,11 @@ interface IGachaLazyClaim {
   error TokenDNE();
   error FailedToTransfer();
   error TooManyRequested();
-  error CannotChangeTotalMax();
+  error CannotLowerTotalMaxBeyondTotal();
   error CannotChangeStartingTokenId();
-  error CannotChangeItemVariations();
-  error CannotChangeStorageProtocol();
-  error CannotChangeLocation();
-  error CannotChangePaymentReceiver();
-  error CannotChangePaymentToken();
+  error CannotLowerItemVariationsBeyondVariations();
   error CannotMintMoreThanReserved();
+  error CannotMintFromContract();
 
   event GachaClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
   event GachaClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
