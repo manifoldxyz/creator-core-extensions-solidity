@@ -93,31 +93,27 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   function updateClaim(
     address creatorContractAddress,
     uint256 instanceId,
-    ClaimParameters memory claimParameters
+    UpdateClaimParameters memory updateClaimParameters
   ) external override adminRequired {
     Claim memory claim = _getClaim(creatorContractAddress, instanceId);
-    if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate)
+    if (updateClaimParameters.endDate != 0 && updateClaimParameters.startDate >= updateClaimParameters.endDate)
       revert IGachaLazyClaim.InvalidDate();
-    if (claimParameters.totalMax < claim.totalMax) revert IGachaLazyClaim.CannotLowerTotalMaxBeyondTotal();
-    if (claimParameters.tokenVariations < claim.tokenVariations)
-      revert IGachaLazyClaim.CannotLowertokenVariationsBeyondVariations();
-    if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
-    if (claimParameters.erc20 != claim.erc20) revert IGachaLazyClaim.CannotChangePaymentToken();
-    if (claimParameters.tokenVariations != claim.tokenVariations) revert IGachaLazyClaim.CannotChangeTokenVariations();
+    if (updateClaimParameters.totalMax < claim.total) revert IGachaLazyClaim.CannotLowerTotalMaxBeyondTotal();
+    if (updateClaimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
 
     // Overwrite the existing values
     _claims[creatorContractAddress][instanceId] = Claim({
       storageProtocol: claim.storageProtocol,
       total: claim.total,
-      totalMax: claimParameters.totalMax,
-      startDate: claimParameters.startDate,
-      endDate: claimParameters.endDate,
+      totalMax: updateClaimParameters.totalMax,
+      startDate: updateClaimParameters.startDate,
+      endDate: updateClaimParameters.endDate,
       startingTokenId: claim.startingTokenId,
       tokenVariations: claim.tokenVariations,
-      location: claimParameters.location,
-      paymentReceiver: claimParameters.paymentReceiver,
-      cost: claimParameters.cost,
-      erc20: claimParameters.erc20
+      location: updateClaimParameters.location,
+      paymentReceiver: updateClaimParameters.paymentReceiver,
+      cost: updateClaimParameters.cost,
+      erc20: claim.erc20
     });
 
     // logic for updating tokenIds
@@ -164,7 +160,9 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     uint32 amountToReserve = uint32(Math.min(mintCount, amountAvailable));
     claim.total += amountToReserve;
     _mintDetailsPerWallet[creatorContractAddress][instanceId][msg.sender].reservedCount += amountToReserve;
-
+    if (amountToReserve > 0 && claim.cost > 0) {
+      _sendFunds(claim.paymentReceiver, claim.cost * amountToReserve);
+    }
     // Refund any overpayment
     if (amountToReserve != mintCount) {
       uint256 refundAmount = msg.value - (claim.cost + MINT_FEE) * amountToReserve;
@@ -181,29 +179,29 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     for (uint256 i; i < mints.length; ) {
       Mint calldata mintData = mints[i];
       Claim memory claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
-      uint256[] memory tokenIds = new uint256[](1);
       if (mintData.variationIndex > claim.tokenVariations || mintData.variationIndex < 1)
         revert IGachaLazyClaim.InvalidVariationIndex();
+
+      // mint parameters
+      uint256[] memory tokenIds = new uint256[](1);
       tokenIds[0] = claim.startingTokenId + mintData.variationIndex - 1;
       address[] memory receivers = new address[](mintData.recipients.length);
       uint256[] memory amounts = new uint256[](mintData.recipients.length);
       for (uint256 j; j < mintData.recipients.length; ) {
-        if (
-          _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver]
-            .deliveredCount +
-            mintData.recipients[i].mintCount >
-          _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver]
-            .reservedCount
-        ) revert IGachaLazyClaim.CannotMintMoreThanReserved();
-        receivers[i] = mintData.recipients[i].receiver;
-        amounts[i] = mintData.recipients[i].mintCount;
+        address receiver = mintData.recipients[j].receiver;
+        uint256 mintCount = mintData.recipients[j].mintCount;
+        UserMint storage userDetails = _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][receiver];
+
+        if (userDetails.deliveredCount + mintCount > userDetails.reservedCount)
+          revert IGachaLazyClaim.CannotMintMoreThanReserved();
+        receivers[j] = receiver;
+        amounts[j] = mintCount;
+        _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][receiver].deliveredCount+= uint32(mintCount);
         unchecked {
           j++;
         }
       }
       IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
-      _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver]
-        .deliveredCount++;
       unchecked {
         i++;
       }

@@ -79,11 +79,11 @@ contract ERC1155GachaLazyClaimTest is Test {
     vm.stopPrank();
     vm.startPrank(creator);
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    // Now not admin
+    // Try as a different non admin
     vm.stopPrank();
-    vm.startPrank(other);
+    vm.startPrank(other2);
     vm.expectRevert();
-    example.updateClaim(address(creatorCore1), 1, claimP);
+    example.initializeClaim(address(creatorCore1), 2, claimP);
     vm.expectRevert();
 
     vm.stopPrank();
@@ -123,48 +123,56 @@ contract ERC1155GachaLazyClaimTest is Test {
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-
     IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
-      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: IGachaLazyClaim.StorageProtocol.IPFS,
+      location: "arweaveHash1",
       totalMax: 100,
       startDate: nowC,
       endDate: later,
       tokenVariations: 5,
-      location: "arweaveHash1",
-      paymentReceiver: payable(creator),
+      paymentReceiver: payable(other),
       cost: 1,
       erc20: zeroAddress
     });
-
     example.initializeClaim(address(creatorCore1), 1, claimP);
+
+    IERC1155GachaLazyClaim.UpdateClaimParameters memory claimU = IERC1155GachaLazyClaim.UpdateClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      totalMax: 100,
+      startDate: nowC,
+      endDate: later,
+      location: "arweaveHash1",
+      paymentReceiver: payable(creator),
+      cost: 1
+    });
+
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
 
-    claimP.storageProtocol = IGachaLazyClaim.StorageProtocol.INVALID;
+    claimU.storageProtocol = IGachaLazyClaim.StorageProtocol.INVALID;
     vm.expectRevert(IGachaLazyClaim.InvalidStorageProtocol.selector);
-    example.updateClaim(address(creatorCore1), 1, claimP);
+    example.updateClaim(address(creatorCore1), 1, claimU);
 
-    claimP.storageProtocol = IGachaLazyClaim.StorageProtocol.ARWEAVE;
-    claimP.totalMax = 0;
+    claimU.storageProtocol = IGachaLazyClaim.StorageProtocol.ARWEAVE;
+    claimU.totalMax = 0;
     vm.expectRevert(IGachaLazyClaim.CannotLowerTotalMaxBeyondTotal.selector);
-    example.updateClaim(address(creatorCore1), 1, claimP);
+    example.updateClaim(address(creatorCore1), 1, claimU);
 
-    claimP.totalMax = 100;
-    claimP.startDate = nowC + 2000;
+    claimU.totalMax = 100;
+    claimU.startDate = nowC + 2000;
     vm.expectRevert(IGachaLazyClaim.InvalidDate.selector);
-    example.updateClaim(address(creatorCore1), 1, claimP);
+    example.updateClaim(address(creatorCore1), 1, claimU);
 
-    claimP.startDate = nowC;
-    claimP.endDate = nowC;
+    claimU.endDate = nowC;
     vm.expectRevert(IGachaLazyClaim.InvalidDate.selector);
-    example.updateClaim(address(creatorCore1), 1, claimP);
-    claimP.endDate = later;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claimU.endDate = later;
 
     //successful data and cost update
-    claimP.erc20 = zeroAddress;
-    claimP.cost = 2;
-    claimP.startDate = nowC + 1000;
-    claimP.endDate = later + 3000;
-    example.updateClaim(address(creatorCore1), 1, claimP);
+    claimU.cost = 2;
+    claimU.startDate = nowC + 1000;
+    claimU.endDate = later + 3000;
+    claimU.totalMax = 1;
+    example.updateClaim(address(creatorCore1), 1, claimU);
 
     vm.stopPrank();
   }
@@ -296,6 +304,7 @@ contract ERC1155GachaLazyClaimTest is Test {
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: mintPrice + MINT_FEE }(address(creatorCore1), 1, 1);
+    uint256 creatorBalanceBefore = address(creator).balance;
     vm.stopPrank();
 
     vm.startPrank(other);
@@ -306,12 +315,10 @@ contract ERC1155GachaLazyClaimTest is Test {
     GachaLazyClaim.UserMint memory userMint = example.getUserMints(other, address(creatorCore1), 1);
     assertEq(userMint.reservedCount, 1);
 
-    //check payment balances: difference should be for only one mint
+    //check payment balances: for creator anc collector, difference should be for only one mint
     vm.startPrank(creator);
-    uint256 balance = address(creator).balance;
-    example.withdraw(payable(creator), mintPrice + MINT_FEE);
     uint creatorBalanceAfter = address(creator).balance;
-    assertEq(creatorBalanceAfter, balance + mintPrice + MINT_FEE);
+    assertEq(creatorBalanceAfter, creatorBalanceBefore + mintPrice);
     assertEq(address(other).balance, collectorBalanceBefore - mintPrice - MINT_FEE);
     vm.stopPrank();
   }
@@ -371,40 +378,64 @@ contract ERC1155GachaLazyClaimTest is Test {
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.setSigner(signingAddress);
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: (1 + MINT_FEE) * 2 }(address(creatorCore1), 1, 2);
+    vm.stopPrank();
+
+    vm.startPrank(other2);
+    example.mintReserve{ value: (1 + MINT_FEE) * 4 }(address(creatorCore1), 1, 4);
     vm.stopPrank();
 
     vm.startPrank(signingAddress);
-    IGachaLazyClaim.Mint[] memory mints = new IGachaLazyClaim.Mint[](1);
-    IGachaLazyClaim.Recipient[] memory recipients = new IGachaLazyClaim.Recipient[](1);
-    recipients[0] = IGachaLazyClaim.Recipient({ mintCount: 1, receiver: other });
+    IGachaLazyClaim.Mint[] memory mints = new IGachaLazyClaim.Mint[](2);
+    IGachaLazyClaim.Recipient[] memory recipients = new IGachaLazyClaim.Recipient[](2);
+    recipients[0] = IGachaLazyClaim.Recipient({ mintCount: 2, receiver: other2 });
+    recipients[1] = IGachaLazyClaim.Recipient({ mintCount: 1, receiver: other });
     mints[0] = IGachaLazyClaim.Mint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
       variationIndex: 1,
       recipients: recipients
     });
-    // throw error for receiver
+    mints[1] = IGachaLazyClaim.Mint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationIndex: 2,
+      recipients: recipients
+    });
+    // revert for receiver with no reserved mints
     vm.expectRevert(IGachaLazyClaim.CannotMintMoreThanReserved.selector);
     example.deliverMints(mints);
     GachaLazyClaim.UserMint memory otherMint = example.getUserMints(other, address(creatorCore1), 1);
     assertEq(otherMint.reservedCount, 0);
     assertEq(otherMint.deliveredCount, 0);
+    GachaLazyClaim.UserMint memory other2Mint = example.getUserMints(other2, address(creatorCore1), 1);
+    assertEq(other2Mint.reservedCount, 4);
+    assertEq(other2Mint.deliveredCount, 0);
     vm.stopPrank();
 
-    // deliver for reserved user
+    // deliver for valid receivers and mintCount
     vm.startPrank(signingAddress);
-    recipients = new IGachaLazyClaim.Recipient[](1);
     recipients[0] = IGachaLazyClaim.Recipient({ mintCount: 1, receiver: creator });
+    recipients[1] = IGachaLazyClaim.Recipient({ mintCount: 2, receiver: other2 });
     mints[0] = IGachaLazyClaim.Mint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
       variationIndex: 1,
       recipients: recipients
     });
+    mints[1] = IGachaLazyClaim.Mint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationIndex: 2,
+      recipients: recipients
+    });
     example.deliverMints(mints);
-    GachaLazyClaim.UserMint memory userMint = example.getUserMints(creator, address(creatorCore1), 1);
-    assertEq(userMint.deliveredCount, 1);
+    GachaLazyClaim.UserMint memory creatorMints = example.getUserMints(creator, address(creatorCore1), 1);
+    assertEq(creatorMints.deliveredCount, 2);
+    assertEq(creatorMints.reservedCount, 2);
+    GachaLazyClaim.UserMint memory other2Mints = example.getUserMints(other2, address(creatorCore1), 1);
+    assertEq(other2Mints.reservedCount, 4);
+    assertEq(other2Mints.deliveredCount, 4);
     vm.stopPrank();
   }
 

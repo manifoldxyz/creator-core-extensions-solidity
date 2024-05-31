@@ -36,6 +36,16 @@ interface IERC1155GachaLazyClaim is IGachaLazyClaim {
     address erc20;
   }
 
+  struct UpdateClaimParameters {
+    StorageProtocol storageProtocol;
+    address payable paymentReceiver;
+    uint32 totalMax;
+    uint48 startDate;
+    uint48 endDate;
+    uint96 cost;
+    string location;
+  }
+
   /**
    * @notice initialize a new claim, emit initialize event
    * @param creatorContractAddress    the creator contract the claim will mint tokens for
@@ -52,12 +62,12 @@ interface IERC1155GachaLazyClaim is IGachaLazyClaim {
    * @notice update an existing claim at instanceId
    * @param creatorContractAddress    the creator contract corresponding to the claim
    * @param instanceId                the claim instanceId for the creator contract
-   * @param claimParameters           the parameters which will affect the minting behavior of the claim
+   * @param updateClaimParameters     the updateable parameters that affect the minting behavior of the claim
    */
   function updateClaim(
     address creatorContractAddress,
     uint256 instanceId,
-    ClaimParameters calldata claimParameters
+    UpdateClaimParameters calldata updateClaimParameters
   ) external;
 
   /**
