@@ -46,19 +46,19 @@ interface IGachaLazyClaim {
     uint32 mintCount
   );
 
-  struct Recipient {
-    uint256 mintCount;
-    address receiver;
+  struct VariationMint {
+    uint8 variationIndex;
+    uint32 amount;
+    address recipient;
   }
 
-  struct Mint {
+  struct ClaimMint {
     address creatorContractAddress;
     uint256 instanceId;
-    uint8 variationIndex;
-    Recipient[] recipients;
+    VariationMint[] variationMints;
   }
 
-  struct UserMint {
+  struct UserMintDetails {
     uint32 reservedCount;
     uint32 deliveredCount;
   }
@@ -85,9 +85,9 @@ interface IGachaLazyClaim {
   /**
    * @notice                          Deliver NFTs 
    *                                  initiated after be has handled randomization
-   * @param mints                     the mints to deliver including variation, receiver, and count
+   * @param mints                     the mints to deliver with creatorcontractaddress, instanceId and variationMints
    */
-  function deliverMints(Mint[] calldata mints) external;
+  function deliverMints(ClaimMint[] calldata mints) external;
 
   /**
    * @notice                          get mints made for a wallet
@@ -95,11 +95,11 @@ interface IGachaLazyClaim {
    * @param minter                    the address of the minting address
    * @param creatorContractAddress    the address of the creator contract for the claim
    * @param instanceId                the claim instance for the creator contract
-   * @return                          the user mint details (receiver, reservedCount, deliveredCount)
+   * @return userMintdetails          the wallet's reservedCount and deliveredCount
    */
   function getUserMints(
     address minter,
     address creatorContractAddress,
     uint256 instanceId
-  ) external view returns (UserMint memory);
+  ) external view returns (UserMintDetails memory);
 }

@@ -312,8 +312,8 @@ contract ERC1155GachaLazyClaimTest is Test {
     vm.stopPrank();
 
     //confirm user
-    GachaLazyClaim.UserMint memory userMint = example.getUserMints(other, address(creatorCore1), 1);
-    assertEq(userMint.reservedCount, 1);
+    GachaLazyClaim.UserMintDetails memory userMintDetails = example.getUserMints(other, address(creatorCore1), 1);
+    assertEq(userMintDetails.reservedCount, 1);
 
     //check payment balances: for creator anc collector, difference should be for only one mint
     vm.startPrank(creator);
@@ -344,14 +344,13 @@ contract ERC1155GachaLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(other);
-    IGachaLazyClaim.Mint[] memory mints = new IGachaLazyClaim.Mint[](1);
-    IGachaLazyClaim.Recipient[] memory recipients = new IGachaLazyClaim.Recipient[](1);
-    recipients[0] = IGachaLazyClaim.Recipient({ mintCount: 1, receiver: other });
-    mints[0] = IGachaLazyClaim.Mint({
+    IGachaLazyClaim.ClaimMint[] memory mints = new IGachaLazyClaim.ClaimMint[](1);
+    IGachaLazyClaim.VariationMint[] memory variationMints = new IGachaLazyClaim.VariationMint[](1);
+    variationMints[0] = IGachaLazyClaim.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = IGachaLazyClaim.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
-      variationIndex: 1,
-      recipients: recipients
+      variationMints: variationMints
     });
 
     vm.expectRevert();
@@ -386,54 +385,50 @@ contract ERC1155GachaLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(signingAddress);
-    IGachaLazyClaim.Mint[] memory mints = new IGachaLazyClaim.Mint[](2);
-    IGachaLazyClaim.Recipient[] memory recipients = new IGachaLazyClaim.Recipient[](2);
-    recipients[0] = IGachaLazyClaim.Recipient({ mintCount: 2, receiver: other2 });
-    recipients[1] = IGachaLazyClaim.Recipient({ mintCount: 1, receiver: other });
-    mints[0] = IGachaLazyClaim.Mint({
+    IGachaLazyClaim.ClaimMint[] memory mints = new IGachaLazyClaim.ClaimMint[](2);
+    IGachaLazyClaim.VariationMint[] memory variationMints = new IGachaLazyClaim.VariationMint[](2);
+    variationMints[0] = IGachaLazyClaim.VariationMint({ variationIndex: 1, amount: 2, recipient: other2 });
+    variationMints[1] = IGachaLazyClaim.VariationMint({ variationIndex: 2, amount: 1, recipient: other });
+    mints[0] = IGachaLazyClaim.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
-      variationIndex: 1,
-      recipients: recipients
+      variationMints: variationMints
     });
-    mints[1] = IGachaLazyClaim.Mint({
+    mints[1] = IGachaLazyClaim.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
-      variationIndex: 2,
-      recipients: recipients
+      variationMints: variationMints
     });
     // revert for receiver with no reserved mints
     vm.expectRevert(IGachaLazyClaim.CannotMintMoreThanReserved.selector);
     example.deliverMints(mints);
-    GachaLazyClaim.UserMint memory otherMint = example.getUserMints(other, address(creatorCore1), 1);
+    GachaLazyClaim.UserMintDetails memory otherMint = example.getUserMints(other, address(creatorCore1), 1);
     assertEq(otherMint.reservedCount, 0);
     assertEq(otherMint.deliveredCount, 0);
-    GachaLazyClaim.UserMint memory other2Mint = example.getUserMints(other2, address(creatorCore1), 1);
+    GachaLazyClaim.UserMintDetails memory other2Mint = example.getUserMints(other2, address(creatorCore1), 1);
     assertEq(other2Mint.reservedCount, 4);
     assertEq(other2Mint.deliveredCount, 0);
     vm.stopPrank();
 
     // deliver for valid receivers and mintCount
     vm.startPrank(signingAddress);
-    recipients[0] = IGachaLazyClaim.Recipient({ mintCount: 1, receiver: creator });
-    recipients[1] = IGachaLazyClaim.Recipient({ mintCount: 2, receiver: other2 });
-    mints[0] = IGachaLazyClaim.Mint({
+    variationMints[0] = IGachaLazyClaim.VariationMint({ variationIndex: 1, amount: 1, recipient: creator });
+    variationMints[1] = IGachaLazyClaim.VariationMint({ variationIndex: 2, amount: 2, recipient: other2 });
+    mints[0] = IGachaLazyClaim.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
-      variationIndex: 1,
-      recipients: recipients
+      variationMints: variationMints
     });
-    mints[1] = IGachaLazyClaim.Mint({
+    mints[1] = IGachaLazyClaim.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
-      variationIndex: 2,
-      recipients: recipients
+      variationMints: variationMints
     });
     example.deliverMints(mints);
-    GachaLazyClaim.UserMint memory creatorMints = example.getUserMints(creator, address(creatorCore1), 1);
+    GachaLazyClaim.UserMintDetails memory creatorMints = example.getUserMints(creator, address(creatorCore1), 1);
     assertEq(creatorMints.deliveredCount, 2);
     assertEq(creatorMints.reservedCount, 2);
-    GachaLazyClaim.UserMint memory other2Mints = example.getUserMints(other2, address(creatorCore1), 1);
+    GachaLazyClaim.UserMintDetails memory other2Mints = example.getUserMints(other2, address(creatorCore1), 1);
     assertEq(other2Mints.reservedCount, 4);
     assertEq(other2Mints.deliveredCount, 4);
     vm.stopPrank();

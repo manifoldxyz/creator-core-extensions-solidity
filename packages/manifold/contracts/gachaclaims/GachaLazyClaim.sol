@@ -26,8 +26,8 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
 
   uint256 public constant MINT_FEE = 500000000000000;
 
-  // { contractAddress => { instanceId => { walletAddress => UserMint } } }
-  mapping(address => mapping(uint256 => mapping(address => UserMint))) internal _mintDetailsPerWallet;
+  // { contractAddress => { instanceId => { walletAddress => UserMintDetails } } }
+  mapping(address => mapping(uint256 => mapping(address => UserMintDetails))) internal _mintDetailsPerWallet;
 
   constructor(address initialOwner) {
     _transferOwnership(initialOwner);
@@ -56,7 +56,7 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
     address minter,
     address creatorContractAddress,
     uint256 instanceId
-  ) internal view returns (UserMint memory) {
+  ) internal view returns (UserMintDetails memory) {
     return (_mintDetailsPerWallet[creatorContractAddress][instanceId][minter]);
   }
 

@@ -174,33 +174,35 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   /**
    * See {IGachaLazyClaim-deliverMints}.
    */
-  function deliverMints(IGachaLazyClaim.Mint[] calldata mints) external override {
+  function deliverMints(IGachaLazyClaim.ClaimMint[] calldata mints) external override {
     _validateSigner();
     for (uint256 i; i < mints.length; ) {
-      Mint calldata mintData = mints[i];
+      ClaimMint calldata mintData = mints[i];
       Claim memory claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
-      if (mintData.variationIndex > claim.tokenVariations || mintData.variationIndex < 1)
-        revert IGachaLazyClaim.InvalidVariationIndex();
+      address[] memory receivers = new address[](mintData.variationMints.length);
+      uint256[] memory amounts = new uint256[](mintData.variationMints.length);
+      uint256[] memory tokenIds = new uint256[](mintData.variationMints.length);
 
-      // mint parameters
-      uint256[] memory tokenIds = new uint256[](1);
-      tokenIds[0] = claim.startingTokenId + mintData.variationIndex - 1;
-      address[] memory receivers = new address[](mintData.recipients.length);
-      uint256[] memory amounts = new uint256[](mintData.recipients.length);
-      for (uint256 j; j < mintData.recipients.length; ) {
-        address receiver = mintData.recipients[j].receiver;
-        uint256 mintCount = mintData.recipients[j].mintCount;
-        UserMint storage userDetails = _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][receiver];
+      for (uint256 j; j < mintData.variationMints.length; ) {
+        VariationMint calldata variationMint = mintData.variationMints[j];
+        uint8 variationIndex = variationMint.variationIndex;
+        if (variationIndex > claim.tokenVariations || variationIndex < 1)
+          revert IGachaLazyClaim.InvalidVariationIndex();
+        address recipient = variationMint.recipient;
+        uint32 amount = variationMint.amount;
+        UserMintDetails storage userMintDetails = _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][recipient];
 
-        if (userDetails.deliveredCount + mintCount > userDetails.reservedCount)
+        if (userMintDetails.deliveredCount + amount > userMintDetails.reservedCount)
           revert IGachaLazyClaim.CannotMintMoreThanReserved();
-        receivers[j] = receiver;
-        amounts[j] = mintCount;
-        _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][receiver].deliveredCount+= uint32(mintCount);
+        tokenIds[j] = claim.startingTokenId + variationIndex - 1;
+        amounts[j] = amount;
+        receivers[j] = recipient;
+        userMintDetails.deliveredCount += amount;
         unchecked {
           j++;
         }
       }
+      
       IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
       unchecked {
         i++;
@@ -215,7 +217,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     address minter,
     address creatorContractAddress,
     uint256 instanceId
-  ) external view override returns (UserMint memory) {
+  ) external view override returns (UserMintDetails memory) {
     return _getUserMints(minter, creatorContractAddress, instanceId);
   }
 
