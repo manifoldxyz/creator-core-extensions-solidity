@@ -19,7 +19,7 @@ contract ERC1155GachaLazyClaimTest is Test {
   address public creator = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
   address public signingAddress = 0xc78dC443c126Af6E4f6eD540C1E740c1B5be09CE;
   address public other = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
-    address public other2 = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
+  address public other2 = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
 
   address public zeroAddress = address(0);
 
@@ -66,7 +66,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: nowC,
       endDate: later,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 0.01 ether,
@@ -101,7 +101,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: nowC,
       endDate: later,
-      itemVariations: 5,
+      tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
       erc20: zeroAddress
@@ -129,7 +129,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: nowC,
       endDate: later,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
@@ -180,7 +180,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: nowC,
       endDate: later,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
@@ -208,7 +208,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: start,
       endDate: end,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
@@ -231,7 +231,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: start,
       endDate: end,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
@@ -257,7 +257,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 1,
       startDate: start,
       endDate: end,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
@@ -288,7 +288,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 2,
       startDate: start,
       endDate: end,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: mintPrice,
@@ -299,7 +299,7 @@ contract ERC1155GachaLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(other);
-    example.mintReserve{ value: (mintPrice + MINT_FEE) * 2}(address(creatorCore1), 1, 2);
+    example.mintReserve{ value: (mintPrice + MINT_FEE) * 2 }(address(creatorCore1), 1, 2);
     vm.stopPrank();
 
     //confirm user
@@ -326,12 +326,13 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: nowC,
       endDate: later,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
       erc20: zeroAddress
     });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
     example.setSigner(signingAddress);
     vm.stopPrank();
 
@@ -362,7 +363,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: nowC,
       endDate: later,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
@@ -386,7 +387,7 @@ contract ERC1155GachaLazyClaimTest is Test {
     // throw error for receiver
     vm.expectRevert(IGachaLazyClaim.CannotMintMoreThanReserved.selector);
     example.deliverMints(mints);
-        GachaLazyClaim.UserMint memory otherMint = example.getUserMints(other, address(creatorCore1), 1);
+    GachaLazyClaim.UserMint memory otherMint = example.getUserMints(other, address(creatorCore1), 1);
     assertEq(otherMint.reservedCount, 0);
     assertEq(otherMint.deliveredCount, 0);
     vm.stopPrank();
@@ -418,18 +419,17 @@ contract ERC1155GachaLazyClaimTest is Test {
       totalMax: 100,
       startDate: nowC,
       endDate: later,
-      itemVariations: 5,
+      tokenVariations: 5,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
       erc20: zeroAddress
     });
-    
+
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: totalMintPrice }(address(creatorCore1), 1, 1);
 
-
-    // mint in between
+    // mint in between on another extension
     address[] memory receivers = new address[](1);
     receivers[0] = signingAddress;
     uint[] memory amounts = new uint[](1);
@@ -439,6 +439,7 @@ contract ERC1155GachaLazyClaimTest is Test {
     creatorCore1.mintBaseNew(receivers, amounts, uris);
     vm.stopPrank();
 
+    // mintreserving should have no effect
     vm.startPrank(other);
     example.mintReserve{ value: totalMintPrice * 2 }(address(creatorCore1), 1, 2);
     vm.stopPrank();
@@ -446,10 +447,24 @@ contract ERC1155GachaLazyClaimTest is Test {
     example.mintReserve{ value: totalMintPrice }(address(creatorCore1), 1, 1);
     vm.stopPrank();
 
+    vm.startPrank(creator);
+    claimP.tokenVariations = 3;
+    claimP.location = "arweaveHash2";
+    // create another gacha claim
+    example.initializeClaim(address(creatorCore1), 2, claimP);
+    vm.stopPrank();
+
     assertEq("https://arweave.net/arweaveHash1/1", creatorCore1.uri(1));
     assertEq("https://arweave.net/arweaveHash1/2", creatorCore1.uri(2));
     assertEq("https://arweave.net/arweaveHash1/3", creatorCore1.uri(3));
     assertEq("https://arweave.net/arweaveHash1/4", creatorCore1.uri(4));
     assertEq("https://arweave.net/arweaveHash1/5", creatorCore1.uri(5));
+    assertTrue(
+      keccak256(bytes("https://arweave.net/arweaveHash1/6")) != keccak256(bytes(creatorCore1.uri(6))),
+      "URI should not match the specified value."
+    );
+    assertEq("https://arweave.net/arweaveHash2/1", creatorCore1.uri(7));
+    assertEq("https://arweave.net/arweaveHash2/2", creatorCore1.uri(8));
+    assertEq("https://arweave.net/arweaveHash2/3", creatorCore1.uri(9));
   }
 }

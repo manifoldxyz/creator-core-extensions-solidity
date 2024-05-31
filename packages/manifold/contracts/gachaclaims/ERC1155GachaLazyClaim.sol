@@ -48,7 +48,8 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     ClaimParameters calldata claimParameters
   ) external payable override adminRequired {
     if (instanceId == 0 || instanceId > MAX_UINT_56) revert IGachaLazyClaim.InvalidInstance();
-
+    if (_claims[creatorContractAddress][instanceId].storageProtocol != StorageProtocol.INVALID)
+      revert IGachaLazyClaim.ClaimAlreadyInitialized();
     // Checks
     if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
     if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate)
@@ -56,8 +57,8 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
 
     address[] memory receivers = new address[](1);
     receivers[0] = msg.sender;
-    uint256[] memory amounts = new uint256[](claimParameters.itemVariations);
-    string[] memory uris = new string[](claimParameters.itemVariations);
+    uint256[] memory amounts = new uint256[](claimParameters.tokenVariations);
+    string[] memory uris = new string[](claimParameters.tokenVariations);
     uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
 
     if (newTokenIds[0] > MAX_UINT_80) revert IGachaLazyClaim.InvalidStartingTokenId();
@@ -70,13 +71,13 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
       startDate: claimParameters.startDate,
       endDate: claimParameters.endDate,
       startingTokenId: uint80(newTokenIds[0]),
-      itemVariations: claimParameters.itemVariations,
+      tokenVariations: claimParameters.tokenVariations,
       location: claimParameters.location,
       paymentReceiver: claimParameters.paymentReceiver,
       cost: claimParameters.cost,
       erc20: claimParameters.erc20
     });
-    for (uint256 i; i < claimParameters.itemVariations; ) {
+    for (uint256 i; i < claimParameters.tokenVariations; ) {
       _tokenInstances[creatorContractAddress][newTokenIds[i]] = instanceId;
       unchecked {
         ++i;
@@ -98,12 +99,11 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate)
       revert IGachaLazyClaim.InvalidDate();
     if (claimParameters.totalMax < claim.totalMax) revert IGachaLazyClaim.CannotLowerTotalMaxBeyondTotal();
-    if (claimParameters.itemVariations < claim.itemVariations)
-      revert IGachaLazyClaim.CannotLowerItemVariationsBeyondVariations();
+    if (claimParameters.tokenVariations < claim.tokenVariations)
+      revert IGachaLazyClaim.CannotLowertokenVariationsBeyondVariations();
     if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
-    // if (keccak256(abi.encodePacked(claimParameters.location)) != keccak256(abi.encodePacked(claim.location))) {
-    //   revert IGachaLazyClaim.CannotChangeLocation();
-    // }
+    if (claimParameters.erc20 != claim.erc20) revert IGachaLazyClaim.CannotChangePaymentToken();
+    if (claimParameters.tokenVariations != claim.tokenVariations) revert IGachaLazyClaim.CannotChangeTokenVariations();
 
     // Overwrite the existing values
     _claims[creatorContractAddress][instanceId] = Claim({
@@ -113,7 +113,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
       startDate: claimParameters.startDate,
       endDate: claimParameters.endDate,
       startingTokenId: claim.startingTokenId,
-      itemVariations: claimParameters.itemVariations,
+      tokenVariations: claim.tokenVariations,
       location: claimParameters.location,
       paymentReceiver: claimParameters.paymentReceiver,
       cost: claimParameters.cost,
@@ -182,16 +182,18 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
       Mint calldata mintData = mints[i];
       Claim memory claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
       uint256[] memory tokenIds = new uint256[](1);
-      if (mintData.variationIndex > claim.itemVariations || mintData.variationIndex < 1)
+      if (mintData.variationIndex > claim.tokenVariations || mintData.variationIndex < 1)
         revert IGachaLazyClaim.InvalidVariationIndex();
       tokenIds[0] = claim.startingTokenId + mintData.variationIndex - 1;
       address[] memory receivers = new address[](mintData.recipients.length);
       uint256[] memory amounts = new uint256[](mintData.recipients.length);
       for (uint256 j; j < mintData.recipients.length; ) {
         if (
-          _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver].deliveredCount +
+          _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver]
+            .deliveredCount +
             mintData.recipients[i].mintCount >
-          _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver].reservedCount
+          _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver]
+            .reservedCount
         ) revert IGachaLazyClaim.CannotMintMoreThanReserved();
         receivers[i] = mintData.recipients[i].receiver;
         amounts[i] = mintData.recipients[i].mintCount;
@@ -200,7 +202,8 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
         }
       }
       IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
-      _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver].deliveredCount++;
+      _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][mintData.recipients[i].receiver]
+        .deliveredCount++;
       unchecked {
         i++;
       }

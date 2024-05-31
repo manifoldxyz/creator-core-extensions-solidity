@@ -31,8 +31,9 @@ interface IGachaLazyClaim {
   error FailedToTransfer();
   error TooManyRequested();
   error CannotLowerTotalMaxBeyondTotal();
-  error CannotChangeStartingTokenId();
-  error CannotLowerItemVariationsBeyondVariations();
+  error CannotChangeTokenVariations();
+  error CannotChangePaymentToken();
+  error CannotLowertokenVariationsBeyondVariations();
   error CannotMintMoreThanReserved();
   error CannotMintFromContract();
 

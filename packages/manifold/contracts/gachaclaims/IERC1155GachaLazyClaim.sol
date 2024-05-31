@@ -17,7 +17,7 @@ interface IERC1155GachaLazyClaim is IGachaLazyClaim {
     uint48 startDate;
     uint48 endDate;
     uint80 startingTokenId;
-    uint8 itemVariations;
+    uint8 tokenVariations;
     string location;
     address payable paymentReceiver;
     uint96 cost;
@@ -29,7 +29,7 @@ interface IERC1155GachaLazyClaim is IGachaLazyClaim {
     uint32 totalMax;
     uint48 startDate;
     uint48 endDate;
-    uint8 itemVariations;
+    uint8 tokenVariations;
     string location;
     address payable paymentReceiver;
     uint96 cost;
