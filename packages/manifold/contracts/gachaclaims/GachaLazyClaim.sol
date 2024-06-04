@@ -29,6 +29,17 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
   // { contractAddress => { instanceId => { walletAddress => UserMintDetails } } }
   mapping(address => mapping(uint256 => mapping(address => UserMintDetails))) internal _mintDetailsPerWallet;
 
+  /**
+   * @notice This extension is shared, not single-creator. So we must ensure
+   * that a claim's initializer is an admin on the creator contract
+   * @param creatorContractAddress    the address of the creator contract to check the admin against
+   */
+  modifier creatorAdminRequired(address creatorContractAddress) {
+    AdminControl creatorCoreContract = AdminControl(creatorContractAddress);
+    require(creatorCoreContract.isAdmin(msg.sender), "Wallet is not an administrator for contract");
+    _;
+  }
+
   constructor(address initialOwner) {
     _transferOwnership(initialOwner);
   }

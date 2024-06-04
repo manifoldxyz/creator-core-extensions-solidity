@@ -46,7 +46,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     address creatorContractAddress,
     uint256 instanceId,
     ClaimParameters calldata claimParameters
-  ) external payable override adminRequired {
+  ) external payable override creatorAdminRequired(creatorContractAddress) {
     if (instanceId == 0 || instanceId > MAX_UINT_56) revert IGachaLazyClaim.InvalidInstance();
     if (_claims[creatorContractAddress][instanceId].storageProtocol != StorageProtocol.INVALID)
       revert IGachaLazyClaim.ClaimAlreadyInitialized();
@@ -246,7 +246,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     uint256 instanceId,
     StorageProtocol storageProtocol,
     string calldata location
-  ) external override adminRequired {
+  ) external override creatorAdminRequired(creatorContractAddress) {
     Claim storage claim = _getClaim(creatorContractAddress, instanceId);
     if (storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
     claim.storageProtocol = storageProtocol;
