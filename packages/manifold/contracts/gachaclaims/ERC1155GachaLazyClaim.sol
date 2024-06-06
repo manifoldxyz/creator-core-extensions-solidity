@@ -154,10 +154,12 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     if (claim.endDate > 0 && claim.endDate <= block.timestamp) revert IGachaLazyClaim.ClaimInactive();
     if (msg.value != (claim.cost + MINT_FEE) * mintCount) revert IGachaLazyClaim.InvalidPayment();
     uint32 amountAvailable = claim.totalMax - claim.total;
-    if (amountAvailable == 0) revert IGachaLazyClaim.ClaimSoldOut();
-
     // calculate the amount to reserve and update totals
-    uint32 amountToReserve = uint32(Math.min(mintCount, amountAvailable));
+    uint32 amountToReserve = mintCount;
+    if (claim.totalMax != 0) {
+      if (amountAvailable == 0) revert IGachaLazyClaim.ClaimSoldOut();
+      amountToReserve = uint32(Math.min(mintCount, amountAvailable));
+    }
     claim.total += amountToReserve;
     _mintDetailsPerWallet[creatorContractAddress][instanceId][msg.sender].reservedCount += amountToReserve;
     if (amountToReserve > 0 && claim.cost > 0) {
@@ -186,11 +188,12 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
       for (uint256 j; j < mintData.variationMints.length; ) {
         VariationMint calldata variationMint = mintData.variationMints[j];
         uint8 variationIndex = variationMint.variationIndex;
-        if (variationIndex > claim.tokenVariations || variationIndex < 1)
-          revert IGachaLazyClaim.InvalidVariationIndex();
+        if (variationIndex > claim.tokenVariations || variationIndex < 1) revert IGachaLazyClaim.InvalidVariationIndex();
         address recipient = variationMint.recipient;
         uint32 amount = variationMint.amount;
-        UserMintDetails storage userMintDetails = _mintDetailsPerWallet[mintData.creatorContractAddress][mintData.instanceId][recipient];
+        UserMintDetails storage userMintDetails = _mintDetailsPerWallet[mintData.creatorContractAddress][
+          mintData.instanceId
+        ][recipient];
 
         if (userMintDetails.deliveredCount + amount > userMintDetails.reservedCount)
           revert IGachaLazyClaim.CannotMintMoreThanReserved();
@@ -202,7 +205,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
           j++;
         }
       }
-      
+
       IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
       unchecked {
         i++;

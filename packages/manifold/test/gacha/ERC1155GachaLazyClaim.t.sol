@@ -282,6 +282,45 @@ contract ERC1155GachaLazyClaimTest is Test {
     vm.stopPrank();
   }
 
+  function testMintReserveDeliverTotalMax0() public {
+    vm.startPrank(creator);
+
+    uint48 start = 0;
+    uint48 end = 0;
+
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      totalMax: 0,
+      startDate: start,
+      endDate: end,
+      tokenVariations: 5,
+      location: "arweaveHash1",
+      paymentReceiver: payable(creator),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    example.setSigner(signingAddress);
+    vm.stopPrank();
+
+    // should be able to reserve mint even if totalMax is 0
+    vm.startPrank(other);
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    vm.stopPrank();
+
+    vm.startPrank(signingAddress);
+    IGachaLazyClaim.ClaimMint[] memory mints = new IGachaLazyClaim.ClaimMint[](1);
+    IGachaLazyClaim.VariationMint[] memory variationMints = new IGachaLazyClaim.VariationMint[](1);
+    variationMints[0] = IGachaLazyClaim.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = IGachaLazyClaim.ClaimMint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationMints: variationMints
+    });
+    example.deliverMints(mints);
+    vm.stopPrank();
+  }
+
   function testMintReserveMoreThanAvailable() public {
     vm.startPrank(creator);
 
