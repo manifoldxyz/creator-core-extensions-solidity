@@ -157,18 +157,17 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     // Checks for reserving
     if (mintCount == 0 || mintCount >= MAX_UINT_32) revert IGachaLazyClaim.InvalidMintCount();
     if (claim.startDate > block.timestamp || (claim.endDate > 0 && claim.endDate < block.timestamp)) revert IGachaLazyClaim.ClaimInactive();
-    if ((claim.totalMax != 0 && claim.total == claim.totalMax)) revert IGachaLazyClaim.ClaimSoldOut();
-    if (claim.total == MAX_UINT_32 || claim.total + mintCount > MAX_UINT_32) revert IGachaLazyClaim.TooManyRequested();
+    if (claim.totalMax != 0 && claim.total == claim.totalMax) revert IGachaLazyClaim.ClaimSoldOut();
+    if (claim.total == MAX_UINT_32) revert IGachaLazyClaim.TooManyRequested();
     if (msg.value != (claim.cost + MINT_FEE) * mintCount) revert IGachaLazyClaim.InvalidPayment();
     // calculate the amount to reserve and update totals
     uint32 amountToReserve = mintCount;
     if (claim.totalMax != 0) {
-      uint32 amountAvailable = claim.totalMax - claim.total;
-      amountToReserve = uint32(Math.min(mintCount, amountAvailable));
+      amountToReserve = uint32(Math.min(mintCount, claim.totalMax - claim.total));
     }
     claim.total += amountToReserve;
     _mintDetailsPerWallet[creatorContractAddress][instanceId][msg.sender].reservedCount += amountToReserve;
-    if (amountToReserve > 0 && claim.cost > 0) {
+    if (claim.cost > 0) {
       _sendFunds(claim.paymentReceiver, claim.cost * amountToReserve);
     }
     // Refund any overpayment
