@@ -21,6 +21,7 @@ interface IGachaLazyClaim {
   error InvalidInput();
   error InvalidPayment();
   error InvalidSignature();
+  error InvalidMintCount();
   error InvalidVariationIndex();
   error InvalidStartingTokenId();
   error ClaimAlreadyInitialized();
