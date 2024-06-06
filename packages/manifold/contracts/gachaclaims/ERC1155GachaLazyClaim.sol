@@ -115,8 +115,6 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
       cost: updateClaimParameters.cost,
       erc20: claim.erc20
     });
-
-    // logic for updating tokenIds
     emit GachaClaimUpdated(creatorContractAddress, instanceId);
   }
 

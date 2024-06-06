@@ -115,6 +115,9 @@ contract ERC1155GachaLazyClaimTest is Test {
     vm.expectRevert(IGachaLazyClaim.InvalidDate.selector);
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
+    // successful initialization with no end date
+    claimP.endDate = 0;
+    example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
   }
 
@@ -172,6 +175,15 @@ contract ERC1155GachaLazyClaimTest is Test {
     claimU.startDate = nowC + 1000;
     claimU.endDate = later + 3000;
     claimU.totalMax = 1;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+
+    // able to update to no end or start date
+    claimU.startDate = 0;
+    claimU.endDate = 0;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+
+    claimU.startDate = nowC;
+    claimU.endDate = 0;
     example.updateClaim(address(creatorCore1), 1, claimU);
 
     vm.stopPrank();
@@ -531,5 +543,41 @@ contract ERC1155GachaLazyClaimTest is Test {
     assertEq("https://arweave.net/arweaveHash2/1", creatorCore1.uri(7));
     assertEq("https://arweave.net/arweaveHash2/2", creatorCore1.uri(8));
     assertEq("https://arweave.net/arweaveHash2/3", creatorCore1.uri(9));
+  }
+
+  function testUpdateTokenURI() public {
+    vm.startPrank(creator);
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    uint totalMintPrice = 1 + MINT_FEE;
+
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      totalMax: 100,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      location: "arweaveHash1",
+      paymentReceiver: payable(creator),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    
+    // tokens with original location
+    assertEq("https://arweave.net/arweaveHash1/1", creatorCore1.uri(1));
+    assertEq("https://arweave.net/arweaveHash1/2", creatorCore1.uri(2));
+    assertEq("https://arweave.net/arweaveHash1/3", creatorCore1.uri(3));
+    assertEq("https://arweave.net/arweaveHash1/4", creatorCore1.uri(4));
+    assertEq("https://arweave.net/arweaveHash1/5", creatorCore1.uri(5));
+
+    // update tokenURI
+    example.updateTokenURIParams(address(creatorCore1), 1, IGachaLazyClaim.StorageProtocol.ARWEAVE, "arweaveHashNEW");
+    assertEq("https://arweave.net/arweaveHashNEW/1", creatorCore1.uri(1));
+    assertEq("https://arweave.net/arweaveHashNEW/2", creatorCore1.uri(2));
+    assertEq("https://arweave.net/arweaveHashNEW/3", creatorCore1.uri(3));
+    assertEq("https://arweave.net/arweaveHashNEW/4", creatorCore1.uri(4));
+    assertEq("https://arweave.net/arweaveHashNEW/5", creatorCore1.uri(5));
+    vm.stopPrank();
   }
 }
