@@ -20,14 +20,15 @@ contract ERC1155GachaLazyClaimTest is Test {
   ERC1155Creator public creatorCore2;
 
   address public creator = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
+  address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
   address public signingAddress = 0xc78dC443c126Af6E4f6eD540C1E740c1B5be09CE;
   address public other = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
-  address public other2 = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
+  address public other2 = 0x80AAC46bbd3C2FcE33681541a52CacBEd14bF425;
 
   address public zeroAddress = address(0);
 
   uint256 privateKey = 0x1010101010101010101010101010101010101010101010101010101010101010;
-  
+
   uint32 MAX_UINT_32 = 0xffffffff;
   uint256 public constant MINT_FEE = 500000000000000;
 
@@ -37,8 +38,9 @@ contract ERC1155GachaLazyClaimTest is Test {
     creatorCore1 = new ERC1155Creator("Token1", "NFT1");
     creatorCore2 = new ERC1155Creator("Token2", "NFT2");
     vm.stopPrank();
-    vm.startPrank(creator);
-    example = new ERC1155GachaLazyClaim(creator);
+
+    vm.startPrank(owner);
+    example = new ERC1155GachaLazyClaim(owner);
     example.setSigner(address(signingAddress));
     vm.stopPrank();
 
@@ -181,15 +183,28 @@ contract ERC1155GachaLazyClaimTest is Test {
     claimU.endDate = later + 3000;
     claimU.totalMax = 1;
     example.updateClaim(address(creatorCore1), 1, claimU);
+    IERC1155GachaLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.cost, 2);
+    // storage protocol for IPFS is 3
+    assertEq(uint(claim.storageProtocol), 3);
+    assertEq(claim.startDate, nowC + 1000);
+    assertEq(claim.endDate, later + 3000);
+    assertEq(claim.totalMax, 1);
 
     // able to update to no end or start date
     claimU.startDate = 0;
     claimU.endDate = 0;
     example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.startDate, 0);
+    assertEq(claim.endDate, 0);
 
     claimU.startDate = nowC;
     claimU.endDate = 0;
     example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.startDate, nowC);
+    assertEq(claim.endDate, 0);
 
     vm.stopPrank();
   }
@@ -326,7 +341,6 @@ contract ERC1155GachaLazyClaimTest is Test {
     uint48 start = 0;
     uint48 end = uint48(block.timestamp) + 2000;
 
-
     IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
       storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
       totalMax: 0,
@@ -375,7 +389,6 @@ contract ERC1155GachaLazyClaimTest is Test {
       erc20: zeroAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.setSigner(signingAddress);
     vm.stopPrank();
 
     // should be able to reserve mint even if totalMax is 0
@@ -419,6 +432,8 @@ contract ERC1155GachaLazyClaimTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: mintPrice + MINT_FEE }(address(creatorCore1), 1, 1);
     uint256 creatorBalanceBefore = address(creator).balance;
+    // the manifoled fee is saved to the extension contract
+    uint256 extensionBalanceBefore = address(example).balance;
     vm.stopPrank();
 
     vm.startPrank(other);
@@ -430,11 +445,10 @@ contract ERC1155GachaLazyClaimTest is Test {
     assertEq(userMintDetails.reservedCount, 3);
 
     //check payment balances: for creator and collector, difference should be for only three mints instead of 5
-    vm.startPrank(creator);
     uint creatorBalanceAfter = address(creator).balance;
     assertEq(creatorBalanceAfter, creatorBalanceBefore + mintPrice * 3);
     assertEq(address(other).balance, collectorBalanceBefore - ((mintPrice + MINT_FEE) * 3));
-    vm.stopPrank();
+    assertEq(address(example).balance, extensionBalanceBefore + MINT_FEE * 3);
   }
 
   function testInvalidSigner() public {
@@ -454,7 +468,6 @@ contract ERC1155GachaLazyClaimTest is Test {
       erc20: zeroAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.setSigner(signingAddress);
     vm.stopPrank();
 
     vm.startPrank(other);
@@ -490,7 +503,6 @@ contract ERC1155GachaLazyClaimTest is Test {
       erc20: zeroAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.setSigner(signingAddress);
     example.mintReserve{ value: (1 + MINT_FEE) * 2 }(address(creatorCore1), 1, 2);
     vm.stopPrank();
 
@@ -625,7 +637,7 @@ contract ERC1155GachaLazyClaimTest is Test {
       erc20: zeroAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    
+
     // tokens with original location
     assertEq("https://arweave.net/arweaveHash1/1", creatorCore1.uri(1));
     assertEq("https://arweave.net/arweaveHash1/2", creatorCore1.uri(2));

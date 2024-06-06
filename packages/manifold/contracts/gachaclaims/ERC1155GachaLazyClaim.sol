@@ -97,7 +97,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     address creatorContractAddress,
     uint256 instanceId,
     UpdateClaimParameters memory updateClaimParameters
-  ) external override adminRequired {
+  ) external override creatorAdminRequired(creatorContractAddress) {
     Claim memory claim = _getClaim(creatorContractAddress, instanceId);
     if (instanceId == 0 || instanceId > MAX_UINT_56) revert IGachaLazyClaim.InvalidInstance();
     if (updateClaimParameters.endDate != 0 && updateClaimParameters.startDate >= updateClaimParameters.endDate)
@@ -110,7 +110,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
 
     // Overwrite the existing values
     _claims[creatorContractAddress][instanceId] = Claim({
-      storageProtocol: claim.storageProtocol,
+      storageProtocol: updateClaimParameters.storageProtocol,
       total: claim.total,
       totalMax: updateClaimParameters.totalMax,
       startDate: updateClaimParameters.startDate,
