@@ -29,8 +29,6 @@ contract ERC1155GachaLazyClaimTest is Test {
   uint256 privateKey = 0x1010101010101010101010101010101010101010101010101010101010101010;
   
   uint32 MAX_UINT_32 = 0xffffffff;
-  uint48 MAX_UINT_48 = 0xffffffffffff;
-  uint256 MAX_UINT_256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
   uint256 public constant MINT_FEE = 500000000000000;
 
   // Test setup
@@ -167,7 +165,6 @@ contract ERC1155GachaLazyClaimTest is Test {
     example.updateClaim(address(creatorCore1), 1, claimU);
 
     claimU.totalMax = 100;
-    claimU.cost = 
     claimU.startDate = nowC + 2000;
     vm.expectRevert(IGachaLazyClaim.InvalidDate.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
