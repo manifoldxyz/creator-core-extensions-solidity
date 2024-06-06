@@ -407,7 +407,7 @@ contract ERC1155GachaLazyClaimTest is Test {
 
     IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
       storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
-      totalMax: 2,
+      totalMax: 4,
       startDate: start,
       endDate: end,
       tokenVariations: 5,
@@ -422,18 +422,18 @@ contract ERC1155GachaLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(other);
-    example.mintReserve{ value: (mintPrice + MINT_FEE) * 2 }(address(creatorCore1), 1, 2);
+    example.mintReserve{ value: (mintPrice + MINT_FEE) * 5 }(address(creatorCore1), 1, 5);
     vm.stopPrank();
 
     //confirm user
     GachaLazyClaim.UserMintDetails memory userMintDetails = example.getUserMints(other, address(creatorCore1), 1);
-    assertEq(userMintDetails.reservedCount, 1);
+    assertEq(userMintDetails.reservedCount, 3);
 
-    //check payment balances: for creator anc collector, difference should be for only one mint
+    //check payment balances: for creator and collector, difference should be for only three mints instead of 5
     vm.startPrank(creator);
     uint creatorBalanceAfter = address(creator).balance;
-    assertEq(creatorBalanceAfter, creatorBalanceBefore + mintPrice);
-    assertEq(address(other).balance, collectorBalanceBefore - mintPrice - MINT_FEE);
+    assertEq(creatorBalanceAfter, creatorBalanceBefore + mintPrice * 3);
+    assertEq(address(other).balance, collectorBalanceBefore - ((mintPrice + MINT_FEE) * 3));
     vm.stopPrank();
   }
 
