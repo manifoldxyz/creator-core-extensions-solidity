@@ -47,6 +47,9 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     uint256 instanceId,
     ClaimParameters calldata claimParameters
   ) external payable override creatorAdminRequired(creatorContractAddress) {
+    if (deprecated) {
+      revert ContractDeprecated();
+    }
     if (instanceId == 0 || instanceId > MAX_UINT_56) revert IGachaLazyClaim.InvalidInstance();
     if (_claims[creatorContractAddress][instanceId].storageProtocol != StorageProtocol.INVALID)
       revert IGachaLazyClaim.ClaimAlreadyInitialized();
@@ -98,6 +101,9 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     uint256 instanceId,
     UpdateClaimParameters memory updateClaimParameters
   ) external override creatorAdminRequired(creatorContractAddress) {
+    if (deprecated) {
+      revert ContractDeprecated();
+    }
     Claim memory claim = _getClaim(creatorContractAddress, instanceId);
     if (instanceId == 0 || instanceId > MAX_UINT_56) revert IGachaLazyClaim.InvalidInstance();
     if (updateClaimParameters.endDate != 0 && updateClaimParameters.startDate >= updateClaimParameters.endDate)
@@ -106,7 +112,6 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     if (updateClaimParameters.totalMax > MAX_UINT_32) revert IGachaLazyClaim.InvalidInput();
     if (updateClaimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
     if (updateClaimParameters.cost > MAX_UINT_96) revert IGachaLazyClaim.InvalidInput();
-
 
     // Overwrite the existing values
     _claims[creatorContractAddress][instanceId] = Claim({
@@ -156,7 +161,8 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     Claim storage claim = _getClaim(creatorContractAddress, instanceId);
     // Checks for reserving
     if (mintCount == 0 || mintCount >= MAX_UINT_32) revert IGachaLazyClaim.InvalidMintCount();
-    if (claim.startDate > block.timestamp || (claim.endDate > 0 && claim.endDate < block.timestamp)) revert IGachaLazyClaim.ClaimInactive();
+    if (claim.startDate > block.timestamp || (claim.endDate > 0 && claim.endDate < block.timestamp))
+      revert IGachaLazyClaim.ClaimInactive();
     if (claim.totalMax != 0 && claim.total == claim.totalMax) revert IGachaLazyClaim.ClaimSoldOut();
     if (claim.total == MAX_UINT_32) revert IGachaLazyClaim.TooManyRequested();
     if (msg.value != (claim.cost + MINT_FEE) * mintCount) revert IGachaLazyClaim.InvalidPayment();

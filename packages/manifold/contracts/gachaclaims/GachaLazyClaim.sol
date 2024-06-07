@@ -27,6 +27,8 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
 
   uint256 public constant MINT_FEE = 500000000000000;
 
+  bool public deprecated;
+
   // { contractAddress => { instanceId => { walletAddress => UserMintDetails } } }
   mapping(address => mapping(uint256 => mapping(address => UserMintDetails))) internal _mintDetailsPerWallet;
 
@@ -43,6 +45,13 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
 
   constructor(address initialOwner) {
     _transferOwnership(initialOwner);
+  }
+
+  /**
+   * Admin function to deprecate the contract
+   */
+  function deprecate(bool _deprecated) external adminRequired {
+    deprecated = _deprecated;
   }
 
   /**

@@ -28,6 +28,7 @@ interface IGachaLazyClaim {
   error ClaimNotInitialized();
   error ClaimInactive();
   error ClaimSoldOut();
+  error ContractDeprecated();
   error TokenDNE();
   error FailedToTransfer();
   error TooManyRequested();
