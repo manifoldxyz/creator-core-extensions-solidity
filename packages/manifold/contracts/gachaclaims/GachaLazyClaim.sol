@@ -21,7 +21,7 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
   uint256 internal constant MAX_UINT_32 = 0xffffffff;
   uint256 internal constant MAX_UINT_48 = 0xffffffffffff;
   uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
-  uint256 internal constant MAX_UINT_80 = 0xffffffffffffffffff;
+  uint256 internal constant MAX_UINT_80 = 0xffffffffffffffffffff;
   uint256 internal constant MAX_UINT_96 = 0xffffffffffffffffffffffff;
   address internal constant ADDRESS_ZERO = 0x0000000000000000000000000000000000000000;
 
