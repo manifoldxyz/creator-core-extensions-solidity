@@ -125,6 +125,30 @@ contract ERC1155GachaLazyClaimTest is Test {
     claimP.endDate = 0;
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
+
+    vm.startPrank(owner);
+    example.deprecate(true);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    // can't initialize if deprecated
+    vm.expectRevert(IGachaLazyClaim.ContractDeprecated.selector);
+    example.initializeClaim(address(creatorCore1), 2, claimP);
+    vm.stopPrank();
+
+    vm.startPrank(owner);
+    example.deprecate(false);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    example.initializeClaim(address(creatorCore1), 2, claimP);
+    vm.stopPrank();
+
+    // Cannot deprecate if not an admin
+    vm.startPrank(other);
+    vm.expectRevert(bytes("AdminControl: Must be owner or admin"));
+    example.deprecate(true);
+    vm.stopPrank();
   }
 
   function testUpdateClaimSanitization() public {
@@ -205,7 +229,25 @@ contract ERC1155GachaLazyClaimTest is Test {
     claim = example.getClaim(address(creatorCore1), 1);
     assertEq(claim.startDate, nowC);
     assertEq(claim.endDate, 0);
+        vm.stopPrank();
 
+    vm.startPrank(owner);
+    example.deprecate(true);
+    vm.stopPrank();
+
+    // can't update if deprecated
+    vm.startPrank(creator);
+    claimU.startDate = nowC + 2000;
+    vm.expectRevert(IGachaLazyClaim.ContractDeprecated.selector);
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    vm.stopPrank();
+
+    vm.startPrank(owner);
+    example.deprecate(false);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    example.updateClaim(address(creatorCore1), 1, claimU);
     vm.stopPrank();
   }
 
