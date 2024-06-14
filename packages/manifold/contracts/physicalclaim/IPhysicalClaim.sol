@@ -45,7 +45,7 @@ interface IPhysicalClaim is IERC165, IERC721Receiver, IERC1155Receiver {
         bytes32 nonce;
     }
 
-    event Redeem(uint256 instanceId, address indexed redeemer, uint8 variationSelection, bytes32 nonce);
+    event Redeem(uint256 indexed instanceId, address indexed redeemer, uint8 variationSelection, bytes32 nonce);
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
