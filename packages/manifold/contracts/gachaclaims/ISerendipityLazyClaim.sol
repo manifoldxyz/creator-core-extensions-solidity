@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 /**
  * Gacha Lazy Claim interface
  */
-interface IGachaLazyClaim {
+interface ISerendipityLazyClaim {
   enum StorageProtocol {
     INVALID,
     NONE,

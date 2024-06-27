@@ -10,15 +10,15 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "./GachaLazyClaim.sol";
-import "./IERC1155GachaLazyClaim.sol";
+import "./SerendipityLazyClaim.sol";
+import "./IERC1155SerendipityLazyClaim.sol";
 
 /**
  * @title Gacha Lazy 1155 Payable Claim
  * @author manifold.xyz
  * @notice
  */
-contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExtensionTokenURI, GachaLazyClaim {
+contract ERC1155SerendipityLazyClaim is IERC165, IERC1155SerendipityLazyClaim, ICreatorExtensionTokenURI, SerendipityLazyClaim {
   using Strings for uint256;
 
   // stores mapping from contractAddress/instanceId to the claim it represents
@@ -30,17 +30,17 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, AdminControl) returns (bool) {
     return
-      interfaceId == type(IERC1155GachaLazyClaim).interfaceId ||
-      interfaceId == type(IGachaLazyClaim).interfaceId ||
+      interfaceId == type(IERC1155SerendipityLazyClaim).interfaceId ||
+      interfaceId == type(ISerendipityLazyClaim).interfaceId ||
       interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
       interfaceId == type(IAdminControl).interfaceId ||
       interfaceId == type(IERC165).interfaceId;
   }
 
-  constructor(address initialOwner) GachaLazyClaim(initialOwner) {}
+  constructor(address initialOwner) SerendipityLazyClaim(initialOwner) {}
 
   /**
-   * See {IERC1155GachaLazyClaim-initializeClaim}.
+   * See {IERC1155SerendipityLazyClaim-initializeClaim}.
    */
   function initializeClaim(
     address creatorContractAddress,
@@ -50,16 +50,16 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     if (deprecated) {
       revert ContractDeprecated();
     }
-    if (instanceId == 0 || instanceId > MAX_UINT_56) revert IGachaLazyClaim.InvalidInstance();
+    if (instanceId == 0 || instanceId > MAX_UINT_56) revert ISerendipityLazyClaim.InvalidInstance();
     if (_claims[creatorContractAddress][instanceId].storageProtocol != StorageProtocol.INVALID)
-      revert IGachaLazyClaim.ClaimAlreadyInitialized();
+      revert ISerendipityLazyClaim.ClaimAlreadyInitialized();
     // Checks
-    if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
+    if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert ISerendipityLazyClaim.InvalidStorageProtocol();
     if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate)
-      revert IGachaLazyClaim.InvalidDate();
-    if (claimParameters.totalMax > MAX_UINT_32) revert IGachaLazyClaim.InvalidInput();
-    if (claimParameters.tokenVariations > MAX_UINT_8) revert IGachaLazyClaim.InvalidInput();
-    if (claimParameters.cost > MAX_UINT_96) revert IGachaLazyClaim.InvalidInput();
+      revert ISerendipityLazyClaim.InvalidDate();
+    if (claimParameters.totalMax > MAX_UINT_32) revert ISerendipityLazyClaim.InvalidInput();
+    if (claimParameters.tokenVariations > MAX_UINT_8) revert ISerendipityLazyClaim.InvalidInput();
+    if (claimParameters.cost > MAX_UINT_96) revert ISerendipityLazyClaim.InvalidInput();
 
     address[] memory receivers = new address[](1);
     receivers[0] = msg.sender;
@@ -67,7 +67,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     string[] memory uris = new string[](claimParameters.tokenVariations);
     uint256[] memory newTokenIds = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(receivers, amounts, uris);
 
-    if (newTokenIds[0] > MAX_UINT_80) revert IGachaLazyClaim.InvalidStartingTokenId();
+    if (newTokenIds[0] > MAX_UINT_80) revert ISerendipityLazyClaim.InvalidStartingTokenId();
 
     // Create the claim
     _claims[creatorContractAddress][instanceId] = Claim({
@@ -94,7 +94,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   }
 
   /**
-   * See {IERC1155GachaLazyClaim-updateClaim}.
+   * See {IERC1155SerendipityLazyClaim-updateClaim}.
    */
   function updateClaim(
     address creatorContractAddress,
@@ -105,13 +105,13 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
       revert ContractDeprecated();
     }
     Claim memory claim = _getClaim(creatorContractAddress, instanceId);
-    if (instanceId == 0 || instanceId > MAX_UINT_56) revert IGachaLazyClaim.InvalidInstance();
+    if (instanceId == 0 || instanceId > MAX_UINT_56) revert ISerendipityLazyClaim.InvalidInstance();
     if (updateClaimParameters.endDate != 0 && updateClaimParameters.startDate >= updateClaimParameters.endDate)
-      revert IGachaLazyClaim.InvalidDate();
-    if (updateClaimParameters.totalMax < claim.total) revert IGachaLazyClaim.CannotLowerTotalMaxBeyondTotal();
-    if (updateClaimParameters.totalMax > MAX_UINT_32) revert IGachaLazyClaim.InvalidInput();
-    if (updateClaimParameters.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
-    if (updateClaimParameters.cost > MAX_UINT_96) revert IGachaLazyClaim.InvalidInput();
+      revert ISerendipityLazyClaim.InvalidDate();
+    if (updateClaimParameters.totalMax < claim.total) revert ISerendipityLazyClaim.CannotLowerTotalMaxBeyondTotal();
+    if (updateClaimParameters.totalMax > MAX_UINT_32) revert ISerendipityLazyClaim.InvalidInput();
+    if (updateClaimParameters.storageProtocol == StorageProtocol.INVALID) revert ISerendipityLazyClaim.InvalidStorageProtocol();
+    if (updateClaimParameters.cost > MAX_UINT_96) revert ISerendipityLazyClaim.InvalidInput();
 
     // Overwrite the existing values
     _claims[creatorContractAddress][instanceId] = Claim({
@@ -131,14 +131,14 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   }
 
   /**
-   * See {IERC1155GachaLazyClaim-getClaim}.
+   * See {IERC1155SerendipityLazyClaim-getClaim}.
    */
   function getClaim(address creatorContractAddress, uint256 instanceId) public view override returns (Claim memory) {
     return _getClaim(creatorContractAddress, instanceId);
   }
 
   /**
-   * See {IERC1155GachaLazyClaim-getClaimForToken}.
+   * See {IERC1155SerendipityLazyClaim-getClaimForToken}.
    */
   function getClaimForToken(
     address creatorContractAddress,
@@ -150,22 +150,22 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
 
   function _getClaim(address creatorContractAddress, uint256 instanceId) private view returns (Claim storage claim) {
     claim = _claims[creatorContractAddress][instanceId];
-    if (claim.storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.ClaimNotInitialized();
+    if (claim.storageProtocol == StorageProtocol.INVALID) revert ISerendipityLazyClaim.ClaimNotInitialized();
   }
 
   /**
-   * See {IGachaLazyClaim-mintReserve}.
+   * See {ISerendipityLazyClaim-mintReserve}.
    */
   function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override {
-    if (Address.isContract(msg.sender)) revert IGachaLazyClaim.CannotMintFromContract();
+    if (Address.isContract(msg.sender)) revert ISerendipityLazyClaim.CannotMintFromContract();
     Claim storage claim = _getClaim(creatorContractAddress, instanceId);
     // Checks for reserving
-    if (mintCount == 0 || mintCount >= MAX_UINT_32) revert IGachaLazyClaim.InvalidMintCount();
+    if (mintCount == 0 || mintCount >= MAX_UINT_32) revert ISerendipityLazyClaim.InvalidMintCount();
     if (claim.startDate > block.timestamp || (claim.endDate > 0 && claim.endDate < block.timestamp))
-      revert IGachaLazyClaim.ClaimInactive();
-    if (claim.totalMax != 0 && claim.total == claim.totalMax) revert IGachaLazyClaim.ClaimSoldOut();
-    if (claim.total == MAX_UINT_32) revert IGachaLazyClaim.TooManyRequested();
-    if (msg.value != (claim.cost + MINT_FEE) * mintCount) revert IGachaLazyClaim.InvalidPayment();
+      revert ISerendipityLazyClaim.ClaimInactive();
+    if (claim.totalMax != 0 && claim.total == claim.totalMax) revert ISerendipityLazyClaim.ClaimSoldOut();
+    if (claim.total == MAX_UINT_32) revert ISerendipityLazyClaim.TooManyRequested();
+    if (msg.value != (claim.cost + MINT_FEE) * mintCount) revert ISerendipityLazyClaim.InvalidPayment();
     // calculate the amount to reserve and update totals
     uint32 amountToReserve = mintCount;
     if (claim.totalMax != 0) {
@@ -185,9 +185,9 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   }
 
   /**
-   * See {IGachaLazyClaim-deliverMints}.
+   * See {ISerendipityLazyClaim-deliverMints}.
    */
-  function deliverMints(IGachaLazyClaim.ClaimMint[] calldata mints) external override {
+  function deliverMints(ISerendipityLazyClaim.ClaimMint[] calldata mints) external override {
     _validateSigner();
     for (uint256 i; i < mints.length; ) {
       ClaimMint calldata mintData = mints[i];
@@ -198,19 +198,19 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
 
       for (uint256 j; j < mintData.variationMints.length; ) {
         VariationMint calldata variationMint = mintData.variationMints[j];
-        if (variationMint.variationIndex > MAX_UINT_8) revert IGachaLazyClaim.InvalidVariationIndex();
+        if (variationMint.variationIndex > MAX_UINT_8) revert ISerendipityLazyClaim.InvalidVariationIndex();
         uint8 variationIndex = variationMint.variationIndex;
-        if (variationIndex > claim.tokenVariations || variationIndex < 1) revert IGachaLazyClaim.InvalidVariationIndex();
+        if (variationIndex > claim.tokenVariations || variationIndex < 1) revert ISerendipityLazyClaim.InvalidVariationIndex();
         address recipient = variationMint.recipient;
-        if (variationMint.amount > MAX_UINT_32) revert IGachaLazyClaim.TooManyRequested();
+        if (variationMint.amount > MAX_UINT_32) revert ISerendipityLazyClaim.TooManyRequested();
         uint32 amount = variationMint.amount;
         UserMintDetails storage userMintDetails = _mintDetailsPerWallet[mintData.creatorContractAddress][
           mintData.instanceId
         ][recipient];
 
         if (userMintDetails.deliveredCount + amount > userMintDetails.reservedCount)
-          revert IGachaLazyClaim.CannotMintMoreThanReserved();
-        if (claim.startingTokenId > MAX_UINT_80) revert IGachaLazyClaim.InvalidStartingTokenId();
+          revert ISerendipityLazyClaim.CannotMintMoreThanReserved();
+        if (claim.startingTokenId > MAX_UINT_80) revert ISerendipityLazyClaim.InvalidStartingTokenId();
         tokenIds[j] = claim.startingTokenId + variationIndex - 1;
         amounts[j] = amount;
         receivers[j] = recipient;
@@ -228,7 +228,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   }
 
   /**
-   * See {IGachaLazyClaim-getUserMints}.
+   * See {ISerendipityLazyClaim-getUserMints}.
    */
   function getUserMints(
     address minter,
@@ -243,7 +243,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
    */
   function tokenURI(address creatorContractAddress, uint256 tokenId) external view override returns (string memory uri) {
     uint256 instanceId = _tokenInstances[creatorContractAddress][tokenId];
-    if (instanceId == 0) revert IGachaLazyClaim.TokenDNE();
+    if (instanceId == 0) revert ISerendipityLazyClaim.TokenDNE();
     Claim memory claim = _getClaim(creatorContractAddress, instanceId);
 
     string memory prefix = "";
@@ -256,7 +256,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
   }
 
   /**
-   * See {IERC1155GachaLazyClaim-updateTokenURIParams}.
+   * See {IERC1155SerendipityLazyClaim-updateTokenURIParams}.
    */
   function updateTokenURIParams(
     address creatorContractAddress,
@@ -265,7 +265,7 @@ contract ERC1155GachaLazyClaim is IERC165, IERC1155GachaLazyClaim, ICreatorExten
     string calldata location
   ) external override creatorAdminRequired(creatorContractAddress) {
     Claim storage claim = _getClaim(creatorContractAddress, instanceId);
-    if (storageProtocol == StorageProtocol.INVALID) revert IGachaLazyClaim.InvalidStorageProtocol();
+    if (storageProtocol == StorageProtocol.INVALID) revert ISerendipityLazyClaim.InvalidStorageProtocol();
     claim.storageProtocol = storageProtocol;
     claim.location = location;
     emit GachaClaimUpdated(creatorContractAddress, instanceId);
