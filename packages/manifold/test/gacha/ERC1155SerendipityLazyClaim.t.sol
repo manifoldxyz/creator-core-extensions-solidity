@@ -491,7 +491,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     IERC1155SerendipityLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     // sanity setup
-    assertEq(claim.totalMax, 100, "totalMax should be 100");
+    assertEq(claim.totalMax, 0, "totalMax should be 0 (unlimited)");
     assertEq(claim.total, 5, "total should be 5");
 
     IERC1155SerendipityLazyClaim.UpdateClaimParameters memory claimU = IERC1155SerendipityLazyClaim.UpdateClaimParameters({
