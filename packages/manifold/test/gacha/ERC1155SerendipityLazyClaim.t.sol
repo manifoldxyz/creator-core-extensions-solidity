@@ -124,34 +124,67 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     // successful initialization with no end date
     claimP.endDate = 0;
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    vm.stopPrank();
 
-    vm.startPrank(owner);
-    example.deprecate(true);
-    vm.stopPrank();
-
-    vm.startPrank(creator);
-    // can't initialize if deprecated
-    vm.expectRevert(IGachaLazyClaim.ContractDeprecated.selector);
+    // successful initialization with no start date
+    claimP.startDate = 0;
+    claimP.endDate = later;
     example.initializeClaim(address(creatorCore1), 2, claimP);
-    vm.stopPrank();
 
-    vm.startPrank(owner);
-    example.deprecate(false);
-    vm.stopPrank();
-
-    vm.startPrank(creator);
-    example.initializeClaim(address(creatorCore1), 2, claimP);
-    vm.stopPrank();
-
-    // Cannot deprecate if not an admin
-    vm.startPrank(other);
-    vm.expectRevert(bytes("AdminControl: Must be owner or admin"));
-    example.deprecate(true);
+    // successful initialization with no start or end date
+    claimP.endDate = 0;
+    example.initializeClaim(address(creatorCore1), 3, claimP);
     vm.stopPrank();
   }
 
-  function testUpdateClaimSanitization() public {
+  function test_InitializeClaimWithUnlimitedSupply() public {
+    vm.startPrank(creator);
+    // init some arguments for mint base new
+    address[] memory receivers = new address[](1);
+    receivers[0] = other2;
+    uint[] memory amounts = new uint[](1);
+    amounts[0] = 5;
+    string[] memory uris = new string[](1);
+    uris[0] = "some hash";
+    // premint some tokens
+    creatorCore1.mintBaseNew(receivers, amounts, uris);
+
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      location: "arweaveHash1",
+      totalMax: 0,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      paymentReceiver: payable(other),
+      cost: 1,
+      erc20: zeroAddress
+    });
+
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    vm.startPrank(other);
+    IERC1155GachaLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    // check equality of claim parameters
+    assertEq(uint(claim.storageProtocol), 2);
+    assertEq(claim.location, "arweaveHash1");
+    assertEq(claim.total, 0);
+    assertEq(claim.totalMax, 0);
+    assertEq(claim.startDate, nowC);
+    assertEq(claim.endDate, later);
+    assertEq(claim.tokenVariations, 5);
+    assertEq(claim.paymentReceiver, payable(other));
+    assertEq(claim.cost, 1);
+    assertEq(claim.erc20, zeroAddress);
+    assertEq(claim.startingTokenId, 2);
+
+    vm.stopPrank();
+  }
+
+  function test_UpdateClaim_LimitedSupplySanitization() public {
     vm.startPrank(creator);
 
     uint48 nowC = uint48(block.timestamp);
@@ -185,12 +218,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.expectRevert(IGachaLazyClaim.InvalidStorageProtocol.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
 
+    // reset to valid storage protocol
     claimU.storageProtocol = IGachaLazyClaim.StorageProtocol.ARWEAVE;
-    claimU.totalMax = 0;
-    vm.expectRevert(IGachaLazyClaim.CannotLowerTotalMaxBeyondTotal.selector);
-    example.updateClaim(address(creatorCore1), 1, claimU);
-
-    claimU.totalMax = 100;
     claimU.startDate = nowC + 2000;
     vm.expectRevert(IGachaLazyClaim.InvalidDate.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
@@ -205,7 +234,6 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     claimU.storageProtocol = IGachaLazyClaim.StorageProtocol.IPFS;
     claimU.startDate = nowC + 1000;
     claimU.endDate = later + 3000;
-    claimU.totalMax = 1;
     example.updateClaim(address(creatorCore1), 1, claimU);
     IERC1155GachaLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     assertEq(claim.cost, 2);
@@ -213,7 +241,6 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     assertEq(uint(claim.storageProtocol), 3);
     assertEq(claim.startDate, nowC + 1000);
     assertEq(claim.endDate, later + 3000);
-    assertEq(claim.totalMax, 1);
 
     // able to update to no end or start date
     claimU.startDate = 0;
@@ -229,24 +256,316 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     claim = example.getClaim(address(creatorCore1), 1);
     assertEq(claim.startDate, nowC);
     assertEq(claim.endDate, 0);
-        vm.stopPrank();
 
-    vm.startPrank(owner);
-    example.deprecate(true);
-    vm.stopPrank();
-
-    // can't update if deprecated
-    vm.startPrank(creator);
-    claimU.startDate = nowC + 2000;
-    vm.expectRevert(IGachaLazyClaim.ContractDeprecated.selector);
+    // update location
+    claimU.location = "newArweaveHash";
     example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.location, "newArweaveHash");
     vm.stopPrank();
+  }
 
-    vm.startPrank(owner);
-    example.deprecate(false);
-    vm.stopPrank();
-
+  function test_UpdateClaim_UnlimitedSupplySanitization() public {
     vm.startPrank(creator);
+
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.IPFS,
+      location: "arweaveHash1",
+      totalMax: 0,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      paymentReceiver: payable(other),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+
+    IERC1155GachaLazyClaim.UpdateClaimParameters memory claimU = IERC1155GachaLazyClaim.UpdateClaimParameters({
+      totalMax: 0,
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      startDate: nowC,
+      endDate: later,
+      location: "arweaveHash1",
+      paymentReceiver: payable(creator),
+      cost: 1
+    });
+
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+
+    claimU.storageProtocol = IGachaLazyClaim.StorageProtocol.INVALID;
+    vm.expectRevert(IGachaLazyClaim.InvalidStorageProtocol.selector);
+    example.updateClaim(address(creatorCore1), 1, claimU);
+
+    // reset to valid storage protocol
+    claimU.storageProtocol = IGachaLazyClaim.StorageProtocol.ARWEAVE;
+    claimU.startDate = nowC + 2000;
+    vm.expectRevert(IGachaLazyClaim.InvalidDate.selector);
+    example.updateClaim(address(creatorCore1), 1, claimU);
+
+    claimU.endDate = nowC;
+    vm.expectRevert(IGachaLazyClaim.InvalidDate.selector);
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claimU.endDate = later;
+
+    //successful data and cost update
+    claimU.cost = 2;
+    claimU.storageProtocol = IGachaLazyClaim.StorageProtocol.IPFS;
+    claimU.startDate = nowC + 1000;
+    claimU.endDate = later + 3000;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    IERC1155GachaLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.cost, 2);
+    // storage protocol for IPFS is 3
+    assertEq(uint(claim.storageProtocol), 3);
+    assertEq(claim.startDate, nowC + 1000);
+    assertEq(claim.endDate, later + 3000);
+
+    // able to update to no end or start date
+    claimU.startDate = 0;
+    claimU.endDate = 0;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.startDate, 0);
+    assertEq(claim.endDate, 0);
+
+    claimU.startDate = nowC;
+    claimU.endDate = 0;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.startDate, nowC);
+    assertEq(claim.endDate, 0);
+
+    // update location
+    claimU.location = "newArweaveHash";
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.location, "newArweaveHash");
+    vm.stopPrank();
+  }
+
+  function test_UpdateClaim_SwitchTokenSupplyWhenNoMints() public {
+    vm.startPrank(creator);
+
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      location: "arweaveHash1",
+      totalMax: 100,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      paymentReceiver: payable(other),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+
+    IERC1155GachaLazyClaim.UpdateClaimParameters memory claimU = IERC1155GachaLazyClaim.UpdateClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      totalMax: 0,
+      startDate: nowC,
+      endDate: later,
+      location: "arweaveHash1",
+      paymentReceiver: payable(other),
+      cost: 1
+    });
+
+    // when mint count is 0, change from limited (100) -> unlimited (0) supply
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    IERC1155GachaLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.total, 0, "total should be 0");
+    assertEq(claim.totalMax, 0, "totalMax should be updated to 0");
+
+    // update from unlimited (0) -> limited (5) supply
+    claimU.totalMax = 5;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.total, 0, "total should be 0");
+    assertEq(claim.totalMax, 5, "totalMax should be updated to 5");
+
+    // update from limited (5) -> limited (1000) supply
+    claimU.totalMax = 1000;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.total, 0, "total should be 0");
+    assertEq(claim.totalMax, 1000, "totalMax should be updated to 5");
+
+    vm.stopPrank();
+  }
+
+  function test_UpdateClaim_ChangeSupplyForLimitedInitialSupply() public {
+    vm.startPrank(creator);
+
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      location: "arweaveHash1",
+      totalMax: 100,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      paymentReceiver: payable(other),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5);
+
+    IERC1155GachaLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    // sanity setup
+    assertEq(claim.totalMax, 100, "totalMax should be 100");
+    assertEq(claim.total, 5, "total should be 5");
+
+    IERC1155GachaLazyClaim.UpdateClaimParameters memory claimU = IERC1155GachaLazyClaim.UpdateClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      totalMax: 5,
+      startDate: nowC,
+      endDate: later,
+      location: "arweaveHash1",
+      paymentReceiver: payable(other),
+      cost: 1
+    });
+
+
+    // update when minted count is 5
+    claimU.totalMax = 4;
+    vm.expectRevert(IGachaLazyClaim.CannotLowerTotalMaxBeyondTotal.selector);
+    example.updateClaim(address(creatorCore1), 1, claimU);
+
+    // confirm can set total max to minted count
+    claimU.totalMax = 5;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.totalMax, 5, "totalMax should be updated to 5");
+    assertEq(claim.total, 5, "total should be 5");
+    // confirm nothing else changed
+    assertEq(uint(claim.storageProtocol), uint(IGachaLazyClaim.StorageProtocol.ARWEAVE));
+    assertEq(claim.location, "arweaveHash1");
+    assertEq(claim.startDate, nowC);
+    assertEq(claim.endDate, later);
+    assertEq(claim.tokenVariations, 5);
+    assertEq(claim.paymentReceiver, payable(other));
+    assertEq(claim.cost, 1);
+    assertEq(claim.erc20, zeroAddress);
+
+    // confirm can set total max to > minted count
+    claimU.totalMax = 10;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.totalMax, 10, "totalMax should be updated to 10");
+    assertEq(claim.total, 5, "total should be 5");
+
+    // confirm can set supply to unlimited (0)
+    claimU.totalMax = 0;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.totalMax, 0, "totalMax should be updated to 0");
+    assertEq(claim.total, 5, "total should be 5");
+
+    vm.stopPrank();
+  }
+
+  function test_UpdateClaim_ChangeSupplyForUnlimitedInitialSupply() public {
+    vm.startPrank(creator);
+
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      location: "arweaveHash1",
+      totalMax: 0,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      paymentReceiver: payable(other),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5);
+
+    IERC1155GachaLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    // sanity setup
+    assertEq(claim.totalMax, 100, "totalMax should be 100");
+    assertEq(claim.total, 5, "total should be 5");
+
+    IERC1155GachaLazyClaim.UpdateClaimParameters memory claimU = IERC1155GachaLazyClaim.UpdateClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      totalMax: 5,
+      startDate: nowC,
+      endDate: later,
+      location: "arweaveHash1",
+      paymentReceiver: payable(other),
+      cost: 1
+    });
+
+
+    // update when minted count is 5
+    claimU.totalMax = 4;
+    vm.expectRevert(IGachaLazyClaim.CannotLowerTotalMaxBeyondTotal.selector);
+    example.updateClaim(address(creatorCore1), 1, claimU);
+
+    // confirm can set total max to minted count
+    claimU.totalMax = 5;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.totalMax, 5, "totalMax should be updated to 5");
+    assertEq(claim.total, 5, "total should be 5");
+    // confirm nothing else changed
+    assertEq(uint(claim.storageProtocol), uint(IGachaLazyClaim.StorageProtocol.ARWEAVE));
+    assertEq(claim.location, "arweaveHash1");
+    assertEq(claim.startDate, nowC);
+    assertEq(claim.endDate, later);
+    assertEq(claim.tokenVariations, 5);
+    assertEq(claim.paymentReceiver, payable(other));
+    assertEq(claim.cost, 1);
+    assertEq(claim.erc20, zeroAddress);
+
+    // confirm can set total max to > minted count
+    claimU.totalMax = 10;
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    claim = example.getClaim(address(creatorCore1), 1);
+    assertEq(claim.totalMax, 10, "totalMax should be updated to 10");
+    assertEq(claim.total, 5, "total should be 5");
+
+    // other cases covered by change supply for limited initial supply
+    vm.stopPrank();
+  }
+
+  function testFail_UpdateClaim_NotClaimOwnerUpdate() public {
+    vm.startPrank(creator);
+
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.IPFS,
+      location: "arweaveHash1",
+      totalMax: 5,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      paymentReceiver: payable(creator),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    vm.startPrank(other);
+    IERC1155GachaLazyClaim.UpdateClaimParameters memory claimU = IERC1155GachaLazyClaim.UpdateClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      totalMax: 10,
+      startDate: nowC,
+      endDate: later,
+      location: "arweaveHash1",
+      paymentReceiver: payable(other),
+      cost: 1
+    });
     example.updateClaim(address(creatorCore1), 1, claimU);
     vm.stopPrank();
   }
@@ -694,6 +1013,131 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     assertEq("https://arweave.net/arweaveHashNEW/3", creatorCore1.uri(3));
     assertEq("https://arweave.net/arweaveHashNEW/4", creatorCore1.uri(4));
     assertEq("https://arweave.net/arweaveHashNEW/5", creatorCore1.uri(5));
+    vm.stopPrank();
+  }
+
+  function test_RevertWhen_InitializeClaimOnDeprecated() public {
+    vm.startPrank(owner);
+    example.deprecate(true);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.IPFS,
+      location: "arweaveHash1",
+      totalMax: 0,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      paymentReceiver: payable(other),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    vm.expectRevert(IGachaLazyClaim.ContractDeprecated.selector);
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    vm.startPrank(owner);
+    example.deprecate(false);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    // can initialize claim after deprecation removal
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+  }
+
+  function test_RevertWhen_UpdateClaimOnDeprecated() public {
+    vm.startPrank(creator);
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC1155GachaLazyClaim.ClaimParameters memory claimP = IERC1155GachaLazyClaim.ClaimParameters({
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      location: "arweaveHash1",
+      totalMax: 0,
+      startDate: nowC,
+      endDate: later,
+      tokenVariations: 5,
+      paymentReceiver: payable(other),
+      cost: 1,
+      erc20: zeroAddress
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+
+    claimP.location = "arweaveHash2";
+    claimP.totalMax = 10;
+    claimP.startDate = 0;
+    claimP.tokenVariations = 10;
+    example.initializeClaim(address(creatorCore1), 2, claimP);
+    vm.stopPrank();
+
+    vm.startPrank(owner);
+    example.deprecate(true);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    IERC1155GachaLazyClaim.UpdateClaimParameters memory claimU = IERC1155GachaLazyClaim.UpdateClaimParameters({
+      totalMax: 0,
+      storageProtocol: IGachaLazyClaim.StorageProtocol.ARWEAVE,
+      startDate: 0,
+      endDate: 0,
+      location: "arweaveHash1",
+      paymentReceiver: payable(creator),
+      cost: 1
+    });
+    vm.expectRevert(IGachaLazyClaim.ContractDeprecated.selector);
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    vm.expectRevert(IGachaLazyClaim.ContractDeprecated.selector);
+    example.updateClaim(address(creatorCore1), 2, claimU);
+    vm.stopPrank();
+
+    vm.startPrank(owner);
+    example.deprecate(false);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    // run without reverts
+    example.updateClaim(address(creatorCore1), 1, claimU);
+    example.updateClaim(address(creatorCore1), 2, claimU);
+    vm.stopPrank();
+  }
+
+  function test_Deprecate() public {
+    assertEq(example.deprecated(), false);
+
+    vm.startPrank(owner);
+    example.deprecate(true);
+    assertEq(example.deprecated(), true);
+    example.deprecate(false);
+    assertEq(example.deprecated(), false);
+    vm.stopPrank();
+
+
+    // Cannot call deprecate if not an admin
+    vm.startPrank(other);
+    vm.expectRevert(bytes("AdminControl: Must be owner or admin"));
+    example.deprecate(true);
+    vm.stopPrank();
+
+    vm.startPrank(owner);
+    example.approveAdmin(other);
+    vm.stopPrank();
+
+    vm.startPrank(other);
+    example.deprecate(true);
+    assertEq(example.deprecated(), true);
+    vm.stopPrank();
+
+    vm.startPrank(owner);
+    example.revokeAdmin(other);
+    vm.stopPrank();
+
+    vm.startPrank(other);
+    vm.expectRevert(bytes("AdminControl: Must be owner or admin"));
+    example.deprecate(false);
+    assertEq(example.deprecated(), true);
     vm.stopPrank();
   }
 }
