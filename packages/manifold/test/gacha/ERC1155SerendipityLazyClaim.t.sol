@@ -95,7 +95,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
   }
 
-  function testinitializeClaimSanitization() public {
+  function testInitializeClaimSanitization() public {
     vm.startPrank(creator);
 
     uint48 nowC = uint48(block.timestamp);
