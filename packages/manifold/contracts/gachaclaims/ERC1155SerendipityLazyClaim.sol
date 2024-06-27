@@ -14,7 +14,7 @@ import "./SerendipityLazyClaim.sol";
 import "./IERC1155SerendipityLazyClaim.sol";
 
 /**
- * @title Gacha Lazy 1155 Payable Claim
+ * @title Serendipity Lazy Payable Claim - ERC-1155
  * @author manifold.xyz
  * @notice
  */
@@ -90,7 +90,7 @@ contract ERC1155SerendipityLazyClaim is IERC165, IERC1155SerendipityLazyClaim, I
       }
     }
 
-    emit GachaClaimInitialized(creatorContractAddress, instanceId, msg.sender);
+    emit SerendipityClaimInitialized(creatorContractAddress, instanceId, msg.sender);
   }
 
   /**
@@ -127,7 +127,7 @@ contract ERC1155SerendipityLazyClaim is IERC165, IERC1155SerendipityLazyClaim, I
       cost: updateClaimParameters.cost,
       erc20: claim.erc20
     });
-    emit GachaClaimUpdated(creatorContractAddress, instanceId);
+    emit SerendipityClaimUpdated(creatorContractAddress, instanceId);
   }
 
   /**
@@ -181,7 +181,7 @@ contract ERC1155SerendipityLazyClaim is IERC165, IERC1155SerendipityLazyClaim, I
       uint256 refundAmount = msg.value - (claim.cost + MINT_FEE) * amountToReserve;
       _sendFunds(payable(msg.sender), refundAmount);
     }
-    emit GachaClaimMintReserved(creatorContractAddress, instanceId, msg.sender, amountToReserve);
+    emit SerendipityClaimMintReserved(creatorContractAddress, instanceId, msg.sender, amountToReserve);
   }
 
   /**
@@ -268,6 +268,6 @@ contract ERC1155SerendipityLazyClaim is IERC165, IERC1155SerendipityLazyClaim, I
     if (storageProtocol == StorageProtocol.INVALID) revert ISerendipityLazyClaim.InvalidStorageProtocol();
     claim.storageProtocol = storageProtocol;
     claim.location = location;
-    emit GachaClaimUpdated(creatorContractAddress, instanceId);
+    emit SerendipityClaimUpdated(creatorContractAddress, instanceId);
   }
 }

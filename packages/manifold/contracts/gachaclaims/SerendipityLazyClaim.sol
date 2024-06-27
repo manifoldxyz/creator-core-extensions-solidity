@@ -7,7 +7,7 @@ import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "./ISerendipityLazyClaim.sol";
 
 /**
- * @title Gacha Lazy Claim
+ * @title Serendipity Lazy Claim
  * @author manifold.xyz
  */
 abstract contract SerendipityLazyClaim is ISerendipityLazyClaim, AdminControl {

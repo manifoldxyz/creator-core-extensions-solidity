@@ -963,7 +963,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.startPrank(creator);
     claimP.tokenVariations = 3;
     claimP.location = "arweaveHash2";
-    // create another gacha claim
+    // create another claim
     example.initializeClaim(address(creatorCore1), 2, claimP);
     vm.stopPrank();
 

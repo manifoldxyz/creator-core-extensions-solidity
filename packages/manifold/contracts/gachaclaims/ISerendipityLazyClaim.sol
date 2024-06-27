@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 /// @author: manifold.xyz
 
 /**
- * Gacha Lazy Claim interface
+ * Serendipity Lazy Claim interface
  */
 interface ISerendipityLazyClaim {
   enum StorageProtocol {
@@ -39,9 +39,9 @@ interface ISerendipityLazyClaim {
   error CannotMintMoreThanReserved();
   error CannotMintFromContract();
 
-  event GachaClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
-  event GachaClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
-  event GachaClaimMintReserved(
+  event SerendipityClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
+  event SerendipityClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
+  event SerendipityClaimMintReserved(
     address indexed creatorContract,
     uint256 indexed instanceId,
     address indexed collector,
