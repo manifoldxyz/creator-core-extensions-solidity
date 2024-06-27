@@ -108,7 +108,7 @@ contract ERC1155SerendipityLazyClaim is IERC165, IERC1155SerendipityLazyClaim, I
     if (instanceId == 0 || instanceId > MAX_UINT_56) revert ISerendipityLazyClaim.InvalidInstance();
     if (updateClaimParameters.endDate != 0 && updateClaimParameters.startDate >= updateClaimParameters.endDate)
       revert ISerendipityLazyClaim.InvalidDate();
-    if (updateClaimParameters.totalMax < claim.total) revert ISerendipityLazyClaim.CannotLowerTotalMaxBeyondTotal();
+    if (updateClaimParameters.totalMax != 0 && updateClaimParameters.totalMax < claim.total) revert ISerendipityLazyClaim.CannotLowerTotalMaxBeyondTotal();
     if (updateClaimParameters.totalMax > MAX_UINT_32) revert ISerendipityLazyClaim.InvalidInput();
     if (updateClaimParameters.storageProtocol == StorageProtocol.INVALID) revert ISerendipityLazyClaim.InvalidStorageProtocol();
     if (updateClaimParameters.cost > MAX_UINT_96) revert ISerendipityLazyClaim.InvalidInput();
