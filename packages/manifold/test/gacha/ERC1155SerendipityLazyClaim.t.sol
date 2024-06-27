@@ -11,7 +11,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../mocks/Mock.sol";
 
-contract ERC1155GachaLazyClaimTest is Test {
+contract ERC1155SerendipityLazyClaimTest is Test {
   using SafeMath for uint256;
 
   ERC1155GachaLazyClaim public example;
