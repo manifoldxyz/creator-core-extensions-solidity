@@ -41,7 +41,7 @@ interface ISerendipity {
 
   event SerendipityClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
   event SerendipityClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
-  event SerendipityClaimMintReserved(
+  event SerendipityMintReserved(
     address indexed creatorContract,
     uint256 indexed instanceId,
     address indexed collector,

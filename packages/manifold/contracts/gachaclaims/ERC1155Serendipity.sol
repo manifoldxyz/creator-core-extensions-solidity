@@ -181,7 +181,7 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
       uint256 refundAmount = msg.value - (claim.cost + MINT_FEE) * amountToReserve;
       _sendFunds(payable(msg.sender), refundAmount);
     }
-    emit SerendipityClaimMintReserved(creatorContractAddress, instanceId, msg.sender, amountToReserve);
+    emit SerendipityMintReserved(creatorContractAddress, instanceId, msg.sender, amountToReserve);
   }
 
   /**
