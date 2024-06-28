@@ -40,6 +40,15 @@ These are the latest Burn Redeem extensions.
 | 1 (Mainnet) | ERC1155                  | 0xde659726CfD166aCa4867994d396EFeF386EAD68 |
 | 2 (Goerli)  | ERC1155                  | 0x193bFD86F329508351ae899A92a963d5bfC77190 |
 
+#### Manifold Serendipity Collection
+These are the latest Serendipity (gacha) extensions.
+
+| Network            | Output Token Spec        | Address                                    | Deprecation notice             |
+| -----------        | ------------------------ | ------------------------------------------ | ------------------------------ |
+| v0 (Sepolia) | ERC1155                  | 0xa160a0a48b6ddb9ffd01a7b85e0c2b331c912e29 | Cannot deploy unlimited supply |
+| v1 (Sepolia, Base) | ERC1155                  | 0x53C37ccC1C48f63BD35FFc93952d0880d7529b9e | Cannot edit unlimited supply   |
+| v2 (Sepolia, Base) | ERC1155                  | \<tbd\> | n/a (active) |
+
 
 #### OperatorFilterer
 Shared extension to support OpenSea's Operator Filter Registry

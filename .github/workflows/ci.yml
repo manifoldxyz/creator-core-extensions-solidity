@@ -104,10 +104,10 @@ jobs:
       - name: Setup LCOV
         uses: hrishikesh-kadam/setup-lcov@v1
       - name: Report code coverage
-        uses: zgosalvez/github-actions-report-lcov@v3
+        uses: zgosalvez/github-actions-report-lcov@v4
         with:
           coverage-files: packages/${{ matrix.folder }}/lcov.info
-          artifact-name: code-coverage-report
+          artifact-name: code-coverage-report-${{ matrix.folder }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: packages/${{ matrix.folder }}
           update-comment: true
