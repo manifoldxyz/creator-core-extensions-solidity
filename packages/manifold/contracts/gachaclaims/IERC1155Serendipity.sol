@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "./ISerendipityLazyClaim.sol";
+import "./ISerendipity.sol";
 
 /**
  * Serendipity Lazy Claim interface for ERC-1155
  */
-interface IERC1155SerendipityLazyClaim is ISerendipityLazyClaim {
+interface IERC1155Serendipity is ISerendipity {
   struct Claim {
     StorageProtocol storageProtocol;
     uint32 total;

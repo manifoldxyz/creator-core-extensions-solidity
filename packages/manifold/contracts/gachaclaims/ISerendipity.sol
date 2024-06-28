@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 /**
  * Serendipity Lazy Claim interface
  */
-interface ISerendipityLazyClaim {
+interface ISerendipity {
   enum StorageProtocol {
     INVALID,
     NONE,

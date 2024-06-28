@@ -2,19 +2,19 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../../contracts/gachaclaims/IERC1155SerendipityLazyClaim.sol";
-import "../../contracts/gachaclaims/ERC1155SerendipityLazyClaim.sol";
-import "../../contracts/gachaclaims/ISerendipityLazyClaim.sol";
-import "../../contracts/gachaclaims/SerendipityLazyClaim.sol";
+import "../../contracts/gachaclaims/IERC1155Serendipity.sol";
+import "../../contracts/gachaclaims/ERC1155Serendipity.sol";
+import "../../contracts/gachaclaims/ISerendipity.sol";
+import "../../contracts/gachaclaims/Serendipity.sol";
 
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../mocks/Mock.sol";
 
-contract ERC1155SerendipityLazyClaimTest is Test {
+contract ERC1155SerendipityTest is Test {
   using SafeMath for uint256;
 
-  ERC1155SerendipityLazyClaim public example;
+  ERC1155Serendipity public example;
   ERC1155 public erc1155;
   ERC1155Creator public creatorCore1;
   ERC1155Creator public creatorCore2;
@@ -40,7 +40,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(owner);
-    example = new ERC1155SerendipityLazyClaim(owner);
+    example = new ERC1155Serendipity(owner);
     example.setSigner(address(signingAddress));
     vm.stopPrank();
 
@@ -67,8 +67,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.IPFS,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.IPFS,
       totalMax: 100,
       startDate: nowC,
       endDate: later,
@@ -101,8 +101,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.INVALID,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.INVALID,
       location: "arweaveHash1",
       totalMax: 100,
       startDate: nowC,
@@ -113,12 +113,12 @@ contract ERC1155SerendipityLazyClaimTest is Test {
       erc20: zeroAddress
     });
 
-    vm.expectRevert(ISerendipityLazyClaim.InvalidStorageProtocol.selector);
+    vm.expectRevert(ISerendipity.InvalidStorageProtocol.selector);
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
-    claimP.storageProtocol = ISerendipityLazyClaim.StorageProtocol.ARWEAVE;
+    claimP.storageProtocol = ISerendipity.StorageProtocol.ARWEAVE;
     claimP.startDate = nowC + 2000;
-    vm.expectRevert(ISerendipityLazyClaim.InvalidDate.selector);
+    vm.expectRevert(ISerendipity.InvalidDate.selector);
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
     // successful initialization with no end date
@@ -151,8 +151,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       location: "arweaveHash1",
       totalMax: 0,
       startDate: nowC,
@@ -167,7 +167,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(other);
-    IERC1155SerendipityLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    IERC1155Serendipity.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     // check equality of claim parameters
     assertEq(uint(claim.storageProtocol), 2);
     assertEq(claim.location, "arweaveHash1");
@@ -189,8 +189,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.IPFS,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.IPFS,
       location: "arweaveHash1",
       totalMax: 100,
       startDate: nowC,
@@ -202,8 +202,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
-    IERC1155SerendipityLazyClaim.UpdateClaimParameters memory claimU = IERC1155SerendipityLazyClaim.UpdateClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.UpdateClaimParameters memory claimU = IERC1155Serendipity.UpdateClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 100,
       startDate: nowC,
       endDate: later,
@@ -214,28 +214,28 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
 
-    claimU.storageProtocol = ISerendipityLazyClaim.StorageProtocol.INVALID;
-    vm.expectRevert(ISerendipityLazyClaim.InvalidStorageProtocol.selector);
+    claimU.storageProtocol = ISerendipity.StorageProtocol.INVALID;
+    vm.expectRevert(ISerendipity.InvalidStorageProtocol.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
 
     // reset to valid storage protocol
-    claimU.storageProtocol = ISerendipityLazyClaim.StorageProtocol.ARWEAVE;
+    claimU.storageProtocol = ISerendipity.StorageProtocol.ARWEAVE;
     claimU.startDate = nowC + 2000;
-    vm.expectRevert(ISerendipityLazyClaim.InvalidDate.selector);
+    vm.expectRevert(ISerendipity.InvalidDate.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
 
     claimU.endDate = nowC;
-    vm.expectRevert(ISerendipityLazyClaim.InvalidDate.selector);
+    vm.expectRevert(ISerendipity.InvalidDate.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
     claimU.endDate = later;
 
     //successful data and cost update
     claimU.cost = 2;
-    claimU.storageProtocol = ISerendipityLazyClaim.StorageProtocol.IPFS;
+    claimU.storageProtocol = ISerendipity.StorageProtocol.IPFS;
     claimU.startDate = nowC + 1000;
     claimU.endDate = later + 3000;
     example.updateClaim(address(creatorCore1), 1, claimU);
-    IERC1155SerendipityLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    IERC1155Serendipity.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     assertEq(claim.cost, 2);
     // storage protocol for IPFS is 3
     assertEq(uint(claim.storageProtocol), 3);
@@ -270,8 +270,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.IPFS,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.IPFS,
       location: "arweaveHash1",
       totalMax: 0,
       startDate: nowC,
@@ -283,9 +283,9 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
-    IERC1155SerendipityLazyClaim.UpdateClaimParameters memory claimU = IERC1155SerendipityLazyClaim.UpdateClaimParameters({
+    IERC1155Serendipity.UpdateClaimParameters memory claimU = IERC1155Serendipity.UpdateClaimParameters({
       totalMax: 0,
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       startDate: nowC,
       endDate: later,
       location: "arweaveHash1",
@@ -295,28 +295,28 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
 
-    claimU.storageProtocol = ISerendipityLazyClaim.StorageProtocol.INVALID;
-    vm.expectRevert(ISerendipityLazyClaim.InvalidStorageProtocol.selector);
+    claimU.storageProtocol = ISerendipity.StorageProtocol.INVALID;
+    vm.expectRevert(ISerendipity.InvalidStorageProtocol.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
 
     // reset to valid storage protocol
-    claimU.storageProtocol = ISerendipityLazyClaim.StorageProtocol.ARWEAVE;
+    claimU.storageProtocol = ISerendipity.StorageProtocol.ARWEAVE;
     claimU.startDate = nowC + 2000;
-    vm.expectRevert(ISerendipityLazyClaim.InvalidDate.selector);
+    vm.expectRevert(ISerendipity.InvalidDate.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
 
     claimU.endDate = nowC;
-    vm.expectRevert(ISerendipityLazyClaim.InvalidDate.selector);
+    vm.expectRevert(ISerendipity.InvalidDate.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
     claimU.endDate = later;
 
     //successful data and cost update
     claimU.cost = 2;
-    claimU.storageProtocol = ISerendipityLazyClaim.StorageProtocol.IPFS;
+    claimU.storageProtocol = ISerendipity.StorageProtocol.IPFS;
     claimU.startDate = nowC + 1000;
     claimU.endDate = later + 3000;
     example.updateClaim(address(creatorCore1), 1, claimU);
-    IERC1155SerendipityLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    IERC1155Serendipity.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     assertEq(claim.cost, 2);
     // storage protocol for IPFS is 3
     assertEq(uint(claim.storageProtocol), 3);
@@ -351,8 +351,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       location: "arweaveHash1",
       totalMax: 100,
       startDate: nowC,
@@ -364,8 +364,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
-    IERC1155SerendipityLazyClaim.UpdateClaimParameters memory claimU = IERC1155SerendipityLazyClaim.UpdateClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.UpdateClaimParameters memory claimU = IERC1155Serendipity.UpdateClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 0,
       startDate: nowC,
       endDate: later,
@@ -376,7 +376,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     // when mint count is 0, change from limited (100) -> unlimited (0) supply
     example.updateClaim(address(creatorCore1), 1, claimU);
-    IERC1155SerendipityLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    IERC1155Serendipity.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     assertEq(claim.total, 0, "total should be 0");
     assertEq(claim.totalMax, 0, "totalMax should be updated to 0");
 
@@ -402,8 +402,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       location: "arweaveHash1",
       totalMax: 100,
       startDate: nowC,
@@ -416,13 +416,13 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5);
 
-    IERC1155SerendipityLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    IERC1155Serendipity.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     // sanity setup
     assertEq(claim.totalMax, 100, "totalMax should be 100");
     assertEq(claim.total, 5, "total should be 5");
 
-    IERC1155SerendipityLazyClaim.UpdateClaimParameters memory claimU = IERC1155SerendipityLazyClaim.UpdateClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.UpdateClaimParameters memory claimU = IERC1155Serendipity.UpdateClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 5,
       startDate: nowC,
       endDate: later,
@@ -434,7 +434,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     // update when minted count is 5
     claimU.totalMax = 4;
-    vm.expectRevert(ISerendipityLazyClaim.CannotLowerTotalMaxBeyondTotal.selector);
+    vm.expectRevert(ISerendipity.CannotLowerTotalMaxBeyondTotal.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
 
     // confirm can set total max to minted count
@@ -444,7 +444,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     assertEq(claim.totalMax, 5, "totalMax should be updated to 5");
     assertEq(claim.total, 5, "total should be 5");
     // confirm nothing else changed
-    assertEq(uint(claim.storageProtocol), uint(ISerendipityLazyClaim.StorageProtocol.ARWEAVE));
+    assertEq(uint(claim.storageProtocol), uint(ISerendipity.StorageProtocol.ARWEAVE));
     assertEq(claim.location, "arweaveHash1");
     assertEq(claim.startDate, nowC);
     assertEq(claim.endDate, later);
@@ -475,8 +475,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       location: "arweaveHash1",
       totalMax: 0,
       startDate: nowC,
@@ -489,13 +489,13 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5);
 
-    IERC1155SerendipityLazyClaim.Claim memory claim = example.getClaim(address(creatorCore1), 1);
+    IERC1155Serendipity.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     // sanity setup
     assertEq(claim.totalMax, 0, "totalMax should be 0 (unlimited)");
     assertEq(claim.total, 5, "total should be 5");
 
-    IERC1155SerendipityLazyClaim.UpdateClaimParameters memory claimU = IERC1155SerendipityLazyClaim.UpdateClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.UpdateClaimParameters memory claimU = IERC1155Serendipity.UpdateClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 5,
       startDate: nowC,
       endDate: later,
@@ -507,7 +507,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     // update when minted count is 5
     claimU.totalMax = 4;
-    vm.expectRevert(ISerendipityLazyClaim.CannotLowerTotalMaxBeyondTotal.selector);
+    vm.expectRevert(ISerendipity.CannotLowerTotalMaxBeyondTotal.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
 
     // confirm can set total max to minted count
@@ -517,7 +517,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     assertEq(claim.totalMax, 5, "totalMax should be updated to 5");
     assertEq(claim.total, 5, "total should be 5");
     // confirm nothing else changed
-    assertEq(uint(claim.storageProtocol), uint(ISerendipityLazyClaim.StorageProtocol.ARWEAVE));
+    assertEq(uint(claim.storageProtocol), uint(ISerendipity.StorageProtocol.ARWEAVE));
     assertEq(claim.location, "arweaveHash1");
     assertEq(claim.startDate, nowC);
     assertEq(claim.endDate, later);
@@ -542,8 +542,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.IPFS,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.IPFS,
       location: "arweaveHash1",
       totalMax: 5,
       startDate: nowC,
@@ -557,8 +557,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(other);
-    IERC1155SerendipityLazyClaim.UpdateClaimParameters memory claimU = IERC1155SerendipityLazyClaim.UpdateClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.UpdateClaimParameters memory claimU = IERC1155Serendipity.UpdateClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 10,
       startDate: nowC,
       endDate: later,
@@ -576,8 +576,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 nowC = 0;
     uint48 later = uint48(block.timestamp) + 2000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 100,
       startDate: nowC,
       endDate: later,
@@ -591,7 +591,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
     // Insufficient payment
-    vm.expectRevert(ISerendipityLazyClaim.InvalidPayment.selector);
+    vm.expectRevert(ISerendipity.InvalidPayment.selector);
     example.mintReserve{ value: 1 }(address(creatorCore1), 1, 2);
 
     vm.stopPrank();
@@ -604,8 +604,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 start = uint48(block.timestamp) + 2000;
     uint48 end = 0;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 100,
       startDate: start,
       endDate: end,
@@ -616,7 +616,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
       erc20: zeroAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    vm.expectRevert(ISerendipityLazyClaim.ClaimInactive.selector);
+    vm.expectRevert(ISerendipity.ClaimInactive.selector);
     example.mintReserve{ value: 3 }(address(creatorCore1), 1, 1);
     vm.stopPrank();
   }
@@ -627,8 +627,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 start = 0;
     uint48 end = uint48(block.timestamp.sub(1));
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 100,
       startDate: start,
       endDate: end,
@@ -652,8 +652,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 start = 0;
     uint48 end = uint48(block.timestamp) + 2000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 1,
       startDate: start,
       endDate: end,
@@ -668,7 +668,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(other);
-    vm.expectRevert(ISerendipityLazyClaim.ClaimSoldOut.selector);
+    vm.expectRevert(ISerendipity.ClaimSoldOut.selector);
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
     vm.stopPrank();
   }
@@ -679,8 +679,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 start = 0;
     uint48 end = uint48(block.timestamp) + 2000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 1,
       startDate: start,
       endDate: end,
@@ -691,7 +691,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
       erc20: zeroAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    vm.expectRevert(ISerendipityLazyClaim.InvalidMintCount.selector);
+    vm.expectRevert(ISerendipity.InvalidMintCount.selector);
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 0);
     vm.stopPrank();
   }
@@ -702,8 +702,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 start = 0;
     uint48 end = uint48(block.timestamp) + 2000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 0,
       startDate: start,
       endDate: end,
@@ -720,14 +720,14 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(creator);
-    vm.expectRevert(ISerendipityLazyClaim.InvalidMintCount.selector);
+    vm.expectRevert(ISerendipity.InvalidMintCount.selector);
     example.mintReserve{ value: (1 + MINT_FEE) * MAX_UINT_32 }(address(creatorCore1), 1, MAX_UINT_32);
 
     // max out mints
     example.mintReserve{ value: (1 + MINT_FEE) * (MAX_UINT_32 - 1) }(address(creatorCore1), 1, MAX_UINT_32 - 1);
 
     // try to mint one more
-    vm.expectRevert(ISerendipityLazyClaim.TooManyRequested.selector);
+    vm.expectRevert(ISerendipity.TooManyRequested.selector);
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
     vm.stopPrank();
   }
@@ -738,8 +738,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 start = 0;
     uint48 end = 0;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 0,
       startDate: start,
       endDate: end,
@@ -758,10 +758,10 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(signingAddress);
-    ISerendipityLazyClaim.ClaimMint[] memory mints = new ISerendipityLazyClaim.ClaimMint[](1);
-    ISerendipityLazyClaim.VariationMint[] memory variationMints = new ISerendipityLazyClaim.VariationMint[](1);
-    variationMints[0] = ISerendipityLazyClaim.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
-    mints[0] = ISerendipityLazyClaim.ClaimMint({
+    ISerendipity.ClaimMint[] memory mints = new ISerendipity.ClaimMint[](1);
+    ISerendipity.VariationMint[] memory variationMints = new ISerendipity.VariationMint[](1);
+    variationMints[0] = ISerendipity.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = ISerendipity.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
       variationMints: variationMints
@@ -779,8 +779,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint256 collectorBalanceBefore = address(other).balance;
     uint96 mintPrice = 1 ether;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 4,
       startDate: start,
       endDate: end,
@@ -802,7 +802,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     //confirm user
-    SerendipityLazyClaim.UserMintDetails memory userMintDetails = example.getUserMints(other, address(creatorCore1), 1);
+    Serendipity.UserMintDetails memory userMintDetails = example.getUserMints(other, address(creatorCore1), 1);
     assertEq(userMintDetails.reservedCount, 3);
 
     //check payment balances: for creator and collector, difference should be for only three mints instead of 5
@@ -817,8 +817,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 100,
       startDate: nowC,
       endDate: later,
@@ -832,10 +832,10 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(other);
-    ISerendipityLazyClaim.ClaimMint[] memory mints = new ISerendipityLazyClaim.ClaimMint[](1);
-    ISerendipityLazyClaim.VariationMint[] memory variationMints = new ISerendipityLazyClaim.VariationMint[](1);
-    variationMints[0] = ISerendipityLazyClaim.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
-    mints[0] = ISerendipityLazyClaim.ClaimMint({
+    ISerendipity.ClaimMint[] memory mints = new ISerendipity.ClaimMint[](1);
+    ISerendipity.VariationMint[] memory variationMints = new ISerendipity.VariationMint[](1);
+    variationMints[0] = ISerendipity.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = ISerendipity.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
       variationMints: variationMints
@@ -852,8 +852,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 100,
       startDate: nowC,
       endDate: later,
@@ -872,50 +872,50 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(signingAddress);
-    ISerendipityLazyClaim.ClaimMint[] memory mints = new ISerendipityLazyClaim.ClaimMint[](2);
-    ISerendipityLazyClaim.VariationMint[] memory variationMints = new ISerendipityLazyClaim.VariationMint[](2);
-    variationMints[0] = ISerendipityLazyClaim.VariationMint({ variationIndex: 1, amount: 2, recipient: other2 });
-    variationMints[1] = ISerendipityLazyClaim.VariationMint({ variationIndex: 2, amount: 1, recipient: other });
-    mints[0] = ISerendipityLazyClaim.ClaimMint({
+    ISerendipity.ClaimMint[] memory mints = new ISerendipity.ClaimMint[](2);
+    ISerendipity.VariationMint[] memory variationMints = new ISerendipity.VariationMint[](2);
+    variationMints[0] = ISerendipity.VariationMint({ variationIndex: 1, amount: 2, recipient: other2 });
+    variationMints[1] = ISerendipity.VariationMint({ variationIndex: 2, amount: 1, recipient: other });
+    mints[0] = ISerendipity.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
       variationMints: variationMints
     });
-    mints[1] = ISerendipityLazyClaim.ClaimMint({
+    mints[1] = ISerendipity.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
       variationMints: variationMints
     });
     // revert for receiver with no reserved mints
-    vm.expectRevert(ISerendipityLazyClaim.CannotMintMoreThanReserved.selector);
+    vm.expectRevert(ISerendipity.CannotMintMoreThanReserved.selector);
     example.deliverMints(mints);
-    SerendipityLazyClaim.UserMintDetails memory otherMint = example.getUserMints(other, address(creatorCore1), 1);
+    Serendipity.UserMintDetails memory otherMint = example.getUserMints(other, address(creatorCore1), 1);
     assertEq(otherMint.reservedCount, 0);
     assertEq(otherMint.deliveredCount, 0);
-    SerendipityLazyClaim.UserMintDetails memory other2Mint = example.getUserMints(other2, address(creatorCore1), 1);
+    Serendipity.UserMintDetails memory other2Mint = example.getUserMints(other2, address(creatorCore1), 1);
     assertEq(other2Mint.reservedCount, 4);
     assertEq(other2Mint.deliveredCount, 0);
     vm.stopPrank();
 
     // deliver for valid receivers and mintCount
     vm.startPrank(signingAddress);
-    variationMints[0] = ISerendipityLazyClaim.VariationMint({ variationIndex: 1, amount: 1, recipient: creator });
-    variationMints[1] = ISerendipityLazyClaim.VariationMint({ variationIndex: 2, amount: 2, recipient: other2 });
-    mints[0] = ISerendipityLazyClaim.ClaimMint({
+    variationMints[0] = ISerendipity.VariationMint({ variationIndex: 1, amount: 1, recipient: creator });
+    variationMints[1] = ISerendipity.VariationMint({ variationIndex: 2, amount: 2, recipient: other2 });
+    mints[0] = ISerendipity.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
       variationMints: variationMints
     });
-    mints[1] = ISerendipityLazyClaim.ClaimMint({
+    mints[1] = ISerendipity.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
       variationMints: variationMints
     });
     example.deliverMints(mints);
-    SerendipityLazyClaim.UserMintDetails memory creatorMints = example.getUserMints(creator, address(creatorCore1), 1);
+    Serendipity.UserMintDetails memory creatorMints = example.getUserMints(creator, address(creatorCore1), 1);
     assertEq(creatorMints.deliveredCount, 2);
     assertEq(creatorMints.reservedCount, 2);
-    SerendipityLazyClaim.UserMintDetails memory other2Mints = example.getUserMints(other2, address(creatorCore1), 1);
+    Serendipity.UserMintDetails memory other2Mints = example.getUserMints(other2, address(creatorCore1), 1);
     assertEq(other2Mints.reservedCount, 4);
     assertEq(other2Mints.deliveredCount, 4);
     vm.stopPrank();
@@ -927,8 +927,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 later = nowC + 1000;
     uint totalMintPrice = 1 + MINT_FEE;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 100,
       startDate: nowC,
       endDate: later,
@@ -986,8 +986,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       totalMax: 100,
       startDate: nowC,
       endDate: later,
@@ -1007,7 +1007,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     assertEq("https://arweave.net/arweaveHash1/5", creatorCore1.uri(5));
 
     // update tokenURI
-    example.updateTokenURIParams(address(creatorCore1), 1, ISerendipityLazyClaim.StorageProtocol.ARWEAVE, "arweaveHashNEW");
+    example.updateTokenURIParams(address(creatorCore1), 1, ISerendipity.StorageProtocol.ARWEAVE, "arweaveHashNEW");
     assertEq("https://arweave.net/arweaveHashNEW/1", creatorCore1.uri(1));
     assertEq("https://arweave.net/arweaveHashNEW/2", creatorCore1.uri(2));
     assertEq("https://arweave.net/arweaveHashNEW/3", creatorCore1.uri(3));
@@ -1024,8 +1024,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.IPFS,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.IPFS,
       location: "arweaveHash1",
       totalMax: 0,
       startDate: nowC,
@@ -1035,7 +1035,7 @@ contract ERC1155SerendipityLazyClaimTest is Test {
       cost: 1,
       erc20: zeroAddress
     });
-    vm.expectRevert(ISerendipityLazyClaim.ContractDeprecated.selector);
+    vm.expectRevert(ISerendipity.ContractDeprecated.selector);
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
 
@@ -1053,8 +1053,8 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC1155SerendipityLazyClaim.ClaimParameters memory claimP = IERC1155SerendipityLazyClaim.ClaimParameters({
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+    IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       location: "arweaveHash1",
       totalMax: 0,
       startDate: nowC,
@@ -1078,18 +1078,18 @@ contract ERC1155SerendipityLazyClaimTest is Test {
     vm.stopPrank();
 
     vm.startPrank(creator);
-    IERC1155SerendipityLazyClaim.UpdateClaimParameters memory claimU = IERC1155SerendipityLazyClaim.UpdateClaimParameters({
+    IERC1155Serendipity.UpdateClaimParameters memory claimU = IERC1155Serendipity.UpdateClaimParameters({
       totalMax: 0,
-      storageProtocol: ISerendipityLazyClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
       startDate: 0,
       endDate: 0,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1
     });
-    vm.expectRevert(ISerendipityLazyClaim.ContractDeprecated.selector);
+    vm.expectRevert(ISerendipity.ContractDeprecated.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);
-    vm.expectRevert(ISerendipityLazyClaim.ContractDeprecated.selector);
+    vm.expectRevert(ISerendipity.ContractDeprecated.selector);
     example.updateClaim(address(creatorCore1), 2, claimU);
     vm.stopPrank();
 
