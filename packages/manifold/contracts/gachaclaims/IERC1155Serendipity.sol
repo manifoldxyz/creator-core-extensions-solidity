@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "./IGachaLazyClaim.sol";
+import "./ISerendipity.sol";
 
 /**
- * Gacha 1155 Lazy Claim interface
+ * Serendipity Lazy Claim interface for ERC-1155
  */
-interface IERC1155GachaLazyClaim is IGachaLazyClaim {
+interface IERC1155Serendipity is ISerendipity {
   struct Claim {
     StorageProtocol storageProtocol;
     uint32 total;

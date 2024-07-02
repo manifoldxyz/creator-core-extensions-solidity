@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 
-import "./IGachaLazyClaim.sol";
+import "./ISerendipity.sol";
 
 /**
- * @title Gacha Lazy Claim
+ * @title Serendipity Lazy Claim
  * @author manifold.xyz
  */
-abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
+abstract contract Serendipity is ISerendipity, AdminControl {
   using EnumerableSet for EnumerableSet.AddressSet;
 
   string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
@@ -55,22 +55,22 @@ abstract contract GachaLazyClaim is IGachaLazyClaim, AdminControl {
   }
 
   /**
-   * See {IGachaLazyClaim-withdraw}.
+   * See {ISerendipity-withdraw}.
    */
   function withdraw(address payable receiver, uint256 amount) external override adminRequired {
     (bool sent, ) = receiver.call{ value: amount }("");
-    if (!sent) revert IGachaLazyClaim.FailedToTransfer();
+    if (!sent) revert ISerendipity.FailedToTransfer();
   }
 
   /**
-   * See {IGachaLazyClaim-setSigner}.
+   * See {ISerendipity-setSigner}.
    */
   function setSigner(address signer) external override adminRequired {
     _signer = signer;
   }
 
   function _validateSigner() internal view {
-    if (msg.sender != _signer) revert IGachaLazyClaim.InvalidSignature();
+    if (msg.sender != _signer) revert ISerendipity.InvalidSignature();
   }
 
   function _getUserMints(
