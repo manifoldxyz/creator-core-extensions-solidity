@@ -9,6 +9,7 @@ interface IManifoldExtension {
     event InstanceMint(
         address creatorContractAddress,
         uint256 indexed instanceId,
+        address minter,
         address indexed tokenAddress,
         uint256 indexed tokenId,
         uint256 quantity
@@ -16,6 +17,7 @@ interface IManifoldExtension {
     event InstanceBatchMint(
         address creatorContractAddress,
         uint256 indexed instanceId,
+        address minter,
         address indexed tokenAddress,
         uint256[] indexed tokenIds,
         uint256[] quantity
