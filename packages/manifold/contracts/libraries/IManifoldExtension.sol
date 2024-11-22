@@ -22,4 +22,13 @@ interface IManifoldExtension {
         uint256[] indexed tokenIds,
         uint256[] quantity
     );
+    event InstanceRangeMint(
+        address creatorContractAddress,
+        uint256 indexed instanceId,
+        address minter,
+        address indexed tokenAddress,
+        uint256 fromTokenId,
+        uint256 toTokenId,
+        uint256[] quantity
+    );
 }
