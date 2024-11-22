@@ -29,6 +29,6 @@ interface IManifoldExtension {
         address indexed tokenAddress,
         uint256 fromTokenId,
         uint256 toTokenId,
-        uint256[] quantity
+        uint256 quantity
     );
 }
