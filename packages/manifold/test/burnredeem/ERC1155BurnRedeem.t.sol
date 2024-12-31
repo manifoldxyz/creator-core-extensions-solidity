@@ -641,4 +641,94 @@ contract ManifoldERC1155BurnRedeemTest is Test {
         burnRedeem.airdrop(address(creator), 1, recipients, amounts);
     }
 
+    function testBurnRedeemWithMixedItems() public {
+        // Set up the burn items
+        IBurnRedeemCore.BurnItem[] memory items = new IBurnRedeemCore.BurnItem[](2);
+        items[0] = IBurnRedeemCore.BurnItem({
+            validationType: IBurnRedeemCore.ValidationType.CONTRACT,
+            contractAddress: address(burnable1155),
+            tokenSpec: IBurnRedeemCore.TokenSpec.ERC1155,
+            burnSpec: IBurnRedeemCore.BurnSpec.MANIFOLD,
+            amount: 3,
+            minTokenId: 0,
+            maxTokenId: 0,
+            merkleRoot: bytes32(0)
+        });
+        items[1] = IBurnRedeemCore.BurnItem({
+            validationType: IBurnRedeemCore.ValidationType.CONTRACT,
+            contractAddress: address(burnable721),
+            tokenSpec: IBurnRedeemCore.TokenSpec.ERC721,
+            burnSpec: IBurnRedeemCore.BurnSpec.NONE,
+            amount: 0,
+            minTokenId: 0,
+            maxTokenId: 0,
+            merkleRoot: bytes32(0)
+        });
+
+        // Set up the burn group
+        IBurnRedeemCore.BurnGroup[] memory group = new IBurnRedeemCore.BurnGroup[](1);
+        group[0] = IBurnRedeemCore.BurnGroup({
+            requiredCount: 1,
+            items: items
+        });
+
+        // Set up the burn redeem parameters
+        IBurnRedeemCore.BurnRedeemParameters memory params = IBurnRedeemCore.BurnRedeemParameters({
+            paymentReceiver: payable(owner),
+            storageProtocol: IBurnRedeemCore.StorageProtocol.NONE,
+            redeemAmount: 1,
+            totalSupply: 10,
+            startDate: uint48(block.timestamp - 30),
+            endDate: uint48(block.timestamp + 1000),
+            cost: 0,
+            location: "XXX",
+            burnSet: group
+        });
+
+        // Initialize the burn redeem
+        vm.startPrank(owner);
+        burnRedeem.initializeBurnRedeem(address(creator), 1, params);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        address[] memory recipients = new address[](1);
+        recipients[0] = anyone1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 3;
+        string[] memory uris = new string[](1);
+        uris[0] = "";
+
+        uint256[] memory tokenIds = burnable1155.mintBaseNew(recipients, amounts, uris);
+
+        // check they own 3x 1155 tokens
+        assertEq(burnable1155.balanceOf(anyone1, tokenIds[0]), 3);
+        console.log("tokenIds[0]", tokenIds[0]);
+        vm.stopPrank();
+
+
+        // Approve the burn redeem contract to burn the tokens
+        vm.startPrank(anyone1);
+        burnable1155.setApprovalForAll(address(burnRedeem), true);
+
+        vm.deal(anyone1, 1 ether);
+
+        // Perform the burn redeem
+        // @note: we only use one group here because the item it maps to has the 3x multiplier
+        IBurnRedeemCore.BurnToken[] memory tokens = new IBurnRedeemCore.BurnToken[](1);
+        tokens[0] = IBurnRedeemCore.BurnToken({
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: address(burnable1155),
+            id: tokenIds[0],
+            merkleProof: new bytes32[](0)
+        });
+
+        uint256 burnFee = burnRedeem.MULTI_BURN_FEE();
+        burnRedeem.burnRedeem{value: burnFee}(address(creator), 1, 1, tokens);
+
+        // Verify the burns
+        assertEq(burnable1155.balanceOf(anyone1, tokenIds[0]), 0);
+        vm.stopPrank();
+    }
+
 }
