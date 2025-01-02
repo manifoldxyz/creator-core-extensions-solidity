@@ -16,6 +16,7 @@ contract ERC721LazyPayableClaimMetadata is IERC721LazyPayableClaimMetadata {
 
   function tokenURI(address creatorContract, uint256 tokenId, uint256 instanceId, uint24 mintOrder) external pure override returns (string memory) {
     return string(abi.encodePacked(uint256(uint160(creatorContract)).toString(), "/", tokenId.toString(), "/", instanceId.toString(), "/", uint256(mintOrder).toString()));
+  }
 }
 
 contract ERC721LazyPayableClaimTest is Test {
