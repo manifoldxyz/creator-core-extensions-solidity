@@ -220,7 +220,6 @@ contract ERC721LazyPayableClaimTest is Test {
     claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ADDRESS;
     vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
-
     claimP.startDate = nowC + 2000;
     claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ARWEAVE;
     vm.expectRevert(ILazyPayableClaim.InvalidStartDate.selector);

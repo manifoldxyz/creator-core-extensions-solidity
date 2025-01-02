@@ -221,7 +221,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
 
       // Cannot mint other ways when signature is non-zero
       vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
-      example.mint{value:mintFee*3}(address(creatorCore), 1, uint16(3), new bytes32[](0), other);
+      example.mint{ value: mintFee * 3 }(address(creatorCore), 1, uint16(3), new bytes32[](0), other);
 
       vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
       example.mintBatch{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
