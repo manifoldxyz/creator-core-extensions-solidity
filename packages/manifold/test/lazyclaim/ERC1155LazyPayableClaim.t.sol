@@ -504,7 +504,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
     example.mintBatch{ value: mintFee * 4 }(address(creatorCore), 1, 4, new uint32[](0), new bytes32[][](0), owner);
 
-    example.mintBatch{ value: mintFee * 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+    example.mintBatch{value: mintFee * 3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
 
     vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
     example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
@@ -512,7 +512,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.stopPrank();
     vm.startPrank(other2);
     vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
-    example.mintBatch{ value: mintFee * 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other2);
+    example.mintBatch{value: mintFee * 3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other2);
 
     example.mintBatch{ value: mintFee * 2 }(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), other2);
 
