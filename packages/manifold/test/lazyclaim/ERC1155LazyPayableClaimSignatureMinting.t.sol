@@ -21,6 +21,8 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
     MockManifoldMembership public manifoldMembership;
     MockERC20 public mockERC20;
     Merkle public merkle;
+    uint256 public defaultMintFee = 500000000000000;
+    uint256 public defaultMintFeeMerkle = 690000000000000;
 
     address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
     address public other = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
@@ -35,32 +37,32 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
     address public zeroAddress = address(0);
 
     function setUp() public {
-      vm.startPrank(owner);
-      creatorCore = new ERC1155Creator("Token", "NFT");
-      delegationRegistry = new DelegationRegistry();
-      delegationRegistryV2 = new DelegationRegistryV2();
-      example = new ERC1155LazyPayableClaim(
-        owner,
-        address(delegationRegistry),
-        address(delegationRegistryV2),
-        500000000000000,
-        690000000000000
-      );
-      manifoldMembership = new MockManifoldMembership();
-      example.setMembershipAddress(address(manifoldMembership));
+        vm.startPrank(owner);
+        creatorCore = new ERC1155Creator("Token", "NFT");
+        delegationRegistry = new DelegationRegistry();
+        delegationRegistryV2 = new DelegationRegistryV2();
+        example = new ERC1155LazyPayableClaim(
+          owner,
+          address(delegationRegistry),
+          address(delegationRegistryV2),
+          defaultMintFee,
+          defaultMintFeeMerkle
+        );
+        manifoldMembership = new MockManifoldMembership();
+        example.setMembershipAddress(address(manifoldMembership));
 
-      creatorCore.registerExtension(address(example), "override");
+        creatorCore.registerExtension(address(example), "override");
 
-      mockERC20 = new MockERC20("Test", "test");
-      merkle = new Merkle();
+        mockERC20 = new MockERC20("Test", "test");
+        merkle = new Merkle();
 
-      signingAddress = vm.addr(privateKey);
+        signingAddress = vm.addr(privateKey);
 
-      vm.deal(owner, 10 ether);
-      vm.deal(other, 10 ether);
-      vm.deal(other2, 10 ether);
-      vm.deal(other3, 10 ether);
-      vm.stopPrank();
+        vm.deal(owner, 10 ether);
+        vm.deal(other, 10 ether);
+        vm.deal(other2, 10 ether);
+        vm.deal(other3, 10 ether);
+        vm.stopPrank();
     }
 
     function testSignatureMint() public {
@@ -71,20 +73,24 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       uint mintFeeNon = example.MINT_FEE();
 
       IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
-        merkleRoot: "",
-        location: "arweaveHash1",
-        totalMax: 1000,
-        walletMax: 0,
-        startDate: nowC,
-        endDate: later,
-        storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
-        cost: 100,
-        paymentReceiver: payable(owner),
-        erc20: zeroAddress,
-        signingAddress: signingAddress
+          merkleRoot: "",
+          location: "arweaveHash1",
+          totalMax: 1000,
+          walletMax: 0,
+          startDate: nowC,
+          endDate: later,
+          storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          cost: 100,
+          paymentReceiver: payable(owner),
+          erc20: zeroAddress,
+          signingAddress: signingAddress
       });
 
-      example.initializeClaim(address(creatorCore), 1, claimP);
+       example.initializeClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
 
       vm.stopPrank();
       vm.startPrank(other);
@@ -98,7 +104,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       bytes memory signature = abi.encodePacked(r, s, v);
 
       // Perform a mint on the claim
-      example.mintSignature{ value: mintFee * 3 }(
+      example.mintSignature{ value: mintFee*3 }(
         address(creatorCore),
         1,
         mintCount,
@@ -112,7 +118,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
 
       // Cannot replay same tx with same nonce
       vm.expectRevert("Cannot replay transaction");
-      example.mintSignature{ value: mintFee * 3 }(
+      example.mintSignature{ value: mintFee*3 }(
         address(creatorCore),
         1,
         mintCount,
@@ -127,7 +133,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
 
       // Cannot replay same tx with same nonce, even with different mintfor
       vm.expectRevert("Cannot replay transaction");
-      example.mintSignature{ value: mintFee * 3 }(
+      example.mintSignature{ value: mintFee*3 }(
         address(creatorCore),
         1,
         mintCount,
@@ -143,7 +149,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
 
       // Cannot replay same tx with same nonce, even with different expiration
       vm.expectRevert("Cannot replay transaction");
-      example.mintSignature{ value: mintFee * 3 }(
+      example.mintSignature{ value: mintFee*3 }(
         address(creatorCore),
         1,
         mintCount,
@@ -163,7 +169,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       signature = abi.encodePacked(r, s, v);
 
       vm.expectRevert(ILazyPayableClaim.InvalidSignature.selector);
-      example.mintSignature{ value: mintFee * 3 }(
+      example.mintSignature{ value: mintFee*3 }(
         address(creatorCore),
         1,
         mintCount,
@@ -181,7 +187,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       (v, r, s) = vm.sign(privateKey2, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(ILazyPayableClaim.InvalidSignature.selector);
-      example.mintSignature{ value: mintFee * 3 }(
+      example.mintSignature{ value: mintFee*3 }(
         address(creatorCore),
         1,
         mintCount,
@@ -199,7 +205,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(ILazyPayableClaim.ExpiredSignature.selector);
-      example.mintSignature{ value: mintFee * 3 }(
+      example.mintSignature{ value: mintFee*3 }(
         address(creatorCore),
         1,
         mintCount,
@@ -230,7 +236,11 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       claimP.signingAddress = zeroAddress;
       vm.stopPrank();
       vm.startPrank(owner);
-      example.updateClaim(address(creatorCore), 1, claimP);
+      example.updateClaim(
+        address(creatorCore),
+        1,
+        claimP
+      );
       vm.stopPrank();
       vm.startPrank(other);
       nonce = "2";
@@ -239,7 +249,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       (v, r, s) = vm.sign(privateKey, message);
       signature = abi.encodePacked(r, s, v);
       vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
-      example.mintSignature{ value: mintFee * 3 }(
+      example.mintSignature{ value: mintFee*3 }(
         address(creatorCore),
         1,
         mintCount,

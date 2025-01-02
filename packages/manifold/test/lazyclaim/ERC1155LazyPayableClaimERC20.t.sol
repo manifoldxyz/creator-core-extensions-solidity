@@ -18,6 +18,8 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
   MockManifoldMembership public manifoldMembership;
   MockERC20 public mockERC20;
   Merkle public merkle;
+  uint256 public defaultMintFee = 500000000000000;
+  uint256 public defaultMintFeeMerkle = 690000000000000;
 
   address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
   address public other = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
@@ -35,8 +37,8 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       owner,
       address(delegationRegistry),
       address(delegationRegistryV2),
-      500000000000000,
-      690000000000000
+      defaultMintFee,
+      defaultMintFeeMerkle
     );
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));

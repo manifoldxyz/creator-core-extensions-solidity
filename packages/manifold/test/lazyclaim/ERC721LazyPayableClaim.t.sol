@@ -14,25 +14,8 @@ import "../../lib/murky/src/Merkle.sol";
 contract ERC721LazyPayableClaimMetadata is IERC721LazyPayableClaimMetadata {
   using Strings for uint256;
 
-  function tokenURI(
-    address creatorContract,
-    uint256 tokenId,
-    uint256 instanceId,
-    uint24 mintOrder
-  ) external pure override returns (string memory) {
-    return
-      string(
-        abi.encodePacked(
-          uint256(uint160(creatorContract)).toString(),
-          "/",
-          tokenId.toString(),
-          "/",
-          instanceId.toString(),
-          "/",
-          uint256(mintOrder).toString()
-        )
-      );
-  }
+  function tokenURI(address creatorContract, uint256 tokenId, uint256 instanceId, uint24 mintOrder) external pure override returns (string memory) {
+    return string(abi.encodePacked(uint256(uint160(creatorContract)).toString(), "/", tokenId.toString(), "/", instanceId.toString(), "/", uint256(mintOrder).toString()));
 }
 
 contract ERC721LazyPayableClaimTest is Test {
@@ -724,18 +707,9 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.stopPrank();
     vm.startPrank(other3);
     example.mint{ value: mintFee }(address(creatorCore), instanceId, 0, new bytes32[](0), other3);
-    assertEq(
-      string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/2/101/1")),
-      creatorCore.tokenURI(2)
-    );
-    assertEq(
-      string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/3/101/2")),
-      creatorCore.tokenURI(3)
-    );
-    assertEq(
-      string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/5/101/3")),
-      creatorCore.tokenURI(5)
-    );
+    assertEq(string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/2/101/1")), creatorCore.tokenURI(2));
+    assertEq(string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/3/101/2")), creatorCore.tokenURI(3));
+    assertEq(string(abi.encodePacked(uint256(uint160(address(creatorCore))).toString(), "/5/101/3")), creatorCore.tokenURI(5));
 
     vm.stopPrank();
   }

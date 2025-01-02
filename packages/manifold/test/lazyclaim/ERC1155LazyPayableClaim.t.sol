@@ -14,16 +14,8 @@ import "../../lib/murky/src/Merkle.sol";
 contract ERC1155LazyPayableClaimMetadata is IERC1155LazyPayableClaimMetadata {
   using Strings for uint256;
 
-  function tokenURI(
-    address creatorContract,
-    uint256 tokenId,
-    uint256 instanceId
-  ) external pure override returns (string memory) {
-    return
-      string(
-        abi.encodePacked(uint256(uint160(creatorContract)).toString(), "/", tokenId.toString(), "/", instanceId.toString())
-      );
-  }
+  function tokenURI(address creatorContract, uint256 tokenId, uint256 instanceId) external pure override returns (string memory) {
+    return string(abi.encodePacked(uint256(uint160(creatorContract)).toString(), "/", tokenId.toString(), "/", instanceId.toString()));
 }
 
 contract ERC1155LazyPayableClaimTest is Test {
@@ -36,6 +28,8 @@ contract ERC1155LazyPayableClaimTest is Test {
   DelegationRegistryV2 public delegationRegistryV2;
   MockManifoldMembership public manifoldMembership;
   Merkle public merkle;
+  uint256 public defaultMintFee = 500000000000000;
+  uint256 public defaultMintFeeMerkle = 690000000000000;
 
   address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
   address public other = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
@@ -53,8 +47,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       owner,
       address(delegationRegistry),
       address(delegationRegistryV2),
-      500000000000000,
-      690000000000000
+      defaultMintFee,
+      defaultMintFeeMerkle
     );
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
@@ -1033,8 +1027,8 @@ contract ERC1155LazyPayableClaimTest is Test {
       address(creatorCore),
       address(0x00000000000076A84feF008CDAbe6409d2FE638B),
       address(0x00000000000000447e69651d841bD8D104Bed493),
-      500000000000000,
-      690000000000000
+      defaultMintFee,
+      defaultMintFeeMerkle
     );
     address onChainAddress = claim.DELEGATION_REGISTRY();
     assertEq(0x00000000000076A84feF008CDAbe6409d2FE638B, onChainAddress);
