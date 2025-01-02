@@ -8,112 +8,173 @@ pragma solidity ^0.8.0;
  * Lazy Payable Claim interface
  */
 interface ILazyPayableClaim {
-    error InvalidStorageProtocol();
-    error ClaimNotInitialized();
-    error InvalidStartDate();
-    error InvalidAirdrop();
-    error TokenDNE();
-    error InvalidInstance();
-    error InvalidInput();
-    error ClaimInactive();
-    error TooManyRequested();
-    error MustUseSignatureMinting();
-    error FailedToTransfer();
-    error InvalidSignature();
-    error ExpiredSignature();
-    error CannotChangePaymentToken();
+  error InvalidStorageProtocol();
+  error ClaimNotInitialized();
+  error InvalidStartDate();
+  error InvalidAirdrop();
+  error TokenDNE();
+  error InvalidInstance();
+  error InvalidInput();
+  error ClaimInactive();
+  error TooManyRequested();
+  error MustUseSignatureMinting();
+  error FailedToTransfer();
+  error InvalidSignature();
+  error ExpiredSignature();
+  error CannotChangePaymentToken();
 
-    enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS, ADDRESS }
-    
-    event ClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
-    event ClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
-    event ClaimMint(address indexed creatorContract, uint256 indexed instanceId);
-    event ClaimMintBatch(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount);
-    event ClaimMintProxy(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor);
-    event ClaimMintSignature(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor, bytes32 nonce);
+  enum StorageProtocol {
+    INVALID,
+    NONE,
+    ARWEAVE,
+    IPFS,
+    ADDRESS
+  }
 
-    /**
-     * @notice Withdraw funds
-     */
-    function withdraw(address payable receiver, uint256 amount) external;
+  event ClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
+  event ClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
+  event ClaimMint(address indexed creatorContract, uint256 indexed instanceId);
+  event ClaimMintBatch(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount);
+  event ClaimMintProxy(
+    address indexed creatorContract,
+    uint256 indexed instanceId,
+    uint16 mintCount,
+    address proxy,
+    address mintFor
+  );
+  event ClaimMintSignature(
+    address indexed creatorContract,
+    uint256 indexed instanceId,
+    uint16 mintCount,
+    address proxy,
+    address mintFor,
+    bytes32 nonce
+  );
 
-    /**
-     * @notice Set the Manifold Membership address
-     */
-    function setMembershipAddress(address membershipAddress) external;
+  /**
+   * @notice Withdraw funds
+   */
+  function withdraw(address payable receiver, uint256 amount) external;
 
-    /**
-     * @notice check if a mint index has been consumed or not (only for merkle claims)
-     *
-     * @param creatorContractAddress    the address of the creator contract for the claim
-     * @param instanceId                the claim instanceId for the creator contract
-     * @param mintIndex                 the mint claim instance
-     * @return                          whether or not the mint index was consumed
-     */
-    function checkMintIndex(address creatorContractAddress, uint256 instanceId, uint32 mintIndex) external view returns(bool);
+  /**
+   * @notice Set the Manifold Membership address
+   */
+  function setMembershipAddress(address membershipAddress) external;
 
-    /**
-     * @notice check if multiple mint indices has been consumed or not (only for merkle claims)
-     *
-     * @param creatorContractAddress    the address of the creator contract for the claim
-     * @param instanceId                the claim instanceId for the creator contract
-     * @param mintIndices               the mint claim instance
-     * @return                          whether or not the mint index was consumed
-     */
-    function checkMintIndices(address creatorContractAddress, uint256 instanceId, uint32[] calldata mintIndices) external view returns(bool[] memory);
+  /**
+   * @notice Set the mint fee
+   */
+  function setMintFee(uint256 mintFee) external;
 
-    /**
-     * @notice get mints made for a wallet (only for non-merkle claims with walletMax)
-     *
-     * @param minter                    the address of the minting address
-     * @param creatorContractAddress    the address of the creator contract for the claim
-     * @param instanceId                the claim instance for the creator contract
-     * @return                          how many mints the minter has made
-     */
-    function getTotalMints(address minter, address creatorContractAddress, uint256 instanceId) external view returns(uint32);
+  /**
+   * @notice Set the mint fee for merkle claims
+   */
+  function setMintFeeMerkle(uint256 mintFeeMerkle) external;
 
-    /**
-     * @notice allow a wallet to lazily claim a token according to parameters
-     * @param creatorContractAddress    the creator contract address
-     * @param instanceId                the claim instanceId for the creator contract
-     * @param mintIndex                 the mint index (only needed for merkle claims)
-     * @param merkleProof               if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
-     * @param mintFor                   mintFor must be the msg.sender or a delegate wallet address (in the case of merkle based mints)
-     */
-    function mint(address creatorContractAddress, uint256 instanceId, uint32 mintIndex, bytes32[] calldata merkleProof, address mintFor) external payable;
+  /**
+   * @notice check if a mint index has been consumed or not (only for merkle claims)
+   *
+   * @param creatorContractAddress    the address of the creator contract for the claim
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintIndex                 the mint claim instance
+   * @return                          whether or not the mint index was consumed
+   */
+  function checkMintIndex(address creatorContractAddress, uint256 instanceId, uint32 mintIndex) external view returns (bool);
 
-    /**
-     * @notice allow a wallet to lazily claim a token according to parameters
-     * @param creatorContractAddress    the creator contract address
-     * @param instanceId                the claim instanceId for the creator contract
-     * @param mintCount                 the number of claims to mint
-     * @param mintIndices               the mint index (only needed for merkle claims)
-     * @param merkleProofs              if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
-     * @param mintFor                   mintFor must be the msg.sender or a delegate wallet address (in the case of merkle based mints)
-     */
-    function mintBatch(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable;
+  /**
+   * @notice check if multiple mint indices has been consumed or not (only for merkle claims)
+   *
+   * @param creatorContractAddress    the address of the creator contract for the claim
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintIndices               the mint claim instance
+   * @return                          whether or not the mint index was consumed
+   */
+  function checkMintIndices(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint32[] calldata mintIndices
+  ) external view returns (bool[] memory);
 
-    /**
-     * @notice allow a proxy to mint a token for another address
-     * @param creatorContractAddress    the creator contract address
-     * @param instanceId                the claim instanceId for the creator contract
-     * @param mintCount                 the number of claims to mint
-     * @param mintIndices               the mint index (only needed for merkle claims)
-     * @param merkleProofs              if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
-     * @param mintFor                   the address to mint for
-     */
-    function mintProxy(address creatorContractAddress, uint256 instanceId, uint16 mintCount, uint32[] calldata mintIndices, bytes32[][] calldata merkleProofs, address mintFor) external payable;
+  /**
+   * @notice get mints made for a wallet (only for non-merkle claims with walletMax)
+   *
+   * @param minter                    the address of the minting address
+   * @param creatorContractAddress    the address of the creator contract for the claim
+   * @param instanceId                the claim instance for the creator contract
+   * @return                          how many mints the minter has made
+   */
+  function getTotalMints(address minter, address creatorContractAddress, uint256 instanceId) external view returns (uint32);
 
-    /**
-     * @notice allowlist minting based on signatures
-     * @param creatorContractAddress    the creator contract address
-     * @param instanceId                the claim instanceId for the creator contract
-     * @param mintCount                 the number of claims to mint
-     * @param signature                 if the claim has a signerAddress, verifying signatures were signed by it
-     * @param message                   the message that was signed
-     * @param nonce                     the nonce that was signed
-     * @param mintFor                   the address to mint for
-     */
-    function mintSignature(address creatorContractAddress, uint256 instanceId, uint16 mintCount, bytes calldata signature, bytes32 message, bytes32 nonce, address mintFor, uint256 expiration) external payable;
+  /**
+   * @notice allow a wallet to lazily claim a token according to parameters
+   * @param creatorContractAddress    the creator contract address
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintIndex                 the mint index (only needed for merkle claims)
+   * @param merkleProof               if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
+   * @param mintFor                   mintFor must be the msg.sender or a delegate wallet address (in the case of merkle based mints)
+   */
+  function mint(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint32 mintIndex,
+    bytes32[] calldata merkleProof,
+    address mintFor
+  ) external payable;
 
+  /**
+   * @notice allow a wallet to lazily claim a token according to parameters
+   * @param creatorContractAddress    the creator contract address
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintCount                 the number of claims to mint
+   * @param mintIndices               the mint index (only needed for merkle claims)
+   * @param merkleProofs              if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
+   * @param mintFor                   mintFor must be the msg.sender or a delegate wallet address (in the case of merkle based mints)
+   */
+  function mintBatch(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint16 mintCount,
+    uint32[] calldata mintIndices,
+    bytes32[][] calldata merkleProofs,
+    address mintFor
+  ) external payable;
+
+  /**
+   * @notice allow a proxy to mint a token for another address
+   * @param creatorContractAddress    the creator contract address
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintCount                 the number of claims to mint
+   * @param mintIndices               the mint index (only needed for merkle claims)
+   * @param merkleProofs              if the claim has a merkleRoot, verifying merkleProof ensures that address + minterValue was used to construct it  (only needed for merkle claims)
+   * @param mintFor                   the address to mint for
+   */
+  function mintProxy(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint16 mintCount,
+    uint32[] calldata mintIndices,
+    bytes32[][] calldata merkleProofs,
+    address mintFor
+  ) external payable;
+
+  /**
+   * @notice allowlist minting based on signatures
+   * @param creatorContractAddress    the creator contract address
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintCount                 the number of claims to mint
+   * @param signature                 if the claim has a signerAddress, verifying signatures were signed by it
+   * @param message                   the message that was signed
+   * @param nonce                     the nonce that was signed
+   * @param mintFor                   the address to mint for
+   */
+  function mintSignature(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint16 mintCount,
+    bytes calldata signature,
+    bytes32 message,
+    bytes32 nonce,
+    address mintFor,
+    uint256 expiration
+  ) external payable;
 }

@@ -31,7 +31,13 @@ contract ERC721LazyPayableClaimERC20Test is Test {
     creatorCore = new ERC721Creator("Token", "NFT");
     delegationRegistry = new DelegationRegistry();
     delegationRegistryV2 = new DelegationRegistryV2();
-    example = new ERC721LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
+    example = new ERC721LazyPayableClaim(
+      owner,
+      address(delegationRegistry),
+      address(delegationRegistryV2),
+      500000000000000,
+      690000000000000
+    );
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
 
