@@ -29,6 +29,8 @@ contract ERC721LazyPayableClaimTest is Test {
   DelegationRegistryV2 public delegationRegistryV2;
   MockManifoldMembership public manifoldMembership;
   Merkle public merkle;
+  uint256 public defaultMintFee = 500000000000000;
+  uint256 public defaultMintFeeMerkle = 690000000000000;
 
   address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
   address public other = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
@@ -42,7 +44,13 @@ contract ERC721LazyPayableClaimTest is Test {
     creatorCore = new ERC721Creator("Token", "NFT");
     delegationRegistry = new DelegationRegistry();
     delegationRegistryV2 = new DelegationRegistryV2();
-    example = new ERC721LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
+    example = new ERC721LazyPayableClaim(
+      owner,
+      address(delegationRegistry),
+      address(delegationRegistryV2),
+      defaultMintFee,
+      defaultMintFeeMerkle
+    );
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
     metadata = new ERC721LazyPayableClaimMetadata();
@@ -213,7 +221,6 @@ contract ERC721LazyPayableClaimTest is Test {
     claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ADDRESS;
     vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
-    
     claimP.startDate = nowC + 2000;
     claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ARWEAVE;
     vm.expectRevert(ILazyPayableClaim.InvalidStartDate.selector);
@@ -652,7 +659,6 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.stopPrank();
   }
 
-
   function testTokenURIAddress() public {
     vm.startPrank(owner);
     uint48 nowC = uint48(block.timestamp);
@@ -1039,14 +1045,15 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.stopPrank();
   }
 
-
   function testDelegateRegistryAddress() public {
     vm.startPrank(owner);
 
     ERC721LazyPayableClaim claim = new ERC721LazyPayableClaim(
       address(creatorCore),
       address(0x00000000000076A84feF008CDAbe6409d2FE638B),
-      address(0x00000000000000447e69651d841bD8D104Bed493)
+      address(0x00000000000000447e69651d841bD8D104Bed493),
+      defaultMintFee,
+      defaultMintFeeMerkle
     );
     address onChainAddress = claim.DELEGATION_REGISTRY();
     assertEq(0x00000000000076A84feF008CDAbe6409d2FE638B, onChainAddress);
@@ -1205,6 +1212,93 @@ contract ERC721LazyPayableClaimTest is Test {
     example.mintProxy{ value: mintFeeNon * 2 + 2 }(address(creatorCore), 3, 2, amountsInput, proofsInput, owner);
     example.mintProxy{ value: mintFee * 2 + 2 }(address(creatorCore), 3, 2, amountsInput, proofsInput, owner);
     assertEq(5, creatorCore.balanceOf(owner));
+    vm.stopPrank();
+  }
+
+  function testSetMintFee() public {
+    uint256 mintFee = defaultMintFee - 1000000;
+    // only admin can set mint fee
+    vm.startPrank(owner);
+    example.setMintFee(mintFee);
+    assertEq(example.MINT_FEE(), mintFee);
+    vm.stopPrank();
+    // other cannot set mint fee
+    vm.startPrank(other);
+    vm.expectRevert("AdminControl: Must be owner or admin");
+    example.setMintFee(mintFee);
+    vm.stopPrank();
+
+    // test functionality
+    vm.startPrank(owner);
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
+      merkleRoot: "",
+      location: "arweaveHash",
+      totalMax: 3,
+      walletMax: 0,
+      startDate: nowC,
+      endDate: later,
+      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      identical: true,
+      cost: 1,
+      paymentReceiver: payable(other),
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
+    });
+
+    example.initializeClaim(address(creatorCore), 1, claimP);
+    vm.stopPrank();
+
+    vm.startPrank(other);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 1, new bytes32[](0), other);
+    vm.stopPrank();
+  }
+
+  function testSetMintFeeMerkle() public {
+    uint256 mintFeeMerkle = defaultMintFeeMerkle - 1000000;
+    // only admin can set mint fee
+    vm.startPrank(owner);
+    example.setMintFeeMerkle(mintFeeMerkle);
+    assertEq(example.MINT_FEE_MERKLE(), mintFeeMerkle);
+    vm.stopPrank();
+    // other cannot set mint fee merkle
+    vm.startPrank(other);
+    vm.expectRevert("AdminControl: Must be owner or admin");
+    example.setMintFee(mintFeeMerkle);
+    vm.stopPrank();
+
+    // test functionality
+    vm.startPrank(owner);
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    bytes32[] memory allowListTuples = new bytes32[](4);
+    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+    allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
+    allowListTuples[2] = keccak256(abi.encodePacked(other2, uint32(2)));
+    allowListTuples[3] = keccak256(abi.encodePacked(other3, uint32(3)));
+
+    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
+      merkleRoot: merkle.getRoot(allowListTuples),
+      location: "arweaveHash",
+      totalMax: 3,
+      walletMax: 0,
+      startDate: nowC,
+      endDate: later,
+      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      identical: true,
+      cost: 1,
+      paymentReceiver: payable(other),
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
+    });
+
+    example.initializeClaim(address(creatorCore), 1, claimP);
+    vm.stopPrank();
+
+    bytes32[] memory merkleProof = merkle.getProof(allowListTuples, uint32(1));
+    vm.startPrank(other2);
+    example.mint{ value: mintFeeMerkle + 1 }(address(creatorCore), 1, 1, merkleProof, other2);
     vm.stopPrank();
   }
 }

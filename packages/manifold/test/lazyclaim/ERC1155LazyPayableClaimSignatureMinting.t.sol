@@ -21,6 +21,8 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
     MockManifoldMembership public manifoldMembership;
     MockERC20 public mockERC20;
     Merkle public merkle;
+    uint256 public defaultMintFee = 500000000000000;
+    uint256 public defaultMintFeeMerkle = 690000000000000;
 
     address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
     address public other = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
@@ -40,7 +42,11 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         delegationRegistry = new DelegationRegistry();
         delegationRegistryV2 = new DelegationRegistryV2();
         example = new ERC1155LazyPayableClaim(
-          owner, address(delegationRegistry), address(delegationRegistryV2)
+          owner,
+          address(delegationRegistry),
+          address(delegationRegistryV2),
+          defaultMintFee,
+          defaultMintFeeMerkle
         );
         manifoldMembership = new MockManifoldMembership();
         example.setMembershipAddress(address(manifoldMembership));
@@ -221,7 +227,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       example.mintBatch{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
 
       vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
-      example.mintProxy{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
+      example.mintProxy{ value: mintFee * 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
 
       // Other owns none because all mints with other methods failed
       assertEq(0, creatorCore.balanceOf(other, 1));
@@ -253,7 +259,5 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         other2,
         expiration
       );
-
     }
-
 }

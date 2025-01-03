@@ -29,6 +29,8 @@ contract ERC1155LazyPayableClaimTest is Test {
   DelegationRegistryV2 public delegationRegistryV2;
   MockManifoldMembership public manifoldMembership;
   Merkle public merkle;
+  uint256 public defaultMintFee = 500000000000000;
+  uint256 public defaultMintFeeMerkle = 690000000000000;
 
   address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
   address public other = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
@@ -42,7 +44,13 @@ contract ERC1155LazyPayableClaimTest is Test {
     creatorCore = new ERC1155Creator("Token", "NFT");
     delegationRegistry = new DelegationRegistry();
     delegationRegistryV2 = new DelegationRegistryV2();
-    example = new ERC1155LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
+    example = new ERC1155LazyPayableClaim(
+      owner,
+      address(delegationRegistry),
+      address(delegationRegistryV2),
+      defaultMintFee,
+      defaultMintFeeMerkle
+    );
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
     metadata = new ERC1155LazyPayableClaimMetadata();
@@ -211,7 +219,6 @@ contract ERC1155LazyPayableClaimTest is Test {
     claimP.erc20 = 0x0000000000000000000000000000000000000001;
     vm.expectRevert(ILazyPayableClaim.CannotChangePaymentToken.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
-
 
     vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
     example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaim.StorageProtocol.INVALID, "");
@@ -960,7 +967,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.stopPrank();
   }
 
-    function testDelegateMinting() public {
+  function testDelegateMinting() public {
     vm.startPrank(owner);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
@@ -1020,7 +1027,9 @@ contract ERC1155LazyPayableClaimTest is Test {
     ERC1155LazyPayableClaim claim = new ERC1155LazyPayableClaim(
       address(creatorCore),
       address(0x00000000000076A84feF008CDAbe6409d2FE638B),
-      address(0x00000000000000447e69651d841bD8D104Bed493)
+      address(0x00000000000000447e69651d841bD8D104Bed493),
+      defaultMintFee,
+      defaultMintFeeMerkle
     );
     address onChainAddress = claim.DELEGATION_REGISTRY();
     assertEq(0x00000000000076A84feF008CDAbe6409d2FE638B, onChainAddress);
