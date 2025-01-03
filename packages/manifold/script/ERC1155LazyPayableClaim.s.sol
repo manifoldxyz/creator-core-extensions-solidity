@@ -28,7 +28,7 @@ contract DeployERC1155LazyPayableClaim is Script {
         // address addr = vm.addr(pk);
         // console.log(addr);
 
-        // Set mint fees here
+        // IMPORTANT: Set mint fees here
         uint256 mintFee = 500000000000000;
         uint256 mintFeeMerkle = 690000000000000;
 
