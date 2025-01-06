@@ -43,7 +43,7 @@ interface ILazyPayableClaim {
     function setMembershipAddress(address membershipAddress) external;
 
     /**
-    *  @notice Set the mint fee
+    *  @notice Set the mint fee for non-merkle claims
     */
     function setMintFee(uint256 mintFee) external;
 

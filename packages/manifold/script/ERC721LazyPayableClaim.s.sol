@@ -28,10 +28,6 @@ contract DeployERC721LazyPayableClaim is Script {
         // address addr = vm.addr(pk);
         // console.log(addr);
 
-        // IMPORTANT: Set mint fees here
-        uint256 mintFee = 500000000000000;
-        uint256 mintFeeMerkle = 690000000000000;
-
         require(initialOwner != address(0), "Initial owner address not set.  Please configure INITIAL_OWNER.");
 
         // uint256 deployerPrivateKey = pk; // uncomment this when testing on goerli
@@ -42,9 +38,7 @@ contract DeployERC721LazyPayableClaim is Script {
         new ERC721LazyPayableClaim{ salt: 0x4552433732314c617a7950617961626c65436c61696d4552433732314c617a79 }(
           initialOwner,
           DELEGATION_REGISTRY,
-          DELEGATION_REGISTRY_V2,
-          mintFee,
-          mintFeeMerkle
+          DELEGATION_REGISTRY_V2
         );
         vm.stopBroadcast();
     }

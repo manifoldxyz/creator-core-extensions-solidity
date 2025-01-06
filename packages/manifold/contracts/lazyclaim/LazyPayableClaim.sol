@@ -66,13 +66,10 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         _;
     }
 
-    constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2, uint256 mintFee,
-    uint256 mintFeeMerkle) {
+    constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2) {
         _transferOwnership(initialOwner);
         DELEGATION_REGISTRY = delegationRegistry;
         DELEGATION_REGISTRY_V2 = delegationRegistryV2;
-        MINT_FEE = mintFee;
-        MINT_FEE_MERKLE = mintFeeMerkle;
     }
 
     /**

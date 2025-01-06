@@ -47,10 +47,11 @@ contract ERC721LazyPayableClaimTest is Test {
     example = new ERC721LazyPayableClaim(
       owner,
       address(delegationRegistry),
-      address(delegationRegistryV2),
-      defaultMintFee,
-      defaultMintFeeMerkle
+      address(delegationRegistryV2)
     );
+    // set mint fees
+    example.setMintFee(defaultMintFee);
+    example.setMintFeeMerkle(defaultMintFeeMerkle);
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
     metadata = new ERC721LazyPayableClaimMetadata();
@@ -1051,10 +1052,11 @@ contract ERC721LazyPayableClaimTest is Test {
     ERC721LazyPayableClaim claim = new ERC721LazyPayableClaim(
       address(creatorCore),
       address(0x00000000000076A84feF008CDAbe6409d2FE638B),
-      address(0x00000000000000447e69651d841bD8D104Bed493),
-      defaultMintFee,
-      defaultMintFeeMerkle
+      address(0x00000000000000447e69651d841bD8D104Bed493)
     );
+    // set mint fees
+    claim.setMintFee(defaultMintFee);
+    claim.setMintFeeMerkle(defaultMintFeeMerkle);
     address onChainAddress = claim.DELEGATION_REGISTRY();
     assertEq(0x00000000000076A84feF008CDAbe6409d2FE638B, onChainAddress);
     address onChainAddressV2 = claim.DELEGATION_REGISTRY_V2();

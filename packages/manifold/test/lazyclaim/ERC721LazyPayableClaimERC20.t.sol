@@ -36,10 +36,11 @@ contract ERC721LazyPayableClaimERC20Test is Test {
     example = new ERC721LazyPayableClaim(
       owner,
       address(delegationRegistry),
-      address(delegationRegistryV2),
-      defaultMintFee,
-      defaultMintFeeMerkle
+      address(delegationRegistryV2)
     );
+    // set mint fees
+    example.setMintFee(defaultMintFee);
+    example.setMintFeeMerkle(defaultMintFeeMerkle);
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
 
