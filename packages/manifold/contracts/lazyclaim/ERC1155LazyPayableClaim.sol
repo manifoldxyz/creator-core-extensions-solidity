@@ -43,8 +43,7 @@ contract ERC1155LazyPayableClaim is IERC165, IERC1155LazyPayableClaim, ICreatorE
         address creatorContractAddress,
         uint256 instanceId,
         ClaimParameters calldata claimParameters
-    ) external override creatorAdminRequired(creatorContractAddress) {
-        if (_stopClaimInitiated) revert ILazyPayableClaim.ClaimInitiationDisabled();
+    ) external override creatorAdminRequired(creatorContractAddress) unpausedRequired {
         // Revert if claim at instanceId already exists
         require(_claims[creatorContractAddress][instanceId].storageProtocol == StorageProtocol.INVALID, "Claim already initialized");
 

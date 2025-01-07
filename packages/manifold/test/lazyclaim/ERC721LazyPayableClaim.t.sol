@@ -1294,7 +1294,7 @@ contract ERC721LazyPayableClaimTest is Test {
     // stop new claims from being initialized
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    example.toggleClaimInitiation();
+    example.pause();
     IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash",
@@ -1309,18 +1309,18 @@ contract ERC721LazyPayableClaimTest is Test {
       erc20: zeroAddress,
       signingAddress: zeroAddress
     });
-    vm.expectRevert(ILazyPayableClaim.ClaimInitiationDisabled.selector);
+    vm.expectRevert("Contract is paused");
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     // resume new claims
-    example.toggleClaimInitiation();
+    example.unpause();
     example.initializeClaim(address(creatorCore), 1, claimP);
     vm.stopPrank();
 
     // Only deployer or admin of the extension can toggle claim initiation
     vm.startPrank(other);
     vm.expectRevert("AdminControl: Must be owner or admin");
-    example.toggleClaimInitiation();
+    example.pause();
     vm.stopPrank();
   }
 }

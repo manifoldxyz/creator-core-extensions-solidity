@@ -23,6 +23,8 @@ interface ILazyPayableClaim {
     error ExpiredSignature();
     error CannotChangePaymentToken();
     error ClaimInitiationDisabled();
+    error ClaimInitiationEnforcedPaused();
+    error ClaimInitiationEnforcedUnPaused();
     
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS, ADDRESS }
     
@@ -32,6 +34,8 @@ interface ILazyPayableClaim {
     event ClaimMintBatch(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount);
     event ClaimMintProxy(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor);
     event ClaimMintSignature(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor, bytes32 nonce);
+    event ClaimInitiationPaused(address account);
+    event ClaimInitiationUnPaused(address account);
 
     /**
      * @notice Withdraw funds
@@ -49,9 +53,14 @@ interface ILazyPayableClaim {
     function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external;
 
     /**
-     * @notice Toggle to stop or resume claim initialization
+     * @notice Pause all claim initiation
      */
-    function toggleClaimInitiation() external;
+    function pause() external;
+
+    /**
+     * @notice Unpause all claim initiation
+     */
+    function unpause() external;
 
     /**
      * @notice check if a mint index has been consumed or not (only for merkle claims)

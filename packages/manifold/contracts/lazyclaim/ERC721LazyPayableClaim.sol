@@ -5,7 +5,6 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-
 import "./LazyPayableClaim.sol";
 import "./IERC721LazyPayableClaim.sol";
 import "./IERC721LazyPayableClaimMetadata.sol";
@@ -50,8 +49,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         address creatorContractAddress,
         uint256 instanceId,
         ClaimParameters calldata claimParameters
-    ) external override creatorAdminRequired(creatorContractAddress) {
-        if (_stopClaimInitiated) revert ILazyPayableClaim.ClaimInitiationDisabled();
+    ) external override creatorAdminRequired(creatorContractAddress) unpausedRequired {
         // Max uint56 for instanceId
         if (instanceId == 0 || instanceId > MAX_UINT_56) revert ILazyPayableClaim.InvalidInstance();
         // revert ILazyPayableClaim.if claim at instanceId already exists

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import ".././libraries/delegation-registry/IDelegationRegistry.sol";
 import ".././libraries/delegation-registry/IDelegationRegistryV2.sol";
 import ".././libraries/manifold-membership/IManifoldMembership.sol";
@@ -18,7 +19,7 @@ import "./ILazyPayableClaim.sol";
  * @author manifold.xyz
  * @notice Lazy payable claim with optional whitelist
  */
-abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
+abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl, Pausable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using ECDSA for bytes32;
 
@@ -37,8 +38,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     uint256 public MINT_FEE_MERKLE;
     // solhint-disable-next-line
     address public MEMBERSHIP_ADDRESS;
-
-    bool internal _stopClaimInitiated;
 
     uint256 internal constant MAX_UINT_24 = 0xffffff;
     uint256 internal constant MAX_UINT_32 = 0xffffffff;
@@ -65,6 +64,14 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     modifier creatorAdminRequired(address creatorContractAddress) {
         AdminControl creatorCoreContract = AdminControl(creatorContractAddress);
         require(creatorCoreContract.isAdmin(msg.sender), "Wallet is not an administrator for contract");
+        _;
+    }
+
+    /**
+     * @notice Require that the contract is not paused
+     */
+    modifier unpausedRequired() {
+        require(!paused(), "Contract is paused");
         _;
     }
 
@@ -97,9 +104,12 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         MINT_FEE_MERKLE = mintFeeMerkle;
     }
 
-    // See {ILazyPayableClaim-setMintFees}.
-    function toggleClaimInitiation() external adminRequired {
-        _stopClaimInitiated = !_stopClaimInitiated;
+    function pause() external adminRequired {
+        _pause();
+    }
+
+    function unpause() external adminRequired {
+        _unpause();
     }
 
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle, bool allowMembership) internal {
