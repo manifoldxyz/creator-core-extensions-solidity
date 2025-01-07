@@ -22,9 +22,6 @@ interface ILazyPayableClaim {
     error InvalidSignature();
     error ExpiredSignature();
     error CannotChangePaymentToken();
-    error ClaimInitiationDisabled();
-    error ClaimInitiationEnforcedPaused();
-    error ClaimInitiationEnforcedUnPaused();
     
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS, ADDRESS }
     
@@ -34,8 +31,6 @@ interface ILazyPayableClaim {
     event ClaimMintBatch(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount);
     event ClaimMintProxy(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor);
     event ClaimMintSignature(address indexed creatorContract, uint256 indexed instanceId, uint16 mintCount, address proxy, address mintFor, bytes32 nonce);
-    event ClaimInitiationPaused(address account);
-    event ClaimInitiationUnPaused(address account);
 
     /**
      * @notice Withdraw funds
@@ -53,12 +48,12 @@ interface ILazyPayableClaim {
     function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external;
 
     /**
-     * @notice Pause all claim initiation
+     * @notice Pause all claim creations
      */
     function pause() external;
 
     /**
-     * @notice Unpause all claim initiation
+     * @notice Unpause all claim creations
      */
     function unpause() external;
 

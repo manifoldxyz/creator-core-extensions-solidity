@@ -1209,7 +1209,7 @@ contract ERC1155LazyPayableClaimTest is Test {
       erc20: zeroAddress,
       signingAddress: address(0)
     });
-    vm.expectRevert("Contract is paused");
+    vm.expectRevert("Claim creations are paused");
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     // resume new claims

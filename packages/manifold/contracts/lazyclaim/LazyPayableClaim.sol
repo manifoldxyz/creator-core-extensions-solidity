@@ -68,10 +68,10 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl, Pausable 
     }
 
     /**
-     * @notice Require that the contract is not paused
+     * @notice Require that claim creations are not paused
      */
     modifier unpausedRequired() {
-        require(!paused(), "Contract is paused");
+        require(!paused(), "Claim creations are paused");
         _;
     }
 
@@ -104,11 +104,11 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl, Pausable 
         MINT_FEE_MERKLE = mintFeeMerkle;
     }
 
-    function pause() external adminRequired {
+    function pause() external override adminRequired {
         _pause();
     }
 
-    function unpause() external adminRequired {
+    function unpause() external override adminRequired {
         _unpause();
     }
 
