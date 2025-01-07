@@ -22,8 +22,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     using EnumerableSet for EnumerableSet.AddressSet;
     using ECDSA for bytes32;
 
-    bool internal _paused;
-
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
 
@@ -37,6 +35,7 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     uint256 public MINT_FEE;
     // solhint-disable-next-line
     uint256 public MINT_FEE_MERKLE;
+    bool public active = true;
     // solhint-disable-next-line
     address public MEMBERSHIP_ADDRESS;
 
@@ -97,8 +96,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
         MINT_FEE_MERKLE = mintFeeMerkle;
     }
 
-    function setActive(bool active) external override adminRequired {
-        _paused = !active;
+    function setActive(bool _active) external override adminRequired {
+        active = _active;
     }
 
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle, bool allowMembership) internal {

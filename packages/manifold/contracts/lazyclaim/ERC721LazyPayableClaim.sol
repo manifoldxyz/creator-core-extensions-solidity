@@ -50,7 +50,7 @@ contract ERC721LazyPayableClaim is IERC165, IERC721LazyPayableClaim, ICreatorExt
         uint256 instanceId,
         ClaimParameters calldata claimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        if (_paused) revert ILazyPayableClaim.Inactive();
+        if (!active) revert ILazyPayableClaim.Inactive();
         // Max uint56 for instanceId
         if (instanceId == 0 || instanceId > MAX_UINT_56) revert ILazyPayableClaim.InvalidInstance();
         // revert ILazyPayableClaim.if claim at instanceId already exists
