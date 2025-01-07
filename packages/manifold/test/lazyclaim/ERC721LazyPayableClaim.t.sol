@@ -1298,7 +1298,7 @@ contract ERC721LazyPayableClaimTest is Test {
     IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash",
-      totalMax: 3,
+      totalMax: 6,
       walletMax: 0,
       startDate: nowC,
       endDate: later,
@@ -1312,7 +1312,7 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.expectRevert("Claim creations are paused");
     example.initializeClaim(address(creatorCore), 1, claimP);
 
-    // resume new claims
+    // unpause
     example.unpause();
     example.initializeClaim(address(creatorCore), 1, claimP);
     vm.stopPrank();
@@ -1322,5 +1322,20 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.expectRevert("AdminControl: Must be owner or admin");
     example.pause();
     vm.stopPrank();
+
+    // can still mint even if claim creatiofns are paused
+    vm.startPrank(owner);
+    example.pause();
+    vm.stopPrank();
+
+    vm.startPrank(other);
+    example.mint{ value: defaultMintFee + 1 }(address(creatorCore), 1, 1, new bytes32[](0), other);
+    uint32[] memory amountsInput = new uint32[](1);
+    amountsInput[0] = 0;
+    bytes32[][] memory proofsInput = new bytes32[][](1);
+    proofsInput[0] = new bytes32[](0);
+    example.mintBatch{ value: defaultMintFee * 2 + 2 }(address(creatorCore), 1, 2, amountsInput, proofsInput, other);
+    vm.stopPrank();
+
   }
 }
