@@ -16,7 +16,7 @@ import "../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
     In the end, you just basically used a random pk in the moment to deploy. You never had
     to expose your personal pk to your mac's environment variable or anything.
  */
-contract DeployERC1155LazyPayableClaim is Script {
+ contract DeployERC1155LazyPayableClaim is Script {
     address DELEGATION_REGISTRY = 0x00000000000076A84feF008CDAbe6409d2FE638B;
     address DELEGATION_REGISTRY_V2 = 0x00000000000000447e69651d841bD8D104Bed493;
 
@@ -35,11 +35,7 @@ contract DeployERC1155LazyPayableClaim is Script {
         vm.startBroadcast(deployerPrivateKey);
         // forge script scripts/ERC1155LazyPayableClaim.s.sol --optimizer-runs 800 --rpc-url <YOUR_NODE> --broadcast
         // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 800 --chain goerli <DEPLOYED_ADDRESS> contracts/lazyclaim/ERC1155LazyPayableClaim.sol:ERC1155LazyPayableClaim --constructor-args $(cast abi-encode "constructor(address,address,address)" "${INITIAL_OWNER}" "0x00000000000076A84feF008CDAbe6409d2FE638B" "0x00000000000000447e69651d841bD8D104Bed493") --watch
-        new ERC1155LazyPayableClaim{ salt: 0x455243313135354c617a7950617961626c65436c61696d455243313135354c61 }(
-          initialOwner,
-          DELEGATION_REGISTRY,
-          DELEGATION_REGISTRY_V2
-        );
+        new ERC1155LazyPayableClaim{salt: 0x455243313135354c617a7950617961626c65436c61696d455243313135354c61}(initialOwner, DELEGATION_REGISTRY, DELEGATION_REGISTRY_V2);
         vm.stopBroadcast();
     }
 }
