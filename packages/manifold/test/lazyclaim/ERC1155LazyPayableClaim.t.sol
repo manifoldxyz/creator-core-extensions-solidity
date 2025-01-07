@@ -32,7 +32,9 @@ contract ERC1155LazyPayableClaimTest is Test {
   uint256 public defaultMintFee = 500000000000000;
   uint256 public defaultMintFeeMerkle = 690000000000000;
 
+  // creator of the extension contract
   address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
+  // creator of the creator contract
   address public creator = 0xCD56df7B4705A99eBEBE2216e350638a1582bEC4;
   address public other = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
   address public other2 = 0x80AAC46bbd3C2FcE33681541a52CacBEd14bF425;
