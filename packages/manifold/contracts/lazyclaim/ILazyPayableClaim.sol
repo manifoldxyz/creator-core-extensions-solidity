@@ -43,14 +43,9 @@ interface ILazyPayableClaim {
     function setMembershipAddress(address membershipAddress) external;
 
     /**
-    *  @notice Set the mint fee for non-merkle claims
+    *  @notice Set the mint fees for claims
     */
-    function setMintFee(uint256 mintFee) external;
-
-    /**
-    *  @notice Set the mint fee for merkle claims
-    */
-    function setMintFeeMerkle(uint256 mintFeeMerkle) external;
+    function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external;
 
     /**
      * @notice check if a mint index has been consumed or not (only for merkle claims)

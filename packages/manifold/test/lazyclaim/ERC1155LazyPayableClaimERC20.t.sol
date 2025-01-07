@@ -39,8 +39,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       address(delegationRegistryV2)
     );
     // set mint fees
-    example.setMintFee(defaultMintFee);
-    example.setMintFeeMerkle(defaultMintFeeMerkle);
+    example.setMintFees(defaultMintFee, defaultMintFeeMerkle);
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
 

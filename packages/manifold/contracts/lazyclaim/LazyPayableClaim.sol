@@ -88,16 +88,10 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     }
 
     /**
-     * See {ILazyPayableClaim-setMintFee}.
+     * See {ILazyPayableClaim-setMintFees}.
      */
-    function setMintFee(uint256 mintFee) external override adminRequired {
+    function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external override adminRequired {
         MINT_FEE = mintFee;
-    }
-
-    /**
-     * See {ILazyPayableClaim-setMintFeeMerkle}.
-     */
-    function setMintFeeMerkle(uint256 mintFeeMerkle) external override adminRequired {
         MINT_FEE_MERKLE = mintFeeMerkle;
     }
 

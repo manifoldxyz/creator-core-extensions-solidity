@@ -50,8 +50,7 @@ contract ERC721LazyPayableClaimTest is Test {
       address(delegationRegistryV2)
     );
     // set mint fees
-    example.setMintFee(defaultMintFee);
-    example.setMintFeeMerkle(defaultMintFeeMerkle);
+    example.setMintFees(defaultMintFee, defaultMintFeeMerkle);
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
     metadata = new ERC721LazyPayableClaimMetadata();
@@ -1054,9 +1053,6 @@ contract ERC721LazyPayableClaimTest is Test {
       address(0x00000000000076A84feF008CDAbe6409d2FE638B),
       address(0x00000000000000447e69651d841bD8D104Bed493)
     );
-    // set mint fees
-    claim.setMintFee(defaultMintFee);
-    claim.setMintFeeMerkle(defaultMintFeeMerkle);
     address onChainAddress = claim.DELEGATION_REGISTRY();
     assertEq(0x00000000000076A84feF008CDAbe6409d2FE638B, onChainAddress);
     address onChainAddressV2 = claim.DELEGATION_REGISTRY_V2();
@@ -1217,24 +1213,27 @@ contract ERC721LazyPayableClaimTest is Test {
     vm.stopPrank();
   }
 
-  function testSetMintFee() public {
+  function testSetMintFees() public {
     uint256 mintFee = defaultMintFee - 1000000;
+    uint256 mintFeeMerkle = defaultMintFeeMerkle - 1000000;
     // only admin can set mint fee
     vm.startPrank(owner);
-    example.setMintFee(mintFee);
+    example.setMintFees(mintFee, mintFeeMerkle);
     assertEq(example.MINT_FEE(), mintFee);
-    vm.stopPrank();
-    // other cannot set mint fee
-    vm.startPrank(other);
-    vm.expectRevert("AdminControl: Must be owner or admin");
-    example.setMintFee(mintFee);
+    assertEq(example.MINT_FEE_MERKLE(), mintFeeMerkle);
     vm.stopPrank();
 
-    // test functionality
+    // other cannot set mint fee  
+    vm.startPrank(other);
+    vm.expectRevert("AdminControl: Must be owner or admin");
+    example.setMintFees(mintFee, mintFeeMerkle);
+    vm.stopPrank();
+
+    // test functionality non-merkle mints
     vm.startPrank(owner);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
-    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
+    IERC721LazyPayableClaim.ClaimParameters memory claimNonMerkle = IERC721LazyPayableClaim.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash",
       totalMax: 3,
@@ -1249,38 +1248,22 @@ contract ERC721LazyPayableClaimTest is Test {
       signingAddress: zeroAddress
     });
 
-    example.initializeClaim(address(creatorCore), 1, claimP);
+    example.initializeClaim(address(creatorCore), 1, claimNonMerkle);
     vm.stopPrank();
 
     vm.startPrank(other);
     example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 1, new bytes32[](0), other);
     vm.stopPrank();
-  }
 
-  function testSetMintFeeMerkle() public {
-    uint256 mintFeeMerkle = defaultMintFeeMerkle - 1000000;
-    // only admin can set mint fee
+    // test functionality merkle mints
     vm.startPrank(owner);
-    example.setMintFeeMerkle(mintFeeMerkle);
-    assertEq(example.MINT_FEE_MERKLE(), mintFeeMerkle);
-    vm.stopPrank();
-    // other cannot set mint fee merkle
-    vm.startPrank(other);
-    vm.expectRevert("AdminControl: Must be owner or admin");
-    example.setMintFee(mintFeeMerkle);
-    vm.stopPrank();
-
-    // test functionality
-    vm.startPrank(owner);
-    uint48 nowC = uint48(block.timestamp);
-    uint48 later = nowC + 1000;
     bytes32[] memory allowListTuples = new bytes32[](4);
     allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
     allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
     allowListTuples[2] = keccak256(abi.encodePacked(other2, uint32(2)));
     allowListTuples[3] = keccak256(abi.encodePacked(other3, uint32(3)));
 
-    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
+    IERC721LazyPayableClaim.ClaimParameters memory claimMerkle = IERC721LazyPayableClaim.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "arweaveHash",
       totalMax: 3,
@@ -1295,7 +1278,7 @@ contract ERC721LazyPayableClaimTest is Test {
       signingAddress: zeroAddress
     });
 
-    example.initializeClaim(address(creatorCore), 1, claimP);
+    example.initializeClaim(address(creatorCore), 2, claimMerkle);
     vm.stopPrank();
 
     bytes32[] memory merkleProof = merkle.getProof(allowListTuples, uint32(1));
