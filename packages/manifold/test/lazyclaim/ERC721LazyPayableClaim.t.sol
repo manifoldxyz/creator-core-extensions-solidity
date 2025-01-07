@@ -86,9 +86,7 @@ contract ERC721LazyPayableClaimTest is Test {
     example.setMintFees(defaultMintFee, defaultMintFeeMerkle);
     // Must be admin to pause/unpause
     vm.expectRevert();
-    example.pause();
-    vm.expectRevert();
-    example.unpause();
+    example.setActive(false);
 
     uint mintFee = example.MINT_FEE();
 
@@ -121,10 +119,8 @@ contract ERC721LazyPayableClaimTest is Test {
     example.setMintFees(defaultMintFee, defaultMintFeeMerkle); 
     // can't pause, unpause as creator
     vm.expectRevert();
-    example.pause();
+    example.setActive(false);
     vm.expectRevert();
-    example.unpause();
-    vm.stopPrank();
 
 
 
@@ -1311,7 +1307,7 @@ contract ERC721LazyPayableClaimTest is Test {
   function testPauseAndUnpause() public {
     // stop new claims from being initialized
     vm.startPrank(owner);
-    example.pause();
+    example.setActive(false);
     vm.stopPrank();
 
     vm.startPrank(creator);
@@ -1333,12 +1329,12 @@ contract ERC721LazyPayableClaimTest is Test {
       erc20: zeroAddress,
       signingAddress: zeroAddress
     });
-    vm.expectRevert("Claim creations are paused");
+    vm.expectRevert(ILazyPayableClaim.Inactive.selector);
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     // unpause
     vm.startPrank(owner);
-    example.unpause();
+    example.setActive(true);
     vm.stopPrank();
 
     vm.startPrank(creator);
@@ -1347,7 +1343,7 @@ contract ERC721LazyPayableClaimTest is Test {
 
     // can still mint even if claim creations are paused
     vm.startPrank(owner);
-    example.pause();
+    example.setActive(false);
     vm.stopPrank();
 
     vm.startPrank(other);

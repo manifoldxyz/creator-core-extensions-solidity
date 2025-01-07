@@ -22,6 +22,7 @@ interface ILazyPayableClaim {
     error InvalidSignature();
     error ExpiredSignature();
     error CannotChangePaymentToken();
+    error Inactive();
     
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS, ADDRESS }
     
@@ -48,14 +49,9 @@ interface ILazyPayableClaim {
     function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external;
 
     /**
-     * @notice Pause all claim creations
+     * @notice Set the active state of the claim, whether to allow new claims to be initialized
      */
-    function pause() external;
-
-    /**
-     * @notice Unpause all claim creations
-     */
-    function unpause() external;
+    function setActive(bool active) external;
 
     /**
      * @notice check if a mint index has been consumed or not (only for merkle claims)

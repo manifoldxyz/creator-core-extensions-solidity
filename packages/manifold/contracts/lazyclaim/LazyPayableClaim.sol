@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import ".././libraries/delegation-registry/IDelegationRegistry.sol";
 import ".././libraries/delegation-registry/IDelegationRegistryV2.sol";
 import ".././libraries/manifold-membership/IManifoldMembership.sol";
@@ -19,9 +18,11 @@ import "./ILazyPayableClaim.sol";
  * @author manifold.xyz
  * @notice Lazy payable claim with optional whitelist
  */
-abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl, Pausable {
+abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     using EnumerableSet for EnumerableSet.AddressSet;
     using ECDSA for bytes32;
+
+    bool internal _paused;
 
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
@@ -67,14 +68,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl, Pausable 
         _;
     }
 
-    /**
-     * @notice Require that claim creations are not paused
-     */
-    modifier unpausedRequired() {
-        require(!paused(), "Claim creations are paused");
-        _;
-    }
-
     constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2) {
         _transferOwnership(initialOwner);
         DELEGATION_REGISTRY = delegationRegistry;
@@ -104,12 +97,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl, Pausable 
         MINT_FEE_MERKLE = mintFeeMerkle;
     }
 
-    function pause() external override adminRequired {
-        _pause();
-    }
-
-    function unpause() external override adminRequired {
-        _unpause();
+    function setActive(bool active) external override adminRequired {
+        _paused = !active;
     }
 
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle, bool allowMembership) internal {
