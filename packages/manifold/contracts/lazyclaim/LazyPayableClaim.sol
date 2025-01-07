@@ -38,6 +38,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     // solhint-disable-next-line
     address public MEMBERSHIP_ADDRESS;
 
+    bool internal _stopClaimInitiated;
+
     uint256 internal constant MAX_UINT_24 = 0xffffff;
     uint256 internal constant MAX_UINT_32 = 0xffffffff;
     uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
@@ -93,6 +95,11 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external override adminRequired {
         MINT_FEE = mintFee;
         MINT_FEE_MERKLE = mintFeeMerkle;
+    }
+
+    // See {ILazyPayableClaim-setMintFees}.
+    function toggleClaimInitiation() external adminRequired {
+        _stopClaimInitiated = !_stopClaimInitiated;
     }
 
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle, bool allowMembership) internal {

@@ -1186,4 +1186,41 @@ contract ERC1155LazyPayableClaimTest is Test {
     assertEq(2, creatorCore.balanceOf(owner, 2));
     vm.stopPrank();
   }
+
+
+  function testToggleClaimInitiation() public {
+
+    vm.startPrank(owner);
+
+    // stop new claims from being initialized
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    example.toggleClaimInitiation();
+    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+      merkleRoot: "",
+      location: "arweaveHash1",
+      totalMax: 5,
+      walletMax: 3,
+      startDate: nowC,
+      endDate: later,
+      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      cost: 1,
+      paymentReceiver: payable(owner),
+      erc20: zeroAddress,
+      signingAddress: address(0)
+    });
+    vm.expectRevert(ILazyPayableClaim.ClaimInitiationDisabled.selector);
+    example.initializeClaim(address(creatorCore), 1, claimP);
+
+    // resume new claims
+    example.toggleClaimInitiation();
+    example.initializeClaim(address(creatorCore), 1, claimP);
+    vm.stopPrank();
+
+    // Only deployer or admin of the extension can toggle claim initiation
+    vm.startPrank(other);
+    vm.expectRevert("AdminControl: Must be owner or admin");
+    example.toggleClaimInitiation();
+    vm.stopPrank();
+  }
 }

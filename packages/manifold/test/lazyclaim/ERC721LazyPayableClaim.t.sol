@@ -1286,4 +1286,41 @@ contract ERC721LazyPayableClaimTest is Test {
     example.mint{ value: mintFeeMerkle + 1 }(address(creatorCore), 1, 1, merkleProof, other2);
     vm.stopPrank();
   }
+
+  function testToggleClaimInitiation() public {
+
+    vm.startPrank(owner);
+
+    // stop new claims from being initialized
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    example.toggleClaimInitiation();
+    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
+      merkleRoot: "",
+      location: "arweaveHash",
+      totalMax: 3,
+      walletMax: 0,
+      startDate: nowC,
+      endDate: later,
+      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      identical: true,
+      cost: 1,
+      paymentReceiver: payable(other),
+      erc20: zeroAddress,
+      signingAddress: zeroAddress
+    });
+    vm.expectRevert(ILazyPayableClaim.ClaimInitiationDisabled.selector);
+    example.initializeClaim(address(creatorCore), 1, claimP);
+
+    // resume new claims
+    example.toggleClaimInitiation();
+    example.initializeClaim(address(creatorCore), 1, claimP);
+    vm.stopPrank();
+
+    // Only deployer or admin of the extension can toggle claim initiation
+    vm.startPrank(other);
+    vm.expectRevert("AdminControl: Must be owner or admin");
+    example.toggleClaimInitiation();
+    vm.stopPrank();
+  }
 }
