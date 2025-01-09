@@ -2,20 +2,20 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
-import "../../contracts/lazyclaim/IERC1155LazyPayableClaim.sol";
-import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
+import "../../contracts/lazyclaim/ERC721LazyPayableClaim.sol";
+import "../../contracts/lazyclaim/IERC721LazyPayableClaim.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "../mocks/delegation-registry/DelegationRegistry.sol";
 import "../mocks/delegation-registry/DelegationRegistryV2.sol";
 import "../mocks/Mock.sol";
 import "../../lib/murky/src/Merkle.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
+contract ERC721LazyPayableClaimSignatureMintingTest is Test {
     using ECDSA for bytes32;
 
-    ERC1155LazyPayableClaim public example;
-    ERC1155Creator public creatorCore;
+    ERC721LazyPayableClaim public example;
+    ERC721Creator public creatorCore;
     DelegationRegistry public delegationRegistry;
     DelegationRegistryV2 public delegationRegistryV2;
     MockManifoldMembership public manifoldMembership;
@@ -36,10 +36,10 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
 
     function setUp() public {
         vm.startPrank(owner);
-        creatorCore = new ERC1155Creator("Token", "NFT");
+        creatorCore = new ERC721Creator("Token", "NFT");
         delegationRegistry = new DelegationRegistry();
         delegationRegistryV2 = new DelegationRegistryV2();
-        example = new ERC1155LazyPayableClaim(
+        example = new ERC721LazyPayableClaim(
           owner, address(delegationRegistry), address(delegationRegistryV2)
         );
         manifoldMembership = new MockManifoldMembership();
@@ -66,14 +66,15 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       uint mintFee = example.MINT_FEE_MERKLE();
       uint mintFeeNon = example.MINT_FEE();
 
-      IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+      IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
           merkleRoot: "",
           location: "arweaveHash1",
-          totalMax: 1000,
+          totalMax: 100,
           walletMax: 0,
           startDate: nowC,
           endDate: later,
           storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+          identical: true,
           cost: 100,
           paymentReceiver: payable(owner),
           erc20: zeroAddress,
@@ -108,8 +109,8 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         other2,
         expiration
       );
-      assertEq(3, creatorCore.balanceOf(other2, 1));
-
+      assertEq(3, creatorCore.balanceOf(other2));
+   
       // Cannot replay same tx with same nonce
       vm.expectRevert("Cannot replay transaction");
       example.mintSignature{value: mintFee*3}(
@@ -211,7 +212,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       );
 
       // Still only owns 3
-      assertEq(3, creatorCore.balanceOf(other2, 1));
+      assertEq(3, creatorCore.balanceOf(other2));
 
       // Cannot mint other ways when signature is non-zero
       vm.expectRevert(ILazyPayableClaim.MustUseSignatureMinting.selector);
@@ -224,7 +225,7 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
       example.mintProxy{value:mintFee*3}(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other);
 
       // Other owns none because all mints with other methods failed
-      assertEq(0, creatorCore.balanceOf(other, 1));
+      assertEq(0, creatorCore.balanceOf(other));
 
       // Cannot mintSignature for claim that isn't signature based
       claimP.signingAddress = zeroAddress;
@@ -253,7 +254,6 @@ contract ERC1155LazyPayableClaimSignatureMintingTest is Test {
         other2,
         expiration
       );
-
     }
 
 }

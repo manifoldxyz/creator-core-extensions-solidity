@@ -2,17 +2,17 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
-import "../../contracts/lazyclaim/IERC1155LazyPayableClaim.sol";
-import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
+import "../../contracts/lazyclaim/ERC721LazyPayableClaim.sol";
+import "../../contracts/lazyclaim/IERC721LazyPayableClaim.sol";
+import "@manifoldxyz/creator-core-solidity/contracts/ERC721Creator.sol";
 import "../mocks/delegation-registry/DelegationRegistry.sol";
 import "../mocks/delegation-registry/DelegationRegistryV2.sol";
 import "../mocks/Mock.sol";
 import "../../lib/murky/src/Merkle.sol";
 
-contract ERC1155LazyPayableClaimERC20Test is Test {
-  ERC1155LazyPayableClaim public example;
-  ERC1155Creator public creatorCore;
+contract ERC721LazyPayableClaimERC20Test is Test {
+  ERC721LazyPayableClaim public example;
+  ERC721Creator public creatorCore;
   DelegationRegistry public delegationRegistry;
   DelegationRegistryV2 public delegationRegistryV2;
   MockManifoldMembership public manifoldMembership;
@@ -28,10 +28,10 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
 
   function setUp() public {
     vm.startPrank(owner);
-    creatorCore = new ERC1155Creator("Token", "NFT");
+    creatorCore = new ERC721Creator("Token", "NFT");
     delegationRegistry = new DelegationRegistry();
     delegationRegistryV2 = new DelegationRegistryV2();
-    example = new ERC1155LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
+    example = new ERC721LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
 
@@ -59,7 +59,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     allowListTuples[1] = keccak256(abi.encodePacked(other, uint32(1)));
     allowListTuples[2] = keccak256(abi.encodePacked(other, uint32(2)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "arweaveHash1",
       totalMax: 3,
@@ -67,6 +67,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       startDate: nowC,
       endDate: later,
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      identical: true,
       cost: 100,
       paymentReceiver: payable(owner),
       erc20: address(mockERC20),
@@ -116,11 +117,11 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     // Mint a token (merkle)
     example.mint{ value: mintFee }(address(creatorCore), 1, 0, merkleProof1, other);
 
-    IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
+    IERC721LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
     assertEq(claim.total, 1);
     assertEq(900, mockERC20.balanceOf(other));
     assertEq(100, mockERC20.balanceOf(owner));
-    assertEq(1, creatorCore.balanceOf(other, 1));
+    assertEq(1, creatorCore.balanceOf(other));
 
     // Mint batch (merkle)
     amounts = new uint32[](2);
@@ -137,7 +138,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
 
     assertEq(700, mockERC20.balanceOf(other));
     assertEq(300, mockERC20.balanceOf(owner));
-    assertEq(3, creatorCore.balanceOf(other, 1));
+    assertEq(3, creatorCore.balanceOf(other));
 
     // Mint a token
     bytes32[] memory blankProof = new bytes32[](0);
@@ -146,7 +147,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     assertEq(claim.total, 1);
     assertEq(500, mockERC20.balanceOf(other));
     assertEq(500, mockERC20.balanceOf(owner));
-    assertEq(1, creatorCore.balanceOf(other, 2));
+    assertEq(4, creatorCore.balanceOf(other));
 
     bytes32[][] memory blankProofs = new bytes32[][](0);
     uint32[] memory blankAmounts = new uint32[](0);
@@ -156,7 +157,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     example.mintBatch{ value: mintFee * 2 }(address(creatorCore), 2, 2, blankAmounts, blankProofs, other);
     assertEq(100, mockERC20.balanceOf(other));
     assertEq(900, mockERC20.balanceOf(owner));
-    assertEq(3, creatorCore.balanceOf(other, 2));
+    assertEq(6, creatorCore.balanceOf(other));
 
     vm.stopPrank();
   }
@@ -169,7 +170,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     bytes32[] memory allowListTuples = new bytes32[](2);
     allowListTuples[0] = keccak256(abi.encodePacked(other, uint32(0)));
     allowListTuples[1] = keccak256(abi.encodePacked(other, uint32(1)));
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "arweaveHash1",
       totalMax: 3,
@@ -177,6 +178,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       startDate: nowC,
       endDate: later,
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      identical: true,
       cost: 100,
       paymentReceiver: payable(owner),
       erc20: address(mockERC20),
@@ -206,11 +208,11 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     // Mint a token (merkle)
     example.mint(address(creatorCore), 1, 0, merkleProof1, other);
 
-    IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
+    IERC721LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
     assertEq(claim.total, 1);
     assertEq(900, mockERC20.balanceOf(other));
     assertEq(100, mockERC20.balanceOf(owner));
-    assertEq(1, creatorCore.balanceOf(other, 1));
+    assertEq(1, creatorCore.balanceOf(other));
   }
 
   function testProxyMint() public {
@@ -220,7 +222,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     uint mintFee = example.MINT_FEE_MERKLE();
     uint mintFeeNon = example.MINT_FEE();
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC721LazyPayableClaim.ClaimParameters memory claimP = IERC721LazyPayableClaim.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash1",
       totalMax: 3,
@@ -228,6 +230,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
       startDate: nowC,
       endDate: later,
       storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      identical: true,
       cost: 100,
       paymentReceiver: payable(owner),
       erc20: address(mockERC20),
@@ -258,7 +261,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     // Perform a mint on the claim
     uint startingBalance = other.balance;
     example.mintProxy{ value: mintFee * 3 }(address(creatorCore), 1, 3, amounts, merkleProofs, other2);
-    assertEq(3, creatorCore.balanceOf(other2, 1));
+    assertEq(3, creatorCore.balanceOf(other2));
     // Ensure funds taken from message sender
     // This fuzzy number is how much gas was used. Cannot figure out how to do it in forge
     assertEq(startingBalance - mintFeeNon * 3 - 570000000000000, other.balance);
@@ -280,7 +283,7 @@ contract ERC1155LazyPayableClaimERC20Test is Test {
     example.mintProxy{ value: mintFeeNon * 2 }(address(creatorCore), 3, 2, amounts, merkleProofs, other2);
 
     example.mintProxy{ value: mintFee * 2 }(address(creatorCore), 3, 2, amounts, merkleProofs, other2);
-    assertEq(2, creatorCore.balanceOf(other2, 2));
+    assertEq(5, creatorCore.balanceOf(other2));
     // Ensure funds taken from message sender
     assertEq(500, mockERC20.balanceOf(other));
     assertEq(500, mockERC20.balanceOf(owner));
