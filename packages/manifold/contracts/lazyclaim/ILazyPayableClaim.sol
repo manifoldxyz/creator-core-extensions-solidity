@@ -22,6 +22,7 @@ interface ILazyPayableClaim {
     error InvalidSignature();
     error ExpiredSignature();
     error CannotChangePaymentToken();
+    
     enum StorageProtocol { INVALID, NONE, ARWEAVE, IPFS, ADDRESS }
     
     event ClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
