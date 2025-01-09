@@ -5,6 +5,7 @@ import "@manifoldxyz/creator-core-solidity/contracts/core/IERC721CreatorCore.sol
 import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
 import "./LazyPayableClaim.sol";
 import "./IERC721LazyPayableClaim.sol";
 import "./IERC721LazyPayableClaimMetadata.sol";
