@@ -21,7 +21,6 @@ import "./ILazyPayableClaim.sol";
 abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     using EnumerableSet for EnumerableSet.AddressSet;
     using ECDSA for bytes32;
-
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
 
