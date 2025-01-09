@@ -31,11 +31,8 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
     // solhint-disable-next-line
     address public immutable DELEGATION_REGISTRY_V2;
 
-    // solhint-disable-next-line
-    uint256 public MINT_FEE;
-    // solhint-disable-next-line
-    uint256 public MINT_FEE_MERKLE;
-    bool public active = true;
+    uint256 public constant MINT_FEE = 500000000000000;
+    uint256 public constant MINT_FEE_MERKLE = 690000000000000;
     // solhint-disable-next-line
     address public MEMBERSHIP_ADDRESS;
 
@@ -86,18 +83,6 @@ abstract contract LazyPayableClaim is ILazyPayableClaim, AdminControl {
      */
     function setMembershipAddress(address membershipAddress) external override adminRequired {
         MEMBERSHIP_ADDRESS = membershipAddress;
-    }
-
-    /**
-     * See {ILazyPayableClaim-setMintFees}.
-     */
-    function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external override adminRequired {
-        MINT_FEE = mintFee;
-        MINT_FEE_MERKLE = mintFeeMerkle;
-    }
-
-    function setActive(bool _active) external override adminRequired {
-        active = _active;
     }
 
     function _transferFunds(address erc20, uint256 cost, address payable recipient, uint16 mintCount, bool merkle, bool allowMembership) internal {
