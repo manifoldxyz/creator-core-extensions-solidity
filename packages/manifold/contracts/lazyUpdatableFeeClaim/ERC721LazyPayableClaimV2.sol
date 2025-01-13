@@ -43,7 +43,7 @@ contract ERC721LazyPayableClaimV2 is IERC165, IERC721LazyPayableClaimV2, ICreato
     constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2) LazyPayableClaimV2(initialOwner, delegationRegistry, delegationRegistryV2) {}
 
     /**
-     * See {IERC721LazyClaim-initializeClaim}.
+     * See {IERC721LazyPayableClaimV2-initializeClaim}.
      */
     function initializeClaim(
         address creatorContractAddress,
@@ -90,7 +90,7 @@ contract ERC721LazyPayableClaimV2 is IERC165, IERC721LazyPayableClaimV2, ICreato
     }
 
     /**
-     * See {IERC721LazyClaim-udpateClaim}.
+     * See {IERC721LazyPayableClaimV2-udpateClaim}.
      */
     function updateClaim(
         address creatorContractAddress,
@@ -128,7 +128,7 @@ contract ERC721LazyPayableClaimV2 is IERC165, IERC721LazyPayableClaimV2, ICreato
     }
 
     /**
-     * See {IERC721LazyClaim-updateTokenURIParams}.
+     * See {IERC721LazyPayableClaimV2-updateTokenURIParams}.
      */
     function updateTokenURIParams(
         address creatorContractAddress, uint256 instanceId,
@@ -147,7 +147,7 @@ contract ERC721LazyPayableClaimV2 is IERC165, IERC721LazyPayableClaimV2, ICreato
     }
 
     /**
-     * See {IERC1155LazyClaim-extendTokenURI}.
+     * See {IERC721LazyPayableClaimV2-extendTokenURI}.
      */
     function extendTokenURI(
         address creatorContractAddress, uint256 instanceId,
@@ -330,7 +330,7 @@ contract ERC721LazyPayableClaimV2 is IERC165, IERC721LazyPayableClaimV2, ICreato
     }
 
     /**
-     * See {IERC721LazyClaim-airdrop}.
+     * See {IERC721LazyClaimV2-airdrop}.
      */
     function airdrop(address creatorContractAddress, uint256 instanceId, address[] calldata recipients,
         uint16[] calldata amounts) external override creatorAdminRequired(creatorContractAddress) {

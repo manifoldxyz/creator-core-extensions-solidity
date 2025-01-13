@@ -37,7 +37,7 @@ contract ERC1155LazyPayableClaimV2 is IERC165, IERC1155LazyPayableClaimV2, ICrea
     constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2) LazyPayableClaimV2(initialOwner, delegationRegistry, delegationRegistryV2) {}
 
     /**
-     * See {IERC1155LazyClaim-initializeClaim}.
+     * See {IERC1155LazyPayableClaimV2-initializeClaim}.
      */
     function initializeClaim(
         address creatorContractAddress,
@@ -82,7 +82,7 @@ contract ERC1155LazyPayableClaimV2 is IERC165, IERC1155LazyPayableClaimV2, ICrea
     }
 
     /**
-     * See {IERC1155LazyClaim-updateClaim}.
+     * See {IERC1155LazyPayableClaimV2-updateClaim}.
      */
     function updateClaim(
         address creatorContractAddress,
@@ -118,7 +118,7 @@ contract ERC1155LazyPayableClaimV2 is IERC165, IERC1155LazyPayableClaimV2, ICrea
     }
 
     /**
-     * See {IERC1155LazyClaim-updateTokenURIParams}.
+     * See {IERC1155LazyPayableClaimV2-updateTokenURIParams}.
      */
     function updateTokenURIParams(
         address creatorContractAddress, uint256 instanceId,
@@ -135,7 +135,7 @@ contract ERC1155LazyPayableClaimV2 is IERC165, IERC1155LazyPayableClaimV2, ICrea
     }
 
     /**
-     * See {IERC1155LazyClaim-extendTokenURI}.
+     * See {IERC1155LazyPayableClaimV2-extendTokenURI}.
      */
     function extendTokenURI(
         address creatorContractAddress, uint256 instanceId,
@@ -147,14 +147,14 @@ contract ERC1155LazyPayableClaimV2 is IERC165, IERC1155LazyPayableClaimV2, ICrea
     }
 
     /**
-     * See {IERC1155LazyClaim-getClaim}.
+     * See {IERC1155LazyPayableClaimV2-getClaim}.
      */
     function getClaim(address creatorContractAddress, uint256 instanceId) public override view returns(Claim memory claim) {
         return _getClaim(creatorContractAddress, instanceId);
     }
 
     /**
-     * See {IERC1155LazyClaim-getClaimForToken}.
+     * See {IERC1155LazyPayableClaimV2-getClaimForToken}.
      */
     function getClaimForToken(address creatorContractAddress, uint256 tokenId) external override view returns(uint256 instanceId, Claim memory claim) {
         instanceId = _claimTokenIds[creatorContractAddress][tokenId];
