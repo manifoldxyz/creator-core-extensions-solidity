@@ -2,16 +2,16 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../../contracts/lazyclaim/ERC1155LazyPayableClaim.sol";
-import "../../contracts/lazyclaim/IERC1155LazyPayableClaim.sol";
-import "../../contracts/lazyclaim/IERC1155LazyPayableClaimMetadata.sol";
+import "../../contracts/lazyUpdatableFeeClaim/ERC1155LazyPayableClaimV2.sol";
+import "../../contracts/lazyUpdatableFeeClaim/IERC1155LazyPayableClaimV2.sol";
+import "../../contracts/lazyUpdatableFeeClaim/IERC1155LazyPayableClaimMetadataV2.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "../mocks/delegation-registry/DelegationRegistry.sol";
 import "../mocks/delegation-registry/DelegationRegistryV2.sol";
 import "../mocks/Mock.sol";
 import "../../lib/murky/src/Merkle.sol";
 
-contract ERC1155LazyPayableClaimMetadata is IERC1155LazyPayableClaimMetadata {
+contract ERC1155LazyPayableClaimMetadataV2 is IERC1155LazyPayableClaimMetadataV2 {
   using Strings for uint256;
 
   function tokenURI(address creatorContract, uint256 tokenId, uint256 instanceId) external pure override returns (string memory) {
@@ -22,15 +22,20 @@ contract ERC1155LazyPayableClaimMetadata is IERC1155LazyPayableClaimMetadata {
 contract ERC1155LazyPayableClaimTest is Test {
   using Strings for uint256;
 
-  ERC1155LazyPayableClaim public example;
+  ERC1155LazyPayableClaimV2 public example;
   ERC1155Creator public creatorCore;
-  ERC1155LazyPayableClaimMetadata public metadata;
+  ERC1155LazyPayableClaimMetadataV2 public metadata;
   DelegationRegistry public delegationRegistry;
   DelegationRegistryV2 public delegationRegistryV2;
   MockManifoldMembership public manifoldMembership;
   Merkle public merkle;
+  uint256 public defaultMintFee = 500000000000000;
+  uint256 public defaultMintFeeMerkle = 690000000000000;
 
+  // creator of the extension contract
   address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
+  // creator of the creator contract
+  address public creator = 0xCD56df7B4705A99eBEBE2216e350638a1582bEC4;
   address public other = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
   address public other2 = 0x80AAC46bbd3C2FcE33681541a52CacBEd14bF425;
   address public other3 = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
@@ -39,21 +44,32 @@ contract ERC1155LazyPayableClaimTest is Test {
 
   function setUp() public {
     vm.startPrank(owner);
-    creatorCore = new ERC1155Creator("Token", "NFT");
     delegationRegistry = new DelegationRegistry();
     delegationRegistryV2 = new DelegationRegistryV2();
-    example = new ERC1155LazyPayableClaim(owner, address(delegationRegistry), address(delegationRegistryV2));
+    example = new ERC1155LazyPayableClaimV2(
+      owner,
+      address(delegationRegistry),
+      address(delegationRegistryV2)
+    );
+    // set mint fees
+    example.setMintFees(defaultMintFee, defaultMintFeeMerkle);
+
     manifoldMembership = new MockManifoldMembership();
     example.setMembershipAddress(address(manifoldMembership));
-    metadata = new ERC1155LazyPayableClaimMetadata();
+    metadata = new ERC1155LazyPayableClaimMetadataV2();
 
-    creatorCore.registerExtension(address(example), "override");
     merkle = new Merkle();
 
     vm.deal(owner, 10 ether);
+    vm.deal(creator, 10 ether);
     vm.deal(other, 10 ether);
     vm.deal(other2, 10 ether);
     vm.deal(other3, 10 ether);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    creatorCore = new ERC1155Creator("Token", "NFT");
+    creatorCore.registerExtension(address(example), "override");
     vm.stopPrank();
   }
 
@@ -65,18 +81,24 @@ contract ERC1155LazyPayableClaimTest is Test {
     // Must be admin
     vm.expectRevert();
     example.setMembershipAddress(other);
+    // Must be admin to set mint fees
+    vm.expectRevert("AdminControl: Must be owner or admin");
+    example.setMintFees(defaultMintFee, defaultMintFeeMerkle);
+    // Must be admin to pause/unpause
+    vm.expectRevert();
+    example.setActive(false);
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash1",
       totalMax: 10,
       walletMax: 1,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -87,9 +109,15 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.initializeClaim(address(creatorCore), 1, claimP);
     // Succeeds because is admin
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     example.initializeClaim(address(creatorCore), 1, claimP);
-
+    // can't set mint fees as creator
+    vm.expectRevert();
+    example.setMintFees(defaultMintFee, defaultMintFeeMerkle); 
+    // can't pause, unpause as creator
+    vm.expectRevert();
+    example.setActive(false);
+    vm.stopPrank();
     // Update, not admin
     vm.stopPrank();
     vm.startPrank(other);
@@ -97,19 +125,19 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.updateClaim(address(creatorCore), 1, claimP);
 
     vm.expectRevert();
-    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaim.StorageProtocol.IPFS, "");
+    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaimV2.StorageProtocol.IPFS, "");
 
     vm.expectRevert();
     example.extendTokenURI(address(creatorCore), 2, "");
 
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
 
     claimP.totalMax = 9;
-    claimP.paymentReceiver = payable(owner);
+    claimP.paymentReceiver = payable(creator);
     example.updateClaim(address(creatorCore), 1, claimP);
 
-    ERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
+    ERC1155LazyPayableClaimV2.Claim memory claim = example.getClaim(address(creatorCore), 1);
 
     assertEq(claim.merkleRoot, "");
     assertEq(claim.location, "arweaveHash1");
@@ -118,16 +146,16 @@ contract ERC1155LazyPayableClaimTest is Test {
     assertEq(claim.startDate, nowC);
     assertEq(claim.endDate, later);
     assertEq(claim.cost, 1);
-    assertEq(claim.paymentReceiver, owner);
+    assertEq(claim.paymentReceiver, creator);
 
     assertEq("https://arweave.net/arweaveHash1", creatorCore.uri(1));
 
-    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaim.StorageProtocol.ARWEAVE, "arweaveHash3");
+    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaimV2.StorageProtocol.ARWEAVE, "arweaveHash3");
     assertEq("https://arweave.net/arweaveHash3", creatorCore.uri(1));
     // Extend uri
     vm.expectRevert();
     example.extendTokenURI(address(creatorCore), 1, "");
-    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaim.StorageProtocol.NONE, "part1");
+    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaimV2.StorageProtocol.NONE, "part1");
     example.extendTokenURI(address(creatorCore), 1, "part2");
     assertEq("part1part2", creatorCore.uri(1));
 
@@ -135,30 +163,30 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testinitializeClaimSanitization() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash1",
       totalMax: 10,
       walletMax: 1,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.INVALID,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.INVALID,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
       signingAddress: address(0)
     });
 
-    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
+    vm.expectRevert(ILazyPayableClaimV2.InvalidStorageProtocol.selector);
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     claimP.startDate = nowC + 2000;
-    claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ARWEAVE;
-    vm.expectRevert(ILazyPayableClaim.InvalidStartDate.selector);
+    claimP.storageProtocol = ILazyPayableClaimV2.StorageProtocol.ARWEAVE;
+    vm.expectRevert(ILazyPayableClaimV2.InvalidStartDate.selector);
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     claimP.startDate = nowC;
@@ -167,25 +195,25 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     claimP.merkleRoot = "";
-    vm.expectRevert(ILazyPayableClaim.ClaimNotInitialized.selector);
+    vm.expectRevert(ILazyPayableClaimV2.ClaimNotInitialized.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
 
     vm.stopPrank();
   }
 
   function testUpdateClaimSanitization() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash1",
       totalMax: 10,
       walletMax: 1,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -194,52 +222,51 @@ contract ERC1155LazyPayableClaimTest is Test {
 
     example.initializeClaim(address(creatorCore), 1, claimP);
 
-    claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.INVALID;
-    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
+    claimP.storageProtocol = ILazyPayableClaimV2.StorageProtocol.INVALID;
+    vm.expectRevert(ILazyPayableClaimV2.InvalidStorageProtocol.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
 
-    claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ADDRESS;
-    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
+    claimP.storageProtocol = ILazyPayableClaimV2.StorageProtocol.ADDRESS;
+    vm.expectRevert(ILazyPayableClaimV2.InvalidStorageProtocol.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
 
     claimP.startDate = nowC + 2000;
-    claimP.storageProtocol = ILazyPayableClaim.StorageProtocol.ARWEAVE;
-    vm.expectRevert(ILazyPayableClaim.InvalidStartDate.selector);
+    claimP.storageProtocol = ILazyPayableClaimV2.StorageProtocol.ARWEAVE;
+    vm.expectRevert(ILazyPayableClaimV2.InvalidStartDate.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
 
     claimP.startDate = nowC;
     claimP.erc20 = 0x0000000000000000000000000000000000000001;
-    vm.expectRevert(ILazyPayableClaim.CannotChangePaymentToken.selector);
+    vm.expectRevert(ILazyPayableClaimV2.CannotChangePaymentToken.selector);
     example.updateClaim(address(creatorCore), 1, claimP);
 
+    vm.expectRevert(ILazyPayableClaimV2.InvalidStorageProtocol.selector);
+    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaimV2.StorageProtocol.INVALID, "");
 
-    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
-    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaim.StorageProtocol.INVALID, "");
-
-    vm.expectRevert(ILazyPayableClaim.InvalidStorageProtocol.selector);
-    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaim.StorageProtocol.ADDRESS, "");
+    vm.expectRevert(ILazyPayableClaimV2.InvalidStorageProtocol.selector);
+    example.updateTokenURIParams(address(creatorCore), 1, ILazyPayableClaimV2.StorageProtocol.ADDRESS, "");
     vm.stopPrank();
   }
 
   function testMerkleMint() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
     bytes32[] memory allowListTuples = new bytes32[](4);
-    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+    allowListTuples[0] = keccak256(abi.encodePacked(creator, uint32(0)));
     allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
     allowListTuples[2] = keccak256(abi.encodePacked(other2, uint32(2)));
     allowListTuples[3] = keccak256(abi.encodePacked(other3, uint32(3)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "arweaveHash1",
       totalMax: 3,
       walletMax: 0,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -249,7 +276,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     // Balance of creator should be zero, we defer creating the token until the first mint or airdrop
-    assertEq(creatorCore.balanceOf(owner, 1), 0);
+    assertEq(creatorCore.balanceOf(creator, 1), 0);
 
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
 
@@ -265,15 +292,15 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.mint(address(creatorCore), 1, 0, merkleProof1, other2);
 
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
 
     uint mintFee = example.MINT_FEE_MERKLE() + 1;
 
-    example.mint{ value: mintFee }(address(creatorCore), 1, 0, merkleProof1, owner);
+    example.mint{ value: mintFee }(address(creatorCore), 1, 0, merkleProof1, creator);
 
     vm.roll(block.number + 1);
     vm.expectRevert("Already minted");
-    example.mint{ value: mintFee }(address(creatorCore), 1, 0, merkleProof1, owner);
+    example.mint{ value: mintFee }(address(creatorCore), 1, 0, merkleProof1, creator);
 
     vm.stopPrank();
     vm.startPrank(other2);
@@ -289,12 +316,12 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.startPrank(other3);
     bytes32[] memory merkleProof4 = merkle.getProof(allowListTuples, uint32(3));
 
-    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaimV2.TooManyRequested.selector);
     example.mint{ value: mintFee }(address(creatorCore), 1, 3, merkleProof4, other3);
 
     claimP.totalMax = 4;
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     example.updateClaim(address(creatorCore), 1, claimP);
     vm.stopPrank();
     vm.startPrank(other3);
@@ -304,26 +331,26 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testMerkleMintBatch() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE() + 1;
 
     bytes32[] memory allowListTuples = new bytes32[](5);
-    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+    allowListTuples[0] = keccak256(abi.encodePacked(creator, uint32(0)));
     allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
     allowListTuples[2] = keccak256(abi.encodePacked(other2, uint32(2)));
     allowListTuples[3] = keccak256(abi.encodePacked(other3, uint32(3)));
     allowListTuples[4] = keccak256(abi.encodePacked(other3, uint32(4)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "arweaveHash1",
       totalMax: 3,
       walletMax: 0,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -335,7 +362,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
 
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
 
     uint32[] memory amountsInput = new uint32[](1);
     amountsInput[0] = 0;
@@ -343,32 +370,32 @@ contract ERC1155LazyPayableClaimTest is Test {
     bytes32[][] memory proofsInput = new bytes32[][](1);
     proofsInput[0] = merkleProof1;
 
-    vm.expectRevert(ILazyPayableClaim.InvalidInput.selector);
-    example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, owner);
+    vm.expectRevert(ILazyPayableClaimV2.InvalidInput.selector);
+    example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, creator);
 
     amountsInput = new uint32[](2);
     amountsInput[0] = 0;
     amountsInput[1] = 0;
 
-    vm.expectRevert(ILazyPayableClaim.InvalidInput.selector);
-    example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
+    vm.expectRevert(ILazyPayableClaimV2.InvalidInput.selector);
+    example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, creator);
 
     amountsInput = new uint32[](1);
     amountsInput[0] = 0;
     proofsInput = new bytes32[][](2);
     proofsInput[0] = merkleProof1;
     proofsInput[1] = merkleProof1;
-    vm.expectRevert(ILazyPayableClaim.InvalidInput.selector);
-    example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
+    vm.expectRevert(ILazyPayableClaimV2.InvalidInput.selector);
+    example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, creator);
 
     proofsInput = new bytes32[][](1);
     proofsInput[0] = merkleProof1;
-    example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
+    example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, amountsInput, proofsInput, creator);
 
     vm.expectRevert("Already minted");
-    example.mint{ value: mintFee }(address(creatorCore), 1, 0, merkleProof1, owner);
+    example.mint{ value: mintFee }(address(creatorCore), 1, 0, merkleProof1, creator);
     vm.expectRevert("Already minted");
-    example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, amountsInput, proofsInput, owner);
+    example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, amountsInput, proofsInput, creator);
 
     bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
     bytes32[] memory merkleProof3 = merkle.getProof(allowListTuples, uint32(2));
@@ -393,7 +420,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.mintBatch{ value: mintFee * 2 }(address(creatorCore), 1, 2, amountsInput, proofsInput, other2);
 
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
 
     address[] memory recipientsInput = new address[](1);
     recipientsInput[0] = other3;
@@ -414,11 +441,11 @@ contract ERC1155LazyPayableClaimTest is Test {
 
     proofsInput = new bytes32[][](1);
     proofsInput[0] = merkleProof4;
-    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaimV2.TooManyRequested.selector);
     example.mintBatch(address(creatorCore), 1, 1, amountsInput, proofsInput, other3);
 
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     claimP.totalMax = 4;
     example.updateClaim(address(creatorCore), 1, claimP);
 
@@ -431,11 +458,11 @@ contract ERC1155LazyPayableClaimTest is Test {
     proofsInput = new bytes32[][](2);
     proofsInput[0] = merkleProof4;
     proofsInput[1] = merkleProof5;
-    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaimV2.TooManyRequested.selector);
     example.mintBatch(address(creatorCore), 1, 2, amountsInput, proofsInput, other3);
 
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     claimP.totalMax = 5;
     example.updateClaim(address(creatorCore), 1, claimP);
 
@@ -463,7 +490,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     proofsInput[1] = merkleProof5;
     example.mintBatch{ value: mintFee * 2 }(address(creatorCore), 1, 2, amountsInput, proofsInput, other3);
 
-    assertEq(creatorCore.balanceOf(owner, 1), 1);
+    assertEq(creatorCore.balanceOf(creator, 1), 1);
     assertEq(creatorCore.balanceOf(other2, 1), 2);
     assertEq(creatorCore.balanceOf(other3, 1), 2);
     assertEq(creatorCore.uri(1), "https://arweave.net/arweaveHash1");
@@ -472,19 +499,19 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testNonMerkleMintBatch() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE() + 1;
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash1",
       totalMax: 5,
       walletMax: 3,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -494,18 +521,18 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     vm.stopPrank();
-    vm.startPrank(owner);
-    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
-    example.mintBatch{ value: mintFee * 4 }(address(creatorCore), 1, 4, new uint32[](0), new bytes32[][](0), owner);
+    vm.startPrank(creator);
+    vm.expectRevert(ILazyPayableClaimV2.TooManyRequested.selector);
+    example.mintBatch{ value: mintFee * 4 }(address(creatorCore), 1, 4, new uint32[](0), new bytes32[][](0), creator);
 
-    example.mintBatch{ value: mintFee * 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+    example.mintBatch{ value: mintFee * 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), creator);
 
-    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
-    example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), owner);
+    vm.expectRevert(ILazyPayableClaimV2.TooManyRequested.selector);
+    example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), creator);
 
     vm.stopPrank();
     vm.startPrank(other2);
-    vm.expectRevert(ILazyPayableClaim.TooManyRequested.selector);
+    vm.expectRevert(ILazyPayableClaimV2.TooManyRequested.selector);
     example.mintBatch{ value: mintFee * 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), other2);
 
     example.mintBatch{ value: mintFee * 2 }(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), other2);
@@ -514,19 +541,19 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testNonMerkleMintNotEnoughMoney() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE() + 1;
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash1",
       totalMax: 5,
       walletMax: 3,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -536,67 +563,67 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.initializeClaim(address(creatorCore), 1, claimP);
 
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     vm.expectRevert("Invalid amount");
-    example.mintBatch{ value: mintFee * 2 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+    example.mintBatch{ value: mintFee * 2 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), creator);
 
     vm.expectRevert("Invalid amount");
-    example.mintBatch{ value: 2 }(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), owner);
+    example.mintBatch{ value: 2 }(address(creatorCore), 1, 2, new uint32[](0), new bytes32[][](0), creator);
 
     vm.expectRevert("Invalid amount");
-    example.mint(address(creatorCore), 1, 0, new bytes32[](0), owner);
+    example.mint(address(creatorCore), 1, 0, new bytes32[](0), creator);
 
     vm.stopPrank();
   }
 
   function testNonMerkleMintCheckBalance() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE() + 1;
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "arweaveHash1",
       totalMax: 5,
       walletMax: 3,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
-      paymentReceiver: payable(owner),
+      paymentReceiver: payable(creator),
       erc20: zeroAddress,
       signingAddress: address(0)
     });
 
     example.initializeClaim(address(creatorCore), 1, claimP);
 
-    uint beforeBalance = owner.balance;
+    uint beforeBalance = creator.balance;
     vm.stopPrank();
     vm.startPrank(other2);
     example.mintBatch{ value: mintFee }(address(creatorCore), 1, 1, new uint32[](0), new bytes32[][](0), other2);
     example.mint{ value: mintFee }(address(creatorCore), 1, 0, new bytes32[](0), other2);
-    uint afterBalance = owner.balance;
+    uint afterBalance = creator.balance;
     assertEq(2, afterBalance - beforeBalance);
     vm.stopPrank();
   }
 
   function testTokenURI() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE() + 1;
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "XXX",
       totalMax: 11,
       walletMax: 3,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
-      paymentReceiver: payable(owner),
+      paymentReceiver: payable(creator),
       erc20: zeroAddress,
       signingAddress: address(0)
     });
@@ -622,7 +649,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.mint{ value: mintFee }(address(creatorCore), 1, 0, new bytes32[](0), other2);
     // Mint a token using creator contract, to test breaking up extension's indexRange
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     creatorCore.mintBaseNew(recipientsInput, amountsInput, urisInput);
     // Mint 1 token using the extension
     vm.stopPrank();
@@ -634,22 +661,22 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testTokenURIAddress() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE() + 1;
     uint256 instanceId = 101;
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: string(abi.encodePacked(address(metadata))),
       totalMax: 11,
       walletMax: 3,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ADDRESS,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ADDRESS,
       cost: 1,
-      paymentReceiver: payable(owner),
+      paymentReceiver: payable(creator),
       erc20: zeroAddress,
       signingAddress: address(0)
     });
@@ -675,7 +702,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.mint{ value: mintFee }(address(creatorCore), instanceId, 0, new bytes32[](0), other2);
     // Mint a token using creator contract, to test breaking up extension's indexRange
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     creatorCore.mintBaseNew(recipientsInput, amountsInput, urisInput);
     // Mint 1 token using the extension
     vm.stopPrank();
@@ -687,24 +714,24 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testFunctionality() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE();
 
     bytes32[] memory allowListTuples = new bytes32[](3);
-    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+    allowListTuples[0] = keccak256(abi.encodePacked(creator, uint32(0)));
     allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
     allowListTuples[2] = keccak256(abi.encodePacked(other2, uint32(2)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "arweaveHash",
       totalMax: 3,
       walletMax: 0,
       startDate: nowC + 500,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -719,10 +746,10 @@ contract ERC1155LazyPayableClaimTest is Test {
 
     // Cannot claim before initialization
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
-    vm.expectRevert(ILazyPayableClaim.ClaimNotInitialized.selector);
-    example.mint(address(creatorCore), 1, 0, merkleProof1, owner);
+    vm.expectRevert(ILazyPayableClaimV2.ClaimNotInitialized.selector);
+    example.mint(address(creatorCore), 1, 0, merkleProof1, creator);
 
     example.initializeClaim(address(creatorCore), 1, claimP);
 
@@ -741,7 +768,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.initializeClaim(address(creatorCore), 2, claimP);
 
     // Claim should have expected info
-    IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
+    IERC1155LazyPayableClaimV2.Claim memory claim = example.getClaim(address(creatorCore), 1);
     assertEq(claim.merkleRoot, merkle.getRoot(allowListTuples));
     assertEq(claim.location, "arweaveHash1");
     assertEq(claim.totalMax, 3);
@@ -752,18 +779,18 @@ contract ERC1155LazyPayableClaimTest is Test {
     // Test minting
     // Mint a token to random wallet
     vm.stopPrank();
-    vm.startPrank(owner);
-    vm.expectRevert(ILazyPayableClaim.ClaimInactive.selector);
-    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, owner);
+    vm.startPrank(creator);
+    vm.expectRevert(ILazyPayableClaimV2.ClaimInactive.selector);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, creator);
 
     vm.warp(nowC + 501);
-    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, owner);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, creator);
 
     claim = example.getClaim(address(creatorCore), 1);
     assertEq(claim.total, 1);
 
     // ClaimByToken should have expected info
-    (uint instanceId, IERC1155LazyPayableClaim.Claim memory claimInfo) = example.getClaimForToken(address(creatorCore), 1);
+    (uint instanceId, IERC1155LazyPayableClaimV2.Claim memory claimInfo) = example.getClaimForToken(address(creatorCore), 1);
     assertEq(instanceId, 1);
     assertEq(claimInfo.merkleRoot, merkle.getRoot(allowListTuples));
     assertEq(claimInfo.location, "arweaveHash1");
@@ -778,13 +805,13 @@ contract ERC1155LazyPayableClaimTest is Test {
     example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 1, merkleProof2, other2);
 
     // Now ensure that the creator contract state is what we expect after mints
-    assertEq(creatorCore.balanceOf(owner, 1), 1);
+    assertEq(creatorCore.balanceOf(creator, 1), 1);
     assertEq(creatorCore.balanceOf(other2, 1), 1);
     assertEq("https://arweave.net/arweaveHash1", creatorCore.uri(1));
 
     // Additionally test that tokenURIs are dynamic
     vm.stopPrank();
-    vm.startPrank(owner);
+    vm.startPrank(creator);
 
     claimP.location = "test.com";
     claimP.endDate = later;
@@ -794,11 +821,11 @@ contract ERC1155LazyPayableClaimTest is Test {
 
     // Optional parameters - using claim 2
     // Cannot mint for someone else
-    vm.expectRevert(ILazyPayableClaim.InvalidInput.selector);
+    vm.expectRevert(ILazyPayableClaimV2.InvalidInput.selector);
     example.mint{ value: mintFee }(address(creatorCore), 2, 0, new bytes32[](0), other);
 
-    example.mint{ value: mintFee + 1 }(address(creatorCore), 2, 0, new bytes32[](0), owner);
-    example.mint{ value: mintFee + 1 }(address(creatorCore), 2, 0, new bytes32[](0), owner);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 2, 0, new bytes32[](0), creator);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 2, 0, new bytes32[](0), creator);
     vm.stopPrank();
     vm.startPrank(other);
     example.mint{ value: mintFee + 1 }(address(creatorCore), 2, 0, new bytes32[](0), other);
@@ -810,7 +837,7 @@ contract ERC1155LazyPayableClaimTest is Test {
 
     vm.stopPrank();
     vm.startPrank(other2);
-    vm.expectRevert(ILazyPayableClaim.ClaimInactive.selector);
+    vm.expectRevert(ILazyPayableClaimV2.ClaimInactive.selector);
     example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 2, merkleProof3, other2);
 
     // Passes with valid withdrawal amount from owner
@@ -825,23 +852,23 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testAirdrop() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE();
 
     bytes32[] memory allowListTuples = new bytes32[](2);
-    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+    allowListTuples[0] = keccak256(abi.encodePacked(creator, uint32(0)));
     allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "XXX",
       totalMax: 0,
       walletMax: 0,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -852,21 +879,21 @@ contract ERC1155LazyPayableClaimTest is Test {
     uint[] memory amounts = new uint[](1);
     amounts[0] = 1;
 
-    vm.expectRevert(ILazyPayableClaim.ClaimNotInitialized.selector);
+    vm.expectRevert(ILazyPayableClaimV2.ClaimNotInitialized.selector);
     example.airdrop(address(creatorCore), 1, receivers, amounts);
 
     example.initializeClaim(address(creatorCore), 1, claimP);
     // Perform an airdrop
     example.airdrop(address(creatorCore), 1, receivers, amounts);
 
-    IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
+    IERC1155LazyPayableClaimV2.Claim memory claim = example.getClaim(address(creatorCore), 1);
     assertEq(claim.total, 1);
     assertEq(claim.totalMax, 0);
 
     // Mint
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
 
-    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, owner);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, creator);
 
     // Update totalMax to 1, will actually set to 2 because there are two
     claimP.totalMax = 1;
@@ -898,7 +925,7 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.startPrank(other2);
     example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 1, merkleProof2, other2);
 
-    assertEq(1, creatorCore.balanceOf(owner, 1));
+    assertEq(1, creatorCore.balanceOf(creator, 1));
     assertEq(1, creatorCore.balanceOf(other, 1));
     assertEq(2, creatorCore.balanceOf(other2, 1));
     assertEq(5, creatorCore.balanceOf(other3, 1));
@@ -907,24 +934,24 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testDelegateV2Minting() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE();
 
     bytes32[] memory allowListTuples = new bytes32[](3);
-    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+    allowListTuples[0] = keccak256(abi.encodePacked(creator, uint32(0)));
     allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
     allowListTuples[2] = keccak256(abi.encodePacked(other3, uint32(2)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "XXX",
       totalMax: 0,
       walletMax: 0,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -944,8 +971,8 @@ contract ERC1155LazyPayableClaimTest is Test {
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
     vm.stopPrank();
     vm.startPrank(other);
-    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, owner);
-    assertEq(creatorCore.balanceOf(owner, 1), 0);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, creator);
+    assertEq(creatorCore.balanceOf(creator, 1), 0);
     assertEq(creatorCore.balanceOf(other, 1), 1);
 
     // Mint with contract-level delegate
@@ -960,25 +987,25 @@ contract ERC1155LazyPayableClaimTest is Test {
     vm.stopPrank();
   }
 
-    function testDelegateMinting() public {
-    vm.startPrank(owner);
+  function testDelegateMinting() public {
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE();
 
     bytes32[] memory allowListTuples = new bytes32[](3);
-    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
+    allowListTuples[0] = keccak256(abi.encodePacked(creator, uint32(0)));
     allowListTuples[1] = keccak256(abi.encodePacked(other2, uint32(1)));
     allowListTuples[2] = keccak256(abi.encodePacked(other3, uint32(2)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: merkle.getRoot(allowListTuples),
       location: "XXX",
       totalMax: 0,
       walletMax: 0,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -998,8 +1025,8 @@ contract ERC1155LazyPayableClaimTest is Test {
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
     vm.stopPrank();
     vm.startPrank(other);
-    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, owner);
-    assertEq(creatorCore.balanceOf(owner, 1), 0);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, merkleProof1, creator);
+    assertEq(creatorCore.balanceOf(creator, 1), 0);
     assertEq(creatorCore.balanceOf(other, 1), 1);
 
     // Mint with contract-level delegate
@@ -1017,7 +1044,7 @@ contract ERC1155LazyPayableClaimTest is Test {
   function testDelegateRegistryAddress() public {
     vm.startPrank(owner);
 
-    ERC1155LazyPayableClaim claim = new ERC1155LazyPayableClaim(
+    ERC1155LazyPayableClaimV2 claim = new ERC1155LazyPayableClaimV2(
       address(creatorCore),
       address(0x00000000000076A84feF008CDAbe6409d2FE638B),
       address(0x00000000000000447e69651d841bD8D104Bed493)
@@ -1031,7 +1058,7 @@ contract ERC1155LazyPayableClaimTest is Test {
   }
 
   function testAllowReceipientContract() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE();
@@ -1039,14 +1066,14 @@ contract ERC1155LazyPayableClaimTest is Test {
     // Construct a contract receiver
     MockETHReceiver mockETHReceiver = new MockETHReceiver();
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "XXX",
       totalMax: 5,
       walletMax: 3,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(address(mockETHReceiver)),
       erc20: zeroAddress,
@@ -1055,28 +1082,28 @@ contract ERC1155LazyPayableClaimTest is Test {
 
     example.initializeClaim(address(creatorCore), 1, claimP);
     // Perform a mint on the claim
-    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, new bytes32[](0), owner);
+    example.mint{ value: mintFee + 1 }(address(creatorCore), 1, 0, new bytes32[](0), creator);
 
     vm.stopPrank();
   }
 
   function testMembershipMint() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
 
     bytes32[] memory allowListTuples = new bytes32[](2);
-    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
-    allowListTuples[1] = keccak256(abi.encodePacked(owner, uint32(1)));
+    allowListTuples[0] = keccak256(abi.encodePacked(creator, uint32(0)));
+    allowListTuples[1] = keccak256(abi.encodePacked(creator, uint32(1)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "XXX",
       totalMax: 10,
       walletMax: 10,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
       paymentReceiver: payable(other),
       erc20: zeroAddress,
@@ -1090,9 +1117,9 @@ contract ERC1155LazyPayableClaimTest is Test {
     claimP.walletMax = 0;
     example.initializeClaim(address(creatorCore), 2, claimP);
 
-    manifoldMembership.setMember(owner, true);
+    manifoldMembership.setMember(creator, true);
     // Perform a mint on the claim
-    example.mintBatch{ value: 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+    example.mintBatch{ value: 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), creator);
 
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
     bytes32[] memory merkleProof2 = merkle.getProof(allowListTuples, uint32(1));
@@ -1105,32 +1132,32 @@ contract ERC1155LazyPayableClaimTest is Test {
     proofsInput[0] = merkleProof1;
     proofsInput[1] = merkleProof2;
 
-    example.mintBatch{ value: 2 }(address(creatorCore), 2, 2, amountsInput, proofsInput, owner);
+    example.mintBatch{ value: 2 }(address(creatorCore), 2, 2, amountsInput, proofsInput, creator);
 
     vm.stopPrank();
   }
 
   function testProxyMint() public {
-    vm.startPrank(owner);
+    vm.startPrank(creator);
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
     uint mintFee = example.MINT_FEE_MERKLE();
     uint mintFeeNon = example.MINT_FEE();
 
     bytes32[] memory allowListTuples = new bytes32[](2);
-    allowListTuples[0] = keccak256(abi.encodePacked(owner, uint32(0)));
-    allowListTuples[1] = keccak256(abi.encodePacked(owner, uint32(1)));
+    allowListTuples[0] = keccak256(abi.encodePacked(creator, uint32(0)));
+    allowListTuples[1] = keccak256(abi.encodePacked(creator, uint32(1)));
 
-    IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
       merkleRoot: "",
       location: "XXX",
       totalMax: 10,
       walletMax: 10,
       startDate: nowC,
       endDate: later,
-      storageProtocol: ILazyPayableClaim.StorageProtocol.ARWEAVE,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
       cost: 1,
-      paymentReceiver: payable(owner),
+      paymentReceiver: payable(creator),
       erc20: zeroAddress,
       signingAddress: address(0)
     });
@@ -1146,19 +1173,19 @@ contract ERC1155LazyPayableClaimTest is Test {
     manifoldMembership.setMember(other, true);
     // Perform a mint on the claim
     uint balance = other.balance;
-    uint ownerBalance = owner.balance;
+    uint creatorBalance = creator.balance;
 
     vm.stopPrank();
     vm.startPrank(other);
-    example.mintProxy{ value: mintFee * 3 + 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), owner);
+    example.mintProxy{ value: mintFee * 3 + 3 }(address(creatorCore), 1, 3, new uint32[](0), new bytes32[][](0), creator);
 
-    assertEq(3, creatorCore.balanceOf(owner, 1));
+    assertEq(3, creatorCore.balanceOf(creator, 1));
 
     // Ensure funds taken from message sender
     assertEq(other.balance, balance - mintFee * 3 - 3);
 
     // Ensure seller got funds
-    assertEq(owner.balance, ownerBalance + 3);
+    assertEq(creator.balance, creatorBalance + 3);
 
     // Mint merkle claims
     bytes32[] memory merkleProof1 = merkle.getProof(allowListTuples, uint32(0));
@@ -1173,9 +1200,60 @@ contract ERC1155LazyPayableClaimTest is Test {
     proofsInput[1] = merkleProof2;
 
     vm.expectRevert("Invalid amount");
-    example.mintProxy{ value: mintFeeNon * 2 + 2 }(address(creatorCore), 3, 2, amountsInput, proofsInput, owner);
-    example.mintProxy{ value: mintFee * 2 + 2 }(address(creatorCore), 3, 2, amountsInput, proofsInput, owner);
-    assertEq(2, creatorCore.balanceOf(owner, 2));
+    example.mintProxy{ value: mintFeeNon * 2 + 2 }(address(creatorCore), 3, 2, amountsInput, proofsInput, creator);
+    example.mintProxy{ value: mintFee * 2 + 2 }(address(creatorCore), 3, 2, amountsInput, proofsInput, creator);
+    assertEq(2, creatorCore.balanceOf(creator, 2));
+    vm.stopPrank();
+  }
+
+
+  function testPauseAndUnpause() public {
+    // stop new claims from being initialized
+    vm.startPrank(owner);
+    example.setActive(false);
+    vm.stopPrank();
+
+
+    vm.startPrank(creator);
+    uint48 nowC = uint48(block.timestamp);
+    uint48 later = nowC + 1000;
+    IERC1155LazyPayableClaimV2.ClaimParameters memory claimP = IERC1155LazyPayableClaimV2.ClaimParameters({
+      merkleRoot: "",
+      location: "arweaveHash1",
+      totalMax: 5,
+      walletMax: 3,
+      startDate: nowC,
+      endDate: later,
+      storageProtocol: ILazyPayableClaimV2.StorageProtocol.ARWEAVE,
+      cost: 1,
+      paymentReceiver: payable(creator),
+      erc20: zeroAddress,
+      signingAddress: address(0)
+    });
+    vm.expectRevert(ILazyPayableClaimV2.Inactive.selector);
+    example.initializeClaim(address(creatorCore), 1, claimP);
+
+    // resume new claims
+    vm.startPrank(owner);
+    example.setActive(true);
+    vm.stopPrank();
+
+    vm.startPrank(creator);
+    example.initializeClaim(address(creatorCore), 1, claimP);
+    vm.stopPrank();
+
+    // can still mint even if claim creations are paused
+    vm.startPrank(owner);
+    example.setActive(false);
+    vm.stopPrank();
+
+    vm.startPrank(other);
+    example.mint{ value: defaultMintFee + 1 }(address(creatorCore), 1, 1, new bytes32[](0), other);
+    uint32[] memory amountsInput = new uint32[](1);
+    amountsInput[0] = 0;
+    bytes32[][] memory proofsInput = new bytes32[][](1);
+    proofsInput[0] = new bytes32[](0);
+    example.mintBatch{ value: defaultMintFee * 2 + 2 }(address(creatorCore), 1, 2, amountsInput, proofsInput, other);
     vm.stopPrank();
   }
 }
