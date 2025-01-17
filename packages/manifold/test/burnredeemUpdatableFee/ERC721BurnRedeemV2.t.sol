@@ -2548,7 +2548,7 @@ contract ManifoldERC721BurnRedeemV2Test is Test {
         });
 
         vm.startPrank(anyone1);
-        // should revert because the burn set is not satisfied
+        // should revert because not enough burn fees
         vm.expectRevert();
         burnRedeem.burnRedeem{value: defaultMultiBurnFee}(address(creator), 2, 1, multiTokens);
 

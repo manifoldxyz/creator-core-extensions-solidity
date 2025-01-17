@@ -114,7 +114,7 @@ abstract contract BurnRedeemCoreV2 is ERC165, AdminControl, ReentrancyGuard, IBu
         uint256 instanceId,
         BurnRedeemParameters calldata burnRedeemParameters
     ) internal {
-         if (!active) revert Inactive();
+        if (!active) revert Inactive();
         BurnRedeemLibV2.initialize(creatorContractAddress, creatorContractVersion, instanceId, _burnRedeems[creatorContractAddress][instanceId], burnRedeemParameters);
     }
 
