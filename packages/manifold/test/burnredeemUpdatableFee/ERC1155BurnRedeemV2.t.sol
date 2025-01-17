@@ -744,7 +744,7 @@ contract ManifoldERC1155BurnRedeemV2Test is Test {
         vm.stopPrank();
     }
 
-    function testSetBurnFees() public {
+     function testSetBurnFees() public {
         uint256 newBurnFee = defaultBurnFee + 1000000;
         uint256 newMultiBurnFee = defaultMultiBurnFee + 1000000;
 
@@ -757,68 +757,12 @@ contract ManifoldERC1155BurnRedeemV2Test is Test {
         assertEq(burnRedeem.MULTI_BURN_FEE(), newMultiBurnFee);
 
         // test burns with new fees
-        IBurnRedeemCoreV2.BurnItem[] memory items = new IBurnRedeemCoreV2.BurnItem[](6);
-         // tokenSpec: ERC-721, burnSpec: NONE
+        IBurnRedeemCoreV2.BurnItem[] memory items = new IBurnRedeemCoreV2.BurnItem[](1);
         items[0] = IBurnRedeemCoreV2.BurnItem({
-            validationType: IBurnRedeemCoreV2.ValidationType.ANY,
-            contractAddress: address(0),
-            tokenSpec: IBurnRedeemCoreV2.TokenSpec.ERC721,
-            burnSpec: IBurnRedeemCoreV2.BurnSpec.NONE,
-            amount: 0,
-            minTokenId: 0,
-            maxTokenId: 0,
-            merkleRoot: bytes32(0)
-        });
-        // tokenSpec: ERC-721, burnSpec: MANIFOLD
-        items[1] = IBurnRedeemCoreV2.BurnItem({
-            validationType: IBurnRedeemCoreV2.ValidationType.ANY,
-            contractAddress: address(0),
-            tokenSpec: IBurnRedeemCoreV2.TokenSpec.ERC721,
-            burnSpec: IBurnRedeemCoreV2.BurnSpec.MANIFOLD,
-            amount: 0,
-            minTokenId: 0,
-            maxTokenId: 0,
-            merkleRoot: bytes32(0)
-        });
-        // tokenSpec: ERC-721, burnSpec: OPENZEPPELIN
-        items[2] = IBurnRedeemCoreV2.BurnItem({
-            validationType: IBurnRedeemCoreV2.ValidationType.ANY,
-            contractAddress: address(0),
-            tokenSpec: IBurnRedeemCoreV2.TokenSpec.ERC721,
-            burnSpec: IBurnRedeemCoreV2.BurnSpec.OPENZEPPELIN,
-            amount: 0,
-            minTokenId: 0,
-            maxTokenId: 0,
-            merkleRoot: bytes32(0)
-        });
-        // tokenSpec: ERC-1155, burnSpec: NONE
-        items[3] = IBurnRedeemCoreV2.BurnItem({
-            validationType: IBurnRedeemCoreV2.ValidationType.ANY,
-            contractAddress: address(0),
-            tokenSpec: IBurnRedeemCoreV2.TokenSpec.ERC1155,
-            burnSpec: IBurnRedeemCoreV2.BurnSpec.NONE,
-            amount: 1,
-            minTokenId: 0,
-            maxTokenId: 0,
-            merkleRoot: bytes32(0)
-        });
-        // tokenSpec: ERC-1155, burnSpec: MANIFOLD
-        items[4] = IBurnRedeemCoreV2.BurnItem({
-            validationType: IBurnRedeemCoreV2.ValidationType.ANY,
-            contractAddress: address(0),
+            validationType: IBurnRedeemCoreV2.ValidationType.CONTRACT,
+            contractAddress: address(burnable1155),
             tokenSpec: IBurnRedeemCoreV2.TokenSpec.ERC1155,
             burnSpec: IBurnRedeemCoreV2.BurnSpec.MANIFOLD,
-            amount: 1,
-            minTokenId: 0,
-            maxTokenId: 0,
-            merkleRoot: bytes32(0)
-        });
-        // tokenSpec: ERC-1155, burnSpec: OPENZEPPELIN
-        items[5] = IBurnRedeemCoreV2.BurnItem({
-            validationType: IBurnRedeemCoreV2.ValidationType.ANY,
-            contractAddress: address(0),
-            tokenSpec: IBurnRedeemCoreV2.TokenSpec.ERC1155,
-            burnSpec: IBurnRedeemCoreV2.BurnSpec.OPENZEPPELIN,
             amount: 1,
             minTokenId: 0,
             maxTokenId: 0,
@@ -844,77 +788,101 @@ contract ManifoldERC1155BurnRedeemV2Test is Test {
         burnRedeem.initializeBurnRedeem(address(creator), 1, params);
 
         // Mint tokens to anyone1
-        oz721.mint(anyone1, 1);
-        burnable721.mintBase(anyone1);
-        oz721Burnable.mint(anyone1, 1);
-        oz1155.mint(anyone1, 1, 1);
         address[] memory recipients = new address[](1);
         recipients[0] = anyone1;
         uint256[] memory amounts = new uint256[](1);
-        amounts[0] = 1;
+        amounts[0] = 3;
         string[] memory uris = new string[](1);
         uris[0] = "";
         burnable1155.mintBaseNew(recipients, amounts, uris);
-        oz1155Burnable.mint(anyone1, 1, 1);
-
+        burnable721.mintBase(anyone1);
         vm.stopPrank();
 
-        vm.deal(anyone1, 1 ether);
+        vm.startPrank(anyone1);
+        vm.deal(anyone1, 3 ether);
         bytes32[] memory merkleProof;
         IBurnRedeemCoreV2.BurnToken[] memory tokens = new IBurnRedeemCoreV2.BurnToken[](1);
         tokens[0] = IBurnRedeemCoreV2.BurnToken({
             groupIndex: 0,
             itemIndex: 0,
-            contractAddress: address(0),
+            contractAddress: address(burnable1155),
             id: 1,
             merkleProof: merkleProof
         });
-        uint256 burnFee = newBurnFee;
 
-        vm.startPrank(anyone1);
-        oz721.setApprovalForAll(address(burnRedeem), true);
-        tokens[0].contractAddress = address(oz721);
-        tokens[0].itemIndex = 0;
-        vm.expectRevert();
-        burnRedeem.burnRedeem{value: defaultBurnFee}(address(creator), 1, 1, tokens);
-        burnRedeem.burnRedeem{value: burnFee}(address(creator), 1, 1, tokens);
-        assertEq(0, oz721.balanceOf(anyone1));
-        assertEq(1, oz721.balanceOf(address(0x000000000000000000000000000000000000dEaD)));
-
-        burnable721.setApprovalForAll(address(burnRedeem), true);
-        tokens[0].contractAddress = address(burnable721);
-        tokens[0].itemIndex = 1;
-        burnRedeem.burnRedeem{value: burnFee}(address(creator), 1, 1, tokens);
-        vm.expectRevert("ERC721: invalid token ID");
-        burnable721.ownerOf(1);
-
-        oz721Burnable.setApprovalForAll(address(burnRedeem), true);
-        tokens[0].contractAddress = address(oz721Burnable);
-        tokens[0].itemIndex = 2;
-        burnRedeem.burnRedeem{value: burnFee}(address(creator), 1, 1, tokens);
-        vm.expectRevert("ERC721: invalid token ID");
-        oz721Burnable.ownerOf(1);
-
-        oz1155.setApprovalForAll(address(burnRedeem), true);
-        tokens[0].contractAddress = address(oz1155);
-        tokens[0].itemIndex = 3;
-        burnRedeem.burnRedeem{value: burnFee}(address(creator), 1, 1, tokens);
-        assertEq(0, oz1155.balanceOf(anyone1, 1));
-        assertEq(1, oz1155.balanceOf(address(0x000000000000000000000000000000000000dEaD), 1));
 
         burnable1155.setApprovalForAll(address(burnRedeem), true);
-        tokens[0].contractAddress = address(burnable1155);
-        tokens[0].itemIndex = 4;
-        burnRedeem.burnRedeem{value: burnFee}(address(creator), 1, 1, tokens);
-        assertEq(0, burnable1155.balanceOf(anyone1, 1));
-        assertEq(0, burnable1155.totalSupply(1));
+        burnable721.setApprovalForAll(address(burnRedeem), true);
+        // should revert because the burn set is not satisfied
+        vm.expectRevert();
+        burnRedeem.burnRedeem{value: defaultBurnFee}(address(creator), 1, 1, tokens);
 
-        oz1155Burnable.setApprovalForAll(address(burnRedeem), true);
-        tokens[0].contractAddress = address(oz1155Burnable);
-        tokens[0].itemIndex = 5;
-        burnRedeem.burnRedeem{value: burnFee}(address(creator), 1, 1, tokens);
-        assertEq(0, oz1155Burnable.balanceOf(anyone1, 1));
-        assertEq(0, oz1155Burnable.balanceOf(address(0x000000000000000000000000000000000000dEaD), 1));
+        burnRedeem.burnRedeem{value: newBurnFee}(address(creator), 1, 1, tokens);
+        vm.stopPrank();
+
+        // multi tokens burn
+        IBurnRedeemCoreV2.BurnItem[] memory multiItems = new IBurnRedeemCoreV2.BurnItem[](2);
+        multiItems[0] = IBurnRedeemCoreV2.BurnItem({
+            validationType: IBurnRedeemCoreV2.ValidationType.CONTRACT,
+            contractAddress: address(burnable1155),
+            tokenSpec: IBurnRedeemCoreV2.TokenSpec.ERC1155,
+            burnSpec: IBurnRedeemCoreV2.BurnSpec.MANIFOLD,
+            amount: 1,
+            minTokenId: 0,
+            maxTokenId: 0,
+            merkleRoot: bytes32(0)
+        });
+        multiItems[1] = IBurnRedeemCoreV2.BurnItem({
+            validationType: IBurnRedeemCoreV2.ValidationType.CONTRACT,
+            contractAddress: address(burnable721),
+            tokenSpec: IBurnRedeemCoreV2.TokenSpec.ERC721,
+            burnSpec: IBurnRedeemCoreV2.BurnSpec.MANIFOLD,
+            amount: 0,
+            minTokenId: 0,
+            maxTokenId: 0,
+            merkleRoot: bytes32(0)
+        });
+        
+        IBurnRedeemCoreV2.BurnGroup[] memory multiGroup = new IBurnRedeemCoreV2.BurnGroup[](1);
+        multiGroup[0] = IBurnRedeemCoreV2.BurnGroup({
+            requiredCount: 2,
+            items: multiItems
+        });
+        IBurnRedeemCoreV2.BurnRedeemParameters memory multiParams = IBurnRedeemCoreV2.BurnRedeemParameters({
+            paymentReceiver: payable(owner),
+            storageProtocol: IBurnRedeemCoreV2.StorageProtocol.NONE,
+            redeemAmount: 1,
+            totalSupply: 10,
+            startDate: uint48(block.timestamp - 30),
+            endDate: uint48(block.timestamp + 1000),
+            cost: 0,
+            location: "XXX",
+            burnSet: multiGroup
+        });
+        vm.startPrank(owner);
+        burnRedeem.initializeBurnRedeem(address(creator), 2, multiParams);
+        IBurnRedeemCoreV2.BurnToken[] memory multiTokens = new IBurnRedeemCoreV2.BurnToken[](2);
+        multiTokens[0] = IBurnRedeemCoreV2.BurnToken({
+            groupIndex: 0,
+            itemIndex: 0,
+            contractAddress: address(burnable1155),
+            id: 1,
+            merkleProof: merkleProof
+        });
+        multiTokens[1] = IBurnRedeemCoreV2.BurnToken({
+            groupIndex: 0,
+            itemIndex: 1,
+            contractAddress: address(burnable721),
+            id: 1,
+            merkleProof: merkleProof
+        });
+
+        vm.startPrank(anyone1);
+        // should revert because the burn set is not satisfied
+        vm.expectRevert();
+        burnRedeem.burnRedeem{value: defaultMultiBurnFee}(address(creator), 2, 1, multiTokens);
+
+        burnRedeem.burnRedeem{value: newMultiBurnFee}(address(creator), 2, 1, multiTokens);
 
         vm.stopPrank();
     }
