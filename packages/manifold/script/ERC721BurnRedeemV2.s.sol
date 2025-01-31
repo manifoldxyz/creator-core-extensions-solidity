@@ -15,7 +15,7 @@ contract DeployERC721BurnRedeemV2 is Script {
     // Deploy by specifying the linked library address and at 150 runs (identical to linked library)
     // e.g.
     //   forge script script/ERC721BurnRedeemV2.s.sol --optimizer-runs 150 --rpc-url <YOUR_NODE> --libraries contracts/burnredeemUpdatableFee/BurnRedeemLibV2.sol:BurnRedeemLibV2:<BURN_REDEEM_LIB_ADDRESS> --broadcast
-    //   forge verify-contract --compiler-version 0.8.17 --optimizer-runs 150 --chain goerli <DEPLOYED_ADDRESS> contracts/burnredeemUpdatableFee/ERC721BurnRedeemV2.sol:ERC721BurnRedeemV2 --libraries contracts/burnredeemUpdatableFee/BurnRedeemLibV2.sol:BurnRedeemLibV2:<BURN_REDEEM_LIB_ADDRESS> --constructor-args $(cast abi-encode "constructor(address)" "${INITIAL_OWNER}") --watch
+    //   forge verify-contract --compiler-version 0.8.17 --optimizer-runs 150 --chain sepolia <DEPLOYED_ADDRESS> contracts/burnredeemUpdatableFee/ERC721BurnRedeemV2.sol:ERC721BurnRedeemV2 --libraries contracts/burnredeemUpdatableFee/BurnRedeemLibV2.sol:BurnRedeemLibV2:<BURN_REDEEM_LIB_ADDRESS> --constructor-args $(cast abi-encode "constructor(address)" "${INITIAL_OWNER}") --watch
     new ERC721BurnRedeemV2{ salt: 0x4552433732314275726e52656465656d4552433732314275726e52656465656d }(initialOwner);
     vm.stopBroadcast();
   }
