@@ -14,7 +14,6 @@ import ".././libraries/manifold-membership/IManifoldMembership.sol";
 import "./ICrossBurn.sol";
 import "./Interfaces.sol";
 
-// Let's get Physical 💋
 contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
     using ECDSA for bytes32;
 
