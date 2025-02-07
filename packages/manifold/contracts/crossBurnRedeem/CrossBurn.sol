@@ -319,8 +319,9 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
     function _redeem(address redeemer, BurnSubmission memory submission) private {
         // Increment total count
         _totalCount[submission.instanceId]++;
-        // Redeem
-        emit Redeem(submission.instanceId, redeemer, submission.nonce);
+        // Emit redeem event
+        emit BurnRedeem(submission.instanceId, redeemer,
+        submission.redeemContract, submission.redeemNetworkId, submission.nonce);
     }
 
     /**

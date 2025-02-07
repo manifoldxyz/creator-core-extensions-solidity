@@ -33,13 +33,21 @@ interface ICrossBurn is IERC165, IERC721Receiver, IERC1155Receiver {
         bytes signature;
         bytes32 message;
         uint256 instanceId;
+        address redeemContract;
+        uint256 redeemNetworkId;
         BurnToken[] burnTokens;
         uint64 totalLimit;
         uint160 expiration;
         bytes32 nonce;
     }
 
-    event Redeem(uint256 indexed instanceId, address indexed redeemer, bytes32 nonce);
+    event BurnRedeem(
+        uint256 indexed instanceId, 
+        address indexed burnerAddress, 
+        address redeemContract, 
+        uint256 redeemNetworkId, 
+        bytes32 nonce
+    );
 
     /**
      * @notice a `BurnItem` indicates which tokens are eligible to be burned
