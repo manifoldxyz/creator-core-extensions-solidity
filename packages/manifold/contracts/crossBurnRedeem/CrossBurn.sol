@@ -6,7 +6,6 @@ pragma solidity ^0.8.0;
 
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -16,10 +15,6 @@ import "./Interfaces.sol";
 
 contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
     using ECDSA for bytes32;
-
-    uint256 public constant BURN_FEE = 690000000000000;
-    uint256 public constant MULTI_BURN_FEE = 990000000000000;
-    address public manifoldMembershipContract;
 
     address private _signingAddress;
     mapping(uint256 => mapping(address => mapping(uint256 => bool))) private _usedTokens;
@@ -45,13 +40,6 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
     function withdraw(address payable recipient, uint256 amount) external override adminRequired {
         _forwardValue(recipient, amount);
     }
-
-    /**
-     * @dev See {IPhysicalClaim-setManifoldMembership}.
-     */
-    function setMembershipAddress(address addr) external override adminRequired {
-        manifoldMembershipContract = addr;
-    }
     
     /**
      * @dev See {IPhysicalClaim-updateSigner}.
@@ -74,34 +62,29 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
         if (!_isAvailable(submission)) revert SoldOut();
         _validateSubmission(submission);
         _burnTokens(submission.instanceId, msg.sender, submission.burnTokens);
-        _redeem(msg.sender, submission, msg.value);
+        _redeem(msg.sender, submission);
     }
 
     /**
      * @dev See {IPhysicalClaimCore-burnRedeem}.
      */
     function burnRedeem(BurnSubmission[] calldata submissions) external payable override nonReentrant {
-        uint256 msgValue = msg.value;
         for (uint256 i; i < submissions.length;) {
             BurnSubmission calldata submission = submissions[i];
             if (_isAvailable(submission)) {
                 // Only validate if the variation requested available
                 _validateSubmission(submission);
                 _burnTokens(submission.instanceId, msg.sender, submission.burnTokens);
-                msgValue = _redeem(msg.sender, submission, msgValue);
+                _redeem(msg.sender, submission);
             }
             unchecked { ++i; }
-        }
-        if (msgValue > 0) {
-            // Return remaining unused funds
-            _forwardValue(payable(msg.sender), msgValue);
         }
     }
 
     function _validateSubmission(BurnSubmission memory submission) private {
         if (block.timestamp > submission.expiration) revert ExpiredSignature();
         // Verify valid message based on input variables
-        bytes32 expectedMessage = keccak256(abi.encode(submission.instanceId, submission.burnTokens, submission.totalLimit, submission.erc20, submission.price, submission.fundsRecipient, submission.expiration, submission.nonce));
+        bytes32 expectedMessage = keccak256(abi.encode(submission.instanceId, submission.burnTokens, submission.totalLimit, submission.expiration, submission.nonce));
         address signer = submission.message.recover(submission.signature);
         if (submission.message != expectedMessage || signer != _signingAddress) revert InvalidSignature();
         if (_usedNonces[submission.instanceId][submission.nonce]) revert InvalidNonce();
@@ -241,10 +224,7 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
         (BurnSubmission memory submission) = abi.decode(data, (BurnSubmission));
 
         // A single ERC721 can only be sent in directly for a burn if:
-        // 1. There is no ETH price to the burn (because no payment can be sent with a transfer)
-        // 2. The burn only requires one NFT (one burnToken)
-        // 3. They are an active member (because no fee payment can be sent with a transfer)
-        _validateCanReceive(submission.erc20, submission.price, from);
+        // 1. The burn only requires one NFT (one burnToken)
         if (submission.burnTokens.length != 1) {
             revert InvalidInput();
         }
@@ -264,7 +244,7 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
 
         // Do burn and redeem
         _burn(submission.instanceId, address(this), burnToken);
-        _redeem(from, submission, 0);
+        _redeem(from, submission);
     }
 
     /**
@@ -274,10 +254,8 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
         (BurnSubmission memory submission) = abi.decode(data, (BurnSubmission));
 
         // A single 1155 can only be sent in directly for a burn if:
-        // 1. There is no cost to the burn (because no payment can be sent with a transfer)
-        // 2. The burn only requires one NFT (one burnToken)
-        // 3. They are an active member (because no fee payment can be sent with a transfer)
-        _validateCanReceive(submission.erc20, submission.price, from);
+        // 1. The burn only requires one NFT (one burnToken)
+
         if (submission.burnTokens.length != 1) {
             revert InvalidInput();
         }
@@ -301,7 +279,7 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
 
         // Do burn and redeem
         _burn(submission.instanceId, address(this), burnToken);
-        _redeem(from, submission, 0);
+        _redeem(from, submission);
     }
 
     /**
@@ -311,10 +289,7 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
         (BurnSubmission memory submission) = abi.decode(data, (BurnSubmission));
 
         // A single 1155 can only be sent in directly for a burn if:
-        // 1. There is no cost to the burn (because no payment can be sent with a transfer)
-        // 2. We have the right data length
-        // 3. They are an active member (because no fee payment can be sent with a transfer)
-        _validateCanReceive(submission.erc20, submission.price, from);
+        // 1. We have the right data length
         if (submission.burnTokens.length != tokenIds.length) {
             revert InvalidInput();
         }
@@ -335,57 +310,17 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
         }
 
         // Do redeem
-        _redeem(from, submission, 0);
+        _redeem(from, submission);
     }
-
+    
     /**
-     * Helper to validate we can receive tokens direcly
+     * Helper to perform the redeem
      */
-    function _validateCanReceive(address erc20, uint256 price, address from) private view {
-        if ((erc20 == address(0) && price != 0) || !_isActiveMember(from)) {
-            revert InvalidInput();
-        }
-    }
-
-    /**
-     * Helper to check if the sender holds an active Manifold membership
-     */
-    function _isActiveMember(address sender) private view returns(bool) {
-        return manifoldMembershipContract != address(0) &&
-            IManifoldMembership(manifoldMembershipContract).isActiveMember(sender);
-    }
-
-    /**
-     * Helper to perform the redeem and returns the remaining msg value after consumed amount
-     */
-    function _redeem(address redeemer, BurnSubmission memory submission, uint256 msgValue) private returns (uint256) {
+    function _redeem(address redeemer, BurnSubmission memory submission) private {
         // Increment total count
         _totalCount[submission.instanceId]++;
-
-        // Transfer funds
-        uint256 payableCost = submission.erc20 == address(0) ? submission.price : 0;
-        if (!_isActiveMember(redeemer)) {
-            payableCost += submission.burnTokens.length <= 1 ? BURN_FEE : MULTI_BURN_FEE;
-        }
-        
-        // Check we have sufficient funds
-        if (payableCost > msgValue) {
-            revert InvalidPaymentAmount();
-        }
-
-        // Send funds if necessary
-        if (submission.price > 0) {
-            if (submission.erc20 == address(0)) {
-                _forwardValue(submission.fundsRecipient, submission.price);
-            } else {
-                IERC20(submission.erc20).transferFrom(redeemer, submission.fundsRecipient, submission.price);
-            }
-        }
-
         // Redeem
         emit Redeem(submission.instanceId, redeemer, submission.nonce);
-
-        return msgValue - payableCost;
     }
 
     /**

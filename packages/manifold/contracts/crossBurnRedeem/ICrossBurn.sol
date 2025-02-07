@@ -18,7 +18,6 @@ interface ICrossBurn is IERC165, IERC721Receiver, IERC1155Receiver {
     error InvalidBurnAmount();
     error InvalidInput();
     error InvalidData();
-    error InvalidPaymentAmount();
     error TransferFailure();
     error SoldOut();
 
@@ -36,9 +35,6 @@ interface ICrossBurn is IERC165, IERC721Receiver, IERC1155Receiver {
         uint256 instanceId;
         BurnToken[] burnTokens;
         uint64 totalLimit;
-        address erc20;
-        uint256 price;
-        address payable fundsRecipient;
         uint160 expiration;
         bytes32 nonce;
     }
@@ -80,12 +76,6 @@ interface ICrossBurn is IERC165, IERC721Receiver, IERC1155Receiver {
      * @param amount                    amount to withdraw in Wei
      */
     function withdraw(address payable recipient, uint256 amount) external;
-
-    /**
-     * @notice set the Manifold Membership contract address
-     * @param addr                      the address of the Manifold Membership contract 
-     */
-    function setMembershipAddress(address addr) external;
 
     /**
      * @notice update the authorized signer
