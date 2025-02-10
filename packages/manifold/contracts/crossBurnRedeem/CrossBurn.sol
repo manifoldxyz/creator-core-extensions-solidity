@@ -18,7 +18,6 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
 
     address private _signingAddress;
     mapping(uint256 => mapping(address => mapping(uint256 => bool))) private _usedTokens;
-    mapping(uint256 => mapping(bytes32 => bool)) private _usedNonces;
     mapping(uint256 => uint64) private _totalCount;
 
     constructor(address initialOwner, address signingAddress) {
@@ -81,14 +80,12 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
         }
     }
 
-    function _validateSubmission(BurnSubmission memory submission) private {
+    function _validateSubmission(BurnSubmission memory submission) private view {
         if (block.timestamp > submission.expiration) revert ExpiredSignature();
         // Verify valid message based on input variables
-        bytes32 expectedMessage = keccak256(abi.encode(submission.instanceId, submission.burnTokens, submission.totalLimit, submission.expiration, submission.nonce));
+        bytes32 expectedMessage = keccak256(abi.encode(submission.instanceId, submission.burnTokens, submission.totalLimit, submission.expiration));
         address signer = submission.message.recover(submission.signature);
         if (submission.message != expectedMessage || signer != _signingAddress) revert InvalidSignature();
-        if (_usedNonces[submission.instanceId][submission.nonce]) revert InvalidNonce();
-        _usedNonces[submission.instanceId][submission.nonce] = true;
     }
 
     function _isAvailable(BurnSubmission memory submission) private view returns(bool) {
@@ -321,7 +318,7 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
         _totalCount[submission.instanceId]++;
         // Emit redeem event
         emit BurnRedeem(submission.instanceId, redeemer,
-        submission.redeemContract, submission.redeemNetworkId, submission.nonce);
+        submission.redeemContract, submission.redeemNetworkId);
     }
 
     /**

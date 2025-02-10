@@ -23,7 +23,6 @@ interface ICrossBurn is IERC165, IERC721Receiver, IERC1155Receiver {
 
     error InvalidSignature(); // 0x8baa579f
     error ExpiredSignature();
-    error InvalidNonce();
 
     enum TokenSpec { INVALID, ERC721, ERC1155, ERC721_NO_BURN }
 
@@ -38,15 +37,13 @@ interface ICrossBurn is IERC165, IERC721Receiver, IERC1155Receiver {
         BurnToken[] burnTokens;
         uint64 totalLimit;
         uint160 expiration;
-        bytes32 nonce;
     }
 
     event BurnRedeem(
         uint256 indexed instanceId, 
         address indexed burnerAddress, 
         address redeemContract, 
-        uint256 redeemNetworkId, 
-        bytes32 nonce
+        uint256 redeemNetworkId
     );
 
     /**
