@@ -34,28 +34,28 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
     }
 
     /**
-     * @dev See {IPhysicalClaim-withdraw}.
+     * @dev See {ICrossBurn-withdraw}.
      */
     function withdraw(address payable recipient, uint256 amount) external override adminRequired {
         _forwardValue(recipient, amount);
     }
     
     /**
-     * @dev See {IPhysicalClaim-updateSigner}.
+     * @dev See {ICrossBurn-updateSigner}.
      */
     function updateSigner(address signingAddress) external override adminRequired {
         _signingAddress = signingAddress;
     }
 
     /**
-     * @dev See {IPhysicalClaimCore-recover}.
+     * @dev See {ICrossBurnCore-recover}.
      */
     function recover(address tokenAddress, uint256 tokenId, address destination) external override adminRequired {
         IERC721(tokenAddress).transferFrom(address(this), destination, tokenId);
     }
 
     /**
-     * @dev See {IPhysicalClaimCore-burnRedeem}.
+     * @dev See {ICrossBurnCore-burnRedeem}.
      */
     function burnRedeem(BurnSubmission calldata submission) external payable override nonReentrant {
         if (!_isAvailable(submission)) revert SoldOut();
@@ -65,7 +65,7 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
     }
 
     /**
-     * @dev See {IPhysicalClaimCore-burnRedeem}.
+     * @dev See {ICrossBurnCore-burnRedeem}.
      */
     function burnRedeem(BurnSubmission[] calldata submissions) external payable override nonReentrant {
         for (uint256 i; i < submissions.length;) {
@@ -317,8 +317,8 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
         // Increment total count
         _totalCount[submission.instanceId]++;
         // Emit redeem event
-        emit BurnRedeem(submission.instanceId, redeemer,
-        submission.redeemContract, submission.redeemNetworkId);
+        emit CrossBurn(submission.instanceId, redeemer,
+        submission.redeemContract, submission.redeemNetworkId, submission.redeemAmount);
     }
 
     /**
@@ -332,7 +332,7 @@ contract CrossBurn is ICrossBurn, ReentrancyGuard, AdminControl {
     }
 
     /**
-     * @dev See {IPhysicalClaim-getTotalCount}.
+     * @dev See {ICrossBurn-getTotalCount}.
      */
     function getTotalCount(uint256 instanceId) external view override returns(uint64) {
         return _totalCount[instanceId];
