@@ -22,7 +22,6 @@ import "./Soulbound.sol";
 contract ERC1155Soulbound is Soulbound, IERC165, IERC1155CreatorExtensionApproveTransfer {
 
     bytes4 private constant IERC1155CreatorExtensionApproveTransfer_v1 = 0x93a80b14;
-    mapping(address => mapping(uint256 => bool)) private _nonSoulbound;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
         return interfaceId == type(IERC1155CreatorExtensionApproveTransfer).interfaceId ||
