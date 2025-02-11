@@ -59,7 +59,7 @@ contract CrossChainBurn is ICrossChainBurn, ReentrancyGuard, AdminControl {
    * @dev See {ICrossChainBurn-burnRedeem}.
    */
   function burnRedeem(BurnSubmission calldata submission) external payable override nonReentrant {
-    if (!_isAvailable(submission)) revert SoldOut();
+    if (!_isAvailable(submission)) revert InsufficientSupply();
     _validateSubmission(submission);
     _burnTokens(submission.instanceId, msg.sender, submission.burnTokens);
     _redeem(msg.sender, submission);
@@ -85,9 +85,17 @@ contract CrossChainBurn is ICrossChainBurn, ReentrancyGuard, AdminControl {
 
   function _validateSubmission(BurnSubmission memory submission) private view {
     if (block.timestamp > submission.expiration) revert ExpiredSignature();
+    if (submission.redeemAmount == 0) revert InvalidInput();
+
     // Verify valid message based on input variables
     bytes32 expectedMessage = keccak256(
-      abi.encode(submission.instanceId, submission.burnTokens, submission.totalLimit, submission.expiration)
+      abi.encode(
+        submission.instanceId,
+        submission.burnTokens,
+        submission.redeemAmount,
+        submission.totalLimit,
+        submission.expiration
+      )
     );
     address signer = submission.message.recover(submission.signature);
     if (submission.message != expectedMessage || signer != _signingAddress) revert InvalidSignature();
@@ -95,7 +103,12 @@ contract CrossChainBurn is ICrossChainBurn, ReentrancyGuard, AdminControl {
 
   function _isAvailable(BurnSubmission memory submission) private view returns (bool) {
     // Check total limit
-    if (submission.totalLimit > 0 && _totalCount[submission.instanceId] >= submission.totalLimit) return false;
+    if (
+      submission.totalLimit > 0 && (_totalCount[submission.instanceId] + submission.redeemAmount) > submission.totalLimit
+    ) {
+      return false;
+    }
+
     return true;
   }
 
@@ -222,7 +235,7 @@ contract CrossChainBurn is ICrossChainBurn, ReentrancyGuard, AdminControl {
     if (submission.burnTokens.length != 1) {
       revert InvalidInput();
     }
-    if (!_isAvailable(submission)) revert SoldOut();
+    if (!_isAvailable(submission)) revert InsufficientSupply();
     _validateSubmission(submission);
 
     // Check that the burn token is valid
@@ -253,7 +266,7 @@ contract CrossChainBurn is ICrossChainBurn, ReentrancyGuard, AdminControl {
     if (submission.burnTokens.length != 1) {
       revert InvalidInput();
     }
-    if (!_isAvailable(submission)) revert SoldOut();
+    if (!_isAvailable(submission)) revert InsufficientSupply();
     _validateSubmission(submission);
 
     // Check that the burn token is valid
@@ -291,7 +304,7 @@ contract CrossChainBurn is ICrossChainBurn, ReentrancyGuard, AdminControl {
     if (submission.burnTokens.length != tokenIds.length) {
       revert InvalidInput();
     }
-    if (!_isAvailable(submission)) revert SoldOut();
+    if (!_isAvailable(submission)) revert InsufficientSupply();
     _validateSubmission(submission);
 
     // Verify the values match what is needed and burn tokens
@@ -318,7 +331,7 @@ contract CrossChainBurn is ICrossChainBurn, ReentrancyGuard, AdminControl {
    */
   function _redeem(address redeemer, BurnSubmission memory submission) private {
     // Increment total count
-    _totalCount[submission.instanceId]++;
+    _totalCount[submission.instanceId] += submission.redeemAmount;
     // Emit redeem event
     emit CrossChainBurn(
       submission.instanceId,

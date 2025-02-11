@@ -19,7 +19,7 @@ interface ICrossChainBurn is IERC165, IERC721Receiver, IERC1155Receiver {
   error InvalidInput();
   error InvalidData();
   error TransferFailure();
-  error SoldOut();
+  error InsufficientSupply();
 
   error InvalidSignature(); // 0x8baa579f
   error ExpiredSignature();
@@ -45,7 +45,7 @@ interface ICrossChainBurn is IERC165, IERC721Receiver, IERC1155Receiver {
     address redeemContract;
     uint256 redeemNetworkId;
     BurnToken[] burnTokens;
-    uint72 redeemAmount;
+    uint64 redeemAmount;
     uint64 totalLimit;
     uint160 expiration;
   }
@@ -55,7 +55,7 @@ interface ICrossChainBurn is IERC165, IERC721Receiver, IERC1155Receiver {
     address indexed burnerAddress,
     address redeemContract,
     uint256 redeemNetworkId,
-    uint72 redeemAmount
+    uint64 redeemAmount
   );
 
   /**

@@ -100,10 +100,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem failure because token does not exist
     vm.startPrank(other1);
@@ -146,10 +153,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem because we have an invalid signature
     // Change configured signer
@@ -178,10 +192,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem because we change the data
     submission.message = bytes32(0);
@@ -207,10 +228,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem because we change the data
     submission.totalLimit = 10;
@@ -236,10 +264,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp - 1);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem because it is expired
     vm.startPrank(other1);
@@ -260,10 +295,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -283,10 +325,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -310,10 +359,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -338,10 +394,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem from non-owner should fail
     vm.startPrank(other2);
@@ -365,10 +428,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -379,7 +449,7 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     assertEq(creatorCore721.ownerOf(1), other1);
 
     // Try redemption again, not allowed because token already used
-    submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    submission = constructSubmission(instanceId, burnTokens, redeemAmount, totalLimit, expiration);
     vm.startPrank(other1);
     vm.expectRevert(abi.encodeWithSelector(ICrossChainBurn.InvalidToken.selector, address(creatorCore721), 1));
     example.burnRedeem(submission);
@@ -401,10 +471,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -414,12 +491,13 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     vm.stopPrank();
   }
 
-  function testPhysicalClaim721() public {
+  function testCrossChainBurn721() public {
     vm.startPrank(owner);
+    creatorCore721.mintBase(other1, "");
     creatorCore721.mintBase(other1, "");
     vm.stopPrank();
 
-    ICrossChainBurn.BurnToken[] memory burnTokens = new ICrossChainBurn.BurnToken[](1);
+    ICrossChainBurn.BurnToken[] memory burnTokens = new ICrossChainBurn.BurnToken[](2);
     burnTokens[0] = ICrossChainBurn.BurnToken({
       contractAddress: address(creatorCore721),
       tokenId: 1,
@@ -427,22 +505,39 @@ contract CrossChainBurnTest is CrossChainBurnBase {
       burnSpec: ICrossChainBurn.BurnSpec.MANIFOLD,
       amount: 1
     });
+    burnTokens[1] = ICrossChainBurn.BurnToken({
+      contractAddress: address(creatorCore721),
+      tokenId: 2,
+      tokenSpec: ICrossChainBurn.TokenSpec.ERC721,
+      burnSpec: ICrossChainBurn.BurnSpec.MANIFOLD,
+      amount: 1
+    });
 
     uint256 instanceId = 100;
-    uint64 totalLimit = 0;
+    uint64 redeemAmount = 2;
+    uint64 totalLimit = 5;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
     creatorCore721.approve(address(example), 1);
+    creatorCore721.approve(address(example), 2);
     example.burnRedeem(submission);
     vm.stopPrank();
 
     // Check token burned
     vm.expectRevert("ERC721: invalid token ID");
     creatorCore721.ownerOf(1);
+    vm.expectRevert("ERC721: invalid token ID");
+    creatorCore721.ownerOf(2);
   }
 
   function testCrossChainBurn721BurnSpecNone() public {
@@ -460,9 +555,16 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -494,10 +596,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 2;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -529,10 +638,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -573,10 +689,17 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
 
     // Test redeem
     vm.startPrank(other1);
@@ -615,12 +738,13 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 0;
     uint160 expiration = uint160(block.timestamp + 1000);
 
     ICrossChainBurn.BurnSubmission[] memory submissions = new ICrossChainBurn.BurnSubmission[](2);
-    submissions[0] = constructSubmission(instanceId, burnTokens1, totalLimit, expiration);
-    submissions[1] = constructSubmission(instanceId, burnTokens2, totalLimit, expiration);
+    submissions[0] = constructSubmission(instanceId, burnTokens1, redeemAmount, totalLimit, expiration);
+    submissions[1] = constructSubmission(instanceId, burnTokens2, redeemAmount, totalLimit, expiration);
 
     // Test redeem
     vm.startPrank(other1);
@@ -634,6 +758,36 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     creatorCore721.ownerOf(1);
     vm.expectRevert("ERC721: invalid token ID");
     creatorCore721.ownerOf(2);
+  }
+
+  /**
+   * Sold out due to total limit (single-submission)
+   */
+  function testCrossChainBurnSoldOut() public {
+    ICrossChainBurn.BurnToken[] memory burnTokens = new ICrossChainBurn.BurnToken[](0);
+    uint256 instanceId = 100;
+    uint64 redeemAmount = 2;
+    uint64 totalLimit = 2;
+    uint160 expiration = uint160(block.timestamp + 1000);
+
+    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(
+      instanceId,
+      burnTokens,
+      redeemAmount,
+      totalLimit,
+      expiration
+    );
+
+    // Test redeem (second time should fail because exceeding totalLimit)
+    vm.startPrank(other1);
+    example.burnRedeem(submission);
+    vm.stopPrank();
+
+    submission = constructSubmission(instanceId, burnTokens, redeemAmount, totalLimit, expiration);
+    vm.startPrank(other1);
+    vm.expectRevert(ICrossChainBurn.InsufficientSupply.selector);
+    example.burnRedeem(submission);
+    vm.stopPrank();
   }
 
   /**
@@ -663,13 +817,14 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     });
 
     uint256 instanceId = 100;
+    uint64 redeemAmount = 1;
     uint64 totalLimit = 1;
     uint160 expiration = uint160(block.timestamp + 1000);
 
     ICrossChainBurn.BurnSubmission[] memory submissions = new ICrossChainBurn.BurnSubmission[](2);
-    submissions[0] = constructSubmission(instanceId, burnTokens1, totalLimit, expiration);
+    submissions[0] = constructSubmission(instanceId, burnTokens1, redeemAmount, totalLimit, expiration);
 
-    submissions[1] = constructSubmission(instanceId, burnTokens2, totalLimit, expiration);
+    submissions[1] = constructSubmission(instanceId, burnTokens2, redeemAmount, totalLimit, expiration);
 
     // Test redeem
     vm.startPrank(other1);
@@ -683,33 +838,5 @@ contract CrossChainBurnTest is CrossChainBurnBase {
     creatorCore721.ownerOf(1);
     // Token 2 not burned because we were sold out and it didn't process
     assertEq(creatorCore721.ownerOf(2), other1);
-  }
-
-  /**
-   * Sold out due to total limit (single-submission)
-   */
-  function testCrossChainBurnSoldOut2() public {
-    ICrossChainBurn.BurnToken[] memory burnTokens = new ICrossChainBurn.BurnToken[](0);
-    uint256 instanceId = 100;
-    uint64 totalLimit = 2;
-    uint160 expiration = uint160(block.timestamp + 1000);
-
-    ICrossChainBurn.BurnSubmission memory submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
-
-    // Test redeem (third time should fail because sold out)
-    vm.startPrank(other1);
-    example.burnRedeem(submission);
-    vm.stopPrank();
-
-    submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
-    vm.startPrank(other1);
-    example.burnRedeem(submission);
-    vm.stopPrank();
-
-    submission = constructSubmission(instanceId, burnTokens, totalLimit, expiration);
-    vm.startPrank(other1);
-    vm.expectRevert(ICrossChainBurn.SoldOut.selector);
-    example.burnRedeem(submission);
-    vm.stopPrank();
   }
 }

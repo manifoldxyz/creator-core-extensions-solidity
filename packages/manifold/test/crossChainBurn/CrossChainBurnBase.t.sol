@@ -10,21 +10,23 @@ abstract contract CrossChainBurnBase is Test {
   function constructSubmission(
     uint256 instanceId,
     ICrossChainBurn.BurnToken[] memory burnTokens,
+    uint64 redeemAmount,
     uint64 totalLimit,
     uint160 expiration
   ) internal view returns (ICrossChainBurn.BurnSubmission memory submission) {
     // Hack because we were getting stack too deep, so need to pass into subfunction
-    submission = _constructSubmission(instanceId, burnTokens, totalLimit, expiration);
+    submission = _constructSubmission(instanceId, burnTokens, redeemAmount, totalLimit, expiration);
     submission.instanceId = instanceId;
   }
 
   function _constructSubmission(
     uint256 instanceId,
     ICrossChainBurn.BurnToken[] memory burnTokens,
+    uint64 redeemAmount,
     uint64 totalLimit,
     uint160 expiration
   ) internal view returns (ICrossChainBurn.BurnSubmission memory submission) {
-    bytes32 message = keccak256(abi.encode(instanceId, burnTokens, totalLimit, expiration));
+    bytes32 message = keccak256(abi.encode(instanceId, burnTokens, redeemAmount, totalLimit, expiration));
 
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
     bytes memory signature = abi.encodePacked(r, s, v);
@@ -32,6 +34,7 @@ abstract contract CrossChainBurnBase is Test {
     submission.signature = signature;
     submission.message = message;
     submission.burnTokens = burnTokens;
+    submission.redeemAmount = redeemAmount;
     submission.totalLimit = totalLimit;
     submission.expiration = expiration;
   }
