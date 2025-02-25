@@ -53,7 +53,7 @@ interface ICrossChainBurn is IERC165, IERC721Receiver, IERC1155Receiver {
   event CrossChainBurn(
     uint256 indexed instanceId,
     address indexed burnerAddress,
-    address redeemContract,
+    address indexed redeemContract,
     uint256 redeemNetworkId,
     uint64 redeemAmount
   );
