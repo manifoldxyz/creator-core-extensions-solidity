@@ -31,7 +31,7 @@ contract DeployCrossChainBurn is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY"); // comment this out when testing on goerli
         vm.startBroadcast(deployerPrivateKey);
         // forge script script/CrossChainBurn.s.sol --optimizer-runs 1000 --rpc-url <YOUR_NODE> --broadcast
-        // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain sepolia <DEPLOYED_ADDRESS> contracts/physicalclaim/CrossChainBurn.sol:CrossChainBurn --constructor-args $(cast abi-encode "constructor(address,address)" "${INITIAL_OWNER}" "0x0000000000000000000000000000000000000000") --watch
+        // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain sepolia <DEPLOYED_ADDRESS> contracts/crossChainBurn/CrossChainBurn.sol:CrossChainBurn --constructor-args $(cast abi-encode "constructor(address,address)" "${INITIAL_OWNER}" "0x0000000000000000000000000000000000000000") --watch
         new CrossChainBurn{salt: 0x4c657427732067657420506879736963616c2000000000000000000000000000}(initialOwner, address(0));
         vm.stopBroadcast();
     }
