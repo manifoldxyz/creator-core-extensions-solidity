@@ -61,8 +61,6 @@ contract ERC1155SerendipityTest is Test {
     example.withdraw(payable(other), 20);
     vm.expectRevert("AdminControl: Must be owner or admin");
     example.setSigner(other);
-    // Must be admin
-    vm.expectRevert();
 
     uint48 nowC = uint48(block.timestamp);
     uint48 later = nowC + 1000;
@@ -90,7 +88,6 @@ contract ERC1155SerendipityTest is Test {
     vm.startPrank(other2);
     vm.expectRevert();
     example.initializeClaim(address(creatorCore1), 2, claimP);
-    vm.expectRevert();
 
     vm.stopPrank();
   }
@@ -537,7 +534,7 @@ contract ERC1155SerendipityTest is Test {
     vm.stopPrank();
   }
 
-  function testFail_UpdateClaim_NotClaimOwnerUpdate() public {
+  function test_RevertWhen_UpdateClaimNotClaimOwner() public {
     vm.startPrank(creator);
 
     uint48 nowC = uint48(block.timestamp);
@@ -566,6 +563,7 @@ contract ERC1155SerendipityTest is Test {
       paymentReceiver: payable(other),
       cost: 1
     });
+    vm.expectRevert();
     example.updateClaim(address(creatorCore1), 1, claimU);
     vm.stopPrank();
   }

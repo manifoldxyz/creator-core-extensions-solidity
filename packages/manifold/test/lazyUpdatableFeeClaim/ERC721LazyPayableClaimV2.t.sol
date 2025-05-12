@@ -129,7 +129,6 @@ contract ERC721LazyPayableClaimV2Test is Test {
         // can't pause, unpause as creator
         vm.expectRevert();
         example.setActive(false);
-        vm.expectRevert();
 
         // Update, not admin
         vm.startPrank(other);
