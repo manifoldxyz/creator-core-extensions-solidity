@@ -36,7 +36,7 @@ contract DeployERC721LazyPayableClaimUSDC is Script {
         vm.startBroadcast(deployerPrivateKey);
         // forge script script/ERC721LazyPayableClaim.s.sol --optimizer-runs 500 --rpc-url <YOUR_NODE> --broadcast
         // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 500 --chain goerli <DEPLOYED_ADDRESS> contracts/lazyclaim/ERC721LazyPayableClaim.sol:ERC721LazyPayableClaim --constructor-args $(cast abi-encode "constructor(address,address,address)" "${INITIAL_OWNER}" "0x00000000000076A84feF008CDAbe6409d2FE638B" "0x00000000000000447e69651d841bD8D104Bed493") --watch
-        new ERC721LazyPayableClaimUSDC{salt: 0x4552433732314c617a7950617961626c65436c61696d4552433732314c617a79}(
+        new ERC721LazyPayableClaimUSDC{salt: 0x4552433732314c617a7950617961626c65436c61696d55534443455243373231}(
             initialOwner, usdcAddress, DELEGATION_REGISTRY, DELEGATION_REGISTRY_V2
         );
         vm.stopBroadcast();
