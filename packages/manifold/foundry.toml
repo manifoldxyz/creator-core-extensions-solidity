@@ -5,5 +5,6 @@ out = 'out'
 libs = ["node_modules", "lib"]
 remappings = []
 verbosity = 3
+optimizer_runs = 500
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
