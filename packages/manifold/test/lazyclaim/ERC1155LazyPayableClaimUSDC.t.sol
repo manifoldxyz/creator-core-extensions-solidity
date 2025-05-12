@@ -172,6 +172,56 @@ contract ERC1155LazyPayableClaimUSDCTest is Test {
         vm.stopPrank();
     }
 
+    function testWithdraw() public {
+        vm.startPrank(owner);
+        uint48 nowC = uint48(block.timestamp);
+        uint48 later = nowC + 1000;
+        uint256 mintFee = example.MINT_FEE();
+
+        IERC1155LazyPayableClaim.ClaimParameters memory claimP = IERC1155LazyPayableClaim.ClaimParameters({
+            merkleRoot: "",
+            location: "arweaveHash1",
+            totalMax: 3,
+            walletMax: 0,
+            startDate: nowC,
+            endDate: later,
+            storageProtocol: ILazyPayableClaimCore.StorageProtocol.ARWEAVE,
+            cost: 100,
+            paymentReceiver: payable(owner),
+            erc20: address(mockERC20),
+            signingAddress: address(0)
+        });
+
+        example.initializeClaim(address(creatorCore), 1, claimP);
+
+        vm.stopPrank();
+        vm.startPrank(other);
+
+        mockERC20.approve(address(example), 1000 + mintFee);
+        // Mint erc20 tokens
+        mockERC20.fakeMint(other, 1000 + mintFee);
+
+        // Mint a token
+        example.mint(address(creatorCore), 1, 0, new bytes32[](0), other);
+
+        IERC1155LazyPayableClaim.Claim memory claim = example.getClaim(address(creatorCore), 1);
+        assertEq(claim.total, 1);
+        assertEq(900, mockERC20.balanceOf(other));
+        assertEq(100, mockERC20.balanceOf(owner));
+        assertEq(mintFee, mockERC20.balanceOf(address(example)));
+        assertEq(1, creatorCore.balanceOf(other, 1));
+
+        vm.expectRevert();
+        example.withdraw(payable(other), mintFee);
+
+        vm.stopPrank();
+        vm.startPrank(owner);
+        example.withdraw(payable(other2), mintFee);
+        assertEq(0, mockERC20.balanceOf(address(example)));
+        assertEq(mintFee, mockERC20.balanceOf(other2));
+        vm.stopPrank();
+    }
+
     function testMembership() public {
         vm.startPrank(owner);
         uint48 nowC = uint48(block.timestamp);
