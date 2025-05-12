@@ -260,11 +260,10 @@ contract ERC721LazyPayableClaimERC20Test is Test {
 
         // Perform a mint on the claim
         uint256 startingBalance = other.balance;
-        example.mintProxy{value: mintFee * 3}(address(creatorCore), 1, 3, amounts, merkleProofs, other2);
+        example.mintProxy{value: mintFeeNon * 3}(address(creatorCore), 1, 3, amounts, merkleProofs, other2);
         assertEq(3, creatorCore.balanceOf(other2));
         // Ensure funds taken from message sender
-        // This fuzzy number is how much gas was used. Cannot figure out how to do it in forge
-        assertEq(startingBalance - mintFeeNon * 3 - 570000000000000, other.balance);
+        assertEq(startingBalance - mintFeeNon * 3, other.balance);
         assertEq(700, mockERC20.balanceOf(other));
         assertEq(300, mockERC20.balanceOf(owner));
 

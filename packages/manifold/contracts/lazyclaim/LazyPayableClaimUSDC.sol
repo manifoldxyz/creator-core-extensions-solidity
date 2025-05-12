@@ -13,7 +13,7 @@ import "./LazyPayableClaimCore.sol";
 abstract contract LazyPayableClaimUSDC is LazyPayableClaimCore, ILazyPayableClaimUSDC {
     // USDC MINT FEES
     uint256 public constant MINT_FEE = 1000000;
-    uint256 public constant MINT_FEE_MERKLE = 1250000;
+    uint256 public constant MINT_FEE_MERKLE = 1330000;
     // solhint-disable-next-line
     address public immutable USDC_ADDRESS;
 
