@@ -2,16 +2,16 @@
 pragma solidity ^0.8.0;
 
 import "./ERC1155LazyPayableClaimCore.sol";
-import "./LazyPayableClaim.sol";
+import "./LazyPayableClaimUSDC.sol";
 
 /**
- * @title Lazy Payable Claim
+ * @title Lazy Payable Claim USDC
  * @author manifold.xyz
  * @notice Lazy claim with optional whitelist ERC1155 tokens
  */
-contract ERC1155LazyPayableClaim is ERC1155LazyPayableClaimCore, LazyPayableClaim {
-    constructor(address initialOwner, address delegationRegistry, address delegationRegistryV2)
-        LazyPayableClaim(initialOwner, delegationRegistry, delegationRegistryV2)
+contract ERC1155LazyPayableClaimUSDC is ERC1155LazyPayableClaimCore, LazyPayableClaimUSDC {
+    constructor(address initialOwner, address usdcAddress, address delegationRegistry, address delegationRegistryV2)
+        LazyPayableClaimUSDC(initialOwner, usdcAddress, delegationRegistry, delegationRegistryV2)
     {}
 
     function supportsInterface(bytes4 interfaceId)
@@ -21,8 +21,20 @@ contract ERC1155LazyPayableClaim is ERC1155LazyPayableClaimCore, LazyPayableClai
         override(ERC1155LazyPayableClaimCore, AdminControl)
         returns (bool)
     {
-        return type(ILazyPayableClaim).interfaceId == interfaceId
+        return type(ILazyPayableClaimUSDC).interfaceId == interfaceId
             || ERC1155LazyPayableClaimCore.supportsInterface(interfaceId);
+    }
+
+    /**
+     * See {IERC1155LazyClaim-initializeClaim}.
+     */
+    function initializeClaim(
+        address creatorContractAddress,
+        uint256 instanceId,
+        ClaimParameters calldata claimParameters
+    ) public override creatorAdminRequired(creatorContractAddress) {
+        if (claimParameters.erc20 != USDC_ADDRESS) revert InvalidUSDCAddress();
+        ERC1155LazyPayableClaimCore.initializeClaim(creatorContractAddress, instanceId, claimParameters);
     }
 
     /**
@@ -34,7 +46,7 @@ contract ERC1155LazyPayableClaim is ERC1155LazyPayableClaimCore, LazyPayableClai
         uint32 mintIndex,
         bytes32[] calldata merkleProof,
         address mintFor
-    ) external payable override {
+    ) external override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         if (claim.signingAddress != address(0)) revert MustUseSignatureMinting();
@@ -79,7 +91,7 @@ contract ERC1155LazyPayableClaim is ERC1155LazyPayableClaimCore, LazyPayableClai
         uint32[] calldata mintIndices,
         bytes32[][] calldata merkleProofs,
         address mintFor
-    ) external payable override {
+    ) external override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         if (claim.signingAddress != address(0)) revert ILazyPayableClaimCore.MustUseSignatureMinting();
@@ -124,7 +136,7 @@ contract ERC1155LazyPayableClaim is ERC1155LazyPayableClaimCore, LazyPayableClai
         uint32[] calldata mintIndices,
         bytes32[][] calldata merkleProofs,
         address mintFor
-    ) external payable override {
+    ) external override {
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);
 
         if (claim.signingAddress != address(0)) revert ILazyPayableClaimCore.MustUseSignatureMinting();
@@ -171,7 +183,7 @@ contract ERC1155LazyPayableClaim is ERC1155LazyPayableClaimCore, LazyPayableClai
         bytes32 nonce,
         address mintFor,
         uint256 expiration
-    ) external payable override {
+    ) external override {
         address creatorContractAddress = creatorContractAddress;
         uint16 mintCount = mintCount;
         Claim storage claim = _getClaim(creatorContractAddress, instanceId);

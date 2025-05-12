@@ -9,7 +9,9 @@ import "./ILazyPayableClaimCore.sol";
 /**
  * Lazy Payable Claim interface
  */
-interface ILazyPayableClaim is ILazyPayableClaimCore {
+interface ILazyPayableClaimUSDC is ILazyPayableClaimCore {
+    error InvalidUSDCAddress();
+
     /**
      * @notice allow a wallet to lazily claim a token according to parameters
      * @param creatorContractAddress    the creator contract address
@@ -24,7 +26,7 @@ interface ILazyPayableClaim is ILazyPayableClaimCore {
         uint32 mintIndex,
         bytes32[] calldata merkleProof,
         address mintFor
-    ) external payable;
+    ) external;
 
     /**
      * @notice allow a wallet to lazily claim a token according to parameters
@@ -42,7 +44,7 @@ interface ILazyPayableClaim is ILazyPayableClaimCore {
         uint32[] calldata mintIndices,
         bytes32[][] calldata merkleProofs,
         address mintFor
-    ) external payable;
+    ) external;
 
     /**
      * @notice allow a proxy to mint a token for another address
@@ -60,7 +62,7 @@ interface ILazyPayableClaim is ILazyPayableClaimCore {
         uint32[] calldata mintIndices,
         bytes32[][] calldata merkleProofs,
         address mintFor
-    ) external payable;
+    ) external;
 
     /**
      * @notice allowlist minting based on signatures
@@ -81,5 +83,5 @@ interface ILazyPayableClaim is ILazyPayableClaimCore {
         bytes32 nonce,
         address mintFor,
         uint256 expiration
-    ) external payable;
+    ) external;
 }
