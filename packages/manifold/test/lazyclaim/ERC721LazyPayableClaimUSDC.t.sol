@@ -163,8 +163,8 @@ contract ERC721LazyPayableClaimUSDCTest is Test {
         bytes32[][] memory blankProofs = new bytes32[][](0);
         uint32[] memory blankAmounts = new uint32[](0);
 
-        mockERC20.approve(address(example), 1000 + mintFee * 2);
-        mockERC20.fakeMint(other, mintFee * 2);
+        mockERC20.approve(address(example), 1000 + example.MINT_FEE() * 2);
+        mockERC20.fakeMint(other, example.MINT_FEE() * 2);
         example.mintBatch(address(creatorCore), 2, 2, blankAmounts, blankProofs, other);
         assertEq(100, mockERC20.balanceOf(other));
         assertEq(900, mockERC20.balanceOf(owner));
