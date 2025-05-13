@@ -4,13 +4,12 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "./ILazyPayableClaim.sol";
+import "./ILazyPayableClaimCore.sol";
 
 /**
  * Lazy Claim interface
  */
-interface IERC1155LazyPayableClaim is ILazyPayableClaim {
-
+interface IERC1155LazyPayableClaim is ILazyPayableClaimCore {
     struct ClaimParameters {
         uint32 totalMax;
         uint32 walletMax;
@@ -47,7 +46,11 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
      * @param instanceId                the claim instanceId for the creator contract
      * @param claimParameters           the parameters which will affect the minting behavior of the claim
      */
-    function initializeClaim(address creatorContractAddress, uint256 instanceId, ClaimParameters calldata claimParameters) external;
+    function initializeClaim(
+        address creatorContractAddress,
+        uint256 instanceId,
+        ClaimParameters calldata claimParameters
+    ) external;
 
     /**
      * @notice update an existing claim at instanceId
@@ -55,7 +58,8 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
      * @param instanceId                the claim instanceId for the creator contract
      * @param claimParameters           the parameters which will affect the minting behavior of the claim
      */
-    function updateClaim(address creatorContractAddress, uint256 instanceId, ClaimParameters calldata claimParameters) external;
+    function updateClaim(address creatorContractAddress, uint256 instanceId, ClaimParameters calldata claimParameters)
+        external;
 
     /**
      * @notice update tokenURI parameters for an existing claim at instanceId
@@ -64,7 +68,12 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
      * @param storageProtocol           the new storage protocol
      * @param location                  the new location
      */
-    function updateTokenURIParams(address creatorContractAddress, uint256 instanceId, StorageProtocol storageProtocol, string calldata location) external;
+    function updateTokenURIParams(
+        address creatorContractAddress,
+        uint256 instanceId,
+        StorageProtocol storageProtocol,
+        string calldata location
+    ) external;
 
     /**
      * @notice extend tokenURI parameters for an existing claim at instanceId.  Must have NONE StorageProtocol
@@ -72,7 +81,8 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
      * @param instanceId                the claim instanceId for the creator contract
      * @param locationChunk             the additional location chunk
      */
-    function extendTokenURI(address creatorContractAddress, uint256 instanceId, string calldata locationChunk) external;
+    function extendTokenURI(address creatorContractAddress, uint256 instanceId, string calldata locationChunk)
+        external;
 
     /**
      * @notice get a claim corresponding to a creator contract and instanceId
@@ -80,7 +90,7 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
      * @param instanceId                the claim instanceId for the creator contract
      * @return                          the claim object
      */
-    function getClaim(address creatorContractAddress, uint256 instanceId) external view returns(Claim memory);
+    function getClaim(address creatorContractAddress, uint256 instanceId) external view returns (Claim memory);
 
     /**
      * @notice get a claim corresponding to a token
@@ -88,14 +98,22 @@ interface IERC1155LazyPayableClaim is ILazyPayableClaim {
      * @param tokenId                   the tokenId of the claim
      * @return                          the claim instanceId and claim object
      */
-    function getClaimForToken(address creatorContractAddress, uint256 tokenId) external view returns(uint256, Claim memory);
+    function getClaimForToken(address creatorContractAddress, uint256 tokenId)
+        external
+        view
+        returns (uint256, Claim memory);
 
     /**
-     * @notice allow admin to airdrop arbitrary tokens 
+     * @notice allow admin to airdrop arbitrary tokens
      * @param creatorContractAddress    the creator contract the claim will mint tokens for
      * @param instanceId                the claim instanceId for the creator contract
      * @param recipients                addresses to airdrop to
      * @param amounts                   number of tokens to airdrop to each address in addresses
      */
-    function airdrop(address creatorContractAddress, uint256 instanceId, address[] calldata recipients, uint256[] calldata amounts) external;
+    function airdrop(
+        address creatorContractAddress,
+        uint256 instanceId,
+        address[] calldata recipients,
+        uint256[] calldata amounts
+    ) external;
 }
