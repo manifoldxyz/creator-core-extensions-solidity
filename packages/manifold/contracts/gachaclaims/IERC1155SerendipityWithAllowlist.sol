@@ -107,11 +107,11 @@ interface IERC1155SerendipityWithAllowlist is ISerendipity {
   ) external;
 
   /**
-   * @notice mint tokens with merkle proof (for allowlisted addresses)
+   * @notice mint tokens - handles both merkle/allowlist and non-merkle cases
    * @param creatorContractAddress    the creator contract to mint tokens for
    * @param instanceId                the claim instanceId for the creator contract
-   * @param mintIndex                 the index for the merkle proof
-   * @param merkleProof               the merkle proof
+   * @param mintIndex                 the index for the merkle proof (0 for non-merkle)
+   * @param merkleProof               the merkle proof (empty array for non-merkle)
    * @param mintCount                 the number of tokens to mint
    */
   function mintReserve(
@@ -120,22 +120,6 @@ interface IERC1155SerendipityWithAllowlist is ISerendipity {
     uint32 mintIndex,
     bytes32[] calldata merkleProof,
     uint32 mintCount
-  ) external payable;
-
-  /**
-   * @notice mint tokens with multiple merkle proofs (batch mint for allowlisted addresses)
-   * @param creatorContractAddress    the creator contract to mint tokens for
-   * @param instanceId                the claim instanceId for the creator contract
-   * @param mintIndices               the indices for the merkle proofs
-   * @param merkleProofs              the merkle proofs
-   * @param mintCounts                the number of tokens to mint for each proof
-   */
-  function mintReserve(
-    address creatorContractAddress,
-    uint256 instanceId,
-    uint32[] calldata mintIndices,
-    bytes32[][] calldata merkleProofs,
-    uint32[] calldata mintCounts
   ) external payable;
 
   /**

@@ -169,16 +169,14 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
   }
 
   /**
-   * See {ISerendipity-mintReserve}. (Legacy function for non-merkle claims)
+   * See {ISerendipity-mintReserve}. (Legacy function for backward compatibility)
    */
   function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override {
+    // For non-merkle claims, just pass empty proof to unified function
     if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
     Claim storage claim = _getClaim(creatorContractAddress, instanceId);
     
-    // This function is only for non-merkle claims
-    if (claim.merkleRoot != bytes32(0)) revert ISerendipity.InvalidInput();
-    
-    // Checks for reserving
+    // Basic validation
     if (mintCount == 0 || mintCount >= MAX_UINT_32) revert ISerendipity.InvalidMintCount();
     if (claim.startDate > block.timestamp || (claim.endDate > 0 && claim.endDate < block.timestamp))
       revert ISerendipity.ClaimInactive();
@@ -186,7 +184,10 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     if (claim.total == MAX_UINT_32) revert ISerendipity.TooManyRequested();
     if (msg.value != (claim.cost + MINT_FEE) * mintCount) revert ISerendipity.InvalidPayment();
     
-    // Check wallet max for non-merkle claims
+    // This legacy function only works for non-merkle claims
+    if (claim.merkleRoot != bytes32(0)) revert ISerendipity.InvalidInput();
+    
+    // Check wallet max if set
     if (claim.walletMax != 0) {
       uint256 currentMints = _mintsPerWallet[creatorContractAddress][instanceId][msg.sender];
       if (currentMints + mintCount > claim.walletMax) revert ISerendipity.TooManyRequested();
@@ -266,7 +267,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
   }
 
   /**
-   * See {IERC1155SerendipityWithAllowlist-mintReserve} - Single merkle proof version.
+   * See {IERC1155SerendipityWithAllowlist-mintReserve} - Unified implementation for both merkle and non-merkle claims.
    */
   function mintReserve(
     address creatorContractAddress,
@@ -278,9 +279,6 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
     Claim storage claim = _getClaim(creatorContractAddress, instanceId);
     
-    // This function is only for merkle claims
-    if (claim.merkleRoot == bytes32(0)) revert ISerendipity.InvalidInput();
-    
     // Basic validation
     if (mintCount == 0 || mintCount >= MAX_UINT_32) revert ISerendipity.InvalidMintCount();
     if (claim.startDate > block.timestamp || (claim.endDate > 0 && claim.endDate < block.timestamp))
@@ -289,8 +287,19 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     if (claim.total == MAX_UINT_32) revert ISerendipity.TooManyRequested();
     if (msg.value != (claim.cost + MINT_FEE) * mintCount) revert ISerendipity.InvalidPayment();
     
-    // Merkle validation
-    _checkMerkleAndUpdate(creatorContractAddress, instanceId, claim.merkleRoot, mintIndex, merkleProof, msg.sender);
+    // Handle merkle vs non-merkle claims
+    if (claim.merkleRoot != bytes32(0)) {
+      // Merkle claim - validate proof
+      if (merkleProof.length == 0) revert ISerendipity.InvalidInput();
+      _checkMerkleAndUpdate(creatorContractAddress, instanceId, claim.merkleRoot, mintIndex, merkleProof, msg.sender);
+    } else {
+      // Non-merkle claim - check wallet max if set
+      if (claim.walletMax != 0) {
+        uint256 currentMints = _mintsPerWallet[creatorContractAddress][instanceId][msg.sender];
+        if (currentMints + mintCount > claim.walletMax) revert ISerendipity.TooManyRequested();
+        _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] = currentMints + mintCount;
+      }
+    }
     
     // calculate the amount to reserve and update totals
     uint32 amountToReserve = mintCount;
@@ -304,61 +313,6 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     }
     // Refund any overpayment
     if (amountToReserve != mintCount) {
-      uint256 refundAmount = msg.value - (claim.cost + MINT_FEE) * amountToReserve;
-      _sendFunds(payable(msg.sender), refundAmount);
-    }
-    emit SerendipityMintReserved(creatorContractAddress, instanceId, msg.sender, amountToReserve);
-  }
-
-  /**
-   * See {IERC1155SerendipityWithAllowlist-mintReserve} - Multiple merkle proofs version.
-   */
-  function mintReserve(
-    address creatorContractAddress,
-    uint256 instanceId,
-    uint32[] calldata mintIndices,
-    bytes32[][] calldata merkleProofs,
-    uint32[] calldata mintCounts
-  ) external payable override {
-    if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
-    Claim storage claim = _getClaim(creatorContractAddress, instanceId);
-    
-    // This function is only for merkle claims
-    if (claim.merkleRoot == bytes32(0)) revert ISerendipity.InvalidInput();
-    
-    // Array length validation
-    if (mintIndices.length != merkleProofs.length || mintIndices.length != mintCounts.length) 
-      revert ISerendipity.InvalidInput();
-    if (mintIndices.length == 0) revert ISerendipity.InvalidInput();
-    
-    // Basic validation
-    if (claim.startDate > block.timestamp || (claim.endDate > 0 && claim.endDate < block.timestamp))
-      revert ISerendipity.ClaimInactive();
-    if (claim.totalMax != 0 && claim.total == claim.totalMax) revert ISerendipity.ClaimSoldOut();
-    if (claim.total == MAX_UINT_32) revert ISerendipity.TooManyRequested();
-    
-    uint32 totalMintCount = 0;
-    for (uint256 i = 0; i < mintCounts.length; i++) {
-      if (mintCounts[i] == 0 || mintCounts[i] >= MAX_UINT_32) revert ISerendipity.InvalidMintCount();
-      totalMintCount += mintCounts[i];
-      // Validate each merkle proof
-      _checkMerkleAndUpdate(creatorContractAddress, instanceId, claim.merkleRoot, mintIndices[i], merkleProofs[i], msg.sender);
-    }
-    
-    if (msg.value != (claim.cost + MINT_FEE) * totalMintCount) revert ISerendipity.InvalidPayment();
-    
-    // calculate the amount to reserve and update totals
-    uint32 amountToReserve = totalMintCount;
-    if (claim.totalMax != 0) {
-      amountToReserve = uint32(Math.min(totalMintCount, claim.totalMax - claim.total));
-    }
-    claim.total += amountToReserve;
-    _mintDetailsPerWallet[creatorContractAddress][instanceId][msg.sender].reservedCount += amountToReserve;
-    if (claim.cost > 0) {
-      _sendFunds(claim.paymentReceiver, claim.cost * amountToReserve);
-    }
-    // Refund any overpayment
-    if (amountToReserve != totalMintCount) {
       uint256 refundAmount = msg.value - (claim.cost + MINT_FEE) * amountToReserve;
       _sendFunds(payable(msg.sender), refundAmount);
     }

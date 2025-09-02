@@ -208,7 +208,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.stopPrank();
     }
 
-    function testMerkleAllowlistBatchMinting() public {
+    function testMerkleAllowlistMultipleMints() public {
         vm.startPrank(creator);
         uint48 nowC = uint48(block.timestamp);
         uint48 later = nowC + 1000;
@@ -239,26 +239,20 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         example.initializeClaim(address(creatorCore1), 1, claimP);
         vm.stopPrank();
 
-        // Test batch minting with multiple proofs
+        // Test multiple mints with different proofs (sequential instead of batch)
         vm.startPrank(other);
-        uint32[] memory mintIndices = new uint32[](2);
-        mintIndices[0] = 0;
-        mintIndices[1] = 1;
+        uint256 totalCost = 0.01 ether + MINT_FEE;
         
-        bytes32[][] memory merkleProofs = new bytes32[][](2);
-        merkleProofs[0] = merkle.getProof(allowListTuples, 0);
-        merkleProofs[1] = merkle.getProof(allowListTuples, 1);
+        // First mint with index 0
+        bytes32[] memory proof0 = merkle.getProof(allowListTuples, 0);
+        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 0, proof0, 1);
         
-        uint32[] memory mintCounts = new uint32[](2);
-        mintCounts[0] = 1;
-        mintCounts[1] = 2;
-        
-        uint256 totalCost = (0.01 ether + MINT_FEE) * 3; // Total 3 mints
-        
-        example.mintReserve{value: totalCost}(address(creatorCore1), 1, mintIndices, merkleProofs, mintCounts);
+        // Second mint with index 1
+        bytes32[] memory proof1 = merkle.getProof(allowListTuples, 1);
+        example.mintReserve{value: totalCost * 2}(address(creatorCore1), 1, 1, proof1, 2);
         
         Serendipity.UserMintDetails memory userMints = example.getUserMints(other, address(creatorCore1), 1);
-        assertEq(userMints.reservedCount, 3, "Should have reserved 3 mints");
+        assertEq(userMints.reservedCount, 3, "Should have reserved 3 mints total");
         
         // Check both indices are marked as used
         assertTrue(example.checkMintIndex(address(creatorCore1), 1, 0), "Mint index 0 should be used");
@@ -352,27 +346,28 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Mint up to wallet limit
         vm.startPrank(other);
         uint256 totalCost = 0.01 ether + MINT_FEE;
+        bytes32[] memory emptyProof = new bytes32[](0);
         
-        example.mintReserve{value: totalCost * 2}(address(creatorCore1), 1, 2);
+        example.mintReserve{value: totalCost * 2}(address(creatorCore1), 1, 0, emptyProof, 2);
         
         // Check total mints for wallet
         uint32 totalMints = example.getTotalMints(address(creatorCore1), 1, other);
         assertEq(totalMints, 2, "Should have 2 total mints");
         
         // Mint one more to reach limit
-        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 1);
+        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 0, emptyProof, 1);
         
         totalMints = example.getTotalMints(address(creatorCore1), 1, other);
         assertEq(totalMints, 3, "Should have 3 total mints");
         
         // Try to mint beyond limit
         vm.expectRevert(ISerendipity.TooManyRequested.selector);
-        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 1);
+        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 0, emptyProof, 1);
         vm.stopPrank();
 
         // Different wallet should be able to mint
         vm.startPrank(other2);
-        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 1);
+        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 0, emptyProof, 1);
         
         uint32 totalMints2 = example.getTotalMints(address(creatorCore1), 1, other2);
         assertEq(totalMints2, 1, "other2 should have 1 total mint");
@@ -404,9 +399,10 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Should be able to mint many times from same wallet
         vm.startPrank(other);
         uint256 totalCost = 0.01 ether + MINT_FEE;
+        bytes32[] memory emptyProof = new bytes32[](0);
         
         for (uint256 i = 0; i < 10; i++) {
-            example.mintReserve{value: totalCost}(address(creatorCore1), 1, 1);
+            example.mintReserve{value: totalCost}(address(creatorCore1), 1, 0, emptyProof, 1);
         }
         
         Serendipity.UserMintDetails memory userMints = example.getUserMints(other, address(creatorCore1), 1);
@@ -437,14 +433,17 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         });
 
         example.initializeClaim(address(creatorCore1), 1, claimP);
+        vm.stopPrank();
 
-        // Test original mintReserve function (without merkle parameters)
-        example.mintReserve{value: (0.01 ether + MINT_FEE) * 2}(address(creatorCore1), 1, 2);
+        // Test unified mintReserve function with empty merkle parameters for non-merkle claim
+        vm.startPrank(creator);
+        bytes32[] memory emptyProof = new bytes32[](0);
+        example.mintReserve{value: (0.01 ether + MINT_FEE) * 2}(address(creatorCore1), 1, 0, emptyProof, 2);
         vm.stopPrank();
 
         // Verify it works like original
         vm.startPrank(other);
-        example.mintReserve{value: 0.01 ether + MINT_FEE}(address(creatorCore1), 1, 1);
+        example.mintReserve{value: 0.01 ether + MINT_FEE}(address(creatorCore1), 1, 0, emptyProof, 1);
         
         Serendipity.UserMintDetails memory userMints = example.getUserMints(other, address(creatorCore1), 1);
         assertEq(userMints.reservedCount, 1, "Should have reserved 1 mint");
@@ -468,7 +467,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.stopPrank();
     }
 
-    function testOriginalFunctionsRejectMerkleInput() public {
+    function testMerkleClaimRequiresProof() public {
         vm.startPrank(creator);
         uint48 nowC = uint48(block.timestamp);
         uint48 later = nowC + 1000;
@@ -497,14 +496,15 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         example.initializeClaim(address(creatorCore1), 1, claimP);
         vm.stopPrank();
 
-        // Original mintReserve should reject merkle claims
+        // Merkle claim should reject empty proof
         vm.startPrank(other);
+        bytes32[] memory emptyProof = new bytes32[](0);
         vm.expectRevert(ISerendipity.InvalidInput.selector);
-        example.mintReserve{value: 0.01 ether + MINT_FEE}(address(creatorCore1), 1, 1);
+        example.mintReserve{value: 0.01 ether + MINT_FEE}(address(creatorCore1), 1, 0, emptyProof, 1);
         vm.stopPrank();
     }
 
-    function testMerkleFunctionsRejectNonMerkleInput() public {
+    function testNonMerkleClaimAcceptsEmptyProof() public {
         vm.startPrank(creator);
         uint48 nowC = uint48(block.timestamp);
         uint48 later = nowC + 1000;
@@ -527,12 +527,16 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         example.initializeClaim(address(creatorCore1), 1, claimP);
         vm.stopPrank();
 
-        // Merkle mintReserve should reject non-merkle claims
+        // Non-merkle claim should accept empty proof
         vm.startPrank(other);
         bytes32[] memory emptyProof = new bytes32[](0);
         
-        vm.expectRevert(ISerendipity.InvalidInput.selector);
+        // This should now work with the unified function
         example.mintReserve{value: 0.01 ether + MINT_FEE}(address(creatorCore1), 1, 0, emptyProof, 1);
+        
+        // Verify mint was successful
+        Serendipity.UserMintDetails memory userMints = example.getUserMints(other, address(creatorCore1), 1);
+        assertEq(userMints.reservedCount, 1, "Should have reserved 1 mint");
         vm.stopPrank();
 
         // checkMintIndex should reject non-merkle claims
@@ -729,52 +733,6 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.stopPrank();
     }
 
-    function testBatchMintingInvalidArrays() public {
-        vm.startPrank(creator);
-        uint48 nowC = uint48(block.timestamp);
-        uint48 later = nowC + 1000;
-
-        bytes32[] memory allowListTuples = new bytes32[](2);
-        allowListTuples[0] = keccak256(abi.encodePacked(other, uint32(0)));
-        allowListTuples[1] = keccak256(abi.encodePacked(other, uint32(1)));
-        bytes32 merkleRoot = merkle.getRoot(allowListTuples);
-
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory claimP = IERC1155SerendipityWithAllowlist.ClaimParameters({
-            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
-            totalMax: 10,
-            startDate: nowC,
-            endDate: later,
-            tokenVariations: 5,
-            location: "arweaveHash1",
-            paymentReceiver: payable(creator),
-            cost: 0.01 ether,
-            erc20: zeroAddress,
-            merkleRoot: merkleRoot,
-            walletMax: 0
-        });
-
-        example.initializeClaim(address(creatorCore1), 1, claimP);
-        vm.stopPrank();
-
-        vm.startPrank(other);
-        
-        // Mismatched array lengths
-        uint32[] memory mintIndices = new uint32[](2);
-        bytes32[][] memory merkleProofs = new bytes32[][](1); // Different length
-        uint32[] memory mintCounts = new uint32[](2);
-        
-        vm.expectRevert(ISerendipity.InvalidInput.selector);
-        example.mintReserve{value: 0}(address(creatorCore1), 1, mintIndices, merkleProofs, mintCounts);
-
-        // Empty arrays
-        uint32[] memory emptyIndices = new uint32[](0);
-        bytes32[][] memory emptyProofs = new bytes32[][](0);
-        uint32[] memory emptyCounts = new uint32[](0);
-        
-        vm.expectRevert(ISerendipity.InvalidInput.selector);
-        example.mintReserve{value: 0}(address(creatorCore1), 1, emptyIndices, emptyProofs, emptyCounts);
-        vm.stopPrank();
-    }
 
     function testContractCannotMint() public {
         vm.startPrank(creator);
@@ -804,7 +762,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         
         // Contract should not be able to mint
         vm.expectRevert(ISerendipity.CannotMintFromContract.selector);
-        minter.attemptMint(example, address(creatorCore1), 1, 0.01 ether + MINT_FEE);
+        minter.attemptMint(example, address(creatorCore1), 1, 0, 0.01 ether + MINT_FEE);
     }
 
     // ============ REFUND AND PAYMENT TESTS ============
@@ -919,8 +877,9 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         // Benchmark non-merkle mint
         vm.startPrank(other);
+        bytes32[] memory emptyProof = new bytes32[](0);
         uint256 gasStart = gasleft();
-        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 1);
+        example.mintReserve{value: totalCost}(address(creatorCore1), 1, 0, emptyProof, 1);
         uint256 gasUsedNonMerkle = gasStart - gasleft();
         vm.stopPrank();
 
@@ -1049,10 +1008,11 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         assertEq(updatedClaim.walletMax, 0, "Wallet max should be cleared");
         vm.stopPrank();
 
-        // Now should only accept merkle mints
+        // Now should only accept merkle mints with proof
         vm.startPrank(other);
+        bytes32[] memory emptyProof = new bytes32[](0);
         vm.expectRevert(ISerendipity.InvalidInput.selector);
-        example.mintReserve{value: 0.01 ether + MINT_FEE}(address(creatorCore1), 1, 1);
+        example.mintReserve{value: 0.01 ether + MINT_FEE}(address(creatorCore1), 1, 0, emptyProof, 1);
 
         // But merkle mint should work
         bytes32[] memory proof = merkle.getProof(allowListTuples, 0);
@@ -1291,9 +1251,11 @@ contract ContractMinter {
     function attemptMint(
         ERC1155SerendipityWithAllowlist target, 
         address creatorContract, 
-        uint256 instanceId, 
+        uint256 instanceId,
+        uint32 mintIndex,
         uint256 value
     ) external {
-        target.mintReserve{value: value}(creatorContract, instanceId, 1);
+        bytes32[] memory emptyProof = new bytes32[](0);
+        target.mintReserve{value: value}(creatorContract, instanceId, mintIndex, emptyProof, 1);
     }
 }
