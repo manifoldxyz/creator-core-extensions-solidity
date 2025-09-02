@@ -7,9 +7,9 @@ pragma solidity ^0.8.0;
 import "./ISerendipity.sol";
 
 /**
- * Serendipity Lazy Claim interface for ERC-1155
+ * Serendipity Lazy Claim interface for ERC-1155 with allowlist support
  */
-interface IERC1155Serendipity is ISerendipity {
+interface IERC1155SerendipityWithAllowlist is ISerendipity {
   struct Claim {
     StorageProtocol storageProtocol;
     uint32 total;
@@ -22,6 +22,8 @@ interface IERC1155Serendipity is ISerendipity {
     address payable paymentReceiver;
     uint96 cost;
     address erc20;
+    bytes32 merkleRoot;
+    uint32 walletMax;
   }
 
   struct ClaimParameters {
@@ -34,6 +36,8 @@ interface IERC1155Serendipity is ISerendipity {
     address payable paymentReceiver;
     uint96 cost;
     address erc20;
+    bytes32 merkleRoot;
+    uint32 walletMax;
   }
 
   struct UpdateClaimParameters {
@@ -44,6 +48,8 @@ interface IERC1155Serendipity is ISerendipity {
     uint48 endDate;
     uint96 cost;
     string location;
+    bytes32 merkleRoot;
+    uint32 walletMax;
   }
 
   /**
@@ -99,4 +105,63 @@ interface IERC1155Serendipity is ISerendipity {
     StorageProtocol storageProtocol,
     string calldata location
   ) external;
+
+  /**
+   * @notice mint tokens with merkle proof (for allowlisted addresses)
+   * @param creatorContractAddress    the creator contract to mint tokens for
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintIndex                 the index for the merkle proof
+   * @param merkleProof               the merkle proof
+   * @param mintCount                 the number of tokens to mint
+   */
+  function mintReserve(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint32 mintIndex,
+    bytes32[] calldata merkleProof,
+    uint32 mintCount
+  ) external payable;
+
+  /**
+   * @notice mint tokens with multiple merkle proofs (batch mint for allowlisted addresses)
+   * @param creatorContractAddress    the creator contract to mint tokens for
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintIndices               the indices for the merkle proofs
+   * @param merkleProofs              the merkle proofs
+   * @param mintCounts                the number of tokens to mint for each proof
+   */
+  function mintReserve(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint32[] calldata mintIndices,
+    bytes32[][] calldata merkleProofs,
+    uint32[] calldata mintCounts
+  ) external payable;
+
+  /**
+   * @notice check if a mint index has been used
+   * @param creatorContractAddress    the creator contract address
+   * @param instanceId                the claim instanceId
+   * @param mintIndex                 the index to check
+   * @return                          true if the index has been used
+   */
+  function checkMintIndex(address creatorContractAddress, uint256 instanceId, uint32 mintIndex) external view returns (bool);
+
+  /**
+   * @notice check multiple mint indices
+   * @param creatorContractAddress    the creator contract address
+   * @param instanceId                the claim instanceId
+   * @param mintIndices               the indices to check
+   * @return                          array of booleans indicating which indices have been used
+   */
+  function checkMintIndices(address creatorContractAddress, uint256 instanceId, uint32[] calldata mintIndices) external view returns (bool[] memory);
+
+  /**
+   * @notice get total mints for a wallet (non-merkle claims only)
+   * @param creatorContractAddress    the creator contract address
+   * @param instanceId                the claim instanceId
+   * @param minter                    the minter address
+   * @return                          the total number of mints
+   */
+  function getTotalMints(address creatorContractAddress, uint256 instanceId, address minter) external view returns (uint32);
 }
