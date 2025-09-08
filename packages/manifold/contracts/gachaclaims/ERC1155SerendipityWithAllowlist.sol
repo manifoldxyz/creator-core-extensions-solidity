@@ -382,20 +382,6 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
         return ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message)), v, r, s);
     }
 
-    // Additional helper functions for testing compatibility
-    function updateAllowlist(
-        address creatorContractAddress,
-        uint256 instanceId,
-        bytes32 merkleRoot,
-        uint32 walletMax
-    ) external creatorAdminRequired(creatorContractAddress) {
-        Claim storage claim = _claims[creatorContractAddress][instanceId];
-        if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
-        claim.merkleRoot = merkleRoot;
-        claim.walletMax = walletMax;
-        emit SerendipityClaimUpdated(creatorContractAddress, instanceId);
-    }
-
     // Additional error definitions (not in base contracts)
     error InvalidMerkleProof();
     error AlreadyMinted();
