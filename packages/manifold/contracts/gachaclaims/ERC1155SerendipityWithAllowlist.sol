@@ -59,7 +59,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
         ClaimParameters calldata claimParameters
     ) external payable creatorAdminRequired(creatorContractAddress) {
         if (deprecated) revert ContractDeprecated();
-        if (instanceId == 0 || instanceId > MAX_UINT_56) revert InvalidInstance();
+        if (instanceId == 0 || instanceId > MAX_UINT_56) revert ISerendipity.InvalidInstance();
         if (_claims[creatorContractAddress][instanceId].storageProtocol != StorageProtocol.INVALID)
             revert ClaimAlreadyInitialized();
         
@@ -148,6 +148,12 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
         uint32 mintCount,
         bytes32[] calldata merkleProof
     ) external payable override nonReentrant {
+        // Check that contracts cannot mint
+        if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
+        
+        // Validate mint count
+        if (mintCount == 0 || mintCount >= MAX_UINT_32) revert ISerendipity.InvalidMintCount();
+        
         Claim storage claim = _claims[creatorContractAddress][instanceId];
         
         // Validate claim is active
@@ -222,9 +228,9 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
 
             for (uint256 j; j < mintData.variationMints.length; ) {
                 VariationMint calldata variationMint = mintData.variationMints[j];
-                if (variationMint.variationIndex > MAX_UINT_8) revert InvalidVariationIndex();
+                if (variationMint.variationIndex > MAX_UINT_8) revert ISerendipity.InvalidVariationIndex();
                 uint8 variationIndex = variationMint.variationIndex;
-                if (variationIndex > claim.tokenVariations || variationIndex < 1) revert InvalidVariationIndex();
+                if (variationIndex > claim.tokenVariations || variationIndex < 1) revert ISerendipity.InvalidVariationIndex();
                 address recipient = variationMint.recipient;
                 if (variationMint.amount > MAX_UINT_32) revert TooManyRequested();
                 uint32 amount = variationMint.amount;
@@ -361,7 +367,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
      * @notice Recover signer from signature
      */
     function _recoverSigner(bytes32 message, bytes memory signature) private pure returns (address) {
-        if (signature.length != 65) revert InvalidSignature();
+        if (signature.length != 65) revert ISerendipity.InvalidSignature();
         
         bytes32 r;
         bytes32 s;
@@ -377,14 +383,13 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
             v += 27;
         }
         
-        if (v != 27 && v != 28) revert InvalidSignature();
+        if (v != 27 && v != 28) revert ISerendipity.InvalidSignature();
         
         return ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message)), v, r, s);
     }
 
     // Additional error definitions (not in base contracts)
     error InvalidMerkleProof();
-    error AlreadyMinted();
     error InvalidToken();
     
     // Additional event for delivery tracking

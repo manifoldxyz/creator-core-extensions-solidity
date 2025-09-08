@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 contract ERC1155SerendipityWithAllowlistTest is Test {
     ERC1155SerendipityWithAllowlist public extension;
     ERC1155Creator public creatorCore;
+    ERC1155Creator public creatorCore2;
 
     address public creator = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
     address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
@@ -22,6 +23,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
     uint256 public constant MINT_FEE = 500000000000000;
     uint256 public constant MINT_FEE_MERKLE = 690000000000000;
+    uint32 constant MAX_UINT_32 = 0xffffffff;
 
     // Merkle tree data for testing (alice, bob, charlie)
     bytes32 public merkleRoot;
@@ -30,9 +32,10 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     bytes32[] public charlieProof;
 
     function setUp() public {
-        // Deploy creator contract
+        // Deploy creator contracts
         vm.startPrank(creator);
         creatorCore = new ERC1155Creator("Test", "TEST");
+        creatorCore2 = new ERC1155Creator("Test2", "TEST2");
         vm.stopPrank();
 
         // Deploy extension
@@ -41,9 +44,10 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         extension.setSigner(signingAddress);
         vm.stopPrank();
 
-        // Register extension
+        // Register extension with both creator contracts
         vm.startPrank(creator);
         creatorCore.registerExtension(address(extension), "override");
+        creatorCore2.registerExtension(address(extension), "override");
         vm.stopPrank();
 
         // Setup merkle tree
@@ -819,4 +823,506 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         extension.withdraw(payable(owner), 0.5 ether);
         assertEq(owner.balance - balanceBefore, 0.5 ether);
     }
+
+    // ============ Additional Tests from Base ERC1155Serendipity ============
+
+    function test_setSigner_onlyAdmin() public {
+        address newSigner = address(0x123);
+        
+        // Non-admin cannot set signer
+        vm.startPrank(unauthorized);
+        vm.expectRevert("AdminControl: Must be owner or admin");
+        extension.setSigner(newSigner);
+        vm.stopPrank();
+
+        // Admin can set signer
+        vm.startPrank(owner);
+        extension.setSigner(newSigner);
+        vm.stopPrank();
+
+        // Verify new signer works
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 5,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+        extension.initializeClaim(address(creatorCore), 80, params);
+        vm.deal(creator, 10 ether);
+        extension.mintReserve{value: MINT_FEE}(address(creatorCore), 80, 1, new bytes32[](0));
+        vm.stopPrank();
+
+        // Old signer should fail
+        vm.startPrank(signingAddress);
+        ISerendipity.VariationMint[] memory variations = new ISerendipity.VariationMint[](1);
+        variations[0] = ISerendipity.VariationMint({
+            variationIndex: 1,
+            amount: 1,
+            recipient: creator
+        });
+        ISerendipity.ClaimMint[] memory mints = new ISerendipity.ClaimMint[](1);
+        mints[0] = ISerendipity.ClaimMint({
+            creatorContractAddress: address(creatorCore),
+            instanceId: 80,
+            variationMints: variations
+        });
+        vm.expectRevert(ISerendipity.InvalidSignature.selector);
+        extension.deliverMints(mints);
+        vm.stopPrank();
+
+        // New signer should work
+        vm.startPrank(newSigner);
+        extension.deliverMints(mints);
+        vm.stopPrank();
+    }
+
+    function test_initializeClaimSanitization() public {
+        vm.startPrank(creator);
+
+        uint48 nowC = uint48(block.timestamp);
+        uint48 later = nowC + 1000;
+
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.INVALID,
+            totalMax: 100,
+            startDate: nowC,
+            endDate: later,
+            tokenVariations: 5,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0.01 ether,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+
+        // Invalid storage protocol
+        vm.expectRevert(ISerendipity.InvalidStorageProtocol.selector);
+        extension.initializeClaim(address(creatorCore), 81, params);
+
+        // Invalid date (start > end)
+        params.storageProtocol = ISerendipity.StorageProtocol.ARWEAVE;
+        params.startDate = nowC + 2000;
+        vm.expectRevert(ISerendipity.InvalidDate.selector);
+        extension.initializeClaim(address(creatorCore), 81, params);
+
+        // Successful with no end date
+        params.endDate = 0;
+        extension.initializeClaim(address(creatorCore), 81, params);
+
+        // Successful with no start date
+        params.startDate = 0;
+        params.endDate = later;
+        extension.initializeClaim(address(creatorCore), 82, params);
+
+        // Successful with no start or end date
+        params.endDate = 0;
+        extension.initializeClaim(address(creatorCore), 83, params);
+    }
+
+    function test_mintReserveInvalidCases() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 5,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0.01 ether,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+
+        extension.initializeClaim(address(creatorCore), 90, params);
+
+        // Test minting 0 tokens
+        vm.expectRevert(ISerendipity.InvalidMintCount.selector);
+        extension.mintReserve{value: 0}(address(creatorCore), 90, 0, new bytes32[](0));
+
+        // Test minting MAX_UINT_32 tokens
+        vm.expectRevert(ISerendipity.InvalidMintCount.selector);
+        extension.mintReserve{value: 0}(address(creatorCore), 90, MAX_UINT_32, new bytes32[](0));
+    }
+
+    function test_mintFromContract_reverts() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 5,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+
+        extension.initializeClaim(address(creatorCore), 91, params);
+        vm.stopPrank();
+
+        // Deploy a contract that tries to mint
+        MintingContract mintContract = new MintingContract(extension);
+        vm.deal(address(mintContract), 1 ether);
+        
+        vm.expectRevert(ISerendipity.CannotMintFromContract.selector);
+        mintContract.tryMint(address(creatorCore), 91);
+    }
+
+    function test_getClaimForToken() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.IPFS,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "ipfs-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 5
+        });
+
+        extension.initializeClaim(address(creatorCore), 95, params);
+        
+        IERC1155SerendipityWithAllowlist.Claim memory claim = extension.getClaim(address(creatorCore), 95);
+        uint256 startingTokenId = claim.startingTokenId;
+
+        // Test getting claim for each token variation
+        for (uint256 i = 0; i < 3; i++) {
+            (uint256 instanceId, IERC1155SerendipityWithAllowlist.Claim memory tokenClaim) = 
+                extension.getClaimForToken(address(creatorCore), startingTokenId + i);
+            
+            assertEq(instanceId, 95);
+            assertEq(tokenClaim.totalMax, 100);
+            assertEq(tokenClaim.merkleRoot, merkleRoot);
+            assertEq(tokenClaim.walletMax, 5);
+        }
+
+        // Test non-existent token
+        vm.expectRevert(ISerendipity.ClaimNotInitialized.selector);
+        extension.getClaimForToken(address(creatorCore), startingTokenId + 100);
+    }
+
+    function test_multipleCreatorContracts() public {
+        vm.startPrank(creator);
+        
+        // Create claim on first creator contract
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params1 = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 50,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 2,
+            location: "location1",
+            paymentReceiver: payable(creator),
+            cost: 0.01 ether,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 2
+        });
+        extension.initializeClaim(address(creatorCore), 100, params1);
+
+        // Create claim on second creator contract with same instance ID
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params2 = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.IPFS,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 2000),
+            tokenVariations: 5,
+            location: "location2",
+            paymentReceiver: payable(bob),
+            cost: 0.02 ether,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 10
+        });
+        extension.initializeClaim(address(creatorCore2), 100, params2);
+
+        // Verify claims are independent
+        IERC1155SerendipityWithAllowlist.Claim memory claim1 = extension.getClaim(address(creatorCore), 100);
+        IERC1155SerendipityWithAllowlist.Claim memory claim2 = extension.getClaim(address(creatorCore2), 100);
+
+        assertEq(claim1.totalMax, 50);
+        assertEq(claim1.location, "location1");
+        assertEq(claim1.merkleRoot, merkleRoot);
+        
+        assertEq(claim2.totalMax, 100);
+        assertEq(claim2.location, "location2");
+        assertEq(claim2.merkleRoot, bytes32(0));
+        
+        vm.stopPrank();
+
+        // Test minting on each independently
+        vm.startPrank(alice);
+        extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
+            address(creatorCore), 100, 1, aliceProof
+        );
+        
+        extension.mintReserve{value: 0.02 ether + MINT_FEE}(
+            address(creatorCore2), 100, 1, new bytes32[](0)
+        );
+        
+        // Verify mints are tracked separately
+        ISerendipity.UserMintDetails memory details1 = extension.getUserMints(alice, address(creatorCore), 100);
+        ISerendipity.UserMintDetails memory details2 = extension.getUserMints(alice, address(creatorCore2), 100);
+        
+        assertEq(details1.reservedCount, 1);
+        assertEq(details2.reservedCount, 1);
+    }
+
+    function test_invalidInstanceIds() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 5,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+
+        // Test instance ID 0
+        vm.expectRevert(ISerendipity.InvalidInstance.selector);
+        extension.initializeClaim(address(creatorCore), 0, params);
+
+        // Test instance ID > MAX_UINT_56
+        vm.expectRevert(ISerendipity.InvalidInstance.selector);
+        extension.initializeClaim(address(creatorCore), 2**56, params);
+
+        // Valid instance ID at boundary should work
+        extension.initializeClaim(address(creatorCore), 2**56 - 1, params);
+    }
+
+    function test_deliverMoreThanReserved_reverts() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 5,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+
+        extension.initializeClaim(address(creatorCore), 110, params);
+        
+        // Alice reserves 2  
+        vm.deal(creator, 10 ether);
+        extension.mintReserve{value: MINT_FEE * 2}(address(creatorCore), 110, 2, new bytes32[](0));
+        vm.stopPrank();
+
+        // Try to deliver 3 (more than reserved)
+        vm.startPrank(signingAddress);
+        ISerendipity.VariationMint[] memory variations = new ISerendipity.VariationMint[](1);
+        variations[0] = ISerendipity.VariationMint({
+            variationIndex: 1,
+            amount: 3,
+            recipient: creator
+        });
+        ISerendipity.ClaimMint[] memory mints = new ISerendipity.ClaimMint[](1);
+        mints[0] = ISerendipity.ClaimMint({
+            creatorContractAddress: address(creatorCore),
+            instanceId: 110,
+            variationMints: variations
+        });
+
+        vm.expectRevert(ISerendipity.CannotMintMoreThanReserved.selector);
+        extension.deliverMints(mints);
+    }
+
+    function test_invalidVariationIndex_reverts() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+
+        extension.initializeClaim(address(creatorCore), 111, params);
+        vm.deal(creator, 10 ether);
+        extension.mintReserve{value: MINT_FEE}(address(creatorCore), 111, 1, new bytes32[](0));
+        vm.stopPrank();
+
+        vm.startPrank(signingAddress);
+        
+        // Test variation index 0 (invalid - should be 1-based)
+        ISerendipity.VariationMint[] memory variations = new ISerendipity.VariationMint[](1);
+        variations[0] = ISerendipity.VariationMint({
+            variationIndex: 0,
+            amount: 1,
+            recipient: creator
+        });
+        ISerendipity.ClaimMint[] memory mints = new ISerendipity.ClaimMint[](1);
+        mints[0] = ISerendipity.ClaimMint({
+            creatorContractAddress: address(creatorCore),
+            instanceId: 111,
+            variationMints: variations
+        });
+
+        vm.expectRevert(ISerendipity.InvalidVariationIndex.selector);
+        extension.deliverMints(mints);
+
+        // Test variation index > tokenVariations
+        variations[0].variationIndex = 4; // Only 3 variations allowed
+        vm.expectRevert(ISerendipity.InvalidVariationIndex.selector);
+        extension.deliverMints(mints);
+
+        // Valid variation index should work
+        variations[0].variationIndex = 2;
+        extension.deliverMints(mints);
+    }
+
+    function test_claimAlreadyInitialized_reverts() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 5,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+
+        // Initialize claim once
+        extension.initializeClaim(address(creatorCore), 120, params);
+
+        // Try to initialize same claim again
+        vm.expectRevert(ISerendipity.ClaimAlreadyInitialized.selector);
+        extension.initializeClaim(address(creatorCore), 120, params);
+    }
+
+    function test_updateNonExistentClaim_reverts() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.UpdateClaimParameters memory updateParams = IERC1155SerendipityWithAllowlist.UpdateClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.IPFS,
+            paymentReceiver: payable(bob),
+            totalMax: 200,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 2000),
+            cost: 0.02 ether,
+            location: "updated-location",
+            merkleRoot: merkleRoot,
+            walletMax: 3
+        });
+
+        // Try to update non-existent claim
+        vm.expectRevert(ISerendipity.ClaimNotInitialized.selector);
+        extension.updateClaim(address(creatorCore), 999, updateParams);
+    }
+
+    function test_totalMaxReached_handlesMultipleMinters() public {
+        vm.startPrank(creator);
+        
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 3,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 5,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0.01 ether,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 10
+        });
+
+        extension.initializeClaim(address(creatorCore), 130, params);
+        vm.stopPrank();
+
+        // Alice mints 1
+        vm.startPrank(alice);
+        extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
+            address(creatorCore), 130, 1, aliceProof
+        );
+        vm.stopPrank();
+
+        // Bob mints 1
+        vm.startPrank(bob);
+        extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
+            address(creatorCore), 130, 1, bobProof
+        );
+        vm.stopPrank();
+
+        // Charlie mints 1 (should reach max)
+        vm.startPrank(charlie);
+        extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
+            address(creatorCore), 130, 1, charlieProof
+        );
+        vm.stopPrank();
+
+        // Alice tries to mint again (should fail - sold out)
+        vm.startPrank(alice);
+        vm.expectRevert(ISerendipity.ClaimSoldOut.selector);
+        extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
+            address(creatorCore), 130, 1, aliceProof
+        );
+    }
+}
+
+// Helper contract to test contract minting restriction
+contract MintingContract {
+    ERC1155SerendipityWithAllowlist public extension;
+    
+    constructor(ERC1155SerendipityWithAllowlist _extension) {
+        extension = _extension;
+    }
+    
+    function tryMint(address creatorContract, uint256 instanceId) external {
+        extension.mintReserve{value: MINT_FEE}(
+            creatorContract, 
+            instanceId, 
+            1, 
+            new bytes32[](0)
+        );
+    }
+    
+    uint256 constant MINT_FEE = 500000000000000;
 }
