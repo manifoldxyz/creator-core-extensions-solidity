@@ -23,3 +23,7 @@ out
 broadcast
 
 lcov.info
+
+# Claude directories
+.claude/
+**/.claude/

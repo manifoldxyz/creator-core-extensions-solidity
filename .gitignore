@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+out/
+cache/
+coverage/
+coverage.json
+lcov.info
+
+# IDE and OS files
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Claude directories
+.claude/
+**/.claude/
+
+# Documentation build files
+DISCOVERY_ANALYSIS.md
+INTELLIGENT_EXECUTION_PLAN.md
+IMPLEMENTATION_SPEC.md
+PARALLEL_AGENTS_TASKS.md
+handoff-reports/
