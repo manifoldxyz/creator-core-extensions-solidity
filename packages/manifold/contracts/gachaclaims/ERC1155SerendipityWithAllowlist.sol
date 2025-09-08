@@ -13,46 +13,24 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./Serendipity.sol";
-import "./IERC1155Serendipity.sol";
+import "./IERC1155SerendipityWithAllowlist.sol";
 
 /**
  * @title ERC1155 Serendipity With Allowlist
  * @author manifold.xyz
  * @notice Extends ERC1155Serendipity with merkle-based allowlist functionality
  */
-contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreatorExtensionTokenURI, Serendipity, ReentrancyGuard {
+contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllowlist, ICreatorExtensionTokenURI, Serendipity, ReentrancyGuard {
     using Strings for uint256;
 
     // Additional constants for merkle functionality
     uint256 public constant MINT_FEE_MERKLE = 690000000000000; // 0.00069 ETH
-    uint256 private constant MINT_INDEX_BITMASK = 0xff;
-
-    // Extended claim structure with allowlist fields
-    struct ClaimWithAllowlist {
-        StorageProtocol storageProtocol;
-        uint32 total;
-        uint32 totalMax;
-        uint48 startDate;
-        uint48 endDate;
-        uint80 startingTokenId;
-        uint8 tokenVariations;
-        string location;
-        address payable paymentReceiver;
-        uint96 cost;
-        address erc20;
-        // Additional allowlist fields
-        bytes32 merkleRoot;
-        uint32 walletMax;
-    }
 
     // Storage mappings following existing pattern
-    mapping(address => mapping(uint256 => ClaimWithAllowlist)) private _claims;
+    mapping(address => mapping(uint256 => Claim)) private _claims;
     mapping(address => mapping(uint256 => uint256)) private _tokenInstances;
     
-    // Merkle proof tracking (same pattern as LazyPayableClaimCore)
-    mapping(address => mapping(uint256 => mapping(uint256 => uint256))) private _claimMintIndices;
-    
-    // Track mints per wallet for non-merkle claims
+    // Track mints per wallet for wallet max validation
     mapping(address => mapping(uint256 => mapping(address => uint256))) private _mintsPerWallet;
 
     constructor(address initialOwner) Serendipity(initialOwner) {}
@@ -65,7 +43,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         returns (bool) 
     {
         return
-            interfaceId == type(IERC1155Serendipity).interfaceId ||
+            interfaceId == type(IERC1155SerendipityWithAllowlist).interfaceId ||
             interfaceId == type(ISerendipity).interfaceId ||
             interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
             interfaceId == type(IAdminControl).interfaceId ||
@@ -79,43 +57,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         address creatorContractAddress,
         uint256 instanceId,
         ClaimParameters calldata claimParameters
-    ) external payable override creatorAdminRequired(creatorContractAddress) {
-        // Initialize with empty merkle root and no wallet max (backward compatible)
-        _initializeClaimWithAllowlist(
-            creatorContractAddress,
-            instanceId,
-            claimParameters,
-            bytes32(0),
-            0
-        );
-    }
-
-    /**
-     * @notice Initialize a claim with merkle allowlist
-     */
-    function initializeClaimWithAllowlist(
-        address creatorContractAddress,
-        uint256 instanceId,
-        ClaimParameters calldata claimParameters,
-        bytes32 merkleRoot,
-        uint32 walletMax
     ) external payable creatorAdminRequired(creatorContractAddress) {
-        _initializeClaimWithAllowlist(
-            creatorContractAddress,
-            instanceId,
-            claimParameters,
-            merkleRoot,
-            walletMax
-        );
-    }
-
-    function _initializeClaimWithAllowlist(
-        address creatorContractAddress,
-        uint256 instanceId,
-        ClaimParameters memory claimParameters,
-        bytes32 merkleRoot,
-        uint32 walletMax
-    ) private {
         if (deprecated) revert ContractDeprecated();
         if (instanceId == 0 || instanceId > MAX_UINT_56) revert InvalidInstance();
         if (_claims[creatorContractAddress][instanceId].storageProtocol != StorageProtocol.INVALID)
@@ -139,7 +81,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         if (newTokenIds[0] > MAX_UINT_80) revert InvalidStartingTokenId();
 
         // Store claim with allowlist fields
-        _claims[creatorContractAddress][instanceId] = ClaimWithAllowlist({
+        _claims[creatorContractAddress][instanceId] = Claim({
             storageProtocol: claimParameters.storageProtocol,
             total: 0,
             totalMax: claimParameters.totalMax,
@@ -151,8 +93,8 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
             paymentReceiver: claimParameters.paymentReceiver,
             cost: claimParameters.cost,
             erc20: claimParameters.erc20,
-            merkleRoot: merkleRoot,
-            walletMax: walletMax
+            merkleRoot: claimParameters.merkleRoot,
+            walletMax: claimParameters.walletMax
         });
 
         for (uint256 i; i < claimParameters.tokenVariations; ) {
@@ -166,103 +108,47 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
     }
 
     /**
-     * @notice Update an existing claim
+     * @notice Update an existing claim with all parameters including allowlist
      */
     function updateClaim(
         address creatorContractAddress,
         uint256 instanceId,
         UpdateClaimParameters calldata updateClaimParameters
     ) external override creatorAdminRequired(creatorContractAddress) {
-        ClaimWithAllowlist storage claim = _claims[creatorContractAddress][instanceId];
-        if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
+        if (deprecated) revert ContractDeprecated();
         
-        // Update claim parameters
-        if (updateClaimParameters.storageProtocol != StorageProtocol.INVALID) {
-            claim.storageProtocol = updateClaimParameters.storageProtocol;
-        }
-        claim.paymentReceiver = updateClaimParameters.paymentReceiver;
+        Claim storage claim = _claims[creatorContractAddress][instanceId];
+        if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
+        if (updateClaimParameters.storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
+        if (updateClaimParameters.endDate != 0 && updateClaimParameters.startDate >= updateClaimParameters.endDate)
+            revert InvalidDate();
+        if (updateClaimParameters.totalMax > MAX_UINT_32) revert InvalidInput();
+        if (updateClaimParameters.cost > MAX_UINT_96) revert InvalidInput();
+
+        // Update all claim fields including allowlist
+        claim.storageProtocol = updateClaimParameters.storageProtocol;
         claim.totalMax = updateClaimParameters.totalMax;
         claim.startDate = updateClaimParameters.startDate;
         claim.endDate = updateClaimParameters.endDate;
-        claim.cost = updateClaimParameters.cost;
         claim.location = updateClaimParameters.location;
-        
-        emit SerendipityClaimUpdated(creatorContractAddress, instanceId);
-    }
-
-    /**
-     * @notice Update claim with new allowlist parameters
-     */
-    function updateClaimWithAllowlist(
-        address creatorContractAddress,
-        uint256 instanceId,
-        ClaimParameters calldata claimParameters,
-        bytes32 merkleRoot,
-        uint32 walletMax
-    ) external creatorAdminRequired(creatorContractAddress) {
-        _updateClaimWithAllowlist(
-            creatorContractAddress,
-            instanceId,
-            claimParameters,
-            merkleRoot,
-            walletMax
-        );
-    }
-
-    function _updateClaimWithAllowlist(
-        address creatorContractAddress,
-        uint256 instanceId,
-        ClaimParameters memory claimParameters,
-        bytes32 merkleRoot,
-        uint32 walletMax
-    ) private {
-        if (deprecated) revert ContractDeprecated();
-        
-        ClaimWithAllowlist storage claim = _claims[creatorContractAddress][instanceId];
-        if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
-        if (claimParameters.storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
-        if (claimParameters.endDate != 0 && claimParameters.startDate >= claimParameters.endDate)
-            revert InvalidDate();
-        if (claimParameters.totalMax > MAX_UINT_32) revert InvalidInput();
-        if (claimParameters.cost > MAX_UINT_96) revert InvalidInput();
-
-        // Update claim
-        claim.storageProtocol = claimParameters.storageProtocol;
-        claim.totalMax = claimParameters.totalMax;
-        claim.startDate = claimParameters.startDate;
-        claim.endDate = claimParameters.endDate;
-        claim.location = claimParameters.location;
-        claim.cost = claimParameters.cost;
-        claim.paymentReceiver = claimParameters.paymentReceiver;
-        claim.erc20 = claimParameters.erc20;
-        claim.merkleRoot = merkleRoot;
-        claim.walletMax = walletMax;
+        claim.cost = updateClaimParameters.cost;
+        claim.paymentReceiver = updateClaimParameters.paymentReceiver;
+        claim.merkleRoot = updateClaimParameters.merkleRoot;
+        claim.walletMax = updateClaimParameters.walletMax;
 
         emit SerendipityClaimUpdated(creatorContractAddress, instanceId);
     }
 
     /**
-     * @notice Basic mint reserve function (no merkle proof)
-     */
-    function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override {
-        // For non-merkle mints, call the overloaded function with empty arrays
-        uint32[] memory mintIndices = new uint32[](0);
-        bytes32[][] memory merkleProofs = new bytes32[][](0);
-        this.mintReserve{value: msg.value}(creatorContractAddress, instanceId, mintCount, mintIndices, merkleProofs, msg.sender);
-    }
-
-    /**
-     * @notice Reserve mints with merkle proof validation
+     * @notice Reserve mints with optional merkle proof validation
      */
     function mintReserve(
         address creatorContractAddress,
         uint256 instanceId,
         uint32 mintCount,
-        uint32[] calldata mintIndices,
-        bytes32[][] calldata merkleProofs,
-        address mintFor
-    ) external payable nonReentrant {
-        ClaimWithAllowlist storage claim = _claims[creatorContractAddress][instanceId];
+        bytes32[] calldata merkleProof
+    ) external payable override nonReentrant {
+        Claim storage claim = _claims[creatorContractAddress][instanceId];
         
         // Validate claim is active
         if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
@@ -274,25 +160,23 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         
         // Handle merkle validation if merkle root is set
         if (claim.merkleRoot != bytes32(0)) {
-            if (mintIndices.length != mintCount || merkleProofs.length != mintCount)
-                revert InvalidInput();
+            // Verify merkle proof
+            bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+            if (!MerkleProof.verify(merkleProof, claim.merkleRoot, leaf)) {
+                revert InvalidMerkleProof();
+            }
             
-            for (uint256 i = 0; i < mintCount; i++) {
-                _checkMerkleAndUpdate(
-                    msg.sender,
-                    creatorContractAddress,
-                    instanceId,
-                    claim.merkleRoot,
-                    mintIndices[i],
-                    merkleProofs[i],
-                    mintFor
-                );
+            // Check wallet max for merkle claims
+            if (claim.walletMax != 0) {
+                uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] + mintCount;
+                if (newTotal > claim.walletMax) revert TooManyRequested();
+                _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] = newTotal;
             }
         } else if (claim.walletMax != 0) {
             // Non-merkle wallet limit
-            uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][mintFor] + mintCount;
+            uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] + mintCount;
             if (newTotal > claim.walletMax) revert TooManyRequested();
-            _mintsPerWallet[creatorContractAddress][instanceId][mintFor] = newTotal;
+            _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] = newTotal;
         }
         
         // Process payment
@@ -302,15 +186,24 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         claim.total += mintCount;
         
         // Track user mints
-        UserMintDetails storage userMintDetails = _mintDetailsPerWallet[creatorContractAddress][instanceId][mintFor];
+        UserMintDetails storage userMintDetails = _mintDetailsPerWallet[creatorContractAddress][instanceId][msg.sender];
         userMintDetails.reservedCount += mintCount;
         
-        emit SerendipityMintReserved(creatorContractAddress, instanceId, mintFor, mintCount);
+        emit SerendipityMintReserved(creatorContractAddress, instanceId, msg.sender, mintCount);
         
         // Refund excess payment
         if (msg.value > totalCost) {
             Address.sendValue(payable(msg.sender), msg.value - totalCost);
         }
+    }
+
+    /**
+     * @notice Reserve mints without merkle proof (implements base ISerendipity interface)
+     */
+    function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override {
+        // Delegate to the merkle version with empty proof
+        bytes32[] memory emptyProof = new bytes32[](0);
+        this.mintReserve{value: msg.value}(creatorContractAddress, instanceId, mintCount, emptyProof);
     }
 
     /**
@@ -320,7 +213,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         _validateSigner();
         for (uint256 i; i < mints.length; ) {
             ClaimMint calldata mintData = mints[i];
-            ClaimWithAllowlist storage claim = _claims[mintData.creatorContractAddress][mintData.instanceId];
+            Claim storage claim = _claims[mintData.creatorContractAddress][mintData.instanceId];
             if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
             
             address[] memory receivers = new address[](mintData.variationMints.length);
@@ -362,38 +255,12 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
     }
 
     /**
-     * @notice Get claim details
+     * @notice Get claim details including allowlist parameters
      */
     function getClaim(address creatorContractAddress, uint256 instanceId)
         external
         view
-        override
         returns (Claim memory)
-    {
-        ClaimWithAllowlist storage claim = _claims[creatorContractAddress][instanceId];
-        // Return as standard Claim for backward compatibility
-        return Claim({
-            storageProtocol: claim.storageProtocol,
-            total: claim.total,
-            totalMax: claim.totalMax,
-            startDate: claim.startDate,
-            endDate: claim.endDate,
-            startingTokenId: claim.startingTokenId,
-            tokenVariations: claim.tokenVariations,
-            location: claim.location,
-            paymentReceiver: claim.paymentReceiver,
-            cost: claim.cost,
-            erc20: claim.erc20
-        });
-    }
-
-    /**
-     * @notice Get claim with allowlist details
-     */
-    function getClaimWithAllowlist(address creatorContractAddress, uint256 instanceId)
-        external
-        view
-        returns (ClaimWithAllowlist memory)
     {
         return _claims[creatorContractAddress][instanceId];
     }
@@ -404,25 +271,10 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
     function getClaimForToken(
         address creatorContractAddress,
         uint256 tokenId
-    ) external view override returns (uint256 instanceId, Claim memory claim) {
+    ) external view returns (uint256 instanceId, Claim memory claim) {
         instanceId = _tokenInstances[creatorContractAddress][tokenId];
-        ClaimWithAllowlist storage claimWithAllowlist = _claims[creatorContractAddress][instanceId];
-        if (claimWithAllowlist.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
-        
-        // Convert ClaimWithAllowlist to Claim
-        claim = Claim({
-            storageProtocol: claimWithAllowlist.storageProtocol,
-            total: claimWithAllowlist.total,
-            totalMax: claimWithAllowlist.totalMax,
-            startDate: claimWithAllowlist.startDate,
-            endDate: claimWithAllowlist.endDate,
-            startingTokenId: claimWithAllowlist.startingTokenId,
-            tokenVariations: claimWithAllowlist.tokenVariations,
-            location: claimWithAllowlist.location,
-            paymentReceiver: claimWithAllowlist.paymentReceiver,
-            cost: claimWithAllowlist.cost,
-            erc20: claimWithAllowlist.erc20
-        });
+        claim = _claims[creatorContractAddress][instanceId];
+        if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
     }
 
     /**
@@ -432,7 +284,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         address minter,
         address creatorContractAddress,
         uint256 instanceId
-    ) external view override returns (UserMintDetails memory)
+    ) external view returns (UserMintDetails memory)
     {
         return _mintDetailsPerWallet[creatorContractAddress][instanceId][minter];
     }
@@ -446,7 +298,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         StorageProtocol storageProtocol,
         string calldata location
     ) external override creatorAdminRequired(creatorContractAddress) {
-        ClaimWithAllowlist storage claim = _claims[creatorContractAddress][instanceId];
+        Claim storage claim = _claims[creatorContractAddress][instanceId];
         if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
         if (storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
         claim.storageProtocol = storageProtocol;
@@ -460,13 +312,13 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
     function tokenURI(address creatorContractAddress, uint256 tokenId) 
         external 
         view 
-        override 
+        override
         returns (string memory) 
     {
         uint256 instanceId = _tokenInstances[creatorContractAddress][tokenId];
         if (instanceId == 0) revert InvalidToken();
         
-        ClaimWithAllowlist storage claim = _claims[creatorContractAddress][instanceId];
+        Claim storage claim = _claims[creatorContractAddress][instanceId];
         
         string memory prefix = "";
         if (claim.storageProtocol == StorageProtocol.ARWEAVE) {
@@ -479,43 +331,11 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         return string(abi.encodePacked(prefix, claim.location, "/", tokenNumber.toString()));
     }
 
-    /**
-     * @notice Check merkle proof and update tracking (following LazyPayableClaimCore pattern)
-     */
-    function _checkMerkleAndUpdate(
-        address sender,
-        address creatorContractAddress,
-        uint256 instanceId,
-        bytes32 merkleRoot,
-        uint32 mintIndex,
-        bytes32[] memory merkleProof,
-        address mintFor
-    ) private {
-        // Generate leaf
-        bytes32 leaf = keccak256(abi.encodePacked(mintFor, mintIndex));
-        
-        // Verify proof
-        if (!MerkleProof.verify(merkleProof, merkleRoot, leaf)) {
-            revert InvalidMerkleProof();
-        }
-        
-        // Check if mintIndex has been used (same pattern as LazyPayableClaimCore)
-        uint256 claimMintIndex = mintIndex >> 8;
-        uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex];
-        uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
-        
-        if (mintBitmask & claimMintTracking != 0) {
-            revert AlreadyMinted();
-        }
-        
-        // Mark as used
-        _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex] = claimMintTracking | mintBitmask;
-    }
 
     /**
      * @notice Process payment for minting
      */
-    function _processPayment(ClaimWithAllowlist storage claim, uint32 mintCount) private returns (uint256) {
+    function _processPayment(Claim storage claim, uint32 mintCount) private returns (uint256) {
         uint256 creatorCost = claim.cost * mintCount;
         uint256 platformFee = (claim.merkleRoot != bytes32(0) ? MINT_FEE_MERKLE : MINT_FEE) * mintCount;
         uint256 totalCost = creatorCost + platformFee;
@@ -569,7 +389,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155Serendipity, ICreat
         bytes32 merkleRoot,
         uint32 walletMax
     ) external creatorAdminRequired(creatorContractAddress) {
-        ClaimWithAllowlist storage claim = _claims[creatorContractAddress][instanceId];
+        Claim storage claim = _claims[creatorContractAddress][instanceId];
         if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
         claim.merkleRoot = merkleRoot;
         claim.walletMax = walletMax;
