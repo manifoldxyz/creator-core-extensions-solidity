@@ -193,21 +193,23 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(unauthorized);
         
-        // WILL FAIL - Function doesn't exist yet
+        // Should revert as user is not admin
         vm.expectRevert();
         serendipityWithAllowlist.updateAllowlist(
             address(creatorCore1), 
             1, 
-            newMerkleRoot
+            newMerkleRoot,
+            3  // walletMax
         );
         vm.stopPrank();
 
         vm.startPrank(creator);
-        // WILL FAIL - Function doesn't exist yet
+        // Should succeed as creator is admin
         serendipityWithAllowlist.updateAllowlist(
             address(creatorCore1), 
             1, 
-            newMerkleRoot
+            newMerkleRoot,
+            3  // walletMax
         );
         vm.stopPrank();
     }
@@ -247,15 +249,22 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(alice);
         
-        // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
+        // Mint with merkle proof
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0; // alice's index
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0]; // alice's proof
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
             address(creatorCore1), 
             1, 
             1, // mint count
-            merkleProofs[0] // alice's proof
+            mintIndices,
+            proofs,
+            alice
         );
         
-        // WILL FAIL - Function doesn't exist yet
+        // Check user mint details
         Serendipity.UserMintDetails memory userMints = serendipityWithAllowlist.getUserMints(
             alice, 
             address(creatorCore1), 
@@ -281,15 +290,22 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(bob);
         
-        // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 2}(
+        // Mint with merkle proof
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 1; // bob's index
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[1]; // bob's proof
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 2}(
             address(creatorCore1), 
             1, 
             2, // mint count
-            merkleProofs[1] // bob's proof
+            mintIndices,
+            proofs,
+            bob
         );
         
-        // WILL FAIL - Function doesn't exist yet
+        // Check user mint details
         Serendipity.UserMintDetails memory userMints = serendipityWithAllowlist.getUserMints(
             bob, 
             address(creatorCore1), 
@@ -317,11 +333,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert("Invalid merkle proof");
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0]; // alice's proof but unauthorized sender
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0] // alice's proof but unauthorized sender
+            1,
+            mintIndices,
+            proofs,
+            unauthorized // Using unauthorized address with alice's proof should fail
         );
         vm.stopPrank();
     }
@@ -344,30 +367,51 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         
         // First mint should succeed
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        uint32[] memory mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        bytes32[][] memory proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         
         // Second mint should succeed (still within wallet max)
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         
         // Third mint should fail (exceeds wallet max)
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert("Exceeds wallet max");
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
     }
@@ -389,14 +433,22 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.startPrank(alice);
         
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 3}(
-            address(creatorCore1), 
-            1, 
-            3, // batch mint 3
-            merkleProofs[0]
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = // batch mint 3
+            merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 3}(
+            address(creatorCore1),
+            1,
+            3,
+            mintIndices,
+            proofs,
+            alice
         );
         
-        // WILL FAIL - Function doesn't exist yet
+        // Check user mint details
         Serendipity.UserMintDetails memory userMints = serendipityWithAllowlist.getUserMints(
             alice, 
             address(creatorCore1), 
@@ -427,11 +479,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Should fail for non-allowlisted user
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert("Invalid merkle proof");
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = new bytes32[](0);
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            new bytes32[](0) // empty proof
+            1,
+            mintIndices,
+            proofs,
+            unauthorized
         );
         vm.stopPrank();
     }
@@ -454,21 +513,35 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         
         // Mint up to wallet max should succeed
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 3}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 3}(
+            address(creatorCore1),
+            1,
             3,
-            merkleProofs[0]
+            mintIndices,
+            proofs,
+            alice
         );
         
         // Exceeding wallet max should fail
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert("Exceeds wallet max");
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
     }
@@ -491,11 +564,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         
         // Should succeed with empty merkle root (no allowlist)
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = new bytes32[](0);
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            new bytes32[](0) // empty proof
+            1,
+            mintIndices,
+            proofs,
+            unauthorized
         );
         vm.stopPrank();
     }
@@ -520,11 +600,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         uint256 initialBalance = alice.balance;
         
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         
         assertEq(alice.balance, initialBalance - (DEFAULT_COST + MINT_FEE));
@@ -552,11 +639,19 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         uint256 initialBalance = erc20Token.balanceOf(alice);
         
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: MINT_FEE}( // Still need ETH for mint fee
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: MINT_FEE}(
+            // Still need ETH for mint fee
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         
         assertEq(erc20Token.balanceOf(alice), initialBalance - 100 ether);
@@ -586,11 +681,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         uint256 initialBalance = alice.balance;
         
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         
         // Should pay less than DEFAULT_COST due to membership discount
@@ -616,11 +718,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
 
@@ -641,7 +750,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // WILL FAIL - Function doesn't exist yet
         serendipityWithAllowlist.deliverMints(mints);
         
-        // WILL FAIL - Function doesn't exist yet
+        // Check user mint details
         Serendipity.UserMintDetails memory userMints = serendipityWithAllowlist.getUserMints(
             alice, 
             address(creatorCore1), 
@@ -667,11 +776,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
 
@@ -711,11 +827,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 3}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 3}(
+            address(creatorCore1),
+            1,
             3,
-            merkleProofs[0]
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
 
@@ -736,7 +859,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // WILL FAIL - Function doesn't exist yet
         serendipityWithAllowlist.deliverMints(mints);
         
-        // WILL FAIL - Function doesn't exist yet
+        // Check user mint details
         Serendipity.UserMintDetails memory userMints = serendipityWithAllowlist.getUserMints(
             alice, 
             address(creatorCore1), 
@@ -766,22 +889,36 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Alice reserves 2
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 2}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 2}(
+            address(creatorCore1),
+            1,
             2,
-            merkleProofs[0]
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
 
         // Bob reserves 3
         vm.startPrank(bob);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 3}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 1;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[1];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 3}(
+            address(creatorCore1),
+            1,
             3,
-            merkleProofs[1]
+            mintIndices,
+            proofs,
+            bob
         );
         vm.stopPrank();
 
@@ -812,11 +949,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert(ISerendipity.ClaimInactive.selector);
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
     }
@@ -839,11 +983,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Alice reserves 2
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 2}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 2}(
+            address(creatorCore1),
+            1,
             2,
-            merkleProofs[0]
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
 
@@ -851,22 +1002,36 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.startPrank(bob);
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert(ISerendipity.ClaimSoldOut.selector);
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 2}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 1;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[1];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 2}(
+            address(creatorCore1),
+            1,
             2,
-            merkleProofs[1]
+            mintIndices,
+            proofs,
+            bob
         );
         vm.stopPrank();
 
         // Bob should be able to reserve exactly 1 more (total = 3)
         vm.startPrank(bob);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 1;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[1];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[1]
+            1,
+            mintIndices,
+            proofs,
+            bob
         );
         vm.stopPrank();
     }
@@ -890,11 +1055,19 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert(ISerendipity.InvalidMintCount.selector);
-        serendipityWithAllowlist.mintReserveWithProof{value: MINT_FEE}(
-            address(creatorCore1), 
-            1, 
-            0, // zero amount
-            merkleProofs[0]
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = // zero amount
+            merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: MINT_FEE}(
+            address(creatorCore1),
+            1,
+            0,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
     }
@@ -916,11 +1089,19 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert(ISerendipity.InvalidPayment.selector);
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST}( // Missing MINT_FEE
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST}(
+            // Missing MINT_FEE
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
     }
@@ -942,11 +1123,18 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Alice mints with original allowlist
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0]
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
 
@@ -958,18 +1146,25 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(creator);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.updateAllowlist(address(creatorCore1), 1, newMerkleRoot);
+        serendipityWithAllowlist.updateAllowlist(address(creatorCore1), 1, newMerkleRoot, 3);
         vm.stopPrank();
 
         // Alice should no longer be able to mint
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
         vm.expectRevert("Invalid merkle proof");
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0]; // Old proof no longer valid
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0] // Old proof no longer valid
+            1,
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
     }
@@ -995,15 +1190,21 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(bob);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProofForDelegator{value: DEFAULT_COST + MINT_FEE}(
-            alice, // delegator
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0]; // alice's proof
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[0] // alice's proof
+            1,
+            mintIndices,
+            proofs,
+            alice // delegator
         );
         
-        // WILL FAIL - Function doesn't exist yet
+        // Check user mint details
         Serendipity.UserMintDetails memory userMints = serendipityWithAllowlist.getUserMints(
             alice, 
             address(creatorCore1), 
@@ -1032,33 +1233,54 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Alice mints 2
         vm.startPrank(alice);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 2}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 0;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[0];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 2}(
+            address(creatorCore1),
+            1,
             2,
-            merkleProofs[0]
+            mintIndices,
+            proofs,
+            alice
         );
         vm.stopPrank();
 
         // Bob mints 1
         vm.startPrank(bob);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: DEFAULT_COST + MINT_FEE}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 1;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[1];
+        
+        serendipityWithAllowlist.mintReserve{value: DEFAULT_COST + MINT_FEE}(
+            address(creatorCore1),
             1,
-            merkleProofs[1]
+            1,
+            mintIndices,
+            proofs,
+            bob
         );
         vm.stopPrank();
 
         // Charlie mints 2
         vm.startPrank(charlie);
         // WILL FAIL - Function doesn't exist yet
-        serendipityWithAllowlist.mintReserveWithProof{value: (DEFAULT_COST + MINT_FEE) * 2}(
-            address(creatorCore1), 
-            1, 
+        mintIndices = new uint32[](1);
+        mintIndices[0] = 2;
+        proofs = new bytes32[][](1);
+        proofs[0] = merkleProofs[2];
+        
+        serendipityWithAllowlist.mintReserve{value: (DEFAULT_COST + MINT_FEE) * 2}(
+            address(creatorCore1),
+            1,
             2,
-            merkleProofs[2]
+            mintIndices,
+            proofs,
+            charlie
         );
         vm.stopPrank();
 
