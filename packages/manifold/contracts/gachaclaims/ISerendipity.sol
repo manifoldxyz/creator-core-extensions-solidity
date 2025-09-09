@@ -85,16 +85,16 @@ interface ISerendipity {
    * @param creatorContractAddress    the creator contract address
    * @param instanceId                the claim instanceId for the creator contract
    * @param mintCount                 the number of claims to mint
-   * @param mintIndex                 the mint index for merkle claims (prevents proof reuse), must be 0 for non-merkle
-   * @param merkleProof              the merkle proof for allowlist validation (empty array for non-merkle)
+   * @param mintIndices               the mint indices for merkle claims (prevents proof reuse), empty for non-merkle
+   * @param merkleProofs              the merkle proofs for allowlist validation (empty for non-merkle)
    * @param mintFor                   the address to mint for (use address(0) for self, or specify for delegation)
    */
   function mintReserve(
     address creatorContractAddress,
     uint256 instanceId,
-    uint32 mintCount,
-    uint32 mintIndex,
-    bytes32[] calldata merkleProof,
+    uint16 mintCount,
+    uint32[] calldata mintIndices,
+    bytes32[][] calldata merkleProofs,
     address mintFor
   ) external payable;
 

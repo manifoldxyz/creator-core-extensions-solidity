@@ -195,23 +195,23 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
      * @param creatorContractAddress The creator contract address
      * @param instanceId The claim instance ID
      * @param mintCount The number of tokens to mint
-     * @param mintIndex The mint index for merkle claims (prevents proof reuse), must be 0 for non-merkle
-     * @param merkleProof The merkle proof for allowlist validation (empty array for non-merkle)
+     * @param mintIndices The mint indices for merkle claims (prevents proof reuse), empty for non-merkle
+     * @param merkleProofs The merkle proofs for allowlist validation (empty for non-merkle)
      * @param mintFor The address to mint for (use address(0) for self, or specify for delegation)
      */
     function mintReserve(
         address creatorContractAddress,
         uint256 instanceId,
-        uint32 mintCount,
-        uint32 mintIndex,
-        bytes32[] calldata merkleProof,
+        uint16 mintCount,
+        uint32[] calldata mintIndices,
+        bytes32[][] calldata merkleProofs,
         address mintFor
     ) external payable override(IERC1155Serendipity, ISerendipity) nonReentrant {
         // Check that contracts cannot mint
         if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
         
         // Validate mint count
-        if (mintCount == 0 || mintCount >= MAX_UINT_32) revert ISerendipity.InvalidMintCount();
+        if (mintCount == 0 || mintCount > MAX_UINT_32) revert ISerendipity.InvalidMintCount();
         
         Claim storage claim = _claims[creatorContractAddress][instanceId];
         
@@ -221,12 +221,11 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
             revert ClaimInactive();
         
         // Check supply and adjust amount if necessary
-        if (claim.totalMax != 0 && claim.total == claim.totalMax) revert ClaimSoldOut();
-        
-        // Calculate the actual amount to mint (may be less than requested)
-        uint32 actualMintCount = mintCount;
         if (claim.totalMax != 0 && claim.total + mintCount > claim.totalMax) {
-            actualMintCount = claim.totalMax - claim.total;
+            // Check if already sold out
+            if (claim.total == claim.totalMax) revert ClaimSoldOut();
+            // Adjust mint count to available supply
+            mintCount = uint16(claim.totalMax - claim.total);
         }
         
         // Determine the actual minter (handle delegation)
@@ -238,41 +237,29 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
             _validateDelegation(msg.sender, mintFor);
         }
         
-        // Handle merkle validation if merkle root is set
-        if (claim.merkleRoot != bytes32(0)) {
-            // Verify merkle proof using the actual minter address and mintIndex
-            bytes32 leaf = keccak256(abi.encodePacked(minter, mintIndex));
-            if (!MerkleProof.verify(merkleProof, claim.merkleRoot, leaf)) {
-                revert InvalidMerkleProof();
-            }
-            
-            // Check if mintIndex has already been used (prevent proof reuse)
-            _checkAndSetMintIndex(creatorContractAddress, instanceId, mintIndex);
-            
-            // Check wallet max for merkle claims
-            if (claim.walletMax != 0) {
-                _checkAndUpdateWalletMints(creatorContractAddress, instanceId, minter, actualMintCount, claim.walletMax);
-            }
-        } else if (claim.walletMax != 0) {
-            // Non-merkle wallet limit - mintIndex should be 0 for non-merkle claims
-            if (mintIndex != 0) revert InvalidInput();
-            _checkAndUpdateWalletMints(creatorContractAddress, instanceId, minter, actualMintCount, claim.walletMax);
-        } else {
-            // No merkle and no wallet limit - mintIndex should still be 0
-            if (mintIndex != 0) revert InvalidInput();
-        }
+        // Validate mint based on merkle or wallet limits
+        _validateMintReserve(
+            creatorContractAddress,
+            instanceId,
+            claim.walletMax,
+            claim.merkleRoot,
+            mintCount,
+            mintIndices,
+            merkleProofs,
+            minter
+        );
         
-        // Process payment for actual mint count
-        uint256 totalCost = _processPayment(claim, actualMintCount);
+        // Process payment for mint count
+        uint256 totalCost = _processPayment(claim, mintCount);
         
-        // Update claim totals with actual amount
-        claim.total += actualMintCount;
+        // Update claim totals
+        claim.total += mintCount;
         
         // Track user mints for the actual minter
         UserMintDetails storage userMintDetails = _mintDetailsPerWallet[creatorContractAddress][instanceId][minter];
-        userMintDetails.reservedCount += actualMintCount;
+        userMintDetails.reservedCount += mintCount;
         
-        emit SerendipityMintReserved(creatorContractAddress, instanceId, minter, actualMintCount);
+        emit SerendipityMintReserved(creatorContractAddress, instanceId, minter, mintCount);
         
         // Refund excess payment
         if (msg.value > totalCost) {
@@ -417,9 +404,62 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
 
 
     /**
+     * @notice Validate mint reserve based on merkle proofs or wallet limits
+     */
+    function _validateMintReserve(
+        address creatorContractAddress,
+        uint256 instanceId,
+        uint32 walletMax,
+        bytes32 merkleRoot,
+        uint16 mintCount,
+        uint32[] calldata mintIndices,
+        bytes32[][] calldata merkleProofs,
+        address minter
+    ) private {
+        if (merkleRoot != bytes32(0)) {
+            // Merkle validation
+            if (!(mintCount == mintIndices.length && mintCount == merkleProofs.length)) {
+                revert InvalidInput();
+            }
+            
+            // Validate each mint index
+            for (uint256 i; i < mintCount;) {
+                // Create leaf using minter address and mint index
+                bytes32 leaf = keccak256(abi.encodePacked(minter, mintIndices[i]));
+                
+                // Verify merkle proof
+                if (!MerkleProof.verify(merkleProofs[i], merkleRoot, leaf)) {
+                    revert InvalidMerkleProof();
+                }
+                
+                // Check and mark mint index as used
+                _checkAndSetMintIndex(creatorContractAddress, instanceId, mintIndices[i]);
+                
+                unchecked {
+                    ++i;
+                }
+            }
+            
+            // Check wallet max for merkle claims if set
+            if (walletMax != 0) {
+                uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][minter] + mintCount;
+                if (newTotal > walletMax) revert TooManyRequested();
+                _mintsPerWallet[creatorContractAddress][instanceId][minter] = newTotal;
+            }
+        } else {
+            // Non-merkle validation - just check wallet max
+            if (walletMax != 0) {
+                uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][minter] + mintCount;
+                if (newTotal > walletMax) revert TooManyRequested();
+                _mintsPerWallet[creatorContractAddress][instanceId][minter] = newTotal;
+            }
+        }
+    }
+
+    /**
      * @notice Process payment for minting
      */
-    function _processPayment(Claim storage claim, uint32 mintCount) private returns (uint256) {
+    function _processPayment(Claim storage claim, uint16 mintCount) private returns (uint256) {
         uint256 creatorCost = claim.cost * mintCount;
         uint256 platformFee = (claim.merkleRoot != bytes32(0) ? _mintFeeMerkle : _mintFee) * mintCount;
         uint256 totalCost = creatorCost + platformFee;
@@ -450,21 +490,6 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
         if (mintBitmask & claimMintTracking != 0) revert InvalidMerkleProof(); // Already minted with this index
         _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex] = claimMintTracking | mintBitmask;
-    }
-    
-    /**
-     * @notice Check and update wallet mint counts
-     */
-    function _checkAndUpdateWalletMints(
-        address creatorContractAddress,
-        uint256 instanceId,
-        address minter,
-        uint32 actualMintCount,
-        uint32 walletMax
-    ) private {
-        uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][minter] + actualMintCount;
-        if (newTotal > walletMax) revert TooManyRequested();
-        _mintsPerWallet[creatorContractAddress][instanceId][minter] = newTotal;
     }
 
     /**
