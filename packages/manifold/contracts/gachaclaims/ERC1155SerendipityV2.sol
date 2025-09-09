@@ -13,16 +13,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./Serendipity.sol";
-import "./IERC1155SerendipityWithAllowlist.sol";
+import "./IERC1155SerendipityV2.sol";
 import "../libraries/delegation-registry/IDelegationRegistry.sol";
 import "../libraries/delegation-registry/IDelegationRegistryV2.sol";
 
 /**
- * @title ERC1155 Serendipity With Allowlist
+ * @title ERC1155 Serendipity V2
  * @author manifold.xyz
- * @notice Extends ERC1155Serendipity with merkle-based allowlist functionality
+ * @notice Second version of ERC1155Serendipity with merkle-based allowlist and delegation support
  */
-contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllowlist, ICreatorExtensionTokenURI, Serendipity, ReentrancyGuard {
+contract ERC1155SerendipityV2 is IERC165, IERC1155SerendipityV2, ICreatorExtensionTokenURI, Serendipity, ReentrancyGuard {
     using Strings for uint256;
 
     // Fee variables (updatable by admin) - override parent MINT_FEE constant
@@ -57,7 +57,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
         returns (bool) 
     {
         return
-            interfaceId == type(IERC1155SerendipityWithAllowlist).interfaceId ||
+            interfaceId == type(IERC1155SerendipityV2).interfaceId ||
             interfaceId == type(ISerendipity).interfaceId ||
             interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
             interfaceId == type(IAdminControl).interfaceId ||

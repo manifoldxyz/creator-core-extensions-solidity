@@ -7,9 +7,10 @@ pragma solidity ^0.8.0;
 import "./ISerendipity.sol";
 
 /**
- * Serendipity Lazy Claim with Allowlist interface for ERC-1155
+ * Serendipity V2 interface for ERC-1155
+ * Includes merkle-based allowlist and delegation support
  */
-interface IERC1155SerendipityWithAllowlist is ISerendipity {
+interface IERC1155SerendipityV2 is ISerendipity {
   struct Claim {
     StorageProtocol storageProtocol;
     uint32 total;

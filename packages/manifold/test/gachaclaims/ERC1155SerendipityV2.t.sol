@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../../contracts/gachaclaims/IERC1155SerendipityWithAllowlist.sol";
-import "../../contracts/gachaclaims/ERC1155SerendipityWithAllowlist.sol";
+import "../../contracts/gachaclaims/IERC1155SerendipityV2.sol";
+import "../../contracts/gachaclaims/ERC1155SerendipityV2.sol";
 import "../../contracts/gachaclaims/ISerendipity.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
@@ -76,8 +76,8 @@ contract MockDelegationRegistryV2 {
     }
 }
 
-contract ERC1155SerendipityWithAllowlistTest is Test {
-    ERC1155SerendipityWithAllowlist public extension;
+contract ERC1155SerendipityV2Test is Test {
+    ERC1155SerendipityV2 public extension;
     ERC1155Creator public creatorCore;
     ERC1155Creator public creatorCore2;
     MockDelegationRegistry public delegationRegistryV1;
@@ -114,7 +114,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         
         // Deploy extension with delegation support
         vm.startPrank(owner);
-        extension = new ERC1155SerendipityWithAllowlist(
+        extension = new ERC1155SerendipityV2(
             owner,
             address(delegationRegistryV1),
             address(delegationRegistryV2)
@@ -182,7 +182,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_initializeClaim_withMerkleRoot_succeedsForAdmin() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -198,7 +198,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         extension.initializeClaim(address(creatorCore), 1, params);
 
-        IERC1155SerendipityWithAllowlist.Claim memory claim = extension.getClaim(address(creatorCore), 1);
+        IERC1155SerendipityV2.Claim memory claim = extension.getClaim(address(creatorCore), 1);
         assertEq(claim.merkleRoot, merkleRoot);
         assertEq(claim.walletMax, 2);
         assertEq(claim.totalMax, 100);
@@ -207,7 +207,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_initializeClaim_withoutMerkleRoot_succeedsForAdmin() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.IPFS,
             totalMax: 50,
             startDate: uint48(block.timestamp),
@@ -223,7 +223,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         extension.initializeClaim(address(creatorCore), 2, params);
 
-        IERC1155SerendipityWithAllowlist.Claim memory claim = extension.getClaim(address(creatorCore), 2);
+        IERC1155SerendipityV2.Claim memory claim = extension.getClaim(address(creatorCore), 2);
         assertEq(claim.merkleRoot, bytes32(0));
         assertEq(claim.walletMax, 5);
         assertEq(claim.totalMax, 50);
@@ -232,7 +232,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_initializeClaim_revertsForNonAdmin() public {
         vm.startPrank(unauthorized);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -256,7 +256,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // First initialize a claim
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -273,7 +273,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         extension.initializeClaim(address(creatorCore), 4, params);
 
         // Now update it with merkle root
-        IERC1155SerendipityWithAllowlist.UpdateClaimParameters memory updateParams = IERC1155SerendipityWithAllowlist.UpdateClaimParameters({
+        IERC1155SerendipityV2.UpdateClaimParameters memory updateParams = IERC1155SerendipityV2.UpdateClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.IPFS,
             paymentReceiver: payable(bob),
             totalMax: 200,
@@ -287,7 +287,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         extension.updateClaim(address(creatorCore), 4, updateParams);
 
-        IERC1155SerendipityWithAllowlist.Claim memory claim = extension.getClaim(address(creatorCore), 4);
+        IERC1155SerendipityV2.Claim memory claim = extension.getClaim(address(creatorCore), 4);
         assertEq(claim.merkleRoot, merkleRoot);
         assertEq(claim.walletMax, 3);
         assertEq(claim.totalMax, 200);
@@ -298,7 +298,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // First initialize a claim as admin
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -318,7 +318,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Try to update as non-admin
         vm.startPrank(unauthorized);
         
-        IERC1155SerendipityWithAllowlist.UpdateClaimParameters memory updateParams = IERC1155SerendipityWithAllowlist.UpdateClaimParameters({
+        IERC1155SerendipityV2.UpdateClaimParameters memory updateParams = IERC1155SerendipityV2.UpdateClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.IPFS,
             paymentReceiver: payable(unauthorized),
             totalMax: 200,
@@ -340,7 +340,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim with merkle root
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -376,7 +376,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim with merkle root
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -412,7 +412,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim with merkle root
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -433,7 +433,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.startPrank(unauthorized);
         uint256 totalCost = (0.01 ether + MINT_FEE_MERKLE);
         
-        vm.expectRevert(ERC1155SerendipityWithAllowlist.InvalidMerkleProof.selector);
+        vm.expectRevert(ERC1155SerendipityV2.InvalidMerkleProof.selector);
         extension.mintReserve{value: totalCost}(
             address(creatorCore), 
             12, 
@@ -446,7 +446,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim without merkle root
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -485,7 +485,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim with merkle root and wallet max
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -527,7 +527,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim without merkle root but with wallet max
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -572,7 +572,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -631,7 +631,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim with cost
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -680,7 +680,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim that will be expired
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -716,7 +716,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim that hasn't started yet
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp + 1000),
@@ -749,7 +749,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim with very limited supply
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 1,
             startDate: uint48(block.timestamp),
@@ -793,7 +793,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     // ============ Interface Support Tests ============
 
     function test_supportsInterface() public {
-        assertTrue(extension.supportsInterface(type(IERC1155SerendipityWithAllowlist).interfaceId));
+        assertTrue(extension.supportsInterface(type(IERC1155SerendipityV2).interfaceId));
         assertTrue(extension.supportsInterface(type(ISerendipity).interfaceId));
         assertTrue(extension.supportsInterface(type(IERC165).interfaceId));
     }
@@ -804,7 +804,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -820,7 +820,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         extension.initializeClaim(address(creatorCore), 60, params);
 
-        IERC1155SerendipityWithAllowlist.Claim memory claim = extension.getClaim(address(creatorCore), 60);
+        IERC1155SerendipityV2.Claim memory claim = extension.getClaim(address(creatorCore), 60);
         uint256 tokenId = claim.startingTokenId;
 
         string memory uri = extension.tokenURI(address(creatorCore), tokenId);
@@ -831,7 +831,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         // Initialize claim
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -855,7 +855,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
             "new-ipfs-location"
         );
 
-        IERC1155SerendipityWithAllowlist.Claim memory claim = extension.getClaim(address(creatorCore), 61);
+        IERC1155SerendipityV2.Claim memory claim = extension.getClaim(address(creatorCore), 61);
         uint256 tokenId = claim.startingTokenId;
 
         string memory uri = extension.tokenURI(address(creatorCore), tokenId);
@@ -871,7 +871,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -929,7 +929,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_setMintFees_affectsMintingCost() public {
         // Initialize a claim without merkle
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -964,7 +964,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_setMintFees_affectsMerkleMintingCost() public {
         // Initialize a claim with merkle
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -999,7 +999,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_setMintFees_insufficientPaymentAfterUpdate() public {
         // Initialize a claim
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1034,7 +1034,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_mintReserve_withDelegationV1_validProof() public {
         // Setup claim with merkle root
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1074,7 +1074,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_mintReserve_withDelegationV2_validProof() public {
         // Setup claim with merkle root
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1114,7 +1114,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_mintReserve_withInvalidDelegation_reverts() public {
         // Setup claim with merkle root
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1132,7 +1132,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         // Unauthorized tries to mint on behalf of alice WITHOUT delegation
         vm.startPrank(unauthorized);
-        vm.expectRevert(ERC1155SerendipityWithAllowlist.InvalidDelegate.selector);
+        vm.expectRevert(ERC1155SerendipityV2.InvalidDelegate.selector);
         extension.mintReserve{value: MINT_FEE_MERKLE}(
             address(creatorCore),
             202,
@@ -1146,7 +1146,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_mintReserve_delegation_respectsWalletMax() public {
         // Setup claim with merkle root and wallet max
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1192,7 +1192,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_mintReserve_selfDelegation_works() public {
         // Setup claim
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1227,7 +1227,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_mintReserve_withoutMerkle_andDelegation() public {
         // Setup claim without merkle root
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1282,7 +1282,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         // Verify new signer works
         vm.startPrank(creator);
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1330,7 +1330,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         uint48 nowC = uint48(block.timestamp);
         uint48 later = nowC + 1000;
 
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.INVALID,
             totalMax: 100,
             startDate: nowC,
@@ -1371,7 +1371,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_mintReserveInvalidCases() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1399,7 +1399,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_mintFromContract_reverts() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1427,7 +1427,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_getClaimForToken() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.IPFS,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1443,12 +1443,12 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
         extension.initializeClaim(address(creatorCore), 95, params);
         
-        IERC1155SerendipityWithAllowlist.Claim memory claim = extension.getClaim(address(creatorCore), 95);
+        IERC1155SerendipityV2.Claim memory claim = extension.getClaim(address(creatorCore), 95);
         uint256 startingTokenId = claim.startingTokenId;
 
         // Test getting claim for each token variation
         for (uint256 i = 0; i < 3; i++) {
-            (uint256 instanceId, IERC1155SerendipityWithAllowlist.Claim memory tokenClaim) = 
+            (uint256 instanceId, IERC1155SerendipityV2.Claim memory tokenClaim) = 
                 extension.getClaimForToken(address(creatorCore), startingTokenId + i);
             
             assertEq(instanceId, 95);
@@ -1466,7 +1466,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.startPrank(creator);
         
         // Create claim on first creator contract
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params1 = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params1 = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 50,
             startDate: uint48(block.timestamp),
@@ -1482,7 +1482,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         extension.initializeClaim(address(creatorCore), 100, params1);
 
         // Create claim on second creator contract with same instance ID
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params2 = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params2 = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.IPFS,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1498,8 +1498,8 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         extension.initializeClaim(address(creatorCore2), 100, params2);
 
         // Verify claims are independent
-        IERC1155SerendipityWithAllowlist.Claim memory claim1 = extension.getClaim(address(creatorCore), 100);
-        IERC1155SerendipityWithAllowlist.Claim memory claim2 = extension.getClaim(address(creatorCore2), 100);
+        IERC1155SerendipityV2.Claim memory claim1 = extension.getClaim(address(creatorCore), 100);
+        IERC1155SerendipityV2.Claim memory claim2 = extension.getClaim(address(creatorCore2), 100);
 
         assertEq(claim1.totalMax, 50);
         assertEq(claim1.location, "location1");
@@ -1532,7 +1532,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_invalidInstanceIds() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1561,7 +1561,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_deliverMoreThanReserved_reverts() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1604,7 +1604,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_invalidVariationIndex_reverts() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1655,7 +1655,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_claimAlreadyInitialized_reverts() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 100,
             startDate: uint48(block.timestamp),
@@ -1680,7 +1680,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_updateNonExistentClaim_reverts() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.UpdateClaimParameters memory updateParams = IERC1155SerendipityWithAllowlist.UpdateClaimParameters({
+        IERC1155SerendipityV2.UpdateClaimParameters memory updateParams = IERC1155SerendipityV2.UpdateClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.IPFS,
             paymentReceiver: payable(bob),
             totalMax: 200,
@@ -1700,7 +1700,7 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     function test_totalMaxReached_handlesMultipleMinters() public {
         vm.startPrank(creator);
         
-        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+        IERC1155SerendipityV2.ClaimParameters memory params = IERC1155SerendipityV2.ClaimParameters({
             storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
             totalMax: 3,
             startDate: uint48(block.timestamp),
@@ -1749,9 +1749,9 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
 
 // Helper contract to test contract minting restriction
 contract MintingContract {
-    ERC1155SerendipityWithAllowlist public extension;
+    ERC1155SerendipityV2 public extension;
     
-    constructor(ERC1155SerendipityWithAllowlist _extension) {
+    constructor(ERC1155SerendipityV2 _extension) {
         extension = _extension;
     }
     
