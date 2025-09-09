@@ -21,8 +21,8 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
     address public charlie = 0x1234567890123456789012345678901234567890;
     address public unauthorized = 0x9876543210987654321098765432109876543210;
 
-    uint256 public constant MINT_FEE = 500000000000000;
-    uint256 public constant MINT_FEE_MERKLE = 690000000000000;
+    uint256 public MINT_FEE = 500000000000000;
+    uint256 public MINT_FEE_MERKLE = 690000000000000;
     uint32 constant MAX_UINT_32 = 0xffffffff;
 
     // Merkle tree data for testing (alice, bob, charlie)
@@ -43,6 +43,10 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         extension = new ERC1155SerendipityWithAllowlist(owner);
         extension.setSigner(signingAddress);
         vm.stopPrank();
+        
+        // Get initial fees from contract
+        MINT_FEE = extension.getMintFee();
+        MINT_FEE_MERKLE = extension.getMintFeeMerkle();
 
         // Register extension with both creator contracts
         vm.startPrank(creator);
@@ -822,6 +826,129 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         uint256 balanceBefore = owner.balance;
         extension.withdraw(payable(owner), 0.5 ether);
         assertEq(owner.balance - balanceBefore, 0.5 ether);
+    }
+
+    // ============ Fee Update Tests ============
+
+    function test_setMintFees_onlyAdmin() public {
+        uint256 newMintFee = 0.001 ether;
+        uint256 newMintFeeMerkle = 0.0015 ether;
+
+        // Non-admin cannot set fees
+        vm.startPrank(unauthorized);
+        vm.expectRevert("AdminControl: Must be owner or admin");
+        extension.setMintFees(newMintFee, newMintFeeMerkle);
+        vm.stopPrank();
+
+        // Admin can set fees
+        vm.startPrank(owner);
+        extension.setMintFees(newMintFee, newMintFeeMerkle);
+        assertEq(extension.getMintFee(), newMintFee);
+        assertEq(extension.getMintFeeMerkle(), newMintFeeMerkle);
+        vm.stopPrank();
+    }
+
+    function test_setMintFees_affectsMintingCost() public {
+        // Initialize a claim without merkle
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+        extension.initializeClaim(address(creatorCore), 100, params);
+        vm.stopPrank();
+
+        // Update fees
+        vm.startPrank(owner);
+        uint256 newMintFee = 0.002 ether;
+        extension.setMintFees(newMintFee, 0.003 ether);
+        vm.stopPrank();
+
+        // Mint with new fee
+        vm.startPrank(alice);
+        extension.mintReserve{value: newMintFee}(address(creatorCore), 100, 1, new bytes32[](0));
+        vm.stopPrank();
+
+        // Verify mint was successful with new fee
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(alice, address(creatorCore), 100);
+        assertEq(details.reservedCount, 1);
+    }
+
+    function test_setMintFees_affectsMerkleMintingCost() public {
+        // Initialize a claim with merkle
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 0
+        });
+        extension.initializeClaim(address(creatorCore), 101, params);
+        vm.stopPrank();
+
+        // Update fees
+        vm.startPrank(owner);
+        uint256 newMintFeeMerkle = 0.003 ether;
+        extension.setMintFees(0.002 ether, newMintFeeMerkle);
+        vm.stopPrank();
+
+        // Mint with new merkle fee
+        vm.startPrank(alice);
+        extension.mintReserve{value: newMintFeeMerkle}(address(creatorCore), 101, 1, aliceProof);
+        vm.stopPrank();
+
+        // Verify mint was successful with new fee
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(alice, address(creatorCore), 101);
+        assertEq(details.reservedCount, 1);
+    }
+
+    function test_setMintFees_insufficientPaymentAfterUpdate() public {
+        // Initialize a claim
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+        extension.initializeClaim(address(creatorCore), 102, params);
+        vm.stopPrank();
+
+        // Update fees to higher amount
+        vm.startPrank(owner);
+        uint256 oldFee = extension.getMintFee();
+        uint256 newMintFee = 0.005 ether;
+        extension.setMintFees(newMintFee, 0.006 ether);
+        vm.stopPrank();
+
+        // Try to mint with old fee amount - should fail
+        vm.startPrank(alice);
+        vm.expectRevert(ISerendipity.InvalidPayment.selector);
+        extension.mintReserve{value: oldFee}(address(creatorCore), 102, 1, new bytes32[](0));
+        vm.stopPrank();
     }
 
     // ============ Additional Tests from Base ERC1155Serendipity ============

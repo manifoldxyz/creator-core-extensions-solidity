@@ -23,8 +23,9 @@ import "./IERC1155SerendipityWithAllowlist.sol";
 contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllowlist, ICreatorExtensionTokenURI, Serendipity, ReentrancyGuard {
     using Strings for uint256;
 
-    // Additional constants for merkle functionality
-    uint256 public constant MINT_FEE_MERKLE = 690000000000000; // 0.00069 ETH
+    // Fee variables (updatable by admin) - override parent MINT_FEE constant
+    uint256 private _mintFee = 500000000000000; // 0.0005 ETH default
+    uint256 private _mintFeeMerkle = 690000000000000; // 0.00069 ETH default
 
     // Storage mappings following existing pattern
     mapping(address => mapping(uint256 => Claim)) private _claims;
@@ -105,6 +106,31 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
         }
 
         emit SerendipityClaimInitialized(creatorContractAddress, instanceId, msg.sender);
+    }
+
+    /**
+     * @notice Set the mint fees for claims
+     * @param mintFee The base mint fee in wei
+     * @param mintFeeMerkle The mint fee for merkle claims in wei
+     */
+    function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external adminRequired {
+        _mintFee = mintFee;
+        _mintFeeMerkle = mintFeeMerkle;
+        emit MintFeesUpdated(mintFee, mintFeeMerkle);
+    }
+
+    /**
+     * @notice Get the current base mint fee
+     */
+    function getMintFee() external view returns (uint256) {
+        return _mintFee;
+    }
+
+    /**
+     * @notice Get the current merkle mint fee
+     */
+    function getMintFeeMerkle() external view returns (uint256) {
+        return _mintFeeMerkle;
     }
 
     /**
@@ -343,7 +369,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
      */
     function _processPayment(Claim storage claim, uint32 mintCount) private returns (uint256) {
         uint256 creatorCost = claim.cost * mintCount;
-        uint256 platformFee = (claim.merkleRoot != bytes32(0) ? MINT_FEE_MERKLE : MINT_FEE) * mintCount;
+        uint256 platformFee = (claim.merkleRoot != bytes32(0) ? _mintFeeMerkle : _mintFee) * mintCount;
         uint256 totalCost = creatorCost + platformFee;
         
         if (claim.erc20 != address(0)) {
@@ -392,11 +418,16 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     error InvalidMerkleProof();
     error InvalidToken();
     
-    // Additional event for delivery tracking
+    // Additional events
     event SerendipityMintDelivered(
         address indexed creatorContract,
         uint256 indexed instanceId,
         address indexed recipient,
         uint32 amount
+    );
+    
+    event MintFeesUpdated(
+        uint256 mintFee,
+        uint256 mintFeeMerkle
     );
 }

@@ -122,4 +122,23 @@ interface IERC1155SerendipityWithAllowlist is ISerendipity {
     StorageProtocol storageProtocol,
     string calldata location
   ) external;
+
+  /**
+   * @notice set the mint fees for claims
+   * @param mintFee                   the base mint fee in wei
+   * @param mintFeeMerkle            the mint fee for merkle claims in wei
+   */
+  function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external;
+
+  /**
+   * @notice get the current base mint fee
+   * @return                          the base mint fee in wei
+   */
+  function getMintFee() external view returns (uint256);
+
+  /**
+   * @notice get the current merkle mint fee
+   * @return                          the merkle mint fee in wei
+   */
+  function getMintFeeMerkle() external view returns (uint256);
 }
