@@ -7,7 +7,6 @@ import "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensio
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -28,7 +27,7 @@ import "../libraries/delegation-registry/IDelegationRegistryV2.sol";
 contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTokenURI, Serendipity, ReentrancyGuard {
     using Strings for uint256;
 
-    // Fee variables (updatable by admin) - override parent MINT_FEE constant
+    // Fee variables (updatable by admin)
     uint256 private _mintFee = 500000000000000; // 0.0005 ETH default
     uint256 private _mintFeeMerkle = 690000000000000; // 0.00069 ETH default
 

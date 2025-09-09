@@ -469,7 +469,6 @@ contract ERC1155SerendipityTest is Test {
         // Anyone can mint when no merkle root
         vm.startPrank(unauthorized);
         uint256 totalCost = (0.01 ether + MINT_FEE);
-        bytes32[] memory emptyProof = new bytes32[](0);
         
         extension.mintReserve{value: totalCost}(
             address(creatorCore), 
@@ -553,7 +552,6 @@ contract ERC1155SerendipityTest is Test {
         // Unauthorized user mints 3 (wallet max)
         vm.startPrank(unauthorized);
         uint256 totalCost = (0.01 ether + MINT_FEE) * 3;
-        bytes32[] memory emptyProof = new bytes32[](0);
         
         extension.mintReserve{value: totalCost}(
             address(creatorCore), 

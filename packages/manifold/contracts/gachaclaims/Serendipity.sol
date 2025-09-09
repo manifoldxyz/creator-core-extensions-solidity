@@ -25,8 +25,6 @@ abstract contract Serendipity is ISerendipity, AdminControl {
   uint256 internal constant MAX_UINT_96 = 0xffffffffffffffffffffffff;
   address internal constant ADDRESS_ZERO = 0x0000000000000000000000000000000000000000;
 
-  uint256 public constant MINT_FEE = 500000000000000;
-
   bool public deprecated;
 
   // { contractAddress => { instanceId => { walletAddress => UserMintDetails } } }
