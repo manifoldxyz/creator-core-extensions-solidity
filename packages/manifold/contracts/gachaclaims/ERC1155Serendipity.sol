@@ -361,6 +361,47 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
     }
     
     /**
+     * @notice check if a mint index has been consumed or not (only for merkle claims)
+     * 
+     * @param creatorContractAddress    the address of the creator contract for the claim
+     * @param instanceId                the claim instance for the creator contract
+     * @param mintIndex                 the mint index to check
+     * @return                          whether or not the mint index was consumed
+     */
+    function checkMintIndex(address creatorContractAddress, uint256 instanceId, uint32 mintIndex)
+        external
+        view
+        returns (bool)
+    {
+        Claim memory claim = getClaim(creatorContractAddress, instanceId);
+        return _checkMintIndex(creatorContractAddress, instanceId, claim.merkleRoot, mintIndex);
+    }
+
+    /**
+     * @notice check if multiple mint indices has been consumed or not (only for merkle claims)
+     *
+     * @param creatorContractAddress    the address of the creator contract for the claim
+     * @param instanceId                the claim instance for the creator contract
+     * @param mintIndices               the mint indices to check
+     * @return minted                   whether or not the mint indices were consumed
+     */
+    function checkMintIndices(address creatorContractAddress, uint256 instanceId, uint32[] calldata mintIndices)
+        external
+        view
+        returns (bool[] memory minted)
+    {
+        Claim memory claim = getClaim(creatorContractAddress, instanceId);
+        uint256 mintIndicesLength = mintIndices.length;
+        minted = new bool[](mintIndices.length);
+        for (uint256 i; i < mintIndicesLength;) {
+            minted[i] = _checkMintIndex(creatorContractAddress, instanceId, claim.merkleRoot, mintIndices[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+    
+    /**
      * @notice Update token URI parameters
      */
     function updateTokenURIParams(
@@ -490,6 +531,21 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
         if (mintBitmask & claimMintTracking != 0) revert InvalidMerkleProof(); // Already minted with this index
         _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex] = claimMintTracking | mintBitmask;
+    }
+
+    /**
+     * @notice Check if a mint index has been consumed (internal)
+     */
+    function _checkMintIndex(address creatorContractAddress, uint256 instanceId, bytes32 merkleRoot, uint32 mintIndex)
+        internal
+        view
+        returns (bool)
+    {
+        uint256 claimMintIndex = mintIndex >> 8;
+        require(merkleRoot != "", "Can only check merkle claims");
+        uint256 claimMintTracking = _claimMintIndices[creatorContractAddress][instanceId][claimMintIndex];
+        uint256 mintBitmask = 1 << (mintIndex & MINT_INDEX_BITMASK);
+        return mintBitmask & claimMintTracking != 0;
     }
 
     /**

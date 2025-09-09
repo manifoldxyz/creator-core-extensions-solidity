@@ -145,4 +145,30 @@ interface IERC1155Serendipity is ISerendipity {
    * @return                          the merkle mint fee in wei
    */
   function getMintFeeMerkle() external view returns (uint256);
+
+  /**
+   * @notice check if a mint index has been consumed or not (only for merkle claims)
+   * 
+   * @param creatorContractAddress    the address of the creator contract for the claim
+   * @param instanceId                the claim instance for the creator contract
+   * @param mintIndex                 the mint index to check
+   * @return                          whether or not the mint index was consumed
+   */
+  function checkMintIndex(address creatorContractAddress, uint256 instanceId, uint32 mintIndex)
+    external
+    view
+    returns (bool);
+
+  /**
+   * @notice check if multiple mint indices has been consumed or not (only for merkle claims)
+   *
+   * @param creatorContractAddress    the address of the creator contract for the claim
+   * @param instanceId                the claim instance for the creator contract
+   * @param mintIndices               the mint indices to check
+   * @return                          whether or not the mint indices were consumed
+   */
+  function checkMintIndices(address creatorContractAddress, uint256 instanceId, uint32[] calldata mintIndices)
+    external
+    view
+    returns (bool[] memory);
 }

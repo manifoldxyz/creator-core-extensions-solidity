@@ -680,4 +680,123 @@ contract ERC1155SerendipityAdditionalTest is Test {
         
         vm.stopPrank();
     }
+
+    function test_checkMintIndex_functionality() public {
+        // Initialize claim with merkle root
+        IERC1155Serendipity.ClaimParameters memory params = IERC1155Serendipity.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            location: "arweave.net/test",
+            tokenVariations: 3,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            totalMax: 10,
+            cost: 0,
+            paymentReceiver: payable(creator),
+            erc20: address(0),
+            merkleRoot: merkleRoot,  // Use the instance variable
+            walletMax: 2
+        });
+        
+        vm.startPrank(creator);
+        vm.deal(creator, 10 ether);
+        extension.initializeClaim(address(creatorCore), 500, params);
+        vm.stopPrank();
+        
+        // Check mint indices before minting (should all be false)
+        assertFalse(extension.checkMintIndex(address(creatorCore), 500, 0));
+        assertFalse(extension.checkMintIndex(address(creatorCore), 500, 1));
+        
+        // Check multiple indices at once
+        uint32[] memory indices = new uint32[](3);
+        indices[0] = 0;
+        indices[1] = 1;
+        indices[2] = 2;
+        
+        bool[] memory results = extension.checkMintIndices(address(creatorCore), 500, indices);
+        assertFalse(results[0]);
+        assertFalse(results[1]);
+        assertFalse(results[2]);
+        
+        // Alice mints with index 0
+        uint32[] memory aliceIndices = new uint32[](1);
+        aliceIndices[0] = 0;
+        bytes32[][] memory aliceProofs = new bytes32[][](1);
+        aliceProofs[0] = aliceProof;  // Use the instance variable
+        
+        vm.deal(alice, 10 ether);
+        vm.prank(alice);
+        extension.mintReserve{ value: 1 ether }(
+            address(creatorCore),
+            500,
+            1,
+            aliceIndices,
+            aliceProofs,
+            address(0)
+        );
+        
+        // Check that index 0 is now consumed
+        assertTrue(extension.checkMintIndex(address(creatorCore), 500, 0));
+        assertFalse(extension.checkMintIndex(address(creatorCore), 500, 1));
+        
+        // Bob mints with index 1
+        uint32[] memory bobIndices = new uint32[](1);
+        bobIndices[0] = 1;
+        bytes32[][] memory bobProofs = new bytes32[][](1);
+        bobProofs[0] = bobProof;  // Use the instance variable
+        
+        vm.deal(bob, 10 ether);
+        vm.prank(bob);
+        extension.mintReserve{ value: 1 ether }(
+            address(creatorCore),
+            500,
+            1,
+            bobIndices,
+            bobProofs,
+            address(0)
+        );
+        
+        // Check that both indices 0 and 1 are now consumed
+        assertTrue(extension.checkMintIndex(address(creatorCore), 500, 0));
+        assertTrue(extension.checkMintIndex(address(creatorCore), 500, 1));
+        assertFalse(extension.checkMintIndex(address(creatorCore), 500, 2));
+        
+        // Check multiple indices at once
+        results = extension.checkMintIndices(address(creatorCore), 500, indices);
+        assertTrue(results[0]);
+        assertTrue(results[1]);
+        assertFalse(results[2]);
+    }
+
+    function test_checkMintIndex_revertsForNonMerkleClaim() public {
+        // Initialize non-merkle claim
+        IERC1155Serendipity.ClaimParameters memory params = IERC1155Serendipity.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            location: "arweave.net/test",
+            tokenVariations: 3,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            totalMax: 10,
+            cost: 0,
+            paymentReceiver: payable(creator),
+            erc20: address(0),
+            merkleRoot: bytes32(0),
+            walletMax: 0
+        });
+        
+        vm.startPrank(creator);
+        vm.deal(creator, 10 ether);
+        extension.initializeClaim(address(creatorCore), 501, params);
+        vm.stopPrank();
+        
+        // Should revert when checking mint index for non-merkle claim
+        vm.expectRevert("Can only check merkle claims");
+        extension.checkMintIndex(address(creatorCore), 501, 0);
+        
+        // Should also revert for checkMintIndices
+        uint32[] memory indices = new uint32[](1);
+        indices[0] = 0;
+        
+        vm.expectRevert("Can only check merkle claims");
+        extension.checkMintIndices(address(creatorCore), 501, indices);
+    }
 }
