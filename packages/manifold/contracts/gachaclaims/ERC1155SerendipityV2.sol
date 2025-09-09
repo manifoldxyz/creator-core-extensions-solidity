@@ -20,7 +20,10 @@ import "../libraries/delegation-registry/IDelegationRegistryV2.sol";
 /**
  * @title ERC1155 Serendipity V2
  * @author manifold.xyz
- * @notice Second version of ERC1155Serendipity with merkle-based allowlist and delegation support
+ * @notice Second version of ERC1155Serendipity with three key enhancements:
+ *         1. Merkle-based allowlist for access control
+ *         2. Updatable platform fees (base and merkle-specific)
+ *         3. Delegation registry support (V1 and V2) for hot/cold wallet patterns
  */
 contract ERC1155SerendipityV2 is IERC165, IERC1155SerendipityV2, ICreatorExtensionTokenURI, Serendipity, ReentrancyGuard {
     using Strings for uint256;
