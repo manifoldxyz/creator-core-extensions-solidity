@@ -756,18 +756,18 @@ contract ERC1155SerendipityTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
 
-    // Test that MAX_UINT_32 is rejected (since it's >= MAX_UINT_32)
+    // Test that 0 mint count is rejected
     vm.startPrank(creator);
     vm.expectRevert(ISerendipity.InvalidMintCount.selector);
-    example.mintReserve{ value: MINT_FEE * MAX_UINT_32 }(address(creatorCore1), 1, uint16(MAX_UINT_32), new uint32[](0), new bytes32[][](0), address(0));
+    example.mintReserve{ value: 0 }(address(creatorCore1), 1, 0, new uint32[](0), new bytes32[][](0), address(0));
     
-    // Test that we can mint a large but valid amount
-    uint32 largeAmount = 1000000;
-    example.mintReserve{ value: MINT_FEE * largeAmount }(address(creatorCore1), 1, uint16(largeAmount), new uint32[](0), new bytes32[][](0), address(0));
+    // Test that we can mint MAX_UINT16 (65535) - the maximum valid amount for uint16
+    uint16 maxAmount = type(uint16).max;  // 65535
+    example.mintReserve{ value: MINT_FEE * maxAmount }(address(creatorCore1), 1, maxAmount, new uint32[](0), new bytes32[][](0), address(0));
     
     // Verify the mint worked
     Serendipity.UserMintDetails memory userMintDetails = example.getUserMints(creator, address(creatorCore1), 1);
-    assertEq(userMintDetails.reservedCount, largeAmount);
+    assertEq(userMintDetails.reservedCount, maxAmount);
     vm.stopPrank();
   }
 
