@@ -132,7 +132,6 @@ contract ERC1155SerendipityV2 is IERC165, IERC1155SerendipityV2, ICreatorExtensi
     function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external adminRequired {
         _mintFee = mintFee;
         _mintFeeMerkle = mintFeeMerkle;
-        emit MintFeesUpdated(mintFee, mintFeeMerkle);
     }
 
     /**
@@ -328,8 +327,6 @@ contract ERC1155SerendipityV2 is IERC165, IERC1155SerendipityV2, ICreatorExtensi
                 receivers[j] = recipient;
                 userMintDetails.deliveredCount += amount;
                 
-                emit SerendipityMintDelivered(mintData.creatorContractAddress, mintData.instanceId, recipient, amount);
-                
                 unchecked {
                     j++;
                 }
@@ -506,17 +503,4 @@ contract ERC1155SerendipityV2 is IERC165, IERC1155SerendipityV2, ICreatorExtensi
     error InvalidMerkleProof();
     error InvalidToken();
     error InvalidDelegate();
-    
-    // Additional events
-    event SerendipityMintDelivered(
-        address indexed creatorContract,
-        uint256 indexed instanceId,
-        address indexed recipient,
-        uint32 amount
-    );
-    
-    event MintFeesUpdated(
-        uint256 mintFee,
-        uint256 mintFeeMerkle
-    );
 }
