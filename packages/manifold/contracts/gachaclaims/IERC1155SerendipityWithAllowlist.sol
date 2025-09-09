@@ -110,6 +110,22 @@ interface IERC1155SerendipityWithAllowlist is ISerendipity {
   ) external payable;
 
   /**
+   * @notice mint tokens for a reserved claim with merkle proof validation and delegation support
+   * @param creatorContractAddress    the creator contract the claim will mint tokens for
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintCount                 the number of tokens to mint
+   * @param mintFor                   the address to mint for (when using delegation)
+   * @param merkleProof              the merkle proof for allowlist validation
+   */
+  function mintReserve(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint32 mintCount,
+    address mintFor,
+    bytes32[] calldata merkleProof
+  ) external payable;
+
+  /**
    * @notice update tokenURI for an existing token
    * @param creatorContractAddress    the creator contract corresponding to the burn redeem
    * @param instanceId                the instanceId of the burnRedeem for the creator contract

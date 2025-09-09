@@ -14,6 +14,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./Serendipity.sol";
 import "./IERC1155SerendipityWithAllowlist.sol";
+import "../libraries/delegation-registry/IDelegationRegistry.sol";
+import "../libraries/delegation-registry/IDelegationRegistryV2.sol";
 
 /**
  * @title ERC1155 Serendipity With Allowlist
@@ -27,6 +29,10 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     uint256 private _mintFee = 500000000000000; // 0.0005 ETH default
     uint256 private _mintFeeMerkle = 690000000000000; // 0.00069 ETH default
 
+    // Delegation registry addresses (immutable)
+    address public immutable DELEGATION_REGISTRY;
+    address public immutable DELEGATION_REGISTRY_V2;
+
     // Storage mappings following existing pattern
     mapping(address => mapping(uint256 => Claim)) private _claims;
     mapping(address => mapping(uint256 => uint256)) private _tokenInstances;
@@ -34,7 +40,14 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     // Track mints per wallet for wallet max validation
     mapping(address => mapping(uint256 => mapping(address => uint256))) private _mintsPerWallet;
 
-    constructor(address initialOwner) Serendipity(initialOwner) {}
+    constructor(
+        address initialOwner,
+        address delegationRegistry,
+        address delegationRegistryV2
+    ) Serendipity(initialOwner) {
+        DELEGATION_REGISTRY = delegationRegistry;
+        DELEGATION_REGISTRY_V2 = delegationRegistryV2;
+    }
 
     function supportsInterface(bytes4 interfaceId) 
         public 
@@ -166,7 +179,25 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     }
 
     /**
-     * @notice Reserve mints with optional merkle proof validation
+     * @notice Reserve mints with optional merkle proof validation and delegation support
+     * @param creatorContractAddress The creator contract address
+     * @param instanceId The claim instance ID
+     * @param mintCount The number of tokens to mint
+     * @param mintFor The address to mint for (when using delegation)
+     * @param merkleProof The merkle proof for allowlist validation
+     */
+    function mintReserve(
+        address creatorContractAddress,
+        uint256 instanceId,
+        uint32 mintCount,
+        address mintFor,
+        bytes32[] calldata merkleProof
+    ) external payable nonReentrant {
+        _mintReserveInternal(creatorContractAddress, instanceId, mintCount, mintFor, merkleProof);
+    }
+
+    /**
+     * @notice Reserve mints with merkle proof but no delegation
      */
     function mintReserve(
         address creatorContractAddress,
@@ -174,6 +205,28 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
         uint32 mintCount,
         bytes32[] calldata merkleProof
     ) external payable override nonReentrant {
+        _mintReserveInternal(creatorContractAddress, instanceId, mintCount, address(0), merkleProof);
+    }
+
+    /**
+     * @notice Reserve mints without merkle proof (implements base ISerendipity interface)
+     */
+    function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override nonReentrant {
+        // Delegate to the full version with empty proof and no delegation
+        bytes32[] memory emptyProof = new bytes32[](0);
+        _mintReserveInternal(creatorContractAddress, instanceId, mintCount, address(0), emptyProof);
+    }
+    
+    /**
+     * @notice Internal mint reserve logic
+     */
+    function _mintReserveInternal(
+        address creatorContractAddress,
+        uint256 instanceId,
+        uint32 mintCount,
+        address mintFor,
+        bytes32[] memory merkleProof
+    ) private {
         // Check that contracts cannot mint
         if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
         
@@ -190,25 +243,34 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
         // Check supply
         if (claim.totalMax != 0 && claim.total + mintCount > claim.totalMax) revert ClaimSoldOut();
         
+        // Determine the actual minter (handle delegation)
+        address minter = mintFor;
+        if (mintFor == address(0)) {
+            minter = msg.sender;
+        } else if (mintFor != msg.sender) {
+            // Check delegation rights
+            _validateDelegation(msg.sender, mintFor);
+        }
+        
         // Handle merkle validation if merkle root is set
         if (claim.merkleRoot != bytes32(0)) {
-            // Verify merkle proof
-            bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+            // Verify merkle proof using the actual minter address
+            bytes32 leaf = keccak256(abi.encodePacked(minter));
             if (!MerkleProof.verify(merkleProof, claim.merkleRoot, leaf)) {
                 revert InvalidMerkleProof();
             }
             
             // Check wallet max for merkle claims
             if (claim.walletMax != 0) {
-                uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] + mintCount;
+                uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][minter] + mintCount;
                 if (newTotal > claim.walletMax) revert TooManyRequested();
-                _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] = newTotal;
+                _mintsPerWallet[creatorContractAddress][instanceId][minter] = newTotal;
             }
         } else if (claim.walletMax != 0) {
             // Non-merkle wallet limit
-            uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] + mintCount;
+            uint256 newTotal = _mintsPerWallet[creatorContractAddress][instanceId][minter] + mintCount;
             if (newTotal > claim.walletMax) revert TooManyRequested();
-            _mintsPerWallet[creatorContractAddress][instanceId][msg.sender] = newTotal;
+            _mintsPerWallet[creatorContractAddress][instanceId][minter] = newTotal;
         }
         
         // Process payment
@@ -217,25 +279,16 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
         // Update claim totals
         claim.total += mintCount;
         
-        // Track user mints
-        UserMintDetails storage userMintDetails = _mintDetailsPerWallet[creatorContractAddress][instanceId][msg.sender];
+        // Track user mints for the actual minter
+        UserMintDetails storage userMintDetails = _mintDetailsPerWallet[creatorContractAddress][instanceId][minter];
         userMintDetails.reservedCount += mintCount;
         
-        emit SerendipityMintReserved(creatorContractAddress, instanceId, msg.sender, mintCount);
+        emit SerendipityMintReserved(creatorContractAddress, instanceId, minter, mintCount);
         
         // Refund excess payment
         if (msg.value > totalCost) {
             Address.sendValue(payable(msg.sender), msg.value - totalCost);
         }
-    }
-
-    /**
-     * @notice Reserve mints without merkle proof (implements base ISerendipity interface)
-     */
-    function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override {
-        // Delegate to the merkle version with empty proof
-        bytes32[] memory emptyProof = new bytes32[](0);
-        this.mintReserve{value: msg.value}(creatorContractAddress, instanceId, mintCount, emptyProof);
     }
 
     /**
@@ -390,6 +443,38 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     }
 
     /**
+     * @notice Validate delegation rights
+     */
+    function _validateDelegation(address delegate, address vault) private view {
+        bool isValid = false;
+        
+        // Check V2 delegation first (if available)
+        if (DELEGATION_REGISTRY_V2 != address(0)) {
+            try IDelegationRegistryV2(DELEGATION_REGISTRY_V2).checkDelegateForContract(
+                delegate,
+                vault,
+                address(this),
+                ""
+            ) returns (bool valid) {
+                isValid = valid;
+            } catch {}
+        }
+        
+        // If V2 didn't validate, check V1
+        if (!isValid && DELEGATION_REGISTRY != address(0)) {
+            try IDelegationRegistry(DELEGATION_REGISTRY).checkDelegateForContract(
+                delegate,
+                vault,
+                address(this)
+            ) returns (bool valid) {
+                isValid = valid;
+            } catch {}
+        }
+        
+        if (!isValid) revert InvalidDelegate();
+    }
+
+    /**
      * @notice Recover signer from signature
      */
     function _recoverSigner(bytes32 message, bytes memory signature) private pure returns (address) {
@@ -417,6 +502,7 @@ contract ERC1155SerendipityWithAllowlist is IERC165, IERC1155SerendipityWithAllo
     // Additional error definitions (not in base contracts)
     error InvalidMerkleProof();
     error InvalidToken();
+    error InvalidDelegate();
     
     // Additional events
     event SerendipityMintDelivered(

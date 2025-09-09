@@ -7,11 +7,81 @@ import "../../contracts/gachaclaims/ERC1155SerendipityWithAllowlist.sol";
 import "../../contracts/gachaclaims/ISerendipity.sol";
 import "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "../../contracts/libraries/delegation-registry/IDelegationRegistry.sol";
+import "../../contracts/libraries/delegation-registry/IDelegationRegistryV2.sol";
+
+// Mock Delegation Registry V1
+contract MockDelegationRegistry is IDelegationRegistry {
+    mapping(address => mapping(address => mapping(address => bool))) private _contractDelegations;
+    
+    function delegateForContract(address delegate, address contract_, bool value) external {
+        _contractDelegations[msg.sender][delegate][contract_] = value;
+    }
+    
+    function checkDelegateForContract(address delegate, address vault, address contract_) 
+        external 
+        view 
+        override
+        returns (bool) 
+    {
+        return _contractDelegations[vault][delegate][contract_];
+    }
+    
+    // Implement other required interface methods with empty/default implementations
+    function checkDelegateForAll(address, address) external pure returns (bool) { return false; }
+    function checkDelegateForToken(address, address, address, uint256) external pure returns (bool) { return false; }
+    function delegateForAll(address, bool) external {}
+    function delegateForToken(address, address, uint256, bool) external {}
+    function revokeAllDelegates() external {}
+    function revokeDelegate(address) external {}
+    function revokeSelf(address) external {}
+    function getDelegationsByDelegate(address) external pure returns (DelegationInfo[] memory) {
+        return new DelegationInfo[](0);
+    }
+    function getDelegatesForAll(address) external pure returns (address[] memory) {
+        return new address[](0);
+    }
+    function getDelegatesForContract(address, address) external pure returns (address[] memory) {
+        return new address[](0);
+    }
+    function getDelegatesForToken(address, address, uint256) external pure returns (address[] memory) {
+        return new address[](0);
+    }
+    function getContractLevelDelegations(address) external pure returns (ContractDelegation[] memory) {
+        return new ContractDelegation[](0);
+    }
+    function getTokenLevelDelegations(address) external pure returns (TokenDelegation[] memory) {
+        return new TokenDelegation[](0);
+    }
+    function getDelegatesForTokens(address, address, uint256[] calldata) external pure returns (address[] memory) {
+        return new address[](0);
+    }
+}
+
+// Mock Delegation Registry V2
+contract MockDelegationRegistryV2 {
+    mapping(address => mapping(address => mapping(address => bool))) private _contractDelegations;
+    
+    function delegateContract(address delegate, address contract_, bool enable) external {
+        _contractDelegations[msg.sender][delegate][contract_] = enable;
+    }
+    
+    function checkDelegateForContract(
+        address delegate,
+        address vault,
+        address contract_,
+        bytes32
+    ) external view returns (bool) {
+        return _contractDelegations[vault][delegate][contract_];
+    }
+}
 
 contract ERC1155SerendipityWithAllowlistTest is Test {
     ERC1155SerendipityWithAllowlist public extension;
     ERC1155Creator public creatorCore;
     ERC1155Creator public creatorCore2;
+    MockDelegationRegistry public delegationRegistryV1;
+    MockDelegationRegistryV2 public delegationRegistryV2;
 
     address public creator = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
     address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
@@ -38,9 +108,17 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         creatorCore2 = new ERC1155Creator("Test2", "TEST2");
         vm.stopPrank();
 
-        // Deploy extension
+        // Deploy delegation registries
+        delegationRegistryV1 = new MockDelegationRegistry();
+        delegationRegistryV2 = new MockDelegationRegistryV2();
+        
+        // Deploy extension with delegation support
         vm.startPrank(owner);
-        extension = new ERC1155SerendipityWithAllowlist(owner);
+        extension = new ERC1155SerendipityWithAllowlist(
+            owner,
+            address(delegationRegistryV1),
+            address(delegationRegistryV2)
+        );
         extension.setSigner(signingAddress);
         vm.stopPrank();
         
@@ -949,6 +1027,241 @@ contract ERC1155SerendipityWithAllowlistTest is Test {
         vm.expectRevert(ISerendipity.InvalidPayment.selector);
         extension.mintReserve{value: oldFee}(address(creatorCore), 102, 1, new bytes32[](0));
         vm.stopPrank();
+    }
+
+    // ============ Delegation Tests ============
+
+    function test_mintReserve_withDelegationV1_validProof() public {
+        // Setup claim with merkle root
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 2
+        });
+        extension.initializeClaim(address(creatorCore), 200, params);
+        vm.stopPrank();
+
+        // Alice delegates to unauthorized
+        vm.startPrank(alice);
+        delegationRegistryV1.delegateForContract(unauthorized, address(extension), true);
+        vm.stopPrank();
+
+        // Unauthorized mints on behalf of alice using delegation
+        vm.startPrank(unauthorized);
+        extension.mintReserve{value: MINT_FEE_MERKLE}(
+            address(creatorCore),
+            200,
+            1,
+            alice,  // mintFor
+            aliceProof
+        );
+        vm.stopPrank();
+
+        // Verify alice is credited with the mint
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(alice, address(creatorCore), 200);
+        assertEq(details.reservedCount, 1);
+    }
+
+    function test_mintReserve_withDelegationV2_validProof() public {
+        // Setup claim with merkle root
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 2
+        });
+        extension.initializeClaim(address(creatorCore), 201, params);
+        vm.stopPrank();
+
+        // Bob delegates to unauthorized using V2
+        vm.startPrank(bob);
+        delegationRegistryV2.delegateContract(unauthorized, address(extension), true);
+        vm.stopPrank();
+
+        // Unauthorized mints on behalf of bob using V2 delegation
+        vm.startPrank(unauthorized);
+        extension.mintReserve{value: MINT_FEE_MERKLE}(
+            address(creatorCore),
+            201,
+            1,
+            bob,  // mintFor
+            bobProof
+        );
+        vm.stopPrank();
+
+        // Verify bob is credited with the mint
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(bob, address(creatorCore), 201);
+        assertEq(details.reservedCount, 1);
+    }
+
+    function test_mintReserve_withInvalidDelegation_reverts() public {
+        // Setup claim with merkle root
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 2
+        });
+        extension.initializeClaim(address(creatorCore), 202, params);
+        vm.stopPrank();
+
+        // Unauthorized tries to mint on behalf of alice WITHOUT delegation
+        vm.startPrank(unauthorized);
+        vm.expectRevert(ERC1155SerendipityWithAllowlist.InvalidDelegate.selector);
+        extension.mintReserve{value: MINT_FEE_MERKLE}(
+            address(creatorCore),
+            202,
+            1,
+            alice,  // mintFor
+            aliceProof
+        );
+        vm.stopPrank();
+    }
+
+    function test_mintReserve_delegation_respectsWalletMax() public {
+        // Setup claim with merkle root and wallet max
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 1  // Only 1 mint allowed per wallet
+        });
+        extension.initializeClaim(address(creatorCore), 203, params);
+        vm.stopPrank();
+
+        // Alice delegates to unauthorized
+        vm.startPrank(alice);
+        delegationRegistryV1.delegateForContract(unauthorized, address(extension), true);
+        vm.stopPrank();
+
+        // First mint should succeed
+        vm.startPrank(unauthorized);
+        extension.mintReserve{value: MINT_FEE_MERKLE}(
+            address(creatorCore),
+            203,
+            1,
+            alice,
+            aliceProof
+        );
+        
+        // Second mint should fail due to wallet max
+        vm.expectRevert(ISerendipity.TooManyRequested.selector);
+        extension.mintReserve{value: MINT_FEE_MERKLE}(
+            address(creatorCore),
+            203,
+            1,
+            alice,
+            aliceProof
+        );
+        vm.stopPrank();
+    }
+
+    function test_mintReserve_selfDelegation_works() public {
+        // Setup claim
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: merkleRoot,
+            walletMax: 2
+        });
+        extension.initializeClaim(address(creatorCore), 204, params);
+        vm.stopPrank();
+
+        // Alice mints for herself (self-delegation)
+        vm.startPrank(alice);
+        extension.mintReserve{value: MINT_FEE_MERKLE}(
+            address(creatorCore),
+            204,
+            1,
+            alice,  // mintFor = msg.sender (self)
+            aliceProof
+        );
+        vm.stopPrank();
+
+        // Verify mint succeeded
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(alice, address(creatorCore), 204);
+        assertEq(details.reservedCount, 1);
+    }
+
+    function test_mintReserve_withoutMerkle_andDelegation() public {
+        // Setup claim without merkle root
+        vm.startPrank(creator);
+        IERC1155SerendipityWithAllowlist.ClaimParameters memory params = IERC1155SerendipityWithAllowlist.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0,
+            erc20: address(0),
+            merkleRoot: bytes32(0),  // No merkle
+            walletMax: 2
+        });
+        extension.initializeClaim(address(creatorCore), 205, params);
+        vm.stopPrank();
+
+        // Charlie delegates to unauthorized
+        vm.startPrank(charlie);
+        delegationRegistryV1.delegateForContract(unauthorized, address(extension), true);
+        vm.stopPrank();
+
+        // Unauthorized mints on behalf of charlie (no merkle proof needed)
+        vm.startPrank(unauthorized);
+        extension.mintReserve{value: MINT_FEE}(
+            address(creatorCore),
+            205,
+            1,
+            charlie,
+            new bytes32[](0)
+        );
+        vm.stopPrank();
+
+        // Verify charlie is credited
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(charlie, address(creatorCore), 205);
+        assertEq(details.reservedCount, 1);
     }
 
     // ============ Additional Tests from Base ERC1155Serendipity ============
