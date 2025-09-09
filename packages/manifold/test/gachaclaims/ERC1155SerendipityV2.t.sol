@@ -433,7 +433,7 @@ contract ERC1155SerendipityV2Test is Test {
         vm.startPrank(unauthorized);
         uint256 totalCost = (0.01 ether + MINT_FEE_MERKLE);
         
-        vm.expectRevert(ERC1155SerendipityV2.InvalidMerkleProof.selector);
+        vm.expectRevert(IERC1155SerendipityV2.InvalidMerkleProof.selector);
         extension.mintReserve{value: totalCost}(
             address(creatorCore), 
             12, 
@@ -1132,7 +1132,7 @@ contract ERC1155SerendipityV2Test is Test {
 
         // Unauthorized tries to mint on behalf of alice WITHOUT delegation
         vm.startPrank(unauthorized);
-        vm.expectRevert(ERC1155SerendipityV2.InvalidDelegate.selector);
+        vm.expectRevert(IERC1155SerendipityV2.InvalidDelegate.selector);
         extension.mintReserve{value: MINT_FEE_MERKLE}(
             address(creatorCore),
             202,

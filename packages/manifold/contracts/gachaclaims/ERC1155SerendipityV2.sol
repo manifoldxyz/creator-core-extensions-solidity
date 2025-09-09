@@ -498,9 +498,4 @@ contract ERC1155SerendipityV2 is IERC165, IERC1155SerendipityV2, ICreatorExtensi
         
         return ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message)), v, r, s);
     }
-
-    // Additional error definitions (not in base contracts)
-    error InvalidMerkleProof();
-    error InvalidToken();
-    error InvalidDelegate();
 }

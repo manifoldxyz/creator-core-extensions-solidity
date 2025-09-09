@@ -158,4 +158,9 @@ interface IERC1155SerendipityV2 is ISerendipity {
    * @return                          the merkle mint fee in wei
    */
   function getMintFeeMerkle() external view returns (uint256);
+
+  // Error definitions
+  error InvalidMerkleProof();
+  error InvalidToken();
+  error InvalidDelegate();
 }
