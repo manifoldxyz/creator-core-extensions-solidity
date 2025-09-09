@@ -371,6 +371,17 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         override
         returns (Claim memory)
     {
+        return _getClaim(creatorContractAddress, instanceId);
+    }
+
+    /**
+     * @notice Internal function to get claim details
+     */
+    function _getClaim(address creatorContractAddress, uint256 instanceId)
+        private
+        view
+        returns (Claim memory)
+    {
         return _claims[creatorContractAddress][instanceId];
     }
 
