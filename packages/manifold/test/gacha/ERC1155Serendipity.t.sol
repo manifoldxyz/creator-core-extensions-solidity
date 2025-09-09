@@ -219,7 +219,7 @@ contract ERC1155SerendipityTest is Test {
       walletMax: 0
     });
 
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
 
     claimU.storageProtocol = ISerendipity.StorageProtocol.INVALID;
     vm.expectRevert(ISerendipity.InvalidStorageProtocol.selector);
@@ -304,7 +304,7 @@ contract ERC1155SerendipityTest is Test {
       walletMax: 0
     });
 
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
 
     claimU.storageProtocol = ISerendipity.StorageProtocol.INVALID;
     vm.expectRevert(ISerendipity.InvalidStorageProtocol.selector);
@@ -431,7 +431,7 @@ contract ERC1155SerendipityTest is Test {
       walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5);
+    example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5, 0, new bytes32[](0), address(0));
 
     IERC1155Serendipity.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     // sanity setup
@@ -508,7 +508,7 @@ contract ERC1155SerendipityTest is Test {
       walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5);
+    example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5, 0, new bytes32[](0), address(0));
 
     IERC1155Serendipity.Claim memory claim = example.getClaim(address(creatorCore1), 1);
     // sanity setup
@@ -622,7 +622,7 @@ contract ERC1155SerendipityTest is Test {
 
     // Insufficient payment
     vm.expectRevert(ISerendipity.InvalidPayment.selector);
-    example.mintReserve{ value: 1 }(address(creatorCore1), 1, 2);
+    example.mintReserve{ value: 1 }(address(creatorCore1), 1, 2, 0, new bytes32[](0), address(0));
 
     vm.stopPrank();
   }
@@ -649,7 +649,7 @@ contract ERC1155SerendipityTest is Test {
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.expectRevert(ISerendipity.ClaimInactive.selector);
-    example.mintReserve{ value: 3 }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: 3 }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
     vm.stopPrank();
   }
 
@@ -676,7 +676,7 @@ contract ERC1155SerendipityTest is Test {
     vm.stopPrank();
 
     vm.startPrank(other);
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
     vm.stopPrank();
   }
 
@@ -700,12 +700,12 @@ contract ERC1155SerendipityTest is Test {
       walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
     vm.stopPrank();
 
     vm.startPrank(other);
     vm.expectRevert(ISerendipity.ClaimSoldOut.selector);
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
     vm.stopPrank();
   }
 
@@ -730,7 +730,7 @@ contract ERC1155SerendipityTest is Test {
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.expectRevert(ISerendipity.InvalidMintCount.selector);
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 0);
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 0, 0, new bytes32[](0), address(0));
     vm.stopPrank();
   }
 
@@ -759,11 +759,11 @@ contract ERC1155SerendipityTest is Test {
     // Test that MAX_UINT_32 is rejected (since it's >= MAX_UINT_32)
     vm.startPrank(creator);
     vm.expectRevert(ISerendipity.InvalidMintCount.selector);
-    example.mintReserve{ value: MINT_FEE * MAX_UINT_32 }(address(creatorCore1), 1, MAX_UINT_32);
+    example.mintReserve{ value: MINT_FEE * MAX_UINT_32 }(address(creatorCore1), 1, MAX_UINT_32, 0, new bytes32[](0), address(0));
     
     // Test that we can mint a large but valid amount
     uint32 largeAmount = 1000000;
-    example.mintReserve{ value: MINT_FEE * largeAmount }(address(creatorCore1), 1, largeAmount);
+    example.mintReserve{ value: MINT_FEE * largeAmount }(address(creatorCore1), 1, largeAmount, 0, new bytes32[](0), address(0));
     
     // Verify the mint worked
     Serendipity.UserMintDetails memory userMintDetails = example.getUserMints(creator, address(creatorCore1), 1);
@@ -795,7 +795,7 @@ contract ERC1155SerendipityTest is Test {
 
     // should be able to reserve mint even if totalMax is 0
     vm.startPrank(other);
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
     vm.stopPrank();
 
     vm.startPrank(signingAddress);
@@ -834,7 +834,7 @@ contract ERC1155SerendipityTest is Test {
       walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.mintReserve{ value: mintPrice + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: mintPrice + MINT_FEE }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
     uint256 creatorBalanceBefore = address(creator).balance;
     // the manifold fee is saved to the extension contract
     uint256 extensionBalanceBefore = address(example).balance;
@@ -842,7 +842,7 @@ contract ERC1155SerendipityTest is Test {
 
     vm.startPrank(other);
     // Try to mint 5 but only 3 are available - should mint 3 and refund for 2
-    example.mintReserve{ value: (mintPrice + MINT_FEE) * 5 }(address(creatorCore1), 1, 5);
+    example.mintReserve{ value: (mintPrice + MINT_FEE) * 5 }(address(creatorCore1), 1, 5, 0, new bytes32[](0), address(0));
     vm.stopPrank();
 
     // Confirm user got only 3 tokens (the remaining available)
@@ -912,11 +912,11 @@ contract ERC1155SerendipityTest is Test {
       walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.mintReserve{ value: (1 + MINT_FEE) * 2 }(address(creatorCore1), 1, 2);
+    example.mintReserve{ value: (1 + MINT_FEE) * 2 }(address(creatorCore1), 1, 2, 0, new bytes32[](0), address(0));
     vm.stopPrank();
 
     vm.startPrank(other2);
-    example.mintReserve{ value: (1 + MINT_FEE) * 4 }(address(creatorCore1), 1, 4);
+    example.mintReserve{ value: (1 + MINT_FEE) * 4 }(address(creatorCore1), 1, 4, 0, new bytes32[](0), address(0));
     vm.stopPrank();
 
     vm.startPrank(signingAddress);
@@ -990,7 +990,7 @@ contract ERC1155SerendipityTest is Test {
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
-    example.mintReserve{ value: totalMintPrice }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: totalMintPrice }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
 
     // mint in between on another extension
     address[] memory receivers = new address[](1);
@@ -1004,10 +1004,10 @@ contract ERC1155SerendipityTest is Test {
 
     // mintreserving should have no effect
     vm.startPrank(other);
-    example.mintReserve{ value: totalMintPrice * 2 }(address(creatorCore1), 1, 2);
+    example.mintReserve{ value: totalMintPrice * 2 }(address(creatorCore1), 1, 2, 0, new bytes32[](0), address(0));
     vm.stopPrank();
     vm.startPrank(other2);
-    example.mintReserve{ value: totalMintPrice }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: totalMintPrice }(address(creatorCore1), 1, 1, 0, new bytes32[](0), address(0));
     vm.stopPrank();
 
     vm.startPrank(creator);

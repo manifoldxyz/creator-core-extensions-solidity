@@ -366,7 +366,7 @@ contract ERC1155SerendipityTest is Test {
             10, 
             1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
 
         ISerendipity.UserMintDetails memory details = extension.getUserMints(alice, address(creatorCore), 10);
@@ -403,7 +403,8 @@ contract ERC1155SerendipityTest is Test {
             11, 
             1,
             1, // mintIndex for bob
-            bobProof
+            bobProof,
+            address(0)
         );
 
         ISerendipity.UserMintDetails memory details = extension.getUserMints(bob, address(creatorCore), 11);
@@ -441,7 +442,7 @@ contract ERC1155SerendipityTest is Test {
             12, 
             1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
     }
 
@@ -475,7 +476,8 @@ contract ERC1155SerendipityTest is Test {
             13, 
             1,
             0, // mintIndex 0 for non-merkle
-            new bytes32[](0)
+            new bytes32[](0),
+            address(0)
         );
 
         ISerendipity.UserMintDetails memory details = extension.getUserMints(unauthorized, address(creatorCore), 13);
@@ -514,7 +516,7 @@ contract ERC1155SerendipityTest is Test {
             20, 
             2,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
 
         // Try to mint again with same mintIndex - should fail due to mintIndex reuse
@@ -524,7 +526,7 @@ contract ERC1155SerendipityTest is Test {
             20, 
             1,
             0, // trying to reuse mintIndex 0
-            aliceProof
+            aliceProof, address(0)
         );
     }
 
@@ -558,7 +560,8 @@ contract ERC1155SerendipityTest is Test {
             21, 
             3,
             0, // mintIndex 0 for non-merkle
-            new bytes32[](0)
+            new bytes32[](0),
+            address(0)
         );
 
         // Try to mint more than wallet max
@@ -568,7 +571,8 @@ contract ERC1155SerendipityTest is Test {
             21, 
             1,
             0, // mintIndex 0 for non-merkle
-            new bytes32[](0)
+            new bytes32[](0),
+            address(0)
         );
     }
 
@@ -604,7 +608,7 @@ contract ERC1155SerendipityTest is Test {
             30, 
             3,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
         vm.stopPrank();
 
@@ -664,7 +668,7 @@ contract ERC1155SerendipityTest is Test {
             40, 
             1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
 
         // Mint with correct payment
@@ -676,7 +680,7 @@ contract ERC1155SerendipityTest is Test {
             40, 
             1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
 
         // Verify payment was sent to creator
@@ -718,7 +722,7 @@ contract ERC1155SerendipityTest is Test {
             50, 
             1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
     }
 
@@ -752,7 +756,7 @@ contract ERC1155SerendipityTest is Test {
             51, 
             1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
     }
 
@@ -786,7 +790,7 @@ contract ERC1155SerendipityTest is Test {
             52, 
             1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
         vm.stopPrank();
 
@@ -799,7 +803,8 @@ contract ERC1155SerendipityTest is Test {
             52, 
             1,
             1, // mintIndex for bob
-            bobProof
+            bobProof,
+            address(0)
         );
     }
 
@@ -966,7 +971,7 @@ contract ERC1155SerendipityTest is Test {
 
         // Mint with new fee
         vm.startPrank(alice);
-        extension.mintReserve{value: newMintFee}(address(creatorCore), 100, 1, 0, new bytes32[](0));
+        extension.mintReserve{value: newMintFee}(address(creatorCore), 100, 1, 0, new bytes32[](0), address(0));
         vm.stopPrank();
 
         // Verify mint was successful with new fee
@@ -1003,7 +1008,8 @@ contract ERC1155SerendipityTest is Test {
         vm.startPrank(alice);
         extension.mintReserve{value: newMintFeeMerkle}(address(creatorCore), 101, 1,
             0, // mintIndex for alice
-            aliceProof);
+            aliceProof,
+            address(0));
         vm.stopPrank();
 
         // Verify mint was successful with new fee
@@ -1040,7 +1046,7 @@ contract ERC1155SerendipityTest is Test {
         // Try to mint with old fee amount - should fail
         vm.startPrank(alice);
         vm.expectRevert(ISerendipity.InvalidPayment.selector);
-        extension.mintReserve{value: oldFee}(address(creatorCore), 102, 1, 0, new bytes32[](0));
+        extension.mintReserve{value: oldFee}(address(creatorCore), 102, 1, 0, new bytes32[](0), address(0));
         vm.stopPrank();
     }
 
@@ -1319,7 +1325,7 @@ contract ERC1155SerendipityTest is Test {
         });
         extension.initializeClaim(address(creatorCore), 80, params);
         vm.deal(creator, 10 ether);
-        extension.mintReserve{value: MINT_FEE}(address(creatorCore), 80, 1, 0, new bytes32[](0));
+        extension.mintReserve{value: MINT_FEE}(address(creatorCore), 80, 1, 0, new bytes32[](0), address(0));
         vm.stopPrank();
 
         // Old signer should fail
@@ -1411,11 +1417,11 @@ contract ERC1155SerendipityTest is Test {
 
         // Test minting 0 tokens
         vm.expectRevert(ISerendipity.InvalidMintCount.selector);
-        extension.mintReserve{value: 0}(address(creatorCore), 90, 0, 0, new bytes32[](0));
+        extension.mintReserve{value: 0}(address(creatorCore), 90, 0, 0, new bytes32[](0), address(0));
 
         // Test minting MAX_UINT_32 tokens
         vm.expectRevert(ISerendipity.InvalidMintCount.selector);
-        extension.mintReserve{value: 0}(address(creatorCore), 90, MAX_UINT_32, 0, new bytes32[](0));
+        extension.mintReserve{value: 0}(address(creatorCore), 90, MAX_UINT_32, 0, new bytes32[](0), address(0));
     }
 
     function test_mintFromContract_reverts() public {
@@ -1538,11 +1544,11 @@ contract ERC1155SerendipityTest is Test {
         extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
             address(creatorCore), 100, 1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
         
         extension.mintReserve{value: 0.02 ether + MINT_FEE}(
-            address(creatorCore2), 100, 1, 0, new bytes32[](0)
+            address(creatorCore2), 100, 1, 0, new bytes32[](0), address(0)
         );
         
         // Verify mints are tracked separately
@@ -1603,7 +1609,7 @@ contract ERC1155SerendipityTest is Test {
         
         // Alice reserves 2  
         vm.deal(creator, 10 ether);
-        extension.mintReserve{value: MINT_FEE * 2}(address(creatorCore), 110, 2, 0, new bytes32[](0));
+        extension.mintReserve{value: MINT_FEE * 2}(address(creatorCore), 110, 2, 0, new bytes32[](0), address(0));
         vm.stopPrank();
 
         // Try to deliver 3 (more than reserved)
@@ -1644,7 +1650,7 @@ contract ERC1155SerendipityTest is Test {
 
         extension.initializeClaim(address(creatorCore), 111, params);
         vm.deal(creator, 10 ether);
-        extension.mintReserve{value: MINT_FEE}(address(creatorCore), 111, 1, 0, new bytes32[](0));
+        extension.mintReserve{value: MINT_FEE}(address(creatorCore), 111, 1, 0, new bytes32[](0), address(0));
         vm.stopPrank();
 
         vm.startPrank(signingAddress);
@@ -1753,7 +1759,7 @@ contract ERC1155SerendipityTest is Test {
             300, 
             1,
             0, // mintIndex 0 for alice
-            aliceProof
+            aliceProof, address(0)
         );
 
         // Alice tries to reuse the same mintIndex 0 - should fail
@@ -1763,7 +1769,7 @@ contract ERC1155SerendipityTest is Test {
             300, 
             1,
             0, // trying to reuse mintIndex 0
-            aliceProof
+            aliceProof, address(0)
         );
         
         // Alice tries to use a different mintIndex that wasn't in her proof - should fail
@@ -1773,7 +1779,7 @@ contract ERC1155SerendipityTest is Test {
             300, 
             1,
             1, // mintIndex 1 is for bob, not alice
-            aliceProof
+            aliceProof, address(0)
         );
         
         vm.stopPrank();
@@ -1814,7 +1820,8 @@ contract ERC1155SerendipityTest is Test {
             301, 
             1,
             1, // non-zero mintIndex
-            new bytes32[](0)
+            new bytes32[](0),
+            address(0)
         );
         
         // Using mintIndex 0 should succeed
@@ -1823,7 +1830,8 @@ contract ERC1155SerendipityTest is Test {
             301, 
             1,
             0, // mintIndex must be 0 for non-merkle
-            new bytes32[](0)
+            new bytes32[](0),
+            address(0)
         );
         
         vm.stopPrank();
@@ -1857,7 +1865,7 @@ contract ERC1155SerendipityTest is Test {
             302, 
             1,
             0, // alice's mintIndex
-            aliceProof
+            aliceProof, address(0)
         );
         vm.stopPrank();
 
@@ -1868,7 +1876,8 @@ contract ERC1155SerendipityTest is Test {
             302, 
             1,
             1, // bob's mintIndex
-            bobProof
+            bobProof,
+            address(0)
         );
         vm.stopPrank();
 
@@ -1879,7 +1888,8 @@ contract ERC1155SerendipityTest is Test {
             302, 
             1,
             2, // charlie's mintIndex
-            charlieProof
+            charlieProof,
+            address(0)
         );
         vm.stopPrank();
 
@@ -1896,7 +1906,8 @@ contract ERC1155SerendipityTest is Test {
             302, 
             1,
             1, // trying to reuse bob's mintIndex
-            bobProof
+            bobProof,
+            address(0)
         );
         vm.stopPrank();
     }
@@ -1926,7 +1937,7 @@ contract ERC1155SerendipityTest is Test {
         extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
             address(creatorCore), 130, 1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
         vm.stopPrank();
 
@@ -1935,7 +1946,8 @@ contract ERC1155SerendipityTest is Test {
         extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
             address(creatorCore), 130, 1,
             1, // mintIndex for bob
-            bobProof
+            bobProof,
+            address(0)
         );
         vm.stopPrank();
 
@@ -1944,7 +1956,8 @@ contract ERC1155SerendipityTest is Test {
         extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
             address(creatorCore), 130, 1,
             2, // mintIndex for charlie
-            charlieProof
+            charlieProof,
+            address(0)
         );
         vm.stopPrank();
 
@@ -1954,7 +1967,7 @@ contract ERC1155SerendipityTest is Test {
         extension.mintReserve{value: 0.01 ether + MINT_FEE_MERKLE}(
             address(creatorCore), 130, 1,
             0, // mintIndex for alice
-            aliceProof
+            aliceProof, address(0)
         );
     }
 }
@@ -1973,7 +1986,8 @@ contract MintingContract {
             instanceId, 
             1,
             0, // mintIndex (0 for non-merkle)
-            new bytes32[](0)
+            new bytes32[](0),
+            address(0)
         );
     }
     

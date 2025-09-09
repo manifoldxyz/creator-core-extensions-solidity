@@ -195,8 +195,9 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
      * @param creatorContractAddress The creator contract address
      * @param instanceId The claim instance ID
      * @param mintCount The number of tokens to mint
-     * @param merkleProof The merkle proof for allowlist validation
-     * @param mintFor The address to mint for (when using delegation)
+     * @param mintIndex The mint index for merkle claims (prevents proof reuse), must be 0 for non-merkle
+     * @param merkleProof The merkle proof for allowlist validation (empty array for non-merkle)
+     * @param mintFor The address to mint for (use address(0) for self, or specify for delegation)
      */
     function mintReserve(
         address creatorContractAddress,
@@ -205,43 +206,7 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         uint32 mintIndex,
         bytes32[] calldata merkleProof,
         address mintFor
-    ) external payable override nonReentrant {
-        _mintReserveInternal(creatorContractAddress, instanceId, mintCount, mintIndex, mintFor, merkleProof);
-    }
-
-    /**
-     * @notice Reserve mints with merkle proof but no delegation
-     */
-    function mintReserve(
-        address creatorContractAddress,
-        uint256 instanceId,
-        uint32 mintCount,
-        uint32 mintIndex,
-        bytes32[] calldata merkleProof
-    ) external payable override nonReentrant {
-        _mintReserveInternal(creatorContractAddress, instanceId, mintCount, mintIndex, address(0), merkleProof);
-    }
-
-    /**
-     * @notice Reserve mints without merkle proof (implements base ISerendipity interface)
-     */
-    function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable override nonReentrant {
-        // Delegate to the full version with empty proof and no delegation
-        bytes32[] memory emptyProof = new bytes32[](0);
-        _mintReserveInternal(creatorContractAddress, instanceId, mintCount, 0, address(0), emptyProof);
-    }
-    
-    /**
-     * @notice Internal mint reserve logic
-     */
-    function _mintReserveInternal(
-        address creatorContractAddress,
-        uint256 instanceId,
-        uint32 mintCount,
-        uint32 mintIndex,
-        address mintFor,
-        bytes32[] memory merkleProof
-    ) private {
+    ) external payable override(IERC1155Serendipity, ISerendipity) nonReentrant {
         // Check that contracts cannot mint
         if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
         

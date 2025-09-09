@@ -81,12 +81,22 @@ interface ISerendipity {
   function withdraw(address payable receiver, uint256 amount) external;
 
   /**
-   * @notice                          minting request
+   * @notice                          minting request with optional merkle proof and delegation
    * @param creatorContractAddress    the creator contract address
    * @param instanceId                the claim instanceId for the creator contract
    * @param mintCount                 the number of claims to mint
+   * @param mintIndex                 the mint index for merkle claims (prevents proof reuse), must be 0 for non-merkle
+   * @param merkleProof              the merkle proof for allowlist validation (empty array for non-merkle)
+   * @param mintFor                   the address to mint for (use address(0) for self, or specify for delegation)
    */
-  function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external payable;
+  function mintReserve(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint32 mintCount,
+    uint32 mintIndex,
+    bytes32[] calldata merkleProof,
+    address mintFor
+  ) external payable;
 
   /**
    * @notice                          Deliver NFTs 
