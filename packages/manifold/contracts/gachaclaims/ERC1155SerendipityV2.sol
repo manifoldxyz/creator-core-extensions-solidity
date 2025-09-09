@@ -21,7 +21,7 @@ import "../libraries/delegation-registry/IDelegationRegistryV2.sol";
  * @title ERC1155 Serendipity V2
  * @author manifold.xyz
  * @notice Second version of ERC1155Serendipity with three key enhancements:
- *         1. Merkle-based allowlist for access control
+ *         1. Optional merkle-based allowlist for access control (omit for open mints)
  *         2. Updatable platform fees (base and merkle-specific)
  *         3. Delegation registry support (V1 and V2) for hot/cold wallet patterns
  */
