@@ -1061,8 +1061,8 @@ contract ERC1155SerendipityV2Test is Test {
             address(creatorCore),
             200,
             1,
-            alice,  // mintFor
-            aliceProof
+            aliceProof,
+            alice  // mintFor
         );
         vm.stopPrank();
 
@@ -1101,8 +1101,8 @@ contract ERC1155SerendipityV2Test is Test {
             address(creatorCore),
             201,
             1,
-            bob,  // mintFor
-            bobProof
+            bobProof,
+            bob  // mintFor
         );
         vm.stopPrank();
 
@@ -1137,8 +1137,8 @@ contract ERC1155SerendipityV2Test is Test {
             address(creatorCore),
             202,
             1,
-            alice,  // mintFor
-            aliceProof
+            aliceProof,
+            alice  // mintFor
         );
         vm.stopPrank();
     }
@@ -1173,8 +1173,8 @@ contract ERC1155SerendipityV2Test is Test {
             address(creatorCore),
             203,
             1,
-            alice,
-            aliceProof
+            aliceProof,
+            alice
         );
         
         // Second mint should fail due to wallet max
@@ -1183,8 +1183,8 @@ contract ERC1155SerendipityV2Test is Test {
             address(creatorCore),
             203,
             1,
-            alice,
-            aliceProof
+            aliceProof,
+            alice
         );
         vm.stopPrank();
     }
@@ -1214,8 +1214,8 @@ contract ERC1155SerendipityV2Test is Test {
             address(creatorCore),
             204,
             1,
-            alice,  // mintFor = msg.sender (self)
-            aliceProof
+            aliceProof,
+            alice  // mintFor = msg.sender (self)
         );
         vm.stopPrank();
 
@@ -1254,8 +1254,8 @@ contract ERC1155SerendipityV2Test is Test {
             address(creatorCore),
             205,
             1,
-            charlie,
-            new bytes32[](0)
+            new bytes32[](0),
+            charlie
         );
         vm.stopPrank();
 

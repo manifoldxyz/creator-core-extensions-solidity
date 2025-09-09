@@ -186,15 +186,15 @@ contract ERC1155SerendipityV2 is IERC165, IERC1155SerendipityV2, ICreatorExtensi
      * @param creatorContractAddress The creator contract address
      * @param instanceId The claim instance ID
      * @param mintCount The number of tokens to mint
-     * @param mintFor The address to mint for (when using delegation)
      * @param merkleProof The merkle proof for allowlist validation
+     * @param mintFor The address to mint for (when using delegation)
      */
     function mintReserve(
         address creatorContractAddress,
         uint256 instanceId,
         uint32 mintCount,
-        address mintFor,
-        bytes32[] calldata merkleProof
+        bytes32[] calldata merkleProof,
+        address mintFor
     ) external payable nonReentrant {
         _mintReserveInternal(creatorContractAddress, instanceId, mintCount, mintFor, merkleProof);
     }

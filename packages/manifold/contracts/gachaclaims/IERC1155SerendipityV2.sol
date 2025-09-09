@@ -115,15 +115,15 @@ interface IERC1155SerendipityV2 is ISerendipity {
    * @param creatorContractAddress    the creator contract the claim will mint tokens for
    * @param instanceId                the claim instanceId for the creator contract
    * @param mintCount                 the number of tokens to mint
-   * @param mintFor                   the address to mint for (when using delegation)
    * @param merkleProof              the merkle proof for allowlist validation
+   * @param mintFor                   the address to mint for (when using delegation)
    */
   function mintReserve(
     address creatorContractAddress,
     uint256 instanceId,
     uint32 mintCount,
-    address mintFor,
-    bytes32[] calldata merkleProof
+    bytes32[] calldata merkleProof,
+    address mintFor
   ) external payable;
 
   /**
