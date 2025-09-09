@@ -33,7 +33,10 @@ contract DeployERC1155Serendipity is Script {
 
         //  forge script script/ERC1155Serendipity.s.sol:DeployERC1155Serendipity --optimizer-runs 1000 --rpc-url <YOUR_NODE> --broadcast
         // forge verify-contract --compiler-version 0.8.17 --optimizer-runs 1000 --chain sepolia <DEPLOYED_ADDRESS>  contracts/gachaclaims/ERC1155Serendipity.sol:ERC1155Serendipity --constructor-args $(cast abi-encode "constructor(address)" "${INITIAL_OWNER}") --watch
-        new ERC1155Serendipity{salt: 0x16091cc3cd908d7d973f650f59bd476ac79090f0358f87c50a7f5caee0835a84}(initialOwner);
+        // Deploy with delegation registry addresses (can be zero addresses if not needed)
+        address delegationRegistryV1 = address(0);
+        address delegationRegistryV2 = address(0);
+        new ERC1155Serendipity{salt: 0x16091cc3cd908d7d973f650f59bd476ac79090f0358f87c50a7f5caee0835a84}(initialOwner, delegationRegistryV1, delegationRegistryV2);
         vm.stopBroadcast();
     }
 }

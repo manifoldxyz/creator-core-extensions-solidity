@@ -22,6 +22,9 @@ interface IERC1155Serendipity is ISerendipity {
     address payable paymentReceiver;
     uint96 cost;
     address erc20;
+    // Allowlist fields
+    bytes32 merkleRoot;
+    uint32 walletMax;
   }
 
   struct ClaimParameters {
@@ -34,6 +37,9 @@ interface IERC1155Serendipity is ISerendipity {
     address payable paymentReceiver;
     uint96 cost;
     address erc20;
+    // Allowlist fields
+    bytes32 merkleRoot;
+    uint32 walletMax;
   }
 
   struct UpdateClaimParameters {
@@ -44,6 +50,9 @@ interface IERC1155Serendipity is ISerendipity {
     uint48 endDate;
     uint96 cost;
     string location;
+    // Allowlist fields
+    bytes32 merkleRoot;
+    uint32 walletMax;
   }
 
   /**
@@ -87,6 +96,40 @@ interface IERC1155Serendipity is ISerendipity {
   function getClaimForToken(address creatorContractAddress, uint256 tokenId) external view returns (uint256, Claim memory);
 
   /**
+   * @notice mint tokens for a reserved claim with merkle proof validation
+   * @param creatorContractAddress    the creator contract the claim will mint tokens for
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintCount                 the number of tokens to mint
+   * @param mintIndex                 the mint index for merkle claims (prevents proof reuse)
+   * @param merkleProof              the merkle proof for allowlist validation
+   */
+  function mintReserve(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint32 mintCount,
+    uint32 mintIndex,
+    bytes32[] calldata merkleProof
+  ) external payable;
+
+  /**
+   * @notice mint tokens for a reserved claim with merkle proof validation and delegation support
+   * @param creatorContractAddress    the creator contract the claim will mint tokens for
+   * @param instanceId                the claim instanceId for the creator contract
+   * @param mintCount                 the number of tokens to mint
+   * @param mintIndex                 the mint index for merkle claims (prevents proof reuse)
+   * @param merkleProof              the merkle proof for allowlist validation
+   * @param mintFor                   the address to mint for (when using delegation)
+   */
+  function mintReserve(
+    address creatorContractAddress,
+    uint256 instanceId,
+    uint32 mintCount,
+    uint32 mintIndex,
+    bytes32[] calldata merkleProof,
+    address mintFor
+  ) external payable;
+
+  /**
    * @notice update tokenURI for an existing token
    * @param creatorContractAddress    the creator contract corresponding to the burn redeem
    * @param instanceId                the instanceId of the burnRedeem for the creator contract
@@ -99,4 +142,23 @@ interface IERC1155Serendipity is ISerendipity {
     StorageProtocol storageProtocol,
     string calldata location
   ) external;
+
+  /**
+   * @notice set the mint fees for claims
+   * @param mintFee                   the base mint fee in wei
+   * @param mintFeeMerkle            the mint fee for merkle claims in wei
+   */
+  function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external;
+
+  /**
+   * @notice get the current base mint fee
+   * @return                          the base mint fee in wei
+   */
+  function getMintFee() external view returns (uint256);
+
+  /**
+   * @notice get the current merkle mint fee
+   * @return                          the merkle mint fee in wei
+   */
+  function getMintFeeMerkle() external view returns (uint256);
 }

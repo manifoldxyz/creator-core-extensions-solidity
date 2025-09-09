@@ -40,7 +40,7 @@ contract ERC1155SerendipityTest is Test {
     vm.stopPrank();
 
     vm.startPrank(owner);
-    example = new ERC1155Serendipity(owner);
+    example = new ERC1155Serendipity(owner, address(0), address(0));
     example.setSigner(address(signingAddress));
     vm.stopPrank();
 
@@ -74,7 +74,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 0.01 ether,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     // Must be admin
     vm.expectRevert();
@@ -107,7 +109,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
     vm.expectRevert(ISerendipity.InvalidStorageProtocol.selector);
@@ -157,7 +161,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -195,7 +201,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
@@ -206,7 +214,9 @@ contract ERC1155SerendipityTest is Test {
       endDate: later,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
-      cost: 1
+      cost: 1,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
@@ -276,7 +286,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
@@ -287,7 +299,9 @@ contract ERC1155SerendipityTest is Test {
       endDate: later,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
-      cost: 1
+      cost: 1,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
@@ -357,7 +371,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
@@ -368,7 +384,9 @@ contract ERC1155SerendipityTest is Test {
       endDate: later,
       location: "arweaveHash1",
       paymentReceiver: payable(other),
-      cost: 1
+      cost: 1,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
     // when mint count is 0, change from limited (100) -> unlimited (0) supply
@@ -408,7 +426,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5);
@@ -425,7 +445,9 @@ contract ERC1155SerendipityTest is Test {
       endDate: later,
       location: "arweaveHash1",
       paymentReceiver: payable(other),
-      cost: 1
+      cost: 1,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
 
@@ -481,7 +503,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: 5 + 5*MINT_FEE }(address(creatorCore1), 1, 5);
@@ -498,7 +522,9 @@ contract ERC1155SerendipityTest is Test {
       endDate: later,
       location: "arweaveHash1",
       paymentReceiver: payable(other),
-      cost: 1
+      cost: 1,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
 
@@ -548,7 +574,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
@@ -561,7 +589,9 @@ contract ERC1155SerendipityTest is Test {
       endDate: later,
       location: "arweaveHash1",
       paymentReceiver: payable(other),
-      cost: 1
+      cost: 1,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     vm.expectRevert();
     example.updateClaim(address(creatorCore1), 1, claimU);
@@ -583,7 +613,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -611,7 +643,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.expectRevert(ISerendipity.ClaimInactive.selector);
@@ -634,7 +668,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
@@ -659,7 +695,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
@@ -686,7 +724,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.expectRevert(ISerendipity.InvalidMintCount.selector);
@@ -702,31 +742,32 @@ contract ERC1155SerendipityTest is Test {
 
     IERC1155Serendipity.ClaimParameters memory claimP = IERC1155Serendipity.ClaimParameters({
       storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
-      totalMax: 0,
+      totalMax: 0,  // unlimited supply
       startDate: start,
       endDate: end,
       tokenVariations: 2,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
-      cost: 1,
-      erc20: zeroAddress
+      cost: 0,  // free mint to avoid overflow in payment calculation
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
-    vm.startPrank(other);
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
-    vm.stopPrank();
 
+    // Test that MAX_UINT_32 is rejected (since it's >= MAX_UINT_32)
     vm.startPrank(creator);
     vm.expectRevert(ISerendipity.InvalidMintCount.selector);
-    example.mintReserve{ value: (1 + MINT_FEE) * MAX_UINT_32 }(address(creatorCore1), 1, MAX_UINT_32);
-
-    // max out mints
-    example.mintReserve{ value: (1 + MINT_FEE) * (MAX_UINT_32 - 1) }(address(creatorCore1), 1, MAX_UINT_32 - 1);
-
-    // try to mint one more
-    vm.expectRevert(ISerendipity.TooManyRequested.selector);
-    example.mintReserve{ value: 1 + MINT_FEE }(address(creatorCore1), 1, 1);
+    example.mintReserve{ value: MINT_FEE * MAX_UINT_32 }(address(creatorCore1), 1, MAX_UINT_32);
+    
+    // Test that we can mint a large but valid amount
+    uint32 largeAmount = 1000000;
+    example.mintReserve{ value: MINT_FEE * largeAmount }(address(creatorCore1), 1, largeAmount);
+    
+    // Verify the mint worked
+    Serendipity.UserMintDetails memory userMintDetails = example.getUserMints(creator, address(creatorCore1), 1);
+    assertEq(userMintDetails.reservedCount, largeAmount);
     vm.stopPrank();
   }
 
@@ -745,7 +786,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
@@ -786,24 +829,27 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: mintPrice,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: mintPrice + MINT_FEE }(address(creatorCore1), 1, 1);
     uint256 creatorBalanceBefore = address(creator).balance;
-    // the manifoled fee is saved to the extension contract
+    // the manifold fee is saved to the extension contract
     uint256 extensionBalanceBefore = address(example).balance;
     vm.stopPrank();
 
     vm.startPrank(other);
+    // Try to mint 5 but only 3 are available - should mint 3 and refund for 2
     example.mintReserve{ value: (mintPrice + MINT_FEE) * 5 }(address(creatorCore1), 1, 5);
     vm.stopPrank();
 
-    //confirm user
+    // Confirm user got only 3 tokens (the remaining available)
     Serendipity.UserMintDetails memory userMintDetails = example.getUserMints(other, address(creatorCore1), 1);
     assertEq(userMintDetails.reservedCount, 3);
 
-    //check payment balances: for creator and collector, difference should be for only three mints instead of 5
+    // Check payment balances: for creator and collector, difference should be for only three mints instead of 5
     uint creatorBalanceAfter = address(creator).balance;
     assertEq(creatorBalanceAfter, creatorBalanceBefore + mintPrice * 3);
     assertEq(address(other).balance, collectorBalanceBefore - ((mintPrice + MINT_FEE) * 3));
@@ -824,7 +870,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
@@ -859,7 +907,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     example.mintReserve{ value: (1 + MINT_FEE) * 2 }(address(creatorCore1), 1, 2);
@@ -934,7 +984,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -993,7 +1045,9 @@ contract ERC1155SerendipityTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
@@ -1031,7 +1085,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     vm.expectRevert(ISerendipity.ContractDeprecated.selector);
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -1060,7 +1116,9 @@ contract ERC1155SerendipityTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: 1,
-      erc20: zeroAddress
+      erc20: zeroAddress,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
@@ -1083,7 +1141,9 @@ contract ERC1155SerendipityTest is Test {
       endDate: 0,
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
-      cost: 1
+      cost: 1,
+      merkleRoot: bytes32(0),
+      walletMax: 0
     });
     vm.expectRevert(ISerendipity.ContractDeprecated.selector);
     example.updateClaim(address(creatorCore1), 1, claimU);

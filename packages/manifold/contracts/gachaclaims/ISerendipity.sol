@@ -38,6 +38,9 @@ interface ISerendipity {
   error CannotLowertokenVariationsBeyondVariations();
   error CannotMintMoreThanReserved();
   error CannotMintFromContract();
+  error InvalidMerkleProof();
+  error InvalidToken();
+  error InvalidDelegate();
 
   event SerendipityClaimInitialized(address indexed creatorContract, uint256 indexed instanceId, address initializer);
   event SerendipityClaimUpdated(address indexed creatorContract, uint256 indexed instanceId);
@@ -47,6 +50,7 @@ interface ISerendipity {
     address indexed collector,
     uint32 mintCount
   );
+  event MintFeesUpdated(uint256 mintFee, uint256 mintFeeMerkle);
 
   struct VariationMint {
     uint8 variationIndex;
