@@ -366,7 +366,7 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
      * @notice Get claim details including allowlist parameters
      */
     function getClaim(address creatorContractAddress, uint256 instanceId)
-        external
+        public
         view
         override
         returns (Claim memory)
@@ -380,9 +380,10 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
     function _getClaim(address creatorContractAddress, uint256 instanceId)
         private
         view
-        returns (Claim memory)
+        returns (Claim storage claim)
     {
-        return _claims[creatorContractAddress][instanceId];
+        claim = _claims[creatorContractAddress][instanceId];
+        if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
     }
 
     /**
@@ -393,8 +394,7 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         uint256 tokenId
     ) external view override returns (uint256 instanceId, Claim memory claim) {
         instanceId = _tokenInstances[creatorContractAddress][tokenId];
-        claim = _claims[creatorContractAddress][instanceId];
-        if (claim.storageProtocol == StorageProtocol.INVALID) revert ClaimNotInitialized();
+        claim = _getClaim(creatorContractAddress, instanceId);
     }
 
     /**
