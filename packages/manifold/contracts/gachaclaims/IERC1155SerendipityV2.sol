@@ -159,6 +159,9 @@ interface IERC1155SerendipityV2 is ISerendipity {
    */
   function getMintFeeMerkle() external view returns (uint256);
 
+  // Event definitions
+  event MintFeesUpdated(uint256 mintFee, uint256 mintFeeMerkle);
+
   // Error definitions
   error InvalidMerkleProof();
   error InvalidToken();

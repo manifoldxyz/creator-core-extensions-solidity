@@ -132,6 +132,7 @@ contract ERC1155SerendipityV2 is IERC165, IERC1155SerendipityV2, ICreatorExtensi
     function setMintFees(uint256 mintFee, uint256 mintFeeMerkle) external adminRequired {
         _mintFee = mintFee;
         _mintFeeMerkle = mintFeeMerkle;
+        emit MintFeesUpdated(mintFee, mintFeeMerkle);
     }
 
     /**
