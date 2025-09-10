@@ -192,12 +192,20 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
 
     /**
      * @notice Reserve mints with optional merkle proof validation and delegation support
+     * @dev Supports three minting patterns:
+     *      1. Direct minting: mintFor = address(0) or mintFor = msg.sender
+     *      2. Delegated minting: mintFor != msg.sender (requires valid delegation via registry)
+     *      3. Open minting: No merkleRoot set on claim (anyone can mint up to walletMax)
+     * @dev Automatically refunds excess ETH if the mint count is adjusted due to supply limits
      * @param creatorContractAddress The creator contract address
      * @param instanceId The claim instance ID
-     * @param mintCount The number of tokens to mint
+     * @param mintCount The number of tokens to mint (may be reduced if exceeds available supply)
      * @param mintIndices The mint indices for merkle claims (prevents proof reuse), empty for non-merkle
      * @param merkleProofs The merkle proofs for allowlist validation (empty for non-merkle)
-     * @param mintFor The address to mint for (use address(0) for self, or specify for delegation)
+     * @param mintFor The address to mint for:
+     *                - address(0): mints for msg.sender (self)
+     *                - msg.sender: mints for msg.sender (self)
+     *                - other address: mints for that address (requires delegation from mintFor to msg.sender)
      */
     function mintReserve(
         address creatorContractAddress,
@@ -207,9 +215,6 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         bytes32[][] calldata merkleProofs,
         address mintFor
     ) external payable override(IERC1155Serendipity, ISerendipity) nonReentrant {
-        // Check that contracts cannot mint
-        if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
-        
         // Validate mint count
         if (mintCount == 0 || mintCount > MAX_UINT_32) revert ISerendipity.InvalidMintCount();
         
@@ -262,6 +267,10 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         emit SerendipityMintReserved(creatorContractAddress, instanceId, minter, mintCount);
         
         // Refund excess payment
+        // This handles two scenarios:
+        // 1. User overpaid for their intended mint count
+        // 2. Mint count was automatically reduced due to supply limits
+        // Uses OpenZeppelin's Address.sendValue for safe ETH transfer
         if (msg.value > totalCost) {
             Address.sendValue(payable(msg.sender), msg.value - totalCost);
         }
@@ -499,6 +508,12 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
 
     /**
      * @notice Process payment for minting
+     * @dev Calculates total cost based on claim settings and platform fees
+     *      Supports both ETH and ERC20 payments (ERC20 for creator, ETH for platform)
+     *      Returns the actual amount of ETH that should be deducted from msg.value
+     * @param claim The claim data containing cost and payment settings
+     * @param mintCount The number of tokens being minted
+     * @return totalCost The total ETH amount that was required for this mint
      */
     function _processPayment(Claim storage claim, uint16 mintCount) private returns (uint256) {
         uint256 creatorCost = claim.cost * mintCount;
@@ -549,7 +564,12 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
     }
 
     /**
-     * @notice Validate delegation rights
+     * @notice Validate delegation rights between a delegate and vault
+     * @dev Checks both V2 and V1 delegation registries for valid delegation
+     *      V2 is checked first if available, then falls back to V1
+     *      Delegation allows a hot wallet (delegate) to mint on behalf of a cold wallet (vault)
+     * @param delegate The address attempting to perform the action (msg.sender)
+     * @param vault The address on whose behalf the action is being performed (mintFor)
      */
     function _validateDelegation(address delegate, address vault) private view {
         bool isValid = false;
