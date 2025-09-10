@@ -1564,34 +1564,6 @@ contract ERC1155SerendipityTest is Test {
         );
     }
 
-    function test_mintFromContract_reverts() public {
-        vm.startPrank(creator);
-        
-        IERC1155Serendipity.ClaimParameters memory params = IERC1155Serendipity.ClaimParameters({
-            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
-            totalMax: 100,
-            startDate: uint48(block.timestamp),
-            endDate: uint48(block.timestamp + 1000),
-            tokenVariations: 5,
-            location: "test-location",
-            paymentReceiver: payable(creator),
-            cost: 0,
-            erc20: address(0),
-            merkleRoot: bytes32(0),
-            walletMax: 0
-        });
-
-        extension.initializeClaim(address(creatorCore), 91, params);
-        vm.stopPrank();
-
-        // Deploy a contract that tries to mint
-        MintingContract mintContract = new MintingContract(extension);
-        vm.deal(address(mintContract), 1 ether);
-        
-        vm.expectRevert(ISerendipity.CannotMintFromContract.selector);
-        mintContract.tryMint(address(creatorCore), 91);
-    }
-
     function test_getClaimForToken() public {
         vm.startPrank(creator);
         
@@ -2189,26 +2161,4 @@ contract ERC1155SerendipityTest is Test {
             address(0)
         );
     }
-}
-
-// Helper contract to test contract minting restriction
-contract MintingContract {
-    ERC1155Serendipity public extension;
-    
-    constructor(ERC1155Serendipity _extension) {
-        extension = _extension;
-    }
-    
-    function tryMint(address creatorContract, uint256 instanceId) external {
-        extension.mintReserve{value: MINT_FEE}(
-            creatorContract, 
-            instanceId, 
-            1,
-            new uint32[](0), // empty for non-merkle
-            new bytes32[][](0), // empty for non-merkle
-            address(0)
-        );
-    }
-    
-    uint256 constant MINT_FEE = 500000000000000;
 }

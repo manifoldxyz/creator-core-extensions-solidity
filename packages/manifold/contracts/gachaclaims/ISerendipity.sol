@@ -37,7 +37,6 @@ interface ISerendipity {
   error CannotChangePaymentToken();
   error CannotLowertokenVariationsBeyondVariations();
   error CannotMintMoreThanReserved();
-  error CannotMintFromContract();
   error InvalidMerkleProof();
   error InvalidToken();
   error InvalidDelegate();
