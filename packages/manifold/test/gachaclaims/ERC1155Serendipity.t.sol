@@ -76,12 +76,35 @@ contract MockDelegationRegistryV2 {
     }
 }
 
+// Contract that attempts to mint (should be blocked)
+contract ContractMinter {
+    function attemptMint(
+        ERC1155Serendipity extension,
+        address creatorContractAddress,
+        uint256 instanceId,
+        uint16 mintCount,
+        uint32[] calldata mintIndices,
+        bytes32[][] calldata merkleProofs,
+        address mintFor
+    ) external payable {
+        extension.mintReserve{value: msg.value}(
+            creatorContractAddress,
+            instanceId,
+            mintCount,
+            mintIndices,
+            merkleProofs,
+            mintFor
+        );
+    }
+}
+
 contract ERC1155SerendipityTest is Test {
     ERC1155Serendipity public extension;
     ERC1155Creator public creatorCore;
     ERC1155Creator public creatorCore2;
     MockDelegationRegistry public delegationRegistryV1;
     MockDelegationRegistryV2 public delegationRegistryV2;
+    ContractMinter public contractMinter;
 
     address public creator = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
     address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
@@ -121,6 +144,9 @@ contract ERC1155SerendipityTest is Test {
         );
         extension.setSigner(signingAddress);
         vm.stopPrank();
+        
+        // Deploy contract minter for testing
+        contractMinter = new ContractMinter();
         
         // Get initial fees from contract
         MINT_FEE = extension.getMintFee();
@@ -335,6 +361,62 @@ contract ERC1155SerendipityTest is Test {
     }
 
     // ============ Minting Tests with Merkle Proof ============
+    
+    function test_mintFromContract_reverts() public {
+        // Setup claim without merkle root (open mint)
+        vm.startPrank(creator);
+        IERC1155Serendipity.ClaimParameters memory params = IERC1155Serendipity.ClaimParameters({
+            storageProtocol: ISerendipity.StorageProtocol.ARWEAVE,
+            totalMax: 100,
+            startDate: uint48(block.timestamp),
+            endDate: uint48(block.timestamp + 1000),
+            tokenVariations: 3,
+            location: "test-location",
+            paymentReceiver: payable(creator),
+            cost: 0.01 ether,
+            erc20: address(0),
+            merkleRoot: bytes32(0), // No merkle root - open mint
+            walletMax: 5
+        });
+        extension.initializeClaim(address(creatorCore), 1, params);
+        vm.stopPrank();
+
+        // Calculate payment
+        uint256 totalCost = params.cost + MINT_FEE;
+        
+        // Prepare mint parameters
+        uint32[] memory mintIndices = new uint32[](0);
+        bytes32[][] memory merkleProofs = new bytes32[][](0);
+        
+        // Fund the contract minter
+        vm.deal(address(contractMinter), totalCost);
+        
+        // Attempt to mint from contract - should revert
+        vm.expectRevert(ISerendipity.CannotMintFromContract.selector);
+        contractMinter.attemptMint{value: totalCost}(
+            extension,
+            address(creatorCore),
+            1,
+            1,
+            mintIndices,
+            merkleProofs,
+            address(0) // mint for self
+        );
+        
+        // Verify that direct call from contract also reverts
+        vm.deal(address(contractMinter), totalCost * 2);
+        vm.startPrank(address(contractMinter));
+        vm.expectRevert(ISerendipity.CannotMintFromContract.selector);
+        extension.mintReserve{value: totalCost}(
+            address(creatorCore),
+            1,
+            1,
+            mintIndices,
+            merkleProofs,
+            address(0)
+        );
+        vm.stopPrank();
+    }
 
     function test_mintReserve_validMerkleProof_alice() public {
         // Initialize claim with merkle root

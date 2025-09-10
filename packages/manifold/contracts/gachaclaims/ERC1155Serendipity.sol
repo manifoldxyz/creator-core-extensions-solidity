@@ -192,7 +192,8 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
 
     /**
      * @notice Reserve mints with optional merkle proof validation and delegation support
-     * @dev Supports three minting patterns:
+     * @dev Contracts cannot mint directly (will revert with CannotMintFromContract)
+     * @dev Supports three minting patterns for EOAs:
      *      1. Direct minting: mintFor = address(0) or mintFor = msg.sender
      *      2. Delegated minting: mintFor != msg.sender (requires valid delegation via registry)
      *      3. Open minting: No merkleRoot set on claim (anyone can mint up to walletMax)
@@ -215,6 +216,9 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         bytes32[][] calldata merkleProofs,
         address mintFor
     ) external payable override(IERC1155Serendipity, ISerendipity) nonReentrant {
+        // Check that contracts cannot mint
+        if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
+        
         // Validate mint count
         if (mintCount == 0 || mintCount > MAX_UINT_32) revert ISerendipity.InvalidMintCount();
         
