@@ -193,6 +193,11 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
     /**
      * @notice Reserve mints with optional merkle proof validation and delegation support
      * @dev Contracts cannot mint directly (will revert with CannotMintFromContract)
+     *      This restriction exists because during phase 2 delivery (deliverMints), we use
+     *      safeTransferFrom which triggers onERC1155Received hooks on receiving contracts.
+     *      These hooks could contain arbitrary logic with unpredictable gas costs that we
+     *      cannot afford to pay for during the delivery phase. By restricting to EOAs only,
+     *      we ensure predictable gas costs during delivery.
      * @dev Supports three minting patterns for EOAs:
      *      1. Direct minting: mintFor = address(0) or mintFor = msg.sender
      *      2. Delegated minting: mintFor != msg.sender (requires valid delegation via registry)
@@ -219,7 +224,9 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         bytes32[][] calldata merkleProofs,
         address mintFor
     ) external payable override(IERC1155Serendipity, ISerendipity) nonReentrant {
-        // Check that contracts cannot mint
+        // Block contracts from minting to avoid unpredictable gas costs during delivery
+        // When we deliver mints via safeTransferFrom, receiving contracts can execute
+        // arbitrary logic in their onERC1155Received hooks, which we cannot afford to pay for
         if (Address.isContract(msg.sender)) revert ISerendipity.CannotMintFromContract();
         
         // Validate mint count
