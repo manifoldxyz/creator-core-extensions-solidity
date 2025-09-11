@@ -1264,9 +1264,13 @@ contract ERC1155SerendipityTest is Test {
         );
         vm.stopPrank();
 
-        // Verify alice is credited with the mint
-        ISerendipity.UserMintDetails memory details = extension.getUserMints(alice, address(creatorCore), 200);
+        // Verify unauthorized (msg.sender) is credited with the mint, not alice (mintFor)
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(unauthorized, address(creatorCore), 200);
         assertEq(details.reservedCount, 1);
+        
+        // Verify alice has no mints
+        ISerendipity.UserMintDetails memory aliceDetails = extension.getUserMints(alice, address(creatorCore), 200);
+        assertEq(aliceDetails.reservedCount, 0);
     }
 
     function test_mintReserve_withDelegationV2_validProof() public {
@@ -1310,9 +1314,13 @@ contract ERC1155SerendipityTest is Test {
         );
         vm.stopPrank();
 
-        // Verify bob is credited with the mint
-        ISerendipity.UserMintDetails memory details = extension.getUserMints(bob, address(creatorCore), 201);
+        // Verify unauthorized (msg.sender) is credited with the mint, not bob (mintFor)
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(unauthorized, address(creatorCore), 201);
         assertEq(details.reservedCount, 1);
+        
+        // Verify bob has no mints
+        ISerendipity.UserMintDetails memory bobDetails = extension.getUserMints(bob, address(creatorCore), 201);
+        assertEq(bobDetails.reservedCount, 0);
     }
 
     function test_mintReserve_withInvalidDelegation_reverts() public {
@@ -1488,9 +1496,13 @@ contract ERC1155SerendipityTest is Test {
         );
         vm.stopPrank();
 
-        // Verify charlie is credited
-        ISerendipity.UserMintDetails memory details = extension.getUserMints(charlie, address(creatorCore), 205);
+        // Verify unauthorized (msg.sender) is credited with the mint, not charlie (mintFor)
+        ISerendipity.UserMintDetails memory details = extension.getUserMints(unauthorized, address(creatorCore), 205);
         assertEq(details.reservedCount, 1);
+        
+        // Verify charlie has no mints
+        ISerendipity.UserMintDetails memory charlieDetails = extension.getUserMints(charlie, address(creatorCore), 205);
+        assertEq(charlieDetails.reservedCount, 0);
     }
 
     // ============ Additional Tests from Base ERC1155Serendipity ============

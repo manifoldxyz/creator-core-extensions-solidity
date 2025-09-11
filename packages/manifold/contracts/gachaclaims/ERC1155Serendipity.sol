@@ -197,16 +197,19 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
      *      1. Direct minting: mintFor = address(0) or mintFor = msg.sender
      *      2. Delegated minting: mintFor != msg.sender (requires valid delegation via registry)
      *      3. Open minting: No merkleRoot set on claim (anyone can mint up to walletMax)
+     * @dev IMPORTANT: Mints are always delivered to msg.sender regardless of mintFor value
+     *      This avoids potential gas issues with complex contracts during delivery phase
      * @dev Automatically refunds excess ETH if the mint count is adjusted due to supply limits
      * @param creatorContractAddress The creator contract address
      * @param instanceId The claim instance ID
      * @param mintCount The number of tokens to mint (may be reduced if exceeds available supply)
      * @param mintIndices The mint indices for merkle claims (prevents proof reuse), empty for non-merkle
      * @param merkleProofs The merkle proofs for allowlist validation (empty for non-merkle)
-     * @param mintFor The address to mint for:
-     *                - address(0): mints for msg.sender (self)
-     *                - msg.sender: mints for msg.sender (self)
-     *                - other address: mints for that address (requires delegation from mintFor to msg.sender)
+     * @param mintFor The address on whose behalf to mint (for delegation validation):
+     *                - address(0): direct mint (no delegation check)
+     *                - msg.sender: direct mint (no delegation check)
+     *                - other address: delegated mint (requires delegation from mintFor to msg.sender)
+     *                NOTE: Regardless of mintFor, tokens are always delivered to msg.sender
      */
     function mintReserve(
         address creatorContractAddress,
@@ -237,16 +240,20 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
             mintCount = uint16(claim.totalMax - claim.total);
         }
         
-        // Determine the actual minter (handle delegation)
-        address minter = mintFor;
+        // Determine merkle validation address
+        address merkleAddress = mintFor;
         if (mintFor == address(0)) {
-            minter = msg.sender;
+            merkleAddress = msg.sender;
         } else if (mintFor != msg.sender) {
-            // Check delegation rights
+            // Check delegation rights from mintFor to msg.sender
             _validateDelegation(msg.sender, mintFor);
         }
         
+        // Always use msg.sender as the minter to avoid delivery to complex contracts
+        address minter = msg.sender;
+        
         // Validate mint based on merkle or wallet limits
+        // Use merkleAddress for proof validation, minter for tracking
         _validateMintReserve(
             creatorContractAddress,
             instanceId,
@@ -255,6 +262,7 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
             mintCount,
             mintIndices,
             merkleProofs,
+            merkleAddress,
             minter
         );
         
@@ -468,7 +476,8 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
         uint16 mintCount,
         uint32[] calldata mintIndices,
         bytes32[][] calldata merkleProofs,
-        address minter
+        address merkleAddress,  // For merkle proof validation
+        address minter          // For tracking (always msg.sender)
     ) private {
         if (merkleRoot != bytes32(0)) {
             // Merkle validation
@@ -478,8 +487,8 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
             
             // Validate each mint index
             for (uint256 i; i < mintCount;) {
-                // Create leaf using minter address and mint index
-                bytes32 leaf = keccak256(abi.encodePacked(minter, mintIndices[i]));
+                // Create leaf using merkleAddress (the delegate-from address) and mint index
+                bytes32 leaf = keccak256(abi.encodePacked(merkleAddress, mintIndices[i]));
                 
                 // Verify merkle proof
                 if (!MerkleProof.verify(merkleProofs[i], merkleRoot, leaf)) {
