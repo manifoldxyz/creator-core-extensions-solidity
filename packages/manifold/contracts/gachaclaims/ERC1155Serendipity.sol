@@ -214,7 +214,9 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
      *                - address(0): direct mint (no delegation check)
      *                - msg.sender: direct mint (no delegation check)
      *                - other address: delegated mint (requires delegation from mintFor to msg.sender)
-     *                NOTE: Regardless of mintFor, tokens are always delivered to msg.sender
+     *                SECURITY: Tokens are ALWAYS delivered to msg.sender, never to mintFor.
+     *                This prevents proxy minting attacks and ensures predictable gas costs
+     *                during delivery phase by preventing delivery to arbitrary contracts
      */
     function mintReserve(
         address creatorContractAddress,
@@ -256,7 +258,9 @@ contract ERC1155Serendipity is IERC165, IERC1155Serendipity, ICreatorExtensionTo
             _validateDelegation(msg.sender, mintFor);
         }
         
-        // Always use msg.sender as the minter to avoid delivery to complex contracts
+        // SECURITY: Always use msg.sender as the minter, never mintFor
+        // This prevents proxy minting where someone could send tokens to arbitrary addresses
+        // It also ensures we don't deliver to contracts that could have expensive receive hooks
         address minter = msg.sender;
         
         // Validate mint based on merkle or wallet limits
