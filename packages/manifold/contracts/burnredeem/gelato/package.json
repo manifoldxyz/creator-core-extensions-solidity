@@ -1,0 +1,59 @@
+{
+  "name": "@manifoldxyz/gelato-burn-redeem",
+  "version": "1.0.0",
+  "description": "Gelato-enabled burn redeem contracts for single-transaction NFT burns",
+  "main": "index.js",
+  "scripts": {
+    "compile": "forge build",
+    "test": "forge test",
+    "test:coverage": "forge coverage",
+    "test:gas": "forge test --gas-report",
+    "deploy:local": "forge script scripts/Deploy.s.sol:DeployGelatoBurnRedeem --fork-url http://localhost:8545 --broadcast",
+    "deploy:sepolia": "forge script scripts/Deploy.s.sol:DeployGelatoBurnRedeem --rpc-url $SEPOLIA_RPC_URL --broadcast --verify",
+    "deploy:mainnet": "forge script scripts/Deploy.s.sol:DeployGelatoBurnRedeem --rpc-url $MAINNET_RPC_URL --broadcast --verify",
+    "deploy:all": "forge script scripts/Deploy.s.sol:DeployToAllNetworks --broadcast --verify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/manifoldxyz/creator-core-extensions-solidity.git",
+    "directory": "packages/manifold/contracts/burnredeem/gelato"
+  },
+  "keywords": [
+    "manifold",
+    "nft",
+    "burn-redeem",
+    "gelato",
+    "erc-2771",
+    "meta-transactions",
+    "gasless",
+    "relay"
+  ],
+  "author": "Manifold.xyz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/manifoldxyz/creator-core-extensions-solidity/issues"
+  },
+  "homepage": "https://github.com/manifoldxyz/creator-core-extensions-solidity/tree/main/packages/manifold/contracts/burnredeem/gelato#readme",
+  "dependencies": {
+    "@gelatonetwork/relay-context": "^1.0.0",
+    "@manifoldxyz/creator-core-solidity": "^3.0.0",
+    "@manifoldxyz/libraries-solidity": "^2.0.0",
+    "@openzeppelin/contracts": "^4.9.0"
+  },
+  "devDependencies": {
+    "@gelatonetwork/relay-sdk": "^5.0.0",
+    "ethers": "^6.9.0",
+    "forge-std": "^1.7.0"
+  },
+  "peerDependencies": {
+    "ethers": "^6.0.0"
+  },
+  "files": [
+    "GelatoBurnRedeemCore.sol",
+    "GelatoERC721BurnRedeem.sol",
+    "GelatoERC1155BurnRedeem.sol",
+    "examples/",
+    "scripts/",
+    "README.md"
+  ]
+}
