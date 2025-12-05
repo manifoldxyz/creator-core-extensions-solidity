@@ -23,6 +23,7 @@ interface ISerendipityUSDC is ISerendipityCore {
      * @param creatorContractAddress    the creator contract address
      * @param instanceId                the claim instanceId for the creator contract
      * @param mintCount                 the number of claims to mint
+     * @param mintFor                   the address to mint for
      */
-    function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount) external;
+    function mintReserve(address creatorContractAddress, uint256 instanceId, uint32 mintCount, address mintFor) external;
 }

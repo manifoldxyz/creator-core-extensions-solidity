@@ -22,13 +22,13 @@ contract ERC1155SerendipityUSDCTest is Test {
 
   address public creator = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
   address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
-  address public signingAddress = 0xc78dC443c126Af6E4f6eD540C1E740c1B5be09CE;
   address public other = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
   address public other2 = 0x80AAC46bbd3C2FcE33681541a52CacBEd14bF425;
 
   address public zeroAddress = address(0);
 
   uint256 privateKey = 0x1010101010101010101010101010101010101010101010101010101010101010;
+  address public signingAddress;
 
   uint32 MAX_UINT_32 = 0xffffffff;
   uint256 public MINT_FEE = 500000; // 0.5 USDC (6 decimals)
@@ -36,6 +36,8 @@ contract ERC1155SerendipityUSDCTest is Test {
 
   // Test setup
   function setUp() public {
+    signingAddress = vm.addr(privateKey);
+
     vm.startPrank(creator);
     creatorCore1 = new ERC1155Creator("Token1", "NFT1");
     creatorCore2 = new ERC1155Creator("Token2", "NFT2");
@@ -44,7 +46,6 @@ contract ERC1155SerendipityUSDCTest is Test {
     vm.startPrank(owner);
     mockUSDC = new MockERC20("USD Coin", "USDC");
     example = new ERC1155SerendipityUSDC(owner, address(mockUSDC));
-    example.setSigner(address(signingAddress));
     example.setMintFee(MINT_FEE);
     vm.stopPrank();
 
@@ -57,6 +58,18 @@ contract ERC1155SerendipityUSDCTest is Test {
     mockUSDC.fakeMint(creator, 1000000000); // 1000 USDC
     mockUSDC.fakeMint(other, 1000000000);
     mockUSDC.fakeMint(other2, 1000000000);
+  }
+
+  // Helper function to create signature for deliverMints
+  function _createDeliverMintsSignature(
+    ISerendipityCore.ClaimMint[] memory mints,
+    bytes32 nonce,
+    uint256 expiration
+  ) internal view returns (bytes memory signature, bytes32 message) {
+    message = keccak256(abi.encode(mints, nonce, expiration));
+    bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+    signature = abi.encodePacked(r, s, v);
   }
 
   function testConstructorRevertOnZeroAddress() public {
@@ -88,7 +101,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     // Must be admin
     vm.expectRevert();
@@ -131,7 +145,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: MINT_COST,
-      erc20: address(0) // Invalid - should be USDC address
+      erc20: address(0), // Invalid - should be USDC address
+      signingAddress: signingAddress
     });
 
     vm.expectRevert(ISerendipityUSDC.InvalidUSDCAddress.selector);
@@ -160,7 +175,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
 
     vm.expectRevert(ISerendipityCore.InvalidStorageProtocol.selector);
@@ -210,7 +226,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -249,7 +266,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -258,7 +276,7 @@ contract ERC1155SerendipityUSDCTest is Test {
     vm.startPrank(other);
     // No approval - should fail
     vm.expectRevert("ERC20: insufficient allowance");
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, other);
     vm.stopPrank();
   }
 
@@ -277,7 +295,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -288,7 +307,7 @@ contract ERC1155SerendipityUSDCTest is Test {
     vm.startPrank(poorUser);
     mockUSDC.approve(address(example), type(uint256).max);
     vm.expectRevert("ERC20: transfer amount exceeds balance");
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, poorUser);
     vm.stopPrank();
   }
 
@@ -307,7 +326,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -319,7 +339,7 @@ contract ERC1155SerendipityUSDCTest is Test {
 
     vm.startPrank(other);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE) * 2);
-    example.mintReserve(address(creatorCore1), 1, 2);
+    example.mintReserve(address(creatorCore1), 1, 2, other);
     vm.stopPrank();
 
     // Check balances
@@ -348,7 +368,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
@@ -356,7 +377,7 @@ contract ERC1155SerendipityUSDCTest is Test {
     vm.startPrank(other);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
     vm.expectRevert(ISerendipityCore.ClaimInactive.selector);
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, other);
     vm.stopPrank();
   }
 
@@ -375,14 +396,15 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
 
     vm.startPrank(other);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, other);
     vm.stopPrank();
   }
 
@@ -401,17 +423,18 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, creator);
     vm.stopPrank();
 
     vm.startPrank(other);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
     vm.expectRevert(ISerendipityCore.ClaimSoldOut.selector);
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, other);
     vm.stopPrank();
   }
 
@@ -430,12 +453,13 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
     vm.expectRevert(ISerendipityCore.InvalidMintCount.selector);
-    example.mintReserve(address(creatorCore1), 1, 0);
+    example.mintReserve(address(creatorCore1), 1, 0, creator);
     vm.stopPrank();
   }
 
@@ -454,7 +478,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
@@ -462,10 +487,9 @@ contract ERC1155SerendipityUSDCTest is Test {
     // should be able to reserve mint even if totalMax is 0
     vm.startPrank(other);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, other);
     vm.stopPrank();
 
-    vm.startPrank(signingAddress);
     ISerendipityCore.ClaimMint[] memory mints = new ISerendipityCore.ClaimMint[](1);
     ISerendipityCore.VariationMint[] memory variationMints = new ISerendipityCore.VariationMint[](1);
     variationMints[0] = ISerendipityCore.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
@@ -474,8 +498,11 @@ contract ERC1155SerendipityUSDCTest is Test {
       instanceId: 1,
       variationMints: variationMints
     });
-    example.deliverMints(mints);
-    vm.stopPrank();
+
+    bytes32 nonce = keccak256("nonce1");
+    uint256 expiration = block.timestamp + 1000;
+    (bytes memory signature, bytes32 message) = _createDeliverMintsSignature(mints, nonce, expiration);
+    example.deliverMints(mints, signature, message, nonce, expiration);
   }
 
   function testMintReserveMoreThanAvailable() public {
@@ -495,11 +522,12 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, creator);
     uint256 creatorBalanceBefore = mockUSDC.balanceOf(creator);
     uint256 extensionBalanceBefore = mockUSDC.balanceOf(address(example));
     vm.stopPrank();
@@ -507,7 +535,7 @@ contract ERC1155SerendipityUSDCTest is Test {
     vm.startPrank(other);
     // Approve for 5 mints but only 3 available
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE) * 5);
-    example.mintReserve(address(creatorCore1), 1, 5);
+    example.mintReserve(address(creatorCore1), 1, 5, other);
     vm.stopPrank();
 
     // Confirm user - should only have reserved 3 (since 1 was already minted)
@@ -534,12 +562,12 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
 
-    vm.startPrank(other);
     ISerendipityCore.ClaimMint[] memory mints = new ISerendipityCore.ClaimMint[](1);
     ISerendipityCore.VariationMint[] memory variationMints = new ISerendipityCore.VariationMint[](1);
     variationMints[0] = ISerendipityCore.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
@@ -549,9 +577,17 @@ contract ERC1155SerendipityUSDCTest is Test {
       variationMints: variationMints
     });
 
-    vm.expectRevert();
-    example.deliverMints(mints);
-    vm.stopPrank();
+    // Sign with a different private key (not the signing address)
+    uint256 wrongPrivateKey = 0x2020202020202020202020202020202020202020202020202020202020202020;
+    bytes32 nonce = keccak256("nonce1");
+    uint256 expiration = block.timestamp + 1000;
+    bytes32 message = keccak256(abi.encode(mints, nonce, expiration));
+    bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongPrivateKey, digest);
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    vm.expectRevert(ISerendipityCore.InvalidSignature.selector);
+    example.deliverMints(mints, signature, message, nonce, expiration);
   }
 
   function testDeliverMints() public {
@@ -569,19 +605,19 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE) * 2);
-    example.mintReserve(address(creatorCore1), 1, 2);
+    example.mintReserve(address(creatorCore1), 1, 2, creator);
     vm.stopPrank();
 
     vm.startPrank(other2);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE) * 4);
-    example.mintReserve(address(creatorCore1), 1, 4);
+    example.mintReserve(address(creatorCore1), 1, 4, other2);
     vm.stopPrank();
 
-    vm.startPrank(signingAddress);
     ISerendipityCore.ClaimMint[] memory mints = new ISerendipityCore.ClaimMint[](2);
     ISerendipityCore.VariationMint[] memory variationMints = new ISerendipityCore.VariationMint[](2);
     variationMints[0] = ISerendipityCore.VariationMint({ variationIndex: 1, amount: 2, recipient: other2 });
@@ -596,39 +632,43 @@ contract ERC1155SerendipityUSDCTest is Test {
       instanceId: 1,
       variationMints: variationMints
     });
+
     // revert for receiver with no reserved mints
+    bytes32 nonce1 = keccak256("nonce1");
+    uint256 expiration = block.timestamp + 1000;
+    (bytes memory signature1, bytes32 message1) = _createDeliverMintsSignature(mints, nonce1, expiration);
     vm.expectRevert(ISerendipityCore.CannotMintMoreThanReserved.selector);
-    example.deliverMints(mints);
+    example.deliverMints(mints, signature1, message1, nonce1, expiration);
     SerendipityUSDC.UserMintDetails memory otherMint = example.getUserMints(other, address(creatorCore1), 1);
     assertEq(otherMint.reservedCount, 0);
     assertEq(otherMint.deliveredCount, 0);
     SerendipityUSDC.UserMintDetails memory other2Mint = example.getUserMints(other2, address(creatorCore1), 1);
     assertEq(other2Mint.reservedCount, 4);
     assertEq(other2Mint.deliveredCount, 0);
-    vm.stopPrank();
 
     // deliver for valid receivers and mintCount
-    vm.startPrank(signingAddress);
-    variationMints[0] = ISerendipityCore.VariationMint({ variationIndex: 1, amount: 1, recipient: creator });
-    variationMints[1] = ISerendipityCore.VariationMint({ variationIndex: 2, amount: 2, recipient: other2 });
+    ISerendipityCore.VariationMint[] memory variationMints2 = new ISerendipityCore.VariationMint[](2);
+    variationMints2[0] = ISerendipityCore.VariationMint({ variationIndex: 1, amount: 1, recipient: creator });
+    variationMints2[1] = ISerendipityCore.VariationMint({ variationIndex: 2, amount: 2, recipient: other2 });
     mints[0] = ISerendipityCore.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
-      variationMints: variationMints
+      variationMints: variationMints2
     });
     mints[1] = ISerendipityCore.ClaimMint({
       creatorContractAddress: address(creatorCore1),
       instanceId: 1,
-      variationMints: variationMints
+      variationMints: variationMints2
     });
-    example.deliverMints(mints);
+    bytes32 nonce2 = keccak256("nonce2");
+    (bytes memory signature2, bytes32 message2) = _createDeliverMintsSignature(mints, nonce2, expiration);
+    example.deliverMints(mints, signature2, message2, nonce2, expiration);
     SerendipityUSDC.UserMintDetails memory creatorMints = example.getUserMints(creator, address(creatorCore1), 1);
     assertEq(creatorMints.deliveredCount, 2);
     assertEq(creatorMints.reservedCount, 2);
     SerendipityUSDC.UserMintDetails memory other2Mints = example.getUserMints(other2, address(creatorCore1), 1);
     assertEq(other2Mints.reservedCount, 4);
     assertEq(other2Mints.deliveredCount, 4);
-    vm.stopPrank();
   }
 
   function testWithdraw() public {
@@ -646,11 +686,12 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE) * 5);
-    example.mintReserve(address(creatorCore1), 1, 5);
+    example.mintReserve(address(creatorCore1), 1, 5, creator);
     vm.stopPrank();
 
     // Extension should have collected MINT_FEE * 5
@@ -681,12 +722,13 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, creator);
 
     // mint in between on another extension
     address[] memory receivers = new address[](1);
@@ -701,11 +743,11 @@ contract ERC1155SerendipityUSDCTest is Test {
     // mintreserving should have no effect
     vm.startPrank(other);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE) * 2);
-    example.mintReserve(address(creatorCore1), 1, 2);
+    example.mintReserve(address(creatorCore1), 1, 2, other);
     vm.stopPrank();
     vm.startPrank(other2);
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, other2);
     vm.stopPrank();
 
     vm.startPrank(creator);
@@ -743,7 +785,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     example.initializeClaim(address(creatorCore1), 1, claimP);
 
@@ -781,7 +824,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       tokenVariations: 5,
       paymentReceiver: payable(other),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
     vm.expectRevert(ISerendipityCore.ContractDeprecated.selector);
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -862,7 +906,8 @@ contract ERC1155SerendipityUSDCTest is Test {
       location: "arweaveHash1",
       paymentReceiver: payable(creator),
       cost: MINT_COST,
-      erc20: address(mockUSDC)
+      erc20: address(mockUSDC),
+      signingAddress: signingAddress
     });
 
     example.initializeClaim(address(creatorCore1), 1, claimP);
@@ -872,7 +917,7 @@ contract ERC1155SerendipityUSDCTest is Test {
     mockUSDC.approve(address(example), (MINT_COST + MINT_FEE));
 
     // This should work - mintReserve is not payable for USDC version
-    example.mintReserve(address(creatorCore1), 1, 1);
+    example.mintReserve(address(creatorCore1), 1, 1, other);
 
     // Verify the mint happened
     SerendipityUSDC.UserMintDetails memory userMintDetails = example.getUserMints(other, address(creatorCore1), 1);

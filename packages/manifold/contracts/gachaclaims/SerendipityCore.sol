@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./ISerendipityCore.sol";
 
@@ -14,10 +15,11 @@ import "./ISerendipityCore.sol";
  */
 abstract contract SerendipityCore is ISerendipityCore, AdminControl {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using ECDSA for bytes32;
 
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
-    address internal _signer;
+    address internal _signingAddress;
 
     uint256 internal constant MAX_UINT_8 = 0xff;
     uint256 internal constant MAX_UINT_32 = 0xffffffff;
@@ -31,6 +33,9 @@ abstract contract SerendipityCore is ISerendipityCore, AdminControl {
 
     // { contractAddress => { instanceId => { walletAddress => UserMintDetails } } }
     mapping(address => mapping(uint256 => mapping(address => UserMintDetails))) internal _mintDetailsPerWallet;
+
+    // Tracks used nonces to prevent replay attacks
+    mapping(bytes32 => bool) internal _usedNonces;
 
     /**
      * @notice This extension is shared, not single-creator. So we must ensure
@@ -58,11 +63,39 @@ abstract contract SerendipityCore is ISerendipityCore, AdminControl {
      * See {ISerendipity-setSigner}.
      */
     function setSigner(address signer) external override adminRequired {
-        _signer = signer;
+        _signingAddress = signer;
     }
 
-    function _validateSigner() internal view {
-        if (msg.sender != _signer) revert ISerendipityCore.InvalidSignature();
+    function _validateMintSignature(
+        address signingAddress,
+        bytes calldata signature,
+        bytes32 nonce,
+        uint256 expiration
+    ) internal view {
+        if (signingAddress == address(0)) revert ISerendipityCore.InvalidSignature();
+        if (signature.length == 0) revert ISerendipityCore.InvalidInput();
+        // Check expiration
+        if (block.timestamp > expiration) revert ISerendipityCore.ExpiredSignature();
+        // Check nonce hasn't been used
+        if (_usedNonces[nonce]) revert ISerendipityCore.CannotReplayTransaction();
+    }
+
+    function _checkSignatureAndUpdate(
+        address signingAddress,
+        ISerendipityCore.ClaimMint[] calldata mints,
+        bytes calldata signature,
+        bytes32 message,
+        bytes32 nonce,
+        uint256 expiration
+    ) internal {
+        // Verify valid message based on input variables
+        bytes32 expectedMessage = keccak256(abi.encode(mints, nonce, expiration));
+        // The message passed in should be the raw hash, we convert to eth signed message hash for recovery
+        bytes32 ethSignedMessage = ECDSA.toEthSignedMessageHash(message);
+        address signer = ECDSA.recover(ethSignedMessage, signature);
+        if (message != expectedMessage || signer != signingAddress) revert ISerendipityCore.InvalidSignature();
+        // Mark nonce as used
+        _usedNonces[nonce] = true;
     }
 
     function _getUserMints(

@@ -22,6 +22,7 @@ interface IERC1155SerendipityCore is ISerendipityCore {
         address payable paymentReceiver;
         uint96 cost;
         address erc20;
+        address signingAddress;
     }
 
     struct ClaimParameters {
@@ -34,6 +35,7 @@ interface IERC1155SerendipityCore is ISerendipityCore {
         address payable paymentReceiver;
         uint96 cost;
         address erc20;
+        address signingAddress;
     }
 
     struct UpdateClaimParameters {

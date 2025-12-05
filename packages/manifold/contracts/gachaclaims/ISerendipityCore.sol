@@ -21,6 +21,8 @@ interface ISerendipityCore {
   error InvalidInput();
   error InvalidPayment();
   error InvalidSignature();
+  error ExpiredSignature();
+  error CannotReplayTransaction();
   error InvalidMintCount();
   error InvalidVariationIndex();
   error InvalidStartingTokenId();
@@ -78,10 +80,20 @@ interface ISerendipityCore {
 
   /**
    * @notice                          Deliver NFTs
-   *                                  initiated after be has handled randomization
+   *                                  initiated after backend has handled randomization
    * @param mints                     the mints to deliver with creatorcontractaddress, instanceId and variationMints
+   * @param signature                 the signature from the signing address
+   * @param message                   the signed message hash
+   * @param nonce                     unique nonce to prevent replay attacks
+   * @param expiration                timestamp when the signature expires
    */
-  function deliverMints(ClaimMint[] calldata mints) external;
+  function deliverMints(
+    ClaimMint[] calldata mints,
+    bytes calldata signature,
+    bytes32 message,
+    bytes32 nonce,
+    uint256 expiration
+  ) external;
 
   /**
    * @notice                          get mints made for a wallet

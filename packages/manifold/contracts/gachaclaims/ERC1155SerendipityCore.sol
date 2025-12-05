@@ -87,7 +87,8 @@ abstract contract ERC1155SerendipityCore is IERC165, IERC1155SerendipityCore, IC
             location: claimParameters.location,
             paymentReceiver: claimParameters.paymentReceiver,
             cost: claimParameters.cost,
-            erc20: claimParameters.erc20
+            erc20: claimParameters.erc20,
+            signingAddress: claimParameters.signingAddress
         });
         for (uint256 i; i < claimParameters.tokenVariations; ) {
             _tokenInstances[creatorContractAddress][newTokenIds[i]] = instanceId;
@@ -131,7 +132,8 @@ abstract contract ERC1155SerendipityCore is IERC165, IERC1155SerendipityCore, IC
             location: updateClaimParameters.location,
             paymentReceiver: updateClaimParameters.paymentReceiver,
             cost: updateClaimParameters.cost,
-            erc20: claim.erc20
+            erc20: claim.erc20,
+            signingAddress: claim.signingAddress
         });
         emit SerendipityClaimUpdated(creatorContractAddress, instanceId);
     }
@@ -162,11 +164,21 @@ abstract contract ERC1155SerendipityCore is IERC165, IERC1155SerendipityCore, IC
     /**
      * See {ISerendipityCore-deliverMints}.
      */
-    function deliverMints(ISerendipityCore.ClaimMint[] calldata mints) external override {
-        _validateSigner();
+    function deliverMints(
+        ISerendipityCore.ClaimMint[] calldata mints,
+        bytes calldata signature,
+        bytes32 message,
+        bytes32 nonce,
+        uint256 expiration
+    ) external override {
+        if (mints.length == 0) revert ISerendipityCore.InvalidInput();
+        // Get the first claim to retrieve the signing address
+        Claim memory firstClaim = _getClaim(mints[0].creatorContractAddress, mints[0].instanceId);
+        _validateMintSignature(firstClaim.signingAddress, signature, nonce, expiration);
+        _checkSignatureAndUpdate(firstClaim.signingAddress, mints, signature, message, nonce, expiration);
         for (uint256 i; i < mints.length; ) {
             ClaimMint calldata mintData = mints[i];
-            Claim memory claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
+            Claim memory claim = (i == 0) ? firstClaim : _getClaim(mintData.creatorContractAddress, mintData.instanceId);
             address[] memory receivers = new address[](mintData.variationMints.length);
             uint256[] memory amounts = new uint256[](mintData.variationMints.length);
             uint256[] memory tokenIds = new uint256[](mintData.variationMints.length);
@@ -278,5 +290,16 @@ abstract contract ERC1155SerendipityCore is IERC165, IERC1155SerendipityCore, IC
     ) internal {
         claim.total += amountToReserve;
         _mintDetailsPerWallet[creatorContractAddress][instanceId][msg.sender].reservedCount += amountToReserve;
+    }
+
+    function _updateMintReserveFor(
+        address creatorContractAddress,
+        uint256 instanceId,
+        Claim storage claim,
+        uint32 amountToReserve,
+        address mintFor
+    ) internal {
+        claim.total += amountToReserve;
+        _mintDetailsPerWallet[creatorContractAddress][instanceId][mintFor].reservedCount += amountToReserve;
     }
 }
