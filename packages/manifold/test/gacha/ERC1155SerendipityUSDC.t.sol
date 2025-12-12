@@ -43,9 +43,8 @@ contract ERC1155SerendipityUSDCTest is Test {
 
     vm.startPrank(owner);
     mockUSDC = new MockERC20("USD Coin", "USDC");
-    example = new ERC1155SerendipityUSDC(owner, address(mockUSDC));
+    example = new ERC1155SerendipityUSDC(owner, address(mockUSDC), MINT_FEE);
     example.setSigner(address(signingAddress));
-    example.setMintFee(MINT_FEE);
     vm.stopPrank();
 
     vm.startPrank(creator);
@@ -62,7 +61,7 @@ contract ERC1155SerendipityUSDCTest is Test {
   function testConstructorRevertOnZeroAddress() public {
     vm.startPrank(owner);
     vm.expectRevert(ISerendipityUSDC.InvalidUSDCAddress.selector);
-    new ERC1155SerendipityUSDC(owner, address(0));
+    new ERC1155SerendipityUSDC(owner, address(0), MINT_FEE);
     vm.stopPrank();
   }
 

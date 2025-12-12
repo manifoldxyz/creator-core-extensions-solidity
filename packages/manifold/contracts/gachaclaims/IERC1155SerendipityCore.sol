@@ -56,7 +56,7 @@ interface IERC1155SerendipityCore is ISerendipityCore {
         address creatorContractAddress,
         uint256 instanceId,
         ClaimParameters calldata claimParameters
-    ) external payable;
+    ) external;
 
     /**
      * @notice update an existing claim at instanceId

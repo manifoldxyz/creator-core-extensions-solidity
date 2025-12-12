@@ -44,7 +44,7 @@ abstract contract ERC1155SerendipityCore is IERC165, IERC1155SerendipityCore, IC
         address creatorContractAddress,
         uint256 instanceId,
         ClaimParameters calldata claimParameters
-    ) external payable virtual override creatorAdminRequired(creatorContractAddress) {
+    ) external virtual override creatorAdminRequired(creatorContractAddress) {
         _initializeClaim(creatorContractAddress, instanceId, claimParameters);
     }
 

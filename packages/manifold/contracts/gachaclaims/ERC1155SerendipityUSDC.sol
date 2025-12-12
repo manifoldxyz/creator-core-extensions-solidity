@@ -12,14 +12,12 @@ import "./ISerendipityUSDC.sol";
  * @notice ERC1155 Serendipity with USDC payment and updatable fees
  */
 contract ERC1155SerendipityUSDC is ERC1155SerendipityCore, SerendipityUSDC {
+    constructor(address initialOwner, address usdcAddress, uint256 mintFee) SerendipityUSDC(initialOwner, usdcAddress, mintFee) {}
+    
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155SerendipityCore, AdminControl) returns (bool) {
         return
             interfaceId == type(ISerendipityUSDC).interfaceId ||
             ERC1155SerendipityCore.supportsInterface(interfaceId);
-    }
-
-    constructor(address initialOwner, address usdcAddress) SerendipityUSDC(initialOwner, usdcAddress) {
-        if (usdcAddress == address(0)) revert ISerendipityUSDC.InvalidUSDCAddress();
     }
 
     /**
@@ -29,7 +27,7 @@ contract ERC1155SerendipityUSDC is ERC1155SerendipityCore, SerendipityUSDC {
         address creatorContractAddress,
         uint256 instanceId,
         ClaimParameters calldata claimParameters
-    ) external payable override creatorAdminRequired(creatorContractAddress) {
+    ) external override creatorAdminRequired(creatorContractAddress) {
         if (claimParameters.erc20 != USDC_ADDRESS) revert ISerendipityUSDC.InvalidUSDCAddress();
         _initializeClaim(creatorContractAddress, instanceId, claimParameters);
     }

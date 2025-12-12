@@ -13,11 +13,13 @@ import "./SerendipityCore.sol";
  * @notice USDC payment version of Serendipity with updatable fees
  */
 abstract contract SerendipityUSDC is SerendipityCore, ISerendipityUSDC {
-    uint256 public MINT_FEE = 1000000;
+    uint256 public MINT_FEE;
     address public immutable USDC_ADDRESS;
 
-    constructor(address initialOwner, address usdcAddress) SerendipityCore(initialOwner) {
+    constructor(address initialOwner, address usdcAddress, uint256 mintFee) SerendipityCore(initialOwner) {
+        if (usdcAddress == address(0)) revert ISerendipityUSDC.InvalidUSDCAddress();
         USDC_ADDRESS = usdcAddress;
+        MINT_FEE = mintFee;
     }
 
     /**
