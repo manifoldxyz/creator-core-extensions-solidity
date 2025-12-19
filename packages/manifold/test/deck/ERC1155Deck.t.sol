@@ -17,9 +17,12 @@ contract ERC1155DeckTest is Test {
 
   address public creator = 0xc78Dc443c126af6E4f6Ed540c1e740C1b5be09cd;
   address public owner = 0x6140F00e4Ff3936702E68744f2b5978885464cbB;
-  address public signingAddress = 0xc78dC443c126Af6E4f6eD540C1E740c1B5be09CE;
   address public other = 0x5174cD462b60c536eb51D4ceC1D561D3Ea31004F;
   address public other2 = 0x80AAC46bbd3C2FcE33681541a52CacBEd14bF425;
+
+  // Private key for signing (known value for testing)
+  uint256 internal constant SIGNER_PRIVATE_KEY = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
+  address public signingAddress;
 
   address public zeroAddress = address(0);
 
@@ -27,6 +30,9 @@ contract ERC1155DeckTest is Test {
   uint256 internal constant MAX_UINT_56 = 0xffffffffffffff;
 
   function setUp() public {
+    // Derive signing address from private key
+    signingAddress = vm.addr(SIGNER_PRIVATE_KEY);
+
     vm.startPrank(creator);
     creatorCore1 = new ERC1155Creator("Token1", "NFT1");
     creatorCore2 = new ERC1155Creator("Token2", "NFT2");
@@ -34,7 +40,7 @@ contract ERC1155DeckTest is Test {
 
     vm.startPrank(owner);
     example = new ERC1155Deck(owner);
-    example.setSigner(address(signingAddress));
+    example.setSigner(signingAddress);
     vm.stopPrank();
 
     vm.startPrank(creator);
@@ -45,6 +51,65 @@ contract ERC1155DeckTest is Test {
     vm.deal(creator, 10 ether);
     vm.deal(other, 10 ether);
     vm.deal(other2, 10 ether);
+  }
+
+  // Helper function to compute the mints hash (mirrors contract logic)
+  function _computeMintsHash(
+    IDeck.ClaimMint[] memory mints,
+    bytes32 nonce,
+    uint256 expiration
+  ) internal pure returns (bytes32) {
+    bytes memory encodedMints;
+    for (uint256 i; i < mints.length; i++) {
+      IDeck.ClaimMint memory mintData = mints[i];
+      bytes memory encodedVariations;
+      for (uint256 j; j < mintData.variationMints.length; j++) {
+        IDeck.VariationMint memory vm_ = mintData.variationMints[j];
+        encodedVariations = abi.encodePacked(encodedVariations, vm_.variationIndex, vm_.amount, vm_.recipient);
+      }
+      encodedMints = abi.encodePacked(
+        encodedMints,
+        mintData.creatorContractAddress,
+        mintData.instanceId,
+        keccak256(encodedVariations)
+      );
+    }
+    return keccak256(abi.encodePacked(encodedMints, nonce, expiration));
+  }
+
+  // Helper function to create signed delivery params
+  function _createSignedParams(
+    IDeck.ClaimMint[] memory mints,
+    bytes32 nonce,
+    uint256 expiration
+  ) internal pure returns (IDeck.SignedDeliveryParams memory) {
+    bytes32 message = _computeMintsHash(mints, nonce, expiration);
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PRIVATE_KEY, message);
+    bytes memory signature = abi.encodePacked(r, s, v);
+    return IDeck.SignedDeliveryParams({
+      signature: signature,
+      message: message,
+      nonce: nonce,
+      expiration: expiration
+    });
+  }
+
+  // Helper to create signed params with a specific private key
+  function _createSignedParamsWithKey(
+    IDeck.ClaimMint[] memory mints,
+    bytes32 nonce,
+    uint256 expiration,
+    uint256 privateKey
+  ) internal pure returns (IDeck.SignedDeliveryParams memory) {
+    bytes32 message = _computeMintsHash(mints, nonce, expiration);
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, message);
+    bytes memory signature = abi.encodePacked(r, s, v);
+    return IDeck.SignedDeliveryParams({
+      signature: signature,
+      message: message,
+      nonce: nonce,
+      expiration: expiration
+    });
   }
 
   function testAccess() public {
@@ -256,7 +321,6 @@ contract ERC1155DeckTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
 
-    vm.startPrank(other);
     IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
     IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
     variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
@@ -266,9 +330,17 @@ contract ERC1155DeckTest is Test {
       variationMints: variationMints
     });
 
+    // Sign with wrong private key
+    uint256 wrongPrivateKey = 0xdeadbeef;
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParamsWithKey(
+      mints,
+      bytes32(uint256(1)),
+      block.timestamp + 1 hours,
+      wrongPrivateKey
+    );
+
     vm.expectRevert(IDeck.InvalidSignature.selector);
-    example.deliverMints(mints);
-    vm.stopPrank();
+    example.deliverMints(mints, signedParams);
   }
 
   function testDeliverMints() public {
@@ -282,7 +354,6 @@ contract ERC1155DeckTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
 
-    vm.startPrank(signingAddress);
     IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
     IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](2);
     variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 5, recipient: other });
@@ -293,12 +364,17 @@ contract ERC1155DeckTest is Test {
       variationMints: variationMints
     });
 
-    example.deliverMints(mints);
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParams(
+      mints,
+      bytes32(uint256(1)),
+      block.timestamp + 1 hours
+    );
+
+    example.deliverMints(mints, signedParams);
 
     // Check balances
     assertEq(creatorCore1.balanceOf(other, 1), 5);
     assertEq(creatorCore1.balanceOf(other2, 3), 10);
-    vm.stopPrank();
   }
 
   function testDeliverMintsMultipleClaims() public {
@@ -316,7 +392,6 @@ contract ERC1155DeckTest is Test {
     example.initializeClaim(address(creatorCore1), 2, claimP);
     vm.stopPrank();
 
-    vm.startPrank(signingAddress);
     IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](2);
 
     IDeck.VariationMint[] memory variationMints1 = new IDeck.VariationMint[](1);
@@ -335,12 +410,17 @@ contract ERC1155DeckTest is Test {
       variationMints: variationMints2
     });
 
-    example.deliverMints(mints);
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParams(
+      mints,
+      bytes32(uint256(1)),
+      block.timestamp + 1 hours
+    );
+
+    example.deliverMints(mints, signedParams);
 
     // Check balances - first claim starts at tokenId 1, second at tokenId 6
     assertEq(creatorCore1.balanceOf(other, 1), 2);
     assertEq(creatorCore1.balanceOf(other2, 7), 3); // tokenId 6 + variationIndex 2 - 1 = 7
-    vm.stopPrank();
   }
 
   function testDeliverMintsInvalidVariationIndex() public {
@@ -354,7 +434,6 @@ contract ERC1155DeckTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
 
-    vm.startPrank(signingAddress);
     IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
     IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
 
@@ -366,8 +445,14 @@ contract ERC1155DeckTest is Test {
       variationMints: variationMints
     });
 
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParams(
+      mints,
+      bytes32(uint256(1)),
+      block.timestamp + 1 hours
+    );
+
     vm.expectRevert(IDeck.InvalidVariationIndex.selector);
-    example.deliverMints(mints);
+    example.deliverMints(mints, signedParams);
 
     // variationIndex 6 is invalid (tokenVariations is 5)
     variationMints[0] = IDeck.VariationMint({ variationIndex: 6, amount: 1, recipient: other });
@@ -377,10 +462,14 @@ contract ERC1155DeckTest is Test {
       variationMints: variationMints
     });
 
-    vm.expectRevert(IDeck.InvalidVariationIndex.selector);
-    example.deliverMints(mints);
+    IDeck.SignedDeliveryParams memory signedParams2 = _createSignedParams(
+      mints,
+      bytes32(uint256(2)),
+      block.timestamp + 1 hours
+    );
 
-    vm.stopPrank();
+    vm.expectRevert(IDeck.InvalidVariationIndex.selector);
+    example.deliverMints(mints, signedParams2);
   }
 
   function testTokenURI() public {
@@ -660,11 +749,15 @@ contract ERC1155DeckTest is Test {
   }
 
   function testSetSigner() public {
+    // Use a new private key for the new signer
+    uint256 newSignerPrivateKey = 0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890;
+    address newSigner = vm.addr(newSignerPrivateKey);
+
     vm.startPrank(owner);
-    example.setSigner(other);
+    example.setSigner(newSigner);
     vm.stopPrank();
 
-    // Now other should be the signer
+    // Now newSigner should be the signer
     vm.startPrank(creator);
     IERC1155Deck.ClaimParameters memory claimP = IERC1155Deck.ClaimParameters({
       storageProtocol: IDeck.StorageProtocol.ARWEAVE,
@@ -674,8 +767,6 @@ contract ERC1155DeckTest is Test {
     example.initializeClaim(address(creatorCore1), 1, claimP);
     vm.stopPrank();
 
-    // Old signer should fail
-    vm.startPrank(signingAddress);
     IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
     IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
     variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
@@ -685,15 +776,26 @@ contract ERC1155DeckTest is Test {
       variationMints: variationMints
     });
 
-    vm.expectRevert(IDeck.InvalidSignature.selector);
-    example.deliverMints(mints);
-    vm.stopPrank();
+    // Old signer's signature should fail
+    IDeck.SignedDeliveryParams memory oldSignerParams = _createSignedParams(
+      mints,
+      bytes32(uint256(1)),
+      block.timestamp + 1 hours
+    );
 
-    // New signer should succeed
-    vm.startPrank(other);
-    example.deliverMints(mints);
+    vm.expectRevert(IDeck.InvalidSignature.selector);
+    example.deliverMints(mints, oldSignerParams);
+
+    // New signer's signature should succeed
+    IDeck.SignedDeliveryParams memory newSignerParams = _createSignedParamsWithKey(
+      mints,
+      bytes32(uint256(2)),
+      block.timestamp + 1 hours,
+      newSignerPrivateKey
+    );
+
+    example.deliverMints(mints, newSignerParams);
     assertEq(creatorCore1.balanceOf(other, 1), 1);
-    vm.stopPrank();
   }
 
   function testMultipleCreatorContracts() public {
@@ -719,4 +821,223 @@ contract ERC1155DeckTest is Test {
 
     vm.stopPrank();
   }
+
+  // ============ New Signature Validation Tests ============
+
+  function testExpiredSignature() public {
+    vm.startPrank(creator);
+    IERC1155Deck.ClaimParameters memory claimP = IERC1155Deck.ClaimParameters({
+      storageProtocol: IDeck.StorageProtocol.ARWEAVE,
+      tokenVariations: 5,
+      location: "arweaveHash1"
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
+    IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
+    variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = IDeck.ClaimMint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationMints: variationMints
+    });
+
+    // Create signature with past expiration
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParams(
+      mints,
+      bytes32(uint256(1)),
+      block.timestamp - 1 // Expired
+    );
+
+    vm.expectRevert(IDeck.ExpiredSignature.selector);
+    example.deliverMints(mints, signedParams);
+  }
+
+  function testReplayAttack() public {
+    vm.startPrank(creator);
+    IERC1155Deck.ClaimParameters memory claimP = IERC1155Deck.ClaimParameters({
+      storageProtocol: IDeck.StorageProtocol.ARWEAVE,
+      tokenVariations: 5,
+      location: "arweaveHash1"
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
+    IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
+    variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = IDeck.ClaimMint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationMints: variationMints
+    });
+
+    bytes32 nonce = bytes32(uint256(12345));
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParams(
+      mints,
+      nonce,
+      block.timestamp + 1 hours
+    );
+
+    // First call should succeed
+    example.deliverMints(mints, signedParams);
+    assertEq(creatorCore1.balanceOf(other, 1), 1);
+
+    // Second call with same nonce should fail
+    vm.expectRevert(IDeck.NonceAlreadyUsed.selector);
+    example.deliverMints(mints, signedParams);
+  }
+
+  function testIsNonceUsed() public {
+    vm.startPrank(creator);
+    IERC1155Deck.ClaimParameters memory claimP = IERC1155Deck.ClaimParameters({
+      storageProtocol: IDeck.StorageProtocol.ARWEAVE,
+      tokenVariations: 5,
+      location: "arweaveHash1"
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    bytes32 nonce = bytes32(uint256(99999));
+
+    // Nonce should not be used initially
+    assertFalse(example.isNonceUsed(nonce));
+
+    IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
+    IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
+    variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = IDeck.ClaimMint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationMints: variationMints
+    });
+
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParams(
+      mints,
+      nonce,
+      block.timestamp + 1 hours
+    );
+
+    example.deliverMints(mints, signedParams);
+
+    // Nonce should now be used
+    assertTrue(example.isNonceUsed(nonce));
+  }
+
+  function testTamperedData() public {
+    vm.startPrank(creator);
+    IERC1155Deck.ClaimParameters memory claimP = IERC1155Deck.ClaimParameters({
+      storageProtocol: IDeck.StorageProtocol.ARWEAVE,
+      tokenVariations: 5,
+      location: "arweaveHash1"
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
+    IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
+    variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = IDeck.ClaimMint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationMints: variationMints
+    });
+
+    // Create valid signature
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParams(
+      mints,
+      bytes32(uint256(1)),
+      block.timestamp + 1 hours
+    );
+
+    // Tamper with the mints data (change amount)
+    mints[0].variationMints[0].amount = 100;
+
+    // Should fail because data was tampered
+    vm.expectRevert(IDeck.InvalidSignature.selector);
+    example.deliverMints(mints, signedParams);
+  }
+
+  function testMultipleCallsWithDifferentNonces() public {
+    vm.startPrank(creator);
+    IERC1155Deck.ClaimParameters memory claimP = IERC1155Deck.ClaimParameters({
+      storageProtocol: IDeck.StorageProtocol.ARWEAVE,
+      tokenVariations: 5,
+      location: "arweaveHash1"
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
+    IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
+    variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 1, recipient: other });
+    mints[0] = IDeck.ClaimMint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationMints: variationMints
+    });
+
+    // First call with nonce 1
+    IDeck.SignedDeliveryParams memory signedParams1 = _createSignedParams(
+      mints,
+      bytes32(uint256(1)),
+      block.timestamp + 1 hours
+    );
+    example.deliverMints(mints, signedParams1);
+    assertEq(creatorCore1.balanceOf(other, 1), 1);
+
+    // Second call with nonce 2 should also succeed
+    IDeck.SignedDeliveryParams memory signedParams2 = _createSignedParams(
+      mints,
+      bytes32(uint256(2)),
+      block.timestamp + 1 hours
+    );
+    example.deliverMints(mints, signedParams2);
+    assertEq(creatorCore1.balanceOf(other, 1), 2);
+
+    // Third call with nonce 3 should also succeed
+    IDeck.SignedDeliveryParams memory signedParams3 = _createSignedParams(
+      mints,
+      bytes32(uint256(3)),
+      block.timestamp + 1 hours
+    );
+    example.deliverMints(mints, signedParams3);
+    assertEq(creatorCore1.balanceOf(other, 1), 3);
+  }
+
+  function testDeckMintDeliveredEvent() public {
+    vm.startPrank(creator);
+    IERC1155Deck.ClaimParameters memory claimP = IERC1155Deck.ClaimParameters({
+      storageProtocol: IDeck.StorageProtocol.ARWEAVE,
+      tokenVariations: 5,
+      location: "arweaveHash1"
+    });
+    example.initializeClaim(address(creatorCore1), 1, claimP);
+    vm.stopPrank();
+
+    IDeck.ClaimMint[] memory mints = new IDeck.ClaimMint[](1);
+    IDeck.VariationMint[] memory variationMints = new IDeck.VariationMint[](1);
+    variationMints[0] = IDeck.VariationMint({ variationIndex: 1, amount: 5, recipient: other });
+    mints[0] = IDeck.ClaimMint({
+      creatorContractAddress: address(creatorCore1),
+      instanceId: 1,
+      variationMints: variationMints
+    });
+
+    bytes32 nonce = bytes32(uint256(42));
+    IDeck.SignedDeliveryParams memory signedParams = _createSignedParams(
+      mints,
+      nonce,
+      block.timestamp + 1 hours
+    );
+
+    vm.expectEmit(true, true, false, true);
+    emit DeckMintDelivered(address(creatorCore1), 1, 5, nonce);
+
+    example.deliverMints(mints, signedParams);
+  }
+
+  // Declare event for testing
+  event DeckMintDelivered(address indexed creatorContract, uint256 indexed instanceId, uint32 totalMinted, bytes32 nonce);
 }

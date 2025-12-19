@@ -141,3 +141,67 @@ This is a mature Solidity codebase for NFT creator extensions. When making chang
 4. Include Foundry tests
 5. Use custom errors over require strings
 6. Apply gas optimizations (unchecked loops, bitmasks)
+
+---
+
+## Project Context (Auto-Generated)
+
+### Current State
+- **Active Branch**: `don/deck-contract` - implementing Deck Claims extension for ERC1155
+- **Recent Work**: Added `contracts/deckClaims/` with `Deck.sol`, `ERC1155Deck.sol`, `IDeck.sol`, `IERC1155Deck.sol`
+- **Untracked**: `script/ERC1155Deck.s.sol` (deployment script)
+
+### Extension Categories (16 total)
+| Directory | Purpose | Token Standard |
+|-----------|---------|----------------|
+| `burnredeem/` | Burn NFTs to redeem new ones | ERC721/ERC1155 |
+| `burnredeemUpdatableFee/` | V2 burn redeem with updatable fees | ERC721/ERC1155 |
+| `collectible/` | Collectible extensions | ERC721 |
+| `crossChainBurn/` | Cross-chain burn functionality | Multi-chain |
+| `deckClaims/` | **NEW** Deck-based lazy claims | ERC1155 |
+| `edition/` | Batch minting editions | ERC721 |
+| `frameclaims/` | Farcaster Frame claims | ERC1155 |
+| `gachaclaims/` | Serendipity/randomized minting | ERC1155 |
+| `lazyclaim/` | Lazy payable claim pages (ETH) | ERC721/ERC1155 |
+| `lazyUpdatableFeeClaim/` | V2 lazy claims with updatable fees | ERC721/ERC1155 |
+| `metadata/` | Frozen metadata extensions | ERC721/ERC1155 |
+| `operatorfilterer/` | OpenSea operator filter | Both |
+| `physicalclaim/` | Physical item redemption | Both |
+| `single/` | Single-creator extensions | ERC721/ERC1155 |
+| `soulbound/` | Non-transferable tokens | ERC721/ERC1155 |
+| `libraries/` | Shared utilities & interfaces | N/A |
+
+### Key Dependencies
+- `@manifoldxyz/creator-core-solidity` ^3.0.0 - Core NFT creator contracts
+- `@manifoldxyz/libraries-solidity` - AdminControl, access utilities
+- OpenZeppelin contracts - Security, cryptography, token standards
+- Foundry forge-std - Testing framework
+
+### Build & Test
+```bash
+forge build          # Compile all contracts
+forge test           # Run all tests
+forge test -vvv      # Verbose output
+forge test --match-path test/deck/ERC1155Deck.t.sol  # Specific test
+```
+
+### Contract Pattern Reference
+```solidity
+// Standard extension structure
+contract ERC1155Extension is IERC165, IExtensionInterface, ICreatorExtensionTokenURI, BaseContract {
+    // Mapping: { creatorAddress => { instanceId => ClaimData } }
+    mapping(address => mapping(uint256 => Claim)) private _claims;
+
+    // Access control
+    modifier creatorAdminRequired(address creatorContractAddress) { ... }
+
+    // Custom errors (preferred over require strings)
+    error InvalidInput();
+    error ClaimNotInitialized();
+}
+```
+
+### Deployment Networks
+- Mainnet (1), Goerli (2), Sepolia, Base
+- Scripts in `script/*.s.sol`
+- Deployed addresses documented in README.md

@@ -132,11 +132,14 @@ contract ERC1155Deck is IERC165, IERC1155Deck, ICreatorExtensionTokenURI, Deck {
   /**
    * See {IDeck-deliverMints}.
    */
-  function deliverMints(IDeck.ClaimMint[] calldata mints) external override {
-    _validateSigner();
+  function deliverMints(
+    IDeck.ClaimMint[] calldata mints,
+    IDeck.SignedDeliveryParams calldata signedParams
+  ) external override {
+    _validateSignature(mints, signedParams);
     for (uint256 i; i < mints.length; ) {
       ClaimMint calldata mintData = mints[i];
-       Claim memory claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
+      Claim memory claim = _getClaim(mintData.creatorContractAddress, mintData.instanceId);
       address[] memory receivers = new address[](mintData.variationMints.length);
       uint256[] memory amounts = new uint256[](mintData.variationMints.length);
       uint256[] memory tokenIds = new uint256[](mintData.variationMints.length);
@@ -163,6 +166,7 @@ contract ERC1155Deck is IERC165, IERC1155Deck, ICreatorExtensionTokenURI, Deck {
 
       claim.total += totalMinted;
       IERC1155CreatorCore(mintData.creatorContractAddress).mintExtensionExisting(receivers, tokenIds, amounts);
+      emit DeckMintDelivered(mintData.creatorContractAddress, mintData.instanceId, totalMinted, signedParams.nonce);
       unchecked {
         ++i;
       }
