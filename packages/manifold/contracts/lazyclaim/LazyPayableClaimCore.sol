@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import ".././libraries/delegation-registry/IDelegationRegistry.sol";
-import ".././libraries/delegation-registry/IDelegationRegistryV2.sol";
-import ".././libraries/manifold-membership/IManifoldMembership.sol";
+import "../libraries/delegation-registry/IDelegationRegistry.sol";
+import "../libraries/delegation-registry/IDelegationRegistryV2.sol";
+import "../libraries/manifold-membership/IManifoldMembership.sol";
 
 import "./ILazyPayableClaimCore.sol";
 

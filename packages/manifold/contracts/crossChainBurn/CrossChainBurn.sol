@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import ".././libraries/manifold-membership/IManifoldMembership.sol";
+import "../libraries/manifold-membership/IManifoldMembership.sol";
 import "./ICrossChainBurn.sol";
 import "./Interfaces.sol";
 

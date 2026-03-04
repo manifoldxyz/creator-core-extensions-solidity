@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import ".././libraries/manifold-membership/IManifoldMembership.sol";
+import "../libraries/manifold-membership/IManifoldMembership.sol";
 import "./IPhysicalClaim.sol";
 import "./Interfaces.sol";
 
