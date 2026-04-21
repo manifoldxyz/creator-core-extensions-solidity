@@ -7,6 +7,7 @@ pragma solidity ^0.8.17;
 import {AdminControl} from "@manifoldxyz/libraries-solidity/contracts/access/AdminControl.sol";
 import {IAdminControl} from "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 import {ICreatorExtensionTokenURI} from "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
+import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -14,6 +15,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {IManifoldERC1155SeaDropShim} from "./IManifoldERC1155SeaDropShim.sol";
+import {ISeaDrop} from "./ISeaDrop.sol";
 import {AllowListData, MultiConfigureStruct, PublicDrop, StorageProtocol} from "./SeaDropStructs.sol";
 
 /**
@@ -129,15 +131,74 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     // -----------------------------------------------------------------------
-    // Lifecycle stubs (US-005, US-006)
+    // Lifecycle (US-005 implemented; US-006 still stubbed)
     // -----------------------------------------------------------------------
 
-    function initialize(MultiConfigureStruct calldata) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Seed the Creator Core tokenId and apply the full drop config.
+     * @dev One-shot: mints a zero-amount "new token" on Creator Core solely to
+     *      reserve the tokenId, then hands off to `_applyConfig` which pushes
+     *      local caps + metadata and forwards the SeaDrop setters. Must be
+     *      called AFTER the shim is registered as an extension on the creator
+     *      contract — otherwise Creator Core reverts with
+     *      "Must be registered extension".
+     */
+    function initialize(MultiConfigureStruct calldata cfg)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        if (_tokenId != 0) revert AlreadyInitialized();
+
+        address[] memory recipients = new address[](1);
+        recipients[0] = msg.sender;
+        uint256[] memory amounts = new uint256[](1);
+        string[] memory uris = new string[](1);
+        uint256[] memory minted = IERC1155CreatorCore(creatorContractAddress)
+            .mintExtensionNew(recipients, amounts, uris);
+        _tokenId = minted[0];
+
+        emit Initialized(instanceId, _tokenId);
+        _applyConfig(cfg);
     }
 
     function multiConfigure(MultiConfigureStruct calldata) external pure override {
         revert NotImplemented();
+    }
+
+    // -----------------------------------------------------------------------
+    // Shared config application (US-005)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @dev Single source of truth for applying a MultiConfigureStruct. Used by
+     *      both initialize() and multiConfigure() so the two paths stay byte
+     *      identical — including the Configured event that marks the end.
+     *      Setters are invoked in the order SeaDrop expects: publicDrop first
+     *      (so the drop window is live), then allow list, then payout, then
+     *      the fee-recipient loop.
+     */
+    function _applyConfig(MultiConfigureStruct calldata cfg) internal {
+        _maxSupply = cfg.maxSupply;
+        _maxMintsPerWallet = cfg.maxMintsPerWallet;
+        _storageProtocol = cfg.storageProtocol;
+        _tokenUriLocation = cfg.tokenUriLocation;
+        _contractURI = cfg.contractURI;
+
+        ISeaDrop seaDrop = ISeaDrop(cfg.seaDropImpl);
+        seaDrop.updatePublicDrop(cfg.publicDrop);
+        seaDrop.updateAllowList(cfg.allowListData);
+        seaDrop.updateCreatorPayoutAddress(cfg.creatorPayoutAddress);
+
+        uint256 length = cfg.allowedFeeRecipients.length;
+        for (uint256 i; i < length;) {
+            seaDrop.updateAllowedFeeRecipient(cfg.allowedFeeRecipients[i], true);
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit Configured(instanceId, _tokenId);
     }
 
     // -----------------------------------------------------------------------
