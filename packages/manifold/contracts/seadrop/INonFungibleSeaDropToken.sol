@@ -29,6 +29,12 @@ import {
  *      Calls to those selectors will revert at the Solidity dispatcher.
  */
 interface INonFungibleSeaDropToken is ISeaDropTokenContractMetadata {
+    /// @dev Thrown by mintSeaDrop when msg.sender is not an allowed SeaDrop.
+    error OnlyAllowedSeaDrop();
+
+    /// @dev Emitted when the allowed-SeaDrop set changes.
+    event AllowedSeaDropUpdated(address[] allowedSeaDrop);
+
     function updateAllowedSeaDrop(address[] calldata allowedSeaDrop) external;
 
     function mintSeaDrop(address minter, uint256 quantity) external;

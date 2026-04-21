@@ -317,7 +317,7 @@ contract ManifoldERC1155SeaDropShim is
         creatorAdminRequired(creatorContractAddress)
     {
         _contractURI = newContractURI;
-        emit ContractURIUpdated();
+        emit ContractURIUpdated(newContractURI);
     }
 
     /**
@@ -336,6 +336,7 @@ contract ManifoldERC1155SeaDropShim is
         _storageProtocol = storageProtocol;
         _tokenUriLocation = location;
         emit TokenURIUpdated();
+        emit BatchMetadataUpdate(_tokenId, _tokenId);
     }
 
     /**
@@ -353,6 +354,7 @@ contract ManifoldERC1155SeaDropShim is
         if (_storageProtocol != StorageProtocol.NONE) revert InvalidStorageProtocol();
         _tokenUriLocation = string.concat(_tokenUriLocation, chunk);
         emit TokenURIUpdated();
+        emit BatchMetadataUpdate(_tokenId, _tokenId);
     }
 
     /**

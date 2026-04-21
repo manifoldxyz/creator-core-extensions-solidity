@@ -63,11 +63,20 @@ interface IManifoldERC1155SeaDropShim {
     ///         and multiConfigure().
     event Configured(uint256 indexed instanceId, uint256 indexed tokenId);
 
-    /// @notice OpenSea collection metadata changed.
-    event ContractURIUpdated();
+    /// @notice OpenSea collection metadata changed. Signature mirrors
+    ///         ISeaDropTokenContractMetadata.ContractURIUpdated so SeaDrop /
+    ///         OpenSea indexers can match on the canonical topic0 hash.
+    event ContractURIUpdated(string newContractURI);
 
-    /// @notice tokenURI storage protocol or location changed.
+    /// @notice tokenURI storage protocol or location changed. Shim-specific
+    ///         — retained for on-chain diagnostics; OpenSea refreshes via
+    ///         the EIP-4906 BatchMetadataUpdate event emitted alongside.
     event TokenURIUpdated();
+
+    /// @notice EIP-4906 metadata refresh signal for the drop's tokenId.
+    ///         Emitted whenever the stored tokenURI changes so OpenSea and
+    ///         other marketplaces invalidate their metadata cache.
+    event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
 
     /// @notice _maxSupply updated (possibly clamped to _totalMinted).
     event MaxSupplyUpdated(uint256 newMaxSupply);
