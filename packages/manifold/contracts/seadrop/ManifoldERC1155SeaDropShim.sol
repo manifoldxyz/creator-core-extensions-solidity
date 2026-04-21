@@ -131,7 +131,7 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     // -----------------------------------------------------------------------
-    // Lifecycle (US-005 implemented; US-006 still stubbed)
+    // Lifecycle
     // -----------------------------------------------------------------------
 
     /**
@@ -162,8 +162,22 @@ contract ManifoldERC1155SeaDropShim is
         _applyConfig(cfg);
     }
 
-    function multiConfigure(MultiConfigureStruct calldata) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Re-apply drop config after initialize() — used to extend the
+     *         drop window, swap metadata, or add/remove fee recipients without
+     *         redeploying the shim.
+     * @dev Guards on `_tokenId == 0` so admins can't "half-initialize" a shim
+     *      by reaching around `initialize()`; all other state transitions flow
+     *      through the same `_applyConfig` the initializer uses, keeping the
+     *      two paths byte-identical and idempotent for equal inputs.
+     */
+    function multiConfigure(MultiConfigureStruct calldata cfg)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        if (_tokenId == 0) revert NotInitialized();
+        _applyConfig(cfg);
     }
 
     // -----------------------------------------------------------------------
