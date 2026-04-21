@@ -107,6 +107,17 @@ contract ManifoldERC1155SeaDropShim is
         _;
     }
 
+    /**
+     * @dev Gate for mintSeaDrop — msg.sender must be a SeaDrop deployment the
+     *      creator admin has whitelisted via the constructor or
+     *      updateAllowedSeaDrop. No admin-bypass: AdminControl ops flow through
+     *      initialize / multiConfigure, not this mint path.
+     */
+    modifier onlyAllowedSeaDrop() {
+        if (!_allowedSeaDrop.contains(msg.sender)) revert OnlyAllowedSeaDrop();
+        _;
+    }
+
     // -----------------------------------------------------------------------
     // Constructor
     // -----------------------------------------------------------------------
@@ -216,15 +227,54 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     // -----------------------------------------------------------------------
-    // SeaDrop surface stubs (US-007)
+    // SeaDrop surface (US-007)
     // -----------------------------------------------------------------------
 
-    function mintSeaDrop(address, uint256) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Mint entry invoked by an allowed SeaDrop on behalf of a minter.
+     * @dev Counters are bumped BEFORE the external mint call so the accounting
+     *      read by getMintStats is consistent even if Creator Core's
+     *      mintExtensionExisting triggers an ERC1155 receiver hook — the shim's
+     *      own nonReentrant lock plus the onlyAllowedSeaDrop gate bound the
+     *      re-entrancy surface. SeaDrop upstream has already enforced the
+     *      per-wallet + maxSupply caps via getMintStats; the shim trusts that
+     *      quote and does not double-check them here.
+     */
+    function mintSeaDrop(address minter, uint256 quantity)
+        external
+        override
+        onlyAllowedSeaDrop
+        nonReentrant
+    {
+        if (_tokenId == 0) revert NotInitialized();
+
+        _minterNumMinted[minter] += quantity;
+        _totalMinted += quantity;
+
+        address[] memory recipients = new address[](1);
+        recipients[0] = minter;
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = _tokenId;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = quantity;
+        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, tokenIds, amounts);
+
+        emit SeaDropMint(minter, quantity);
     }
 
-    function getMintStats(address) external pure override returns (uint256, uint256, uint256) {
-        revert NotImplemented();
+    /**
+     * @notice Tuple SeaDrop reads to enforce per-wallet + drop-wide caps.
+     * @dev Order is fixed by the SeaDrop ABI (minterNumMinted, currentTotalSupply,
+     *      maxSupply); changing it silently breaks any SeaDrop version that
+     *      consumes the quote.
+     */
+    function getMintStats(address minter)
+        external
+        view
+        override
+        returns (uint256 minterNumMinted, uint256 currentTotalSupply, uint256 maxSupply_)
+    {
+        return (_minterNumMinted[minter], _totalMinted, _maxSupply);
     }
 
     // -----------------------------------------------------------------------
