@@ -393,7 +393,65 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     // -----------------------------------------------------------------------
-    // View stubs (US-009, US-011)
+    // Metadata views (US-009)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @notice OpenSea collection-level metadata pointer set via setContractURI.
+     */
+    function contractURI() external view override returns (string memory) {
+        return _contractURI;
+    }
+
+    /**
+     * @notice Assemble the tokenURI for this shim's single drop tokenId.
+     * @dev Reverts with TokenDNE on any tokenId other than the one
+     *      initialize() seeded. The prefix comes from the stored
+     *      StorageProtocol (NONE -> "", ARWEAVE -> "https://arweave.net/",
+     *      IPFS -> "ipfs://") and is concatenated with the opaque
+     *      _tokenUriLocation suffix maintained by updateTokenURI /
+     *      extendTokenURI.
+     */
+    function tokenURI(uint256 tokenId) external view override returns (string memory) {
+        if (tokenId != _tokenId) revert TokenDNE();
+        return string.concat(_uriPrefix(), _tokenUriLocation);
+    }
+
+    /**
+     * @notice ICreatorExtensionTokenURI overload invoked by Creator Core when
+     *         it routes a tokenURI read through this extension. Must return
+     *         the same assembled URI as the bare-tokenId overload so OpenSea
+     *         and Creator Core see identical metadata regardless of which
+     *         caller queries.
+     */
+    function tokenURI(address creator, uint256 tokenId) external view override returns (string memory) {
+        if (creator != creatorContractAddress || tokenId != _tokenId) revert TokenDNE();
+        return string.concat(_uriPrefix(), _tokenUriLocation);
+    }
+
+    /**
+     * @notice Empty base URI — the shim returns fully-assembled tokenURIs, so
+     *         there is no Creator Core-style base that consumers concatenate
+     *         against. Kept on the ABI because SeaDrop-compatible indexers
+     *         probe for the field.
+     */
+    function baseURI() external pure override returns (string memory) {
+        return "";
+    }
+
+    /**
+     * @dev Resolves _storageProtocol to its tokenURI prefix. Kept internal and
+     *      pure so both tokenURI overloads share a single source of truth.
+     */
+    function _uriPrefix() internal view returns (string memory) {
+        StorageProtocol sp = _storageProtocol;
+        if (sp == StorageProtocol.ARWEAVE) return "https://arweave.net/";
+        if (sp == StorageProtocol.IPFS) return "ipfs://";
+        return "";
+    }
+
+    // -----------------------------------------------------------------------
+    // View stubs (US-011)
     // -----------------------------------------------------------------------
 
     function maxSupply() external pure override returns (uint256) {
@@ -401,22 +459,6 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     function totalSupply() external pure override returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function contractURI() external pure override returns (string memory) {
-        revert NotImplemented();
-    }
-
-    function tokenURI(uint256) external pure override returns (string memory) {
-        revert NotImplemented();
-    }
-
-    function tokenURI(address, uint256) external pure override returns (string memory) {
-        revert NotImplemented();
-    }
-
-    function baseURI() external pure override returns (string memory) {
         revert NotImplemented();
     }
 
