@@ -8,6 +8,7 @@ import "forge-std/Test.sol";
 
 import {ERC1155Creator} from "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 
+import {IManifoldERC1155SeaDropShim} from "../../contracts/seadrop/IManifoldERC1155SeaDropShim.sol";
 import {ManifoldERC1155SeaDropShim} from "../../contracts/seadrop/ManifoldERC1155SeaDropShim.sol";
 import {
     AllowListData,
@@ -31,6 +32,13 @@ import {MockSeaDrop} from "./mocks/MockSeaDrop.sol";
  *      later test stories focused on the field(s) under test.
  */
 contract ManifoldERC1155SeaDropShimTest is Test {
+    // Shim events re-declared locally so tests can use `emit` + `vm.expectEmit`.
+    // Solidity only allows `emit` of events declared in the current contract
+    // or a base contract, so mirroring the IManifoldERC1155SeaDropShim
+    // signatures here is the cleanest way to assert on them.
+    event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
+    event Configured(uint256 indexed instanceId, uint256 indexed tokenId);
+
     uint256 internal constant INSTANCE_ID = 1;
 
     // Creator admin for the ERC1155Creator — used to register the shim and
@@ -38,6 +46,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     address internal creatorAdmin = address(0xA11CE);
     address internal payoutAddress = address(0xBEEF);
     address internal feeRecipient = address(0xFEE);
+    address internal notAdmin = address(0xB0B);
 
     ERC1155Creator internal creator;
     MockSeaDrop internal mockSeaDrop;
@@ -102,5 +111,138 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         address[] memory allowed = shim.getAllowedSeaDrop();
         assertEq(allowed.length, 1, "one allowed seadrop");
         assertEq(allowed[0], address(mockSeaDrop), "mockSeaDrop is allowed");
+    }
+
+    // -----------------------------------------------------------------------
+    // initialize() — happy path + revert cases (US-014)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @notice Full happy-path assertion: initialize seeds the tokenId via
+     *         Creator Core's mintExtensionNew, emits Initialized then
+     *         Configured, pushes every local cfg field into shim state, and
+     *         forwards publicDrop / allowList / payout / fee-recipient to the
+     *         configured SeaDrop impl.
+     * @dev A fresh ERC1155Creator assigns its first mintExtensionNew tokenId
+     *      as 1 (Creator Core uses `_tokenCount + 1`), so we can hard-code
+     *      the expected tokenId in the event match and subsequent tokenURI
+     *      read without exposing an internal getter.
+     */
+    function testInitializeHappyPath() public {
+        MultiConfigureStruct memory cfg = _defaultCfg();
+        uint256 expectedTokenId = 1;
+
+        // Initialized is emitted BEFORE _applyConfig; Configured at the very
+        // end. Ordering matters to indexers that key off Configured to know
+        // the drop is fully live, so assert both events in sequence.
+        vm.expectEmit(true, true, false, true, address(shim));
+        emit Initialized(INSTANCE_ID, expectedTokenId);
+        vm.expectEmit(true, true, false, true, address(shim));
+        emit Configured(INSTANCE_ID, expectedTokenId);
+
+        vm.prank(creatorAdmin);
+        shim.initialize(cfg);
+
+        // --- Local shim state reflects cfg
+        assertEq(shim.maxSupply(), cfg.maxSupply, "maxSupply applied");
+        assertEq(shim.totalSupply(), 0, "no mints during initialize");
+        assertEq(shim.contractURI(), cfg.contractURI, "contractURI applied");
+        // StorageProtocol.NONE -> empty prefix, so tokenURI == tokenUriLocation.
+        assertEq(shim.tokenURI(expectedTokenId), cfg.tokenUriLocation, "tokenURI assembled");
+
+        // getMintStats exposes _maxMintsPerWallet indirectly via maxSupply;
+        // use the maxMintsPerWallet getter-equivalent by checking getMintStats
+        // also reflects the cap update path. Here we just assert supply cap
+        // propagated; US-016 covers the full getMintStats surface.
+        (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(creatorAdmin);
+        assertEq(minted, 0);
+        assertEq(total, 0);
+        assertEq(cap, cfg.maxSupply);
+
+        // --- MockSeaDrop recorded the forwarded config
+        PublicDrop memory pd = mockSeaDrop.lastPublicDrop();
+        assertEq(pd.mintPrice, cfg.publicDrop.mintPrice, "publicDrop.mintPrice");
+        assertEq(pd.startTime, cfg.publicDrop.startTime, "publicDrop.startTime");
+        assertEq(pd.endTime, cfg.publicDrop.endTime, "publicDrop.endTime");
+        assertEq(
+            pd.maxTotalMintableByWallet,
+            cfg.publicDrop.maxTotalMintableByWallet,
+            "publicDrop.maxTotalMintableByWallet"
+        );
+        assertEq(pd.feeBps, cfg.publicDrop.feeBps, "publicDrop.feeBps");
+        assertEq(
+            pd.restrictFeeRecipients,
+            cfg.publicDrop.restrictFeeRecipients,
+            "publicDrop.restrictFeeRecipients"
+        );
+
+        AllowListData memory ald = mockSeaDrop.lastAllowListData();
+        assertEq(ald.merkleRoot, cfg.allowListData.merkleRoot, "allowList.merkleRoot");
+        assertEq(ald.allowListURI, cfg.allowListData.allowListURI, "allowList.allowListURI");
+        assertEq(
+            ald.publicKeyURIs.length,
+            cfg.allowListData.publicKeyURIs.length,
+            "allowList.publicKeyURIs.length"
+        );
+
+        assertEq(mockSeaDrop.lastCreatorPayoutAddress(), payoutAddress, "payout forwarded");
+        assertTrue(
+            mockSeaDrop.allowedFeeRecipient(feeRecipient),
+            "fee recipient allowed on MockSeaDrop"
+        );
+    }
+
+    /**
+     * @notice A non-admin caller cannot initialize; the shim's
+     *         creatorAdminRequired modifier reverts with the literal string
+     *         "Must be owner or admin of creator contract" (the shim does not
+     *         use a custom error here — matches the revert string verbatim).
+     */
+    function testInitializeRevertsForNonAdmin() public {
+        MultiConfigureStruct memory cfg = _defaultCfg();
+
+        vm.prank(notAdmin);
+        vm.expectRevert("Must be owner or admin of creator contract");
+        shim.initialize(cfg);
+    }
+
+    /**
+     * @notice Second initialize() on the same shim reverts with
+     *         AlreadyInitialized — _tokenId is non-zero after the first call.
+     */
+    function testInitializeRevertsWhenAlreadyInitialized() public {
+        MultiConfigureStruct memory cfg = _defaultCfg();
+
+        vm.prank(creatorAdmin);
+        shim.initialize(cfg);
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.AlreadyInitialized.selector);
+        shim.initialize(cfg);
+    }
+
+    /**
+     * @notice A shim that was never registered as a Creator Core extension
+     *         cannot initialize — Creator Core's requireExtension reverts
+     *         during mintExtensionNew with "Must be registered extension".
+     * @dev Uses a freshly-constructed shim that skips setUp's registerExtension
+     *      step. The freshly-deployed shim passes its own creatorAdminRequired
+     *      check (creatorAdmin is the owner of the bound creator), so the
+     *      revert can only come from Creator Core's extension gate.
+     */
+    function testInitializeRevertsWhenShimNotRegistered() public {
+        vm.startPrank(creatorAdmin);
+
+        address[] memory allowed = new address[](1);
+        allowed[0] = address(mockSeaDrop);
+        ManifoldERC1155SeaDropShim unregisteredShim =
+            new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+
+        MultiConfigureStruct memory cfg = _defaultCfg();
+
+        vm.expectRevert("Must be registered extension");
+        unregisteredShim.initialize(cfg);
+
+        vm.stopPrank();
     }
 }
