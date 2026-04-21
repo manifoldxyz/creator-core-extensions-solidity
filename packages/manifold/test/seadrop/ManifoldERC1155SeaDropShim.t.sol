@@ -38,6 +38,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     // signatures here is the cleanest way to assert on them.
     event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
     event Configured(uint256 indexed instanceId, uint256 indexed tokenId);
+    event SeaDropMint(address indexed minter, uint256 quantity);
 
     uint256 internal constant INSTANCE_ID = 1;
 
@@ -47,6 +48,8 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     address internal payoutAddress = address(0xBEEF);
     address internal feeRecipient = address(0xFEE);
     address internal notAdmin = address(0xB0B);
+    address internal alice = address(0x1111);
+    address internal bob = address(0x2222);
 
     ERC1155Creator internal creator;
     MockSeaDrop internal mockSeaDrop;
@@ -244,5 +247,107 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         unregisteredShim.initialize(cfg);
 
         vm.stopPrank();
+    }
+
+    // -----------------------------------------------------------------------
+    // mintSeaDrop — auth + counters + Creator Core mint (US-015)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @dev Convenience wrapper so each mint test can re-use the happy-path
+     *      initialize. Kept inline (not in setUp) because the pre-init revert
+     *      test in this story needs an un-initialized shim.
+     */
+    function _initializeDefault() internal {
+        vm.prank(creatorAdmin);
+        shim.initialize(_defaultCfg());
+    }
+
+    /**
+     * @notice A direct EOA call to mintSeaDrop fails the allowed-SeaDrop gate.
+     * @dev The shim's onlyAllowedSeaDrop modifier checks msg.sender against
+     *      _allowedSeaDrop — an EOA outside the set must revert with
+     *      OnlyAllowedSeaDrop regardless of whether the shim is initialized.
+     */
+    function testMintSeaDropRevertsForNonAllowedSender() public {
+        _initializeDefault();
+
+        vm.prank(alice);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.OnlyAllowedSeaDrop.selector);
+        shim.mintSeaDrop(alice, 1);
+    }
+
+    /**
+     * @notice Routing through MockSeaDrop.fakeMint satisfies the allowed gate
+     *         (MockSeaDrop is in the shim's set via setUp) and updates the
+     *         per-wallet + drop-wide counters, emits SeaDropMint, and keeps
+     *         totalSupply() aligned with _totalMinted.
+     */
+    function testMintSeaDropIncrementsCounters() public {
+        _initializeDefault();
+
+        vm.expectEmit(true, false, false, true, address(shim));
+        emit SeaDropMint(alice, 3);
+
+        mockSeaDrop.fakeMint(address(shim), alice, 3);
+
+        (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(alice);
+        assertEq(minted, 3, "alice minterNumMinted");
+        assertEq(total, 3, "totalMinted");
+        assertEq(cap, _defaultCfg().maxSupply, "maxSupply unchanged");
+        assertEq(shim.totalSupply(), 3, "totalSupply mirrors _totalMinted");
+    }
+
+    /**
+     * @notice Two mintSeaDrop calls for the same minter accumulate both the
+     *         per-wallet and drop-wide counters — SeaDrop's cap enforcement
+     *         depends on this cumulative behaviour across phases.
+     */
+    function testMintSeaDropAccumulatesAcrossCalls() public {
+        _initializeDefault();
+
+        mockSeaDrop.fakeMint(address(shim), alice, 3);
+        mockSeaDrop.fakeMint(address(shim), alice, 2);
+
+        (uint256 minted, uint256 total, ) = shim.getMintStats(alice);
+        assertEq(minted, 5, "alice cumulative minterNumMinted");
+        assertEq(total, 5, "cumulative totalMinted");
+        assertEq(shim.totalSupply(), 5, "totalSupply accumulated");
+    }
+
+    /**
+     * @notice mintSeaDrop forwards the actual ERC1155 mint to Creator Core via
+     *         mintExtensionExisting; Alice's balance on the real ERC1155Creator
+     *         must equal her minterNumMinted after the call — cross-contract
+     *         proof that the shim's local counters track real on-chain balance.
+     * @dev Uses a second minter (bob) to confirm _totalMinted is the sum of
+     *      per-wallet balances, not just a mirror of alice's counter.
+     */
+    function testMintSeaDropCreditsERC1155Balance() public {
+        _initializeDefault();
+        uint256 expectedTokenId = 1;
+
+        mockSeaDrop.fakeMint(address(shim), alice, 4);
+        mockSeaDrop.fakeMint(address(shim), bob, 2);
+
+        assertEq(creator.balanceOf(alice, expectedTokenId), 4, "alice ERC1155 balance");
+        assertEq(creator.balanceOf(bob, expectedTokenId), 2, "bob ERC1155 balance");
+
+        (uint256 aliceMinted, , ) = shim.getMintStats(alice);
+        (uint256 bobMinted, uint256 total, ) = shim.getMintStats(bob);
+        assertEq(creator.balanceOf(alice, expectedTokenId), aliceMinted, "balance == alice.minterNumMinted");
+        assertEq(creator.balanceOf(bob, expectedTokenId), bobMinted, "balance == bob.minterNumMinted");
+        assertEq(total, 6, "totalMinted sums across wallets");
+    }
+
+    /**
+     * @notice mintSeaDrop before initialize must revert with NotInitialized.
+     *         MockSeaDrop is in the allowed set from setUp, so the onlyAllowed
+     *         gate passes; the revert comes from the shim's `_tokenId == 0`
+     *         guard, which blocks minting into an un-seeded drop.
+     */
+    function testMintSeaDropRevertsBeforeInitialize() public {
+        vm.expectRevert(IManifoldERC1155SeaDropShim.NotInitialized.selector);
+        mockSeaDrop.fakeMint(address(shim), alice, 1);
     }
 }
