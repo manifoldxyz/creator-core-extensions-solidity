@@ -443,4 +443,150 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         assertEq(cap, 5, "maxSupply clamped up to _totalMinted");
         assertEq(shim.maxSupply(), 5, "maxSupply view agrees with clamp");
     }
+
+    // -----------------------------------------------------------------------
+    // multiConfigure — post-init reconfigure path (US-017)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @notice Calling multiConfigure before initialize must revert — the shim
+     *         blocks "half-initialization" where admin config is applied
+     *         without a Creator Core tokenId seeded.
+     */
+    function testMultiConfigureRevertsBeforeInitialize() public {
+        MultiConfigureStruct memory cfg = _defaultCfg();
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.NotInitialized.selector);
+        shim.multiConfigure(cfg);
+    }
+
+    /**
+     * @notice After initialize, multiConfigure re-applies cfg: mutated fields
+     *         land in local shim state AND the new PublicDrop / allowList /
+     *         payout / fee-recipient tuples reach MockSeaDrop. Uses a cfg that
+     *         differs from the default in every field the shim tracks, so a
+     *         regression that forgets to write one of them will fail loudly.
+     * @dev Asserts MockSeaDrop.lastPublicDrop reflects the NEW public drop
+     *         (not the one initialize pushed), proving _applyConfig ran a
+     *         second time rather than short-circuiting.
+     */
+    function testMultiConfigureUpdatesStateAfterInitialize() public {
+        _initializeDefault();
+
+        // Build a reconfigure cfg that differs from the default in every
+        // tracked field — extending end time, raising caps, swapping payout,
+        // swapping fee recipient, bumping metadata, moving to IPFS storage.
+        address newPayout = address(0xC0FFEE);
+        address newFeeRecipient = address(0xDEAD);
+        MultiConfigureStruct memory cfg = _defaultCfg();
+        cfg.maxSupply = 250;
+        cfg.maxMintsPerWallet = 10;
+        cfg.storageProtocol = StorageProtocol.IPFS;
+        cfg.tokenUriLocation = "QmNewHash";
+        cfg.contractURI = "https://example.com/new-contract.json";
+        cfg.publicDrop.mintPrice = 0.05 ether;
+        cfg.publicDrop.endTime = uint48(block.timestamp + 30 days);
+        cfg.publicDrop.maxTotalMintableByWallet = 10;
+        cfg.publicDrop.feeBps = 1000;
+        cfg.creatorPayoutAddress = newPayout;
+        address[] memory newFeeRecipients = new address[](1);
+        newFeeRecipients[0] = newFeeRecipient;
+        cfg.allowedFeeRecipients = newFeeRecipients;
+
+        // Configured re-emits with the same (instanceId, tokenId=1) pair from
+        // initialize — _tokenId is frozen after the first initialize().
+        vm.expectEmit(true, true, false, true, address(shim));
+        emit Configured(INSTANCE_ID, 1);
+
+        vm.prank(creatorAdmin);
+        shim.multiConfigure(cfg);
+
+        // --- Local shim state matches the reconfigure cfg (not the defaults)
+        assertEq(shim.maxSupply(), cfg.maxSupply, "maxSupply updated");
+        assertEq(shim.contractURI(), cfg.contractURI, "contractURI updated");
+        // StorageProtocol.IPFS -> "ipfs://" prefix + opaque location suffix.
+        assertEq(
+            shim.tokenURI(1),
+            string.concat("ipfs://", cfg.tokenUriLocation),
+            "tokenURI reassembled with IPFS prefix"
+        );
+
+        // --- MockSeaDrop recorded the NEW forwarded config
+        PublicDrop memory pd = mockSeaDrop.lastPublicDrop();
+        assertEq(pd.mintPrice, cfg.publicDrop.mintPrice, "publicDrop.mintPrice updated");
+        assertEq(pd.endTime, cfg.publicDrop.endTime, "publicDrop.endTime updated");
+        assertEq(
+            pd.maxTotalMintableByWallet,
+            cfg.publicDrop.maxTotalMintableByWallet,
+            "publicDrop.maxTotalMintableByWallet updated"
+        );
+        assertEq(pd.feeBps, cfg.publicDrop.feeBps, "publicDrop.feeBps updated");
+
+        assertEq(mockSeaDrop.lastCreatorPayoutAddress(), newPayout, "payout updated");
+        assertTrue(mockSeaDrop.allowedFeeRecipient(newFeeRecipient), "new fee recipient allowed");
+    }
+
+    /**
+     * @notice Non-admin callers cannot multiConfigure — the creatorAdminRequired
+     *         modifier reverts with the same literal string the initialize
+     *         gate uses (the shim's admin gate is a revert-string, not a
+     *         custom error; see testInitializeRevertsForNonAdmin).
+     */
+    function testMultiConfigureRevertsForNonAdmin() public {
+        _initializeDefault();
+
+        MultiConfigureStruct memory cfg = _defaultCfg();
+
+        vm.prank(notAdmin);
+        vm.expectRevert("Must be owner or admin of creator contract");
+        shim.multiConfigure(cfg);
+    }
+
+    /**
+     * @notice Idempotency — multiConfigure called twice with the same cfg does
+     *         not revert and leaves the shim + MockSeaDrop in the same
+     *         observable state as a single call. Every write in _applyConfig
+     *         is an unconditional overwrite of the same value, so repeat calls
+     *         are no-ops from the test's perspective.
+     */
+    function testMultiConfigureIsIdempotent() public {
+        _initializeDefault();
+
+        MultiConfigureStruct memory cfg = _defaultCfg();
+        cfg.maxSupply = 150;
+        cfg.contractURI = "https://example.com/idempotent.json";
+
+        vm.prank(creatorAdmin);
+        shim.multiConfigure(cfg);
+
+        // Snapshot post-first-call state.
+        uint256 supplyAfterFirst = shim.maxSupply();
+        string memory contractURIAfterFirst = shim.contractURI();
+        address payoutAfterFirst = mockSeaDrop.lastCreatorPayoutAddress();
+        bool feeAllowedAfterFirst = mockSeaDrop.allowedFeeRecipient(feeRecipient);
+        PublicDrop memory pdAfterFirst = mockSeaDrop.lastPublicDrop();
+
+        // Second call with the exact same cfg should be a no-op observationally.
+        vm.prank(creatorAdmin);
+        shim.multiConfigure(cfg);
+
+        assertEq(shim.maxSupply(), supplyAfterFirst, "maxSupply unchanged by repeat");
+        assertEq(shim.contractURI(), contractURIAfterFirst, "contractURI unchanged by repeat");
+        assertEq(
+            mockSeaDrop.lastCreatorPayoutAddress(),
+            payoutAfterFirst,
+            "payout unchanged by repeat"
+        );
+        assertEq(
+            mockSeaDrop.allowedFeeRecipient(feeRecipient),
+            feeAllowedAfterFirst,
+            "fee recipient allow-map unchanged by repeat"
+        );
+
+        PublicDrop memory pdAfterSecond = mockSeaDrop.lastPublicDrop();
+        assertEq(pdAfterSecond.mintPrice, pdAfterFirst.mintPrice, "publicDrop.mintPrice stable");
+        assertEq(pdAfterSecond.endTime, pdAfterFirst.endTime, "publicDrop.endTime stable");
+        assertEq(pdAfterSecond.feeBps, pdAfterFirst.feeBps, "publicDrop.feeBps stable");
+    }
 }
