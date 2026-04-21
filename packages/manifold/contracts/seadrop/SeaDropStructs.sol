@@ -63,3 +63,42 @@ struct MultiConfigureStruct {
     address creatorPayoutAddress;
     address[] allowedFeeRecipients;
 }
+
+/**
+ * @notice TokenGatedDropStage as declared by stock SeaDrop v1.
+ * @dev Declared here solely so INonFungibleSeaDropToken can reference it when
+ *      Solidity computes type(INonFungibleSeaDropToken).interfaceId — the shim
+ *      itself does NOT implement updateTokenGatedDrop (token-gated drops are
+ *      out of v1 scope per the spec). Field order and packing must mirror the
+ *      canonical ProjectOpenSea/seadrop layout or the computed interfaceId
+ *      will drift from the value SeaDrop callers and OpenSea expect.
+ */
+struct TokenGatedDropStage {
+    uint80 mintPrice;
+    uint16 maxTotalMintableByWallet;
+    uint48 startTime;
+    uint48 endTime;
+    uint8 dropStageIndex;
+    uint32 maxTokenSupplyForStage;
+    uint16 feeBps;
+    bool restrictFeeRecipients;
+}
+
+/**
+ * @notice SignedMintValidationParams as declared by stock SeaDrop v1.
+ * @dev Declared here solely so INonFungibleSeaDropToken can reference it when
+ *      Solidity computes type(INonFungibleSeaDropToken).interfaceId — the shim
+ *      itself does NOT implement updateSignedMintValidationParams (signed
+ *      mints are out of v1 scope per the spec). Field order and packing must
+ *      mirror the canonical ProjectOpenSea/seadrop layout to keep the derived
+ *      interfaceId in sync with the value SeaDrop and OpenSea expect.
+ */
+struct SignedMintValidationParams {
+    uint80 minMintPrice;
+    uint24 maxMaxTotalMintableByWallet;
+    uint40 minStartTime;
+    uint40 maxEndTime;
+    uint40 maxMaxTokenSupplyForStage;
+    uint16 minFeeBps;
+    uint16 maxFeeBps;
+}

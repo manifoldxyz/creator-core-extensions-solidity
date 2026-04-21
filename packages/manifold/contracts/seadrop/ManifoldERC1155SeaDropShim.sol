@@ -15,7 +15,9 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {IManifoldERC1155SeaDropShim} from "./IManifoldERC1155SeaDropShim.sol";
+import {INonFungibleSeaDropToken} from "./INonFungibleSeaDropToken.sol";
 import {ISeaDrop} from "./ISeaDrop.sol";
+import {ISeaDropTokenContractMetadata} from "./ISeaDropTokenContractMetadata.sol";
 import {AllowListData, MultiConfigureStruct, PublicDrop, StorageProtocol} from "./SeaDropStructs.sol";
 
 /**
@@ -23,10 +25,11 @@ import {AllowListData, MultiConfigureStruct, PublicDrop, StorageProtocol} from "
  *         single ERC1155 drop living on a Manifold Creator Core contract.
  * @dev One shim per drop. The (creatorContractAddress, instanceId) pair is
  *      immutable, and _tokenId becomes effectively immutable after the first
- *      initialize(). See specs/manifold-seadrop-shim-erc1155.md for the full
- *      architecture; this file is the scaffold for US-004 — storage +
- *      constructor are live, every external function reverts with
- *      NotImplemented until its own user story fills it in.
+ *      initialize(). The shim binds OpenSea's SeaDrop drop surface (mint,
+ *      cap accounting, metadata views, admin pass-through) to Creator Core's
+ *      mintExtensionExisting flow without minting a parallel token. See
+ *      specs/manifold-seadrop-shim-erc1155.md for the full architecture and
+ *      auth boundaries.
  */
 contract ManifoldERC1155SeaDropShim is
     AdminControl,
@@ -82,14 +85,6 @@ contract ManifoldERC1155SeaDropShim is
 
     /// @dev Display-only admin surfaced via owner(). No auth flows through it.
     address internal _projectAdmin;
-
-    // -----------------------------------------------------------------------
-    // Scaffold sentinel
-    // -----------------------------------------------------------------------
-
-    /// @dev Reverts every stub below until the owning story replaces it with
-    ///      real logic. Intentionally not part of the external interface.
-    error NotImplemented();
 
     // -----------------------------------------------------------------------
     // Auth
@@ -515,29 +510,75 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     // -----------------------------------------------------------------------
-    // View stubs (US-011)
+    // SeaDrop + indexer views (US-011)
     // -----------------------------------------------------------------------
 
-    function maxSupply() external pure override returns (uint256) {
-        revert NotImplemented();
+    /**
+     * @notice Admin-configured supply cap. SeaDrop polls this via
+     *         getMintStats; OpenSea's drop UI surfaces it directly.
+     */
+    function maxSupply() external view override returns (uint256) {
+        return _maxSupply;
     }
 
-    function totalSupply() external pure override returns (uint256) {
-        revert NotImplemented();
+    /**
+     * @notice Drop-wide cumulative mints. Mirrors getMintStats.currentTotalSupply
+     *         so any ERC721-style indexer reading totalSupply() sees the same
+     *         value SeaDrop uses for cap enforcement. Burns on Creator Core do
+     *         NOT decrement this counter (intentional — see spec edge case).
+     */
+    function totalSupply() external view override returns (uint256) {
+        return _totalMinted;
     }
 
+    /**
+     * @notice Provenance hash is intentionally disabled for v1 — random-reveal
+     *         flows are out of scope. Returning bytes32(0) signals "no
+     *         pre-committed metadata" to indexers that probe for it.
+     */
     function provenanceHash() external pure override returns (bytes32) {
-        revert NotImplemented();
+        return bytes32(0);
     }
 
-    function getAllowedSeaDrop() external pure override returns (address[] memory) {
-        revert NotImplemented();
+    /**
+     * @notice The set of SeaDrop deployments authorized to call mintSeaDrop.
+     *         Returned in EnumerableSet insertion order (which matches the
+     *         most recent updateAllowedSeaDrop call's input order, since
+     *         updateAllowedSeaDrop drains the set before re-adding).
+     */
+    function getAllowedSeaDrop() external view override returns (address[] memory) {
+        return _allowedSeaDrop.values();
     }
 
-    function owner() public pure override(IManifoldERC1155SeaDropShim, Ownable) returns (address) {
-        revert NotImplemented();
+    /**
+     * @notice Display-only project admin surfaced for OpenSea / SeaDrop
+     *         indexers that probe owner() for an admin label. Auth flows
+     *         through `creatorAdminRequired` against the bound Creator Core,
+     *         not through this address — so the value here is a UI hint, not
+     *         a security boundary. Ownable is in the override list because
+     *         the shim's inheritance graph pulls it in transitively; the
+     *         shim deliberately does not implement transferOwnership /
+     *         renounceOwnership, so the displayed owner is fixed for the
+     *         lifetime of the deployment.
+     */
+    function owner() public view override(IManifoldERC1155SeaDropShim, Ownable) returns (address) {
+        return _projectAdmin;
     }
 
+    /**
+     * @notice ERC165 introspection covering every interface the shim claims
+     *         compatibility with for SeaDrop and OpenSea indexer recognition:
+     *         IERC165 + IAdminControl come from AdminControl;
+     *         ICreatorExtensionTokenURI satisfies Creator Core routing;
+     *         INonFungibleSeaDropToken + ISeaDropTokenContractMetadata are
+     *         claimed via locally-mirrored canonical interfaces (US-022 will
+     *         verify the computed IDs against deployed SeaDrop bytecode).
+     *         The shim does not fully implement every method on the SeaDrop
+     *         interfaces (token-gated drops, signed mints, on-chain royalties,
+     *         baseURI / provenanceHash setters are v1 non-goals); claiming the
+     *         interfaceId here is a discoverability signal, not a guarantee
+     *         that every selector dispatches to a non-revert path.
+     */
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -545,6 +586,9 @@ contract ManifoldERC1155SeaDropShim is
         override(AdminControl, IERC165)
         returns (bool)
     {
-        return AdminControl.supportsInterface(interfaceId);
+        return interfaceId == type(INonFungibleSeaDropToken).interfaceId
+            || interfaceId == type(ISeaDropTokenContractMetadata).interfaceId
+            || interfaceId == type(ICreatorExtensionTokenURI).interfaceId
+            || AdminControl.supportsInterface(interfaceId);
     }
 }
