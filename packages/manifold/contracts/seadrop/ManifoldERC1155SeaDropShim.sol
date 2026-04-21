@@ -360,36 +360,100 @@ contract ManifoldERC1155SeaDropShim is
         emit TokenURIUpdated();
     }
 
-    function updateAllowedSeaDrop(address[] calldata) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Replace the set of SeaDrop deployments authorized to call
+     *         `mintSeaDrop`. Set-semantics: the prior set is drained and the
+     *         new members are added in array order; duplicates in `newAllowed`
+     *         collapse naturally.
+     * @dev Only the shim-local allow list changes here — there is no forward
+     *      to ISeaDrop because SeaDrop has no matching setter; it's a pure
+     *      local-auth config. Emits the raw input array so indexers can diff
+     *      against the prior Configured/AllowedSeaDropUpdated state.
+     */
+    function updateAllowedSeaDrop(address[] calldata newAllowed)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        uint256 previousLength = _allowedSeaDrop.length();
+        for (uint256 i; i < previousLength;) {
+            // Always pull index 0 — removal swaps the last element into the
+            // vacated slot, so the set shrinks toward empty after `length`
+            // iterations regardless of address ordering.
+            _allowedSeaDrop.remove(_allowedSeaDrop.at(0));
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 newLength = newAllowed.length;
+        for (uint256 i; i < newLength;) {
+            _allowedSeaDrop.add(newAllowed[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit AllowedSeaDropUpdated(newAllowed);
     }
 
     // -----------------------------------------------------------------------
-    // SeaDrop pass-through stubs (US-010)
+    // SeaDrop pass-through setters (US-010)
     // -----------------------------------------------------------------------
+    //
+    // Thin forwards so the creator admin can reconfigure a live drop through
+    // the shim's stable address. Each call targets an arbitrary SeaDrop
+    // deployment passed in by the admin — intentionally not gated against the
+    // shim's own `_allowedSeaDrop` set, because these setters are admin-only
+    // config operations, not mint operations, and the admin may want to push
+    // config to a SeaDrop instance before whitelisting it for mints.
 
-    function updatePublicDrop(address, PublicDrop calldata) external pure override {
-        revert NotImplemented();
+    function updatePublicDrop(address seaDropImpl, PublicDrop calldata publicDrop)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        ISeaDrop(seaDropImpl).updatePublicDrop(publicDrop);
     }
 
-    function updateAllowList(address, AllowListData calldata) external pure override {
-        revert NotImplemented();
+    function updateAllowList(address seaDropImpl, AllowListData calldata allowListData)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        ISeaDrop(seaDropImpl).updateAllowList(allowListData);
     }
 
-    function updateCreatorPayoutAddress(address, address) external pure override {
-        revert NotImplemented();
+    function updateCreatorPayoutAddress(address seaDropImpl, address payoutAddress)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        ISeaDrop(seaDropImpl).updateCreatorPayoutAddress(payoutAddress);
     }
 
-    function updateAllowedFeeRecipient(address, address, bool) external pure override {
-        revert NotImplemented();
+    function updateAllowedFeeRecipient(address seaDropImpl, address feeRecipient, bool allowed)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        ISeaDrop(seaDropImpl).updateAllowedFeeRecipient(feeRecipient, allowed);
     }
 
-    function updateDropURI(address, string calldata) external pure override {
-        revert NotImplemented();
+    function updateDropURI(address seaDropImpl, string calldata dropURI)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        ISeaDrop(seaDropImpl).updateDropURI(dropURI);
     }
 
-    function updatePayer(address, address, bool) external pure override {
-        revert NotImplemented();
+    function updatePayer(address seaDropImpl, address payer, bool allowed)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        ISeaDrop(seaDropImpl).updatePayer(payer, allowed);
     }
 
     // -----------------------------------------------------------------------
