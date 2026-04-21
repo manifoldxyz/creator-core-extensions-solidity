@@ -40,6 +40,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     event Configured(uint256 indexed instanceId, uint256 indexed tokenId);
     event SeaDropMint(address indexed minter, uint256 quantity);
     event MaxSupplyUpdated(uint256 newMaxSupply);
+    event AllowedSeaDropUpdated(address[] allowed);
 
     uint256 internal constant INSTANCE_ID = 1;
 
@@ -736,5 +737,177 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         shim.setContractURI(next);
 
         assertEq(shim.contractURI(), next, "contractURI reflects setContractURI");
+    }
+
+    // -----------------------------------------------------------------------
+    // SeaDrop pass-through setters forward correct args (US-019)
+    // -----------------------------------------------------------------------
+    //
+    // The pass-through setters are admin-only thin forwards to an arbitrary
+    // SeaDrop deployment (see ManifoldERC1155SeaDropShim's "SeaDrop pass-through
+    // setters" section). They do not depend on initialize() — they target
+    // `seaDropImpl` directly, regardless of the shim's drop state — so these
+    // tests deliberately skip _initializeDefault() to keep the assertions tight
+    // on the forwarding behaviour itself.
+
+    /**
+     * @notice updatePublicDrop forwards a fully-populated PublicDrop verbatim
+     *         to the configured SeaDrop impl. Uses values that differ from the
+     *         _defaultCfg() PublicDrop in every field so a regression that
+     *         caches one of them would fail loud on the deep-equal.
+     */
+    function testUpdatePublicDropForwardsToSeaDrop() public {
+        PublicDrop memory pd = PublicDrop({
+            mintPrice: 0.077 ether,
+            startTime: uint48(block.timestamp + 1 days),
+            endTime: uint48(block.timestamp + 21 days),
+            maxTotalMintableByWallet: 7,
+            feeBps: 750,
+            restrictFeeRecipients: false
+        });
+
+        vm.prank(creatorAdmin);
+        shim.updatePublicDrop(address(mockSeaDrop), pd);
+
+        PublicDrop memory recorded = mockSeaDrop.lastPublicDrop();
+        assertEq(recorded.mintPrice, pd.mintPrice, "mintPrice forwarded");
+        assertEq(recorded.startTime, pd.startTime, "startTime forwarded");
+        assertEq(recorded.endTime, pd.endTime, "endTime forwarded");
+        assertEq(
+            recorded.maxTotalMintableByWallet,
+            pd.maxTotalMintableByWallet,
+            "maxTotalMintableByWallet forwarded"
+        );
+        assertEq(recorded.feeBps, pd.feeBps, "feeBps forwarded");
+        assertEq(
+            recorded.restrictFeeRecipients,
+            pd.restrictFeeRecipients,
+            "restrictFeeRecipients forwarded"
+        );
+    }
+
+    /**
+     * @notice updateAllowList forwards the whole AllowListData struct including
+     *         its dynamic publicKeyURIs[] member — uses two URIs so the array
+     *         length + per-element forwarding both get exercised.
+     */
+    function testUpdateAllowListForwardsStruct() public {
+        string[] memory keyURIs = new string[](2);
+        keyURIs[0] = "https://keys.example.com/1";
+        keyURIs[1] = "https://keys.example.com/2";
+        AllowListData memory ald = AllowListData({
+            merkleRoot: bytes32(uint256(0xABCDEF)),
+            publicKeyURIs: keyURIs,
+            allowListURI: "https://example.com/allowlist.json"
+        });
+
+        vm.prank(creatorAdmin);
+        shim.updateAllowList(address(mockSeaDrop), ald);
+
+        AllowListData memory recorded = mockSeaDrop.lastAllowListData();
+        assertEq(recorded.merkleRoot, ald.merkleRoot, "merkleRoot forwarded");
+        assertEq(recorded.allowListURI, ald.allowListURI, "allowListURI forwarded");
+        assertEq(recorded.publicKeyURIs.length, 2, "publicKeyURIs length forwarded");
+        assertEq(recorded.publicKeyURIs[0], keyURIs[0], "publicKeyURIs[0] forwarded");
+        assertEq(recorded.publicKeyURIs[1], keyURIs[1], "publicKeyURIs[1] forwarded");
+    }
+
+    /**
+     * @notice updateCreatorPayoutAddress forwards the address scalar.
+     */
+    function testUpdateCreatorPayoutAddressForwards() public {
+        address newPayout = address(0xC0FFEE);
+
+        vm.prank(creatorAdmin);
+        shim.updateCreatorPayoutAddress(address(mockSeaDrop), newPayout);
+
+        assertEq(mockSeaDrop.lastCreatorPayoutAddress(), newPayout, "payout forwarded");
+    }
+
+    /**
+     * @notice updateAllowedFeeRecipient toggles the cumulative allow-map on
+     *         the SeaDrop side: setting allowed=true marks the address allowed,
+     *         then a second call with allowed=false flips it back. Asserts both
+     *         the cumulative map and the last-call snapshot the mock records.
+     */
+    function testUpdateAllowedFeeRecipientToggles() public {
+        address newFr = address(0xFEE5);
+
+        vm.prank(creatorAdmin);
+        shim.updateAllowedFeeRecipient(address(mockSeaDrop), newFr, true);
+        assertTrue(mockSeaDrop.allowedFeeRecipient(newFr), "fee recipient allowed");
+        assertEq(mockSeaDrop.lastFeeRecipient(), newFr, "lastFeeRecipient snapshot");
+        assertTrue(mockSeaDrop.lastFeeRecipientAllowed(), "lastFeeRecipientAllowed=true");
+
+        vm.prank(creatorAdmin);
+        shim.updateAllowedFeeRecipient(address(mockSeaDrop), newFr, false);
+        assertFalse(mockSeaDrop.allowedFeeRecipient(newFr), "fee recipient revoked");
+        assertFalse(mockSeaDrop.lastFeeRecipientAllowed(), "lastFeeRecipientAllowed=false");
+    }
+
+    /**
+     * @notice updateDropURI forwards the string scalar to SeaDrop.
+     */
+    function testUpdateDropURIForwardsString() public {
+        string memory dropURI = "https://example.com/drop-metadata.json";
+
+        vm.prank(creatorAdmin);
+        shim.updateDropURI(address(mockSeaDrop), dropURI);
+
+        assertEq(mockSeaDrop.lastDropURI(), dropURI, "dropURI forwarded");
+    }
+
+    /**
+     * @notice updatePayer forwards the (payer, allowed) pair — verifies both
+     *         the cumulative allow-map and the last-call snapshot.
+     */
+    function testUpdatePayerForwards() public {
+        address payer = address(0xDA11A5);
+
+        vm.prank(creatorAdmin);
+        shim.updatePayer(address(mockSeaDrop), payer, true);
+        assertEq(mockSeaDrop.lastPayer(), payer, "lastPayer snapshot");
+        assertTrue(mockSeaDrop.lastPayerAllowed(), "lastPayerAllowed=true");
+        assertTrue(mockSeaDrop.allowedPayer(payer), "payer allowed in map");
+    }
+
+    /**
+     * @notice updateAllowedSeaDrop drains the existing set, replaces it with
+     *         the new addresses (in array order), and emits AllowedSeaDropUpdated
+     *         with the raw input array. Uses two new addresses so the test
+     *         exercises both the multi-element add path AND the implicit removal
+     *         of the original mockSeaDrop seeded by setUp.
+     */
+    function testUpdateAllowedSeaDropReplacesSetAndEmits() public {
+        address newSeaDropA = address(0xAAAA);
+        address newSeaDropB = address(0xBBBB);
+        address[] memory newAllowed = new address[](2);
+        newAllowed[0] = newSeaDropA;
+        newAllowed[1] = newSeaDropB;
+
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit AllowedSeaDropUpdated(newAllowed);
+
+        vm.prank(creatorAdmin);
+        shim.updateAllowedSeaDrop(newAllowed);
+
+        address[] memory current = shim.getAllowedSeaDrop();
+        assertEq(current.length, 2, "set replaced (size)");
+        assertEq(current[0], newSeaDropA, "set[0] is newSeaDropA");
+        assertEq(current[1], newSeaDropB, "set[1] is newSeaDropB");
+    }
+
+    /**
+     * @notice Pass-through setters share the same creatorAdminRequired modifier
+     *         as initialize() / multiConfigure() — pick updatePublicDrop as the
+     *         representative case. Asserts the literal revert string the shim's
+     *         admin gate uses (see testInitializeRevertsForNonAdmin).
+     */
+    function testPassThroughSetterRevertsForNonAdmin() public {
+        PublicDrop memory pd = _defaultCfg().publicDrop;
+
+        vm.prank(notAdmin);
+        vm.expectRevert("Must be owner or admin of creator contract");
+        shim.updatePublicDrop(address(mockSeaDrop), pd);
     }
 }
