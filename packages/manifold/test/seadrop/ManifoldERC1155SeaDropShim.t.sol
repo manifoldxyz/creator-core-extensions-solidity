@@ -589,4 +589,152 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         assertEq(pdAfterSecond.endTime, pdAfterFirst.endTime, "publicDrop.endTime stable");
         assertEq(pdAfterSecond.feeBps, pdAfterFirst.feeBps, "publicDrop.feeBps stable");
     }
+
+    // -----------------------------------------------------------------------
+    // Metadata setters + tokenURI rendering across storage protocols (US-018)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @notice ARWEAVE protocol: both tokenURI overloads assemble to the
+     *         arweave gateway prefix + the opaque location suffix. Proves the
+     *         bare-tokenId overload (direct callers) and the ICreatorExtension
+     *         overload (Creator Core-routed callers) agree byte-for-byte so
+     *         indexers see the same metadata regardless of path.
+     */
+    function testUpdateTokenURIArweaveBothSignatures() public {
+        _initializeDefault();
+
+        vm.prank(creatorAdmin);
+        shim.updateTokenURI(StorageProtocol.ARWEAVE, "abc123");
+
+        string memory expected = "https://arweave.net/abc123";
+        assertEq(shim.tokenURI(1), expected, "tokenURI(uint256) arweave");
+        assertEq(shim.tokenURI(address(creator), 1), expected, "tokenURI(creator, id) arweave");
+    }
+
+    /**
+     * @notice IPFS protocol: tokenURI assembles to `ipfs://` + opaque hash.
+     */
+    function testUpdateTokenURIIpfs() public {
+        _initializeDefault();
+
+        vm.prank(creatorAdmin);
+        shim.updateTokenURI(StorageProtocol.IPFS, "QmHash");
+
+        assertEq(shim.tokenURI(1), "ipfs://QmHash", "tokenURI ipfs");
+        assertEq(
+            shim.tokenURI(address(creator), 1),
+            "ipfs://QmHash",
+            "tokenURI(creator, id) ipfs agrees"
+        );
+    }
+
+    /**
+     * @notice NONE protocol: empty prefix — tokenURI returns the stored
+     *         location verbatim. This is the mode creators use to supply a
+     *         fully-qualified URL (https://... or data:...).
+     */
+    function testUpdateTokenURINoneReturnsLocationAsIs() public {
+        _initializeDefault();
+
+        string memory fullUrl = "https://example.com/meta.json";
+        vm.prank(creatorAdmin);
+        shim.updateTokenURI(StorageProtocol.NONE, fullUrl);
+
+        assertEq(shim.tokenURI(1), fullUrl, "tokenURI NONE returns location");
+        assertEq(
+            shim.tokenURI(address(creator), 1),
+            fullUrl,
+            "tokenURI(creator, id) NONE agrees"
+        );
+    }
+
+    /**
+     * @notice Any tokenId other than the one initialize() seeded reverts with
+     *         TokenDNE — the shim manages exactly one drop tokenId.
+     */
+    function testTokenURIRevertsForUnknownTokenId() public {
+        _initializeDefault();
+
+        vm.expectRevert(IManifoldERC1155SeaDropShim.TokenDNE.selector);
+        shim.tokenURI(2);
+    }
+
+    /**
+     * @notice The ICreatorExtensionTokenURI overload reverts when the caller
+     *         passes a creator address other than the one the shim was bound
+     *         to — guards against spurious routing from an unexpected
+     *         Creator Core claiming ownership of this tokenId.
+     */
+    function testTokenURIRevertsForWrongCreator() public {
+        _initializeDefault();
+
+        address otherCreator = address(0x5EA);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.TokenDNE.selector);
+        shim.tokenURI(otherCreator, 1);
+    }
+
+    /**
+     * @notice When the storage protocol is NONE, extendTokenURI appends the
+     *         chunk to the stored location, allowing creators to build up a
+     *         large on-chain data URI across multiple admin transactions.
+     * @dev Two successive chunks prove the append compounds; pin to NONE with
+     *      a known base so the expected concatenation is obvious.
+     */
+    function testExtendTokenURIAppendsWhenNone() public {
+        _initializeDefault();
+
+        vm.prank(creatorAdmin);
+        shim.updateTokenURI(StorageProtocol.NONE, "data:application/json;base64,");
+
+        vm.prank(creatorAdmin);
+        shim.extendTokenURI("eyJuYW1lIjoi");
+
+        vm.prank(creatorAdmin);
+        shim.extendTokenURI("VGVzdCJ9");
+
+        assertEq(
+            shim.tokenURI(1),
+            "data:application/json;base64,eyJuYW1lIjoiVGVzdCJ9",
+            "extendTokenURI concatenates in order"
+        );
+    }
+
+    /**
+     * @notice extendTokenURI refuses to append when the storage protocol is
+     *         anything other than NONE — ARWEAVE / IPFS locations are opaque
+     *         content-addressed IDs, and appending bytes would produce a
+     *         garbage URI.
+     */
+    function testExtendTokenURIRevertsWhenNotNone() public {
+        _initializeDefault();
+
+        vm.prank(creatorAdmin);
+        shim.updateTokenURI(StorageProtocol.IPFS, "QmHash");
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.InvalidStorageProtocol.selector);
+        shim.extendTokenURI("suffix");
+
+        vm.prank(creatorAdmin);
+        shim.updateTokenURI(StorageProtocol.ARWEAVE, "abc");
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.InvalidStorageProtocol.selector);
+        shim.extendTokenURI("suffix");
+    }
+
+    /**
+     * @notice setContractURI overwrites the stored OpenSea collection pointer
+     *         and contractURI() reads back the new value.
+     */
+    function testSetContractURIUpdatesStoredValue() public {
+        _initializeDefault();
+
+        string memory next = "https://example.com/updated-contract.json";
+        vm.prank(creatorAdmin);
+        shim.setContractURI(next);
+
+        assertEq(shim.contractURI(), next, "contractURI reflects setContractURI");
+    }
 }
