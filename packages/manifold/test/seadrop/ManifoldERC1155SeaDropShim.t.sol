@@ -39,6 +39,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
     event Configured(uint256 indexed instanceId, uint256 indexed tokenId);
     event SeaDropMint(address indexed minter, uint256 quantity);
+    event MaxSupplyUpdated(uint256 newMaxSupply);
 
     uint256 internal constant INSTANCE_ID = 1;
 
@@ -349,5 +350,97 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     function testMintSeaDropRevertsBeforeInitialize() public {
         vm.expectRevert(IManifoldERC1155SeaDropShim.NotInitialized.selector);
         mockSeaDrop.fakeMint(address(shim), alice, 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // getMintStats — SeaDrop cap-enforcement tuple (US-016)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @notice Before any mint, getMintStats(alice) reports zero wallet and
+     *         zero drop-wide counters, with the configured cap intact.
+     * @dev SeaDrop reads this tuple every mint to enforce per-wallet +
+     *      drop-wide caps; the pre-mint baseline has to be identity-valued
+     *      or the first mint's cap check would be off.
+     */
+    function testGetMintStatsPreMint() public {
+        _initializeDefault();
+
+        (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(alice);
+        assertEq(minted, 0, "alice minterNumMinted pre-mint");
+        assertEq(total, 0, "totalMinted pre-mint");
+        assertEq(cap, _defaultCfg().maxSupply, "maxSupply pre-mint");
+    }
+
+    /**
+     * @notice After alice mints 2, her per-wallet counter is 2 but bob's is
+     *         still 0 — the drop-wide counter equals 2 for both queries.
+     * @dev Asserts the isolation SeaDrop depends on: per-wallet caps track
+     *      the specific minter while the supply cap tracks cumulative mints.
+     */
+    function testGetMintStatsAfterMintIsPerWallet() public {
+        _initializeDefault();
+
+        mockSeaDrop.fakeMint(address(shim), alice, 2);
+
+        uint256 maxSupply = _defaultCfg().maxSupply;
+
+        (uint256 aliceMinted, uint256 aliceTotal, uint256 aliceCap) = shim.getMintStats(alice);
+        assertEq(aliceMinted, 2, "alice minterNumMinted after mint");
+        assertEq(aliceTotal, 2, "totalMinted reflects alice's mint");
+        assertEq(aliceCap, maxSupply, "maxSupply unchanged");
+
+        (uint256 bobMinted, uint256 bobTotal, uint256 bobCap) = shim.getMintStats(bob);
+        assertEq(bobMinted, 0, "bob minterNumMinted isolated from alice");
+        assertEq(bobTotal, 2, "totalMinted shared across minters");
+        assertEq(bobCap, maxSupply, "maxSupply shared across minters");
+    }
+
+    /**
+     * @notice Raising the cap above current supply is a plain write — the new
+     *         value shows up in getMintStats.maxSupply unchanged, and the
+     *         MaxSupplyUpdated event carries the raised value.
+     */
+    function testGetMintStatsReflectsMaxSupplyIncrease() public {
+        _initializeDefault();
+
+        mockSeaDrop.fakeMint(address(shim), alice, 2);
+
+        uint256 newCap = 200;
+
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit MaxSupplyUpdated(newCap);
+
+        vm.prank(creatorAdmin);
+        shim.setMaxSupply(newCap);
+
+        (, uint256 total, uint256 cap) = shim.getMintStats(alice);
+        assertEq(total, 2, "totalMinted unchanged by cap update");
+        assertEq(cap, newCap, "maxSupply reflects raised cap");
+        assertEq(shim.maxSupply(), newCap, "maxSupply view agrees");
+    }
+
+    /**
+     * @notice Lowering the cap below _totalMinted clamps up to _totalMinted
+     *         (never below actual supply) and emits MaxSupplyUpdated with the
+     *         post-clamp value. SeaDrop's getMintStats never implies over-mint.
+     */
+    function testGetMintStatsClampsMaxSupplyBelowMinted() public {
+        _initializeDefault();
+
+        mockSeaDrop.fakeMint(address(shim), alice, 5);
+
+        // Attempt to shrink cap to 3 — below _totalMinted (5). Clamp floor
+        // equals _totalMinted; the event must carry that clamped value.
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit MaxSupplyUpdated(5);
+
+        vm.prank(creatorAdmin);
+        shim.setMaxSupply(3);
+
+        (, uint256 total, uint256 cap) = shim.getMintStats(alice);
+        assertEq(total, 5, "totalMinted unchanged by cap update");
+        assertEq(cap, 5, "maxSupply clamped up to _totalMinted");
+        assertEq(shim.maxSupply(), 5, "maxSupply view agrees with clamp");
     }
 }
