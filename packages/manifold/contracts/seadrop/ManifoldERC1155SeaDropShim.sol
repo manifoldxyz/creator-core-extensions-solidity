@@ -278,27 +278,86 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     // -----------------------------------------------------------------------
-    // Local admin setters stubs (US-008)
+    // Local admin setters (US-008)
     // -----------------------------------------------------------------------
 
-    function setMaxSupply(uint256) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Update the admin-configured supply cap.
+     * @dev Clamps `newMaxSupply` up to `_totalMinted` so the cap never falls
+     *      below already-minted supply — otherwise SeaDrop's getMintStats
+     *      would imply a drop has over-minted, which breaks its internal
+     *      invariants. Emits the post-clamp value.
+     */
+    function setMaxSupply(uint256 newMaxSupply)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        if (newMaxSupply < _totalMinted) newMaxSupply = _totalMinted;
+        _maxSupply = newMaxSupply;
+        emit MaxSupplyUpdated(newMaxSupply);
     }
 
-    function setMaxMintsPerWallet(uint256) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Update the per-wallet cumulative mint cap SeaDrop reads via
+     *         getMintStats. No clamping — SeaDrop tolerates per-wallet caps
+     *         below a wallet's current mint count (it simply blocks further
+     *         mints for that wallet).
+     */
+    function setMaxMintsPerWallet(uint256 newMax)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        _maxMintsPerWallet = newMax;
+        emit MaxMintsPerWalletUpdated(newMax);
     }
 
-    function setContractURI(string calldata) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Update the OpenSea collection-level metadata pointer.
+     */
+    function setContractURI(string calldata newContractURI)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        _contractURI = newContractURI;
+        emit ContractURIUpdated();
     }
 
-    function updateTokenURI(StorageProtocol, string calldata) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Replace the stored storage protocol + URI location used by both
+     *         tokenURI overloads (see US-009).
+     * @dev INVALID is rejected so the assembled URI can never be ambiguous.
+     *      No content validation on `location` — the storage protocol
+     *      determines the prefix, the location is opaque to the shim.
+     */
+    function updateTokenURI(StorageProtocol storageProtocol, string calldata location)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        if (storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
+        _storageProtocol = storageProtocol;
+        _tokenUriLocation = location;
+        emit TokenURIUpdated();
     }
 
-    function extendTokenURI(string calldata) external pure override {
-        revert NotImplemented();
+    /**
+     * @notice Append a chunk to the stored URI location — used to build up a
+     *         large on-chain data URI across multiple admin transactions.
+     * @dev Only valid when `_storageProtocol == NONE` (the no-prefix case).
+     *      ARWEAVE / IPFS locations are opaque content-addressed IDs; appending
+     *      bytes to them would produce a garbage URI, so we refuse.
+     */
+    function extendTokenURI(string calldata chunk)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        if (_storageProtocol != StorageProtocol.NONE) revert InvalidStorageProtocol();
+        _tokenUriLocation = string.concat(_tokenUriLocation, chunk);
+        emit TokenURIUpdated();
     }
 
     function updateAllowedSeaDrop(address[] calldata) external pure override {
