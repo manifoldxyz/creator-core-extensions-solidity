@@ -50,6 +50,12 @@ struct AllowListData {
  *      forward the stock SeaDrop setters in a single admin transaction.
  *      seaDropImpl is the SeaDrop deployment to configure (must also be in the
  *      shim's allowed-SeaDrop set for mintSeaDrop to accept its calls).
+ *
+ *      multiConfigure ignores zero-value / empty-array fields — callers use
+ *      the individual external setters to unset or reset a property to zero.
+ *      Paired `allowed*` / `disallowed*` arrays let a single reconfigure
+ *      transaction drain an old recipient/payer set and install a new one,
+ *      mirroring the stock SeaDrop MultiConfigureStruct semantics.
  */
 struct MultiConfigureStruct {
     uint256 maxSupply;
@@ -62,6 +68,9 @@ struct MultiConfigureStruct {
     AllowListData allowListData;
     address creatorPayoutAddress;
     address[] allowedFeeRecipients;
+    address[] disallowedFeeRecipients;
+    address[] allowedPayers;
+    address[] disallowedPayers;
 }
 
 /**

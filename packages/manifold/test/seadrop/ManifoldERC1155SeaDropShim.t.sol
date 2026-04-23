@@ -102,7 +102,10 @@ contract ManifoldERC1155SeaDropShimTest is Test {
                 allowListURI: ""
             }),
             creatorPayoutAddress: payoutAddress,
-            allowedFeeRecipients: feeRecipients
+            allowedFeeRecipients: feeRecipients,
+            disallowedFeeRecipients: new address[](0),
+            allowedPayers: new address[](0),
+            disallowedPayers: new address[](0)
         });
     }
 
