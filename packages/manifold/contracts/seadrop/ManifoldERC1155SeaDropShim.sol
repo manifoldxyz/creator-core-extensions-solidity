@@ -87,37 +87,24 @@ contract ManifoldERC1155SeaDropShim is
     // -----------------------------------------------------------------------
 
     /**
-     * @dev Admin gate for every config setter. Accepts either a creator-
-     *      contract admin OR the shim itself (`address(this)`) as caller.
-     *      The "or self" branch is what lets multiConfigure dispatch via
-     *      `this.updateX(...)` — the inner setter sees msg.sender == this
-     *      and passes without being a creator admin. Mirrors upstream
-     *      ERC721SeaDrop's `_onlyOwnerOrSelf` pattern.
-     *
-     *      Inlined as a helper rather than a modifier so the check costs the
-     *      same bytecode per call site (and matches upstream style). Note:
-     *      accepting `address(this)` widens the trust boundary by exactly one
-     *      address. The shim has no delegatecall, no fallback, and no
-     *      arbitrary-call forwarder, so the only way msg.sender becomes
-     *      `address(this)` is via a `this.` self-call from within the
-     *      contract's own code. Any future primitive that forwards external
-     *      calls must explicitly exclude the shim's own admin surface.
+     * @dev Admin gate for every config setter. Resolves against the bound
+     *      Creator Core's AdminControl — only wallets flagged as admins on
+     *      the creator contract pass. Deliberately does NOT admit the shim
+     *      itself: multiConfigure dispatches via internal helpers (not
+     *      `this.` self-calls), so there is no need to widen the trust
+     *      surface to `address(this)`.
      */
-    function _onlyCreatorAdminOrSelf() internal view {
-        if (
-            msg.sender != address(this) &&
-            !IAdminControl(creatorContractAddress).isAdmin(msg.sender)
-        ) {
+    modifier creatorAdminRequired(address creator) {
+        if (!IAdminControl(creator).isAdmin(msg.sender)) {
             revert("Must be owner or admin of creator contract");
         }
+        _;
     }
 
     /**
      * @dev Gate for mintSeaDrop — msg.sender must be a SeaDrop deployment the
      *      creator admin has whitelisted via the constructor or
-     *      updateAllowedSeaDrop. Deliberately does NOT admit self: this is a
-     *      mint path, not a config path, and the self-bypass must not leak
-     *      into token accounting.
+     *      updateAllowedSeaDrop.
      */
     modifier onlyAllowedSeaDrop() {
         if (!_allowedSeaDrop.contains(msg.sender)) revert OnlyAllowedSeaDrop();
@@ -161,20 +148,21 @@ contract ManifoldERC1155SeaDropShim is
     // -----------------------------------------------------------------------
 
     /**
-     * @notice Seed the Creator Core tokenId, then delegate the rest of the
-     *         drop config to multiConfigure via a self-call.
-     * @dev One-shot: mints a zero-amount "new token" on Creator Core solely to
-     *      reserve the tokenId. After `_tokenId` is populated, calls
-     *      `this.multiConfigure(cfg)` so initialize and reconfigure share a
-     *      single dispatch path — same zero-gating, same per-setter events.
-     *      Because multiConfigure skips zero-value fields, the admin must
-     *      pass a complete cfg on the first call (matching upstream SeaDrop's
-     *      multiConfigure convention). Must be called AFTER the shim is
-     *      registered as an extension on the creator contract — otherwise
-     *      Creator Core reverts with "Must be registered extension".
+     * @notice Seed the Creator Core tokenId and apply the full drop config.
+     * @dev One-shot: mints a zero-amount "new token" on Creator Core solely
+     *      to reserve the tokenId, then hands off to `_applyConfig` which
+     *      runs the shared zero-gated dispatch. Must be called AFTER the
+     *      shim is registered as an extension on the creator contract —
+     *      otherwise Creator Core reverts with "Must be registered
+     *      extension". Because `_applyConfig` skips zero-value fields, the
+     *      admin must pass a complete cfg on the first call (matching stock
+     *      SeaDrop's multiConfigure convention).
      */
-    function initialize(MultiConfigureStruct calldata cfg) external override {
-        _onlyCreatorAdminOrSelf();
+    function initialize(MultiConfigureStruct calldata cfg)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
         if (_tokenId != 0) revert AlreadyInitialized();
 
         address[] memory recipients = new address[](1);
@@ -186,67 +174,82 @@ contract ManifoldERC1155SeaDropShim is
         _tokenId = minted[0];
 
         emit Initialized(instanceId, _tokenId);
-        this.multiConfigure(cfg);
+        _applyConfig(cfg);
     }
 
     /**
-     * @notice Configure multiple properties at a time.
-     * @dev Zero-value / empty-array fields are skipped — admins use the
-     *      individual external setters to unset or reset a property to zero.
-     *      Each populated field dispatches through `this.updateX(...)`; the
-     *      self-call is accepted by `_onlyCreatorAdminOrSelf` so the targeted
-     *      setter applies its own clamping (e.g. setMaxSupply) and emits its
-     *      own per-field event alongside the Configured summary. Guards on
-     *      `_tokenId == 0` so admins can't "half-initialize" a shim by
-     *      reaching around initialize().
+     * @notice Re-apply a partial drop config after initialize().
+     * @dev Gated by creatorAdminRequired on the bound Creator Core.
+     *      Delegates to `_applyConfig` — zero-value / empty-array fields are
+     *      ignored so admins can tweak just the fields they care about.
+     *      Admins use the individual external setters to unset or reset a
+     *      property to zero.
      */
-    function multiConfigure(MultiConfigureStruct calldata cfg) external override {
-        _onlyCreatorAdminOrSelf();
+    function multiConfigure(MultiConfigureStruct calldata cfg)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
         if (_tokenId == 0) revert NotInitialized();
+        _applyConfig(cfg);
+    }
 
+    // -----------------------------------------------------------------------
+    // Shared config application (internal)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @dev Shared zero-gated dispatch used by both initialize() and
+     *      multiConfigure(). Routes each populated field through its internal
+     *      `_setX` / `_updateX` helper so clamping + per-field events live in
+     *      exactly one place (reused by the external setters). Auth lives on
+     *      the outer entry points, not here, because every caller of this
+     *      helper has already passed `creatorAdminRequired`.
+     */
+    function _applyConfig(MultiConfigureStruct calldata cfg) internal {
         if (cfg.maxSupply > 0) {
-            this.setMaxSupply(cfg.maxSupply);
+            _setMaxSupply(cfg.maxSupply);
         }
         if (cfg.maxMintsPerWallet > 0) {
-            this.setMaxMintsPerWallet(cfg.maxMintsPerWallet);
+            _setMaxMintsPerWallet(cfg.maxMintsPerWallet);
         }
         if (bytes(cfg.contractURI).length != 0) {
-            this.setContractURI(cfg.contractURI);
+            _setContractURI(cfg.contractURI);
         }
         if (cfg.storageProtocol != StorageProtocol.INVALID) {
-            this.updateTokenURI(cfg.storageProtocol, cfg.tokenUriLocation);
+            _updateTokenURI(cfg.storageProtocol, cfg.tokenUriLocation);
         }
         if (
             _cast(cfg.publicDrop.startTime != 0) |
             _cast(cfg.publicDrop.endTime != 0) == 1
         ) {
-            this.updatePublicDrop(cfg.seaDropImpl, cfg.publicDrop);
+            _updatePublicDrop(cfg.seaDropImpl, cfg.publicDrop);
         }
         if (cfg.allowListData.merkleRoot != bytes32(0)) {
-            this.updateAllowList(cfg.seaDropImpl, cfg.allowListData);
+            _updateAllowList(cfg.seaDropImpl, cfg.allowListData);
         }
         if (cfg.creatorPayoutAddress != address(0)) {
-            this.updateCreatorPayoutAddress(cfg.seaDropImpl, cfg.creatorPayoutAddress);
+            _updateCreatorPayoutAddress(cfg.seaDropImpl, cfg.creatorPayoutAddress);
         }
 
         uint256 length = cfg.allowedFeeRecipients.length;
         for (uint256 i; i < length;) {
-            this.updateAllowedFeeRecipient(cfg.seaDropImpl, cfg.allowedFeeRecipients[i], true);
+            _updateAllowedFeeRecipient(cfg.seaDropImpl, cfg.allowedFeeRecipients[i], true);
             unchecked { ++i; }
         }
         length = cfg.disallowedFeeRecipients.length;
         for (uint256 i; i < length;) {
-            this.updateAllowedFeeRecipient(cfg.seaDropImpl, cfg.disallowedFeeRecipients[i], false);
+            _updateAllowedFeeRecipient(cfg.seaDropImpl, cfg.disallowedFeeRecipients[i], false);
             unchecked { ++i; }
         }
         length = cfg.allowedPayers.length;
         for (uint256 i; i < length;) {
-            this.updatePayer(cfg.seaDropImpl, cfg.allowedPayers[i], true);
+            _updatePayer(cfg.seaDropImpl, cfg.allowedPayers[i], true);
             unchecked { ++i; }
         }
         length = cfg.disallowedPayers.length;
         for (uint256 i; i < length;) {
-            this.updatePayer(cfg.seaDropImpl, cfg.disallowedPayers[i], false);
+            _updatePayer(cfg.seaDropImpl, cfg.disallowedPayers[i], false);
             unchecked { ++i; }
         }
 
@@ -315,11 +318,12 @@ contract ManifoldERC1155SeaDropShim is
      *      would imply a drop has over-minted, which breaks its internal
      *      invariants. Emits the post-clamp value.
      */
-    function setMaxSupply(uint256 newMaxSupply) external override {
-        _onlyCreatorAdminOrSelf();
-        if (newMaxSupply < _totalMinted) newMaxSupply = _totalMinted;
-        _maxSupply = newMaxSupply;
-        emit MaxSupplyUpdated(newMaxSupply);
+    function setMaxSupply(uint256 newMaxSupply)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        _setMaxSupply(newMaxSupply);
     }
 
     /**
@@ -328,19 +332,23 @@ contract ManifoldERC1155SeaDropShim is
      *         below a wallet's current mint count (it simply blocks further
      *         mints for that wallet).
      */
-    function setMaxMintsPerWallet(uint256 newMax) external override {
-        _onlyCreatorAdminOrSelf();
-        _maxMintsPerWallet = newMax;
-        emit MaxMintsPerWalletUpdated(newMax);
+    function setMaxMintsPerWallet(uint256 newMax)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        _setMaxMintsPerWallet(newMax);
     }
 
     /**
      * @notice Update the OpenSea collection-level metadata pointer.
      */
-    function setContractURI(string calldata newContractURI) external override {
-        _onlyCreatorAdminOrSelf();
-        _contractURI = newContractURI;
-        emit ContractURIUpdated(newContractURI);
+    function setContractURI(string calldata newContractURI)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        _setContractURI(newContractURI);
     }
 
     /**
@@ -353,13 +361,9 @@ contract ManifoldERC1155SeaDropShim is
     function updateTokenURI(StorageProtocol storageProtocol, string calldata location)
         external
         override
+        creatorAdminRequired(creatorContractAddress)
     {
-        _onlyCreatorAdminOrSelf();
-        if (storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
-        _storageProtocol = storageProtocol;
-        _tokenUriLocation = location;
-        emit TokenURIUpdated();
-        emit BatchMetadataUpdate(_tokenId, _tokenId);
+        _updateTokenURI(storageProtocol, location);
     }
 
     /**
@@ -369,8 +373,11 @@ contract ManifoldERC1155SeaDropShim is
      *      ARWEAVE / IPFS locations are opaque content-addressed IDs; appending
      *      bytes to them would produce a garbage URI, so we refuse.
      */
-    function extendTokenURI(string calldata chunk) external override {
-        _onlyCreatorAdminOrSelf();
+    function extendTokenURI(string calldata chunk)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
         if (_storageProtocol != StorageProtocol.NONE) revert InvalidStorageProtocol();
         _tokenUriLocation = string.concat(_tokenUriLocation, chunk);
         emit TokenURIUpdated();
@@ -387,8 +394,11 @@ contract ManifoldERC1155SeaDropShim is
      *      local-auth config. Emits the raw input array so indexers can diff
      *      against the prior Configured/AllowedSeaDropUpdated state.
      */
-    function updateAllowedSeaDrop(address[] calldata newAllowed) external override {
-        _onlyCreatorAdminOrSelf();
+    function updateAllowedSeaDrop(address[] calldata newAllowed)
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
         uint256 previousLength = _allowedSeaDrop.length();
         for (uint256 i; i < previousLength;) {
             // Always pull index 0 — removal swaps the last element into the
@@ -425,48 +435,106 @@ contract ManifoldERC1155SeaDropShim is
     function updatePublicDrop(address seaDropImpl, PublicDrop calldata publicDrop)
         external
         override
+        creatorAdminRequired(creatorContractAddress)
     {
-        _onlyCreatorAdminOrSelf();
-        ISeaDrop(seaDropImpl).updatePublicDrop(publicDrop);
+        _updatePublicDrop(seaDropImpl, publicDrop);
     }
 
     function updateAllowList(address seaDropImpl, AllowListData calldata allowListData)
         external
         override
+        creatorAdminRequired(creatorContractAddress)
     {
-        _onlyCreatorAdminOrSelf();
-        ISeaDrop(seaDropImpl).updateAllowList(allowListData);
+        _updateAllowList(seaDropImpl, allowListData);
     }
 
     function updateCreatorPayoutAddress(address seaDropImpl, address payoutAddress)
         external
         override
+        creatorAdminRequired(creatorContractAddress)
     {
-        _onlyCreatorAdminOrSelf();
-        ISeaDrop(seaDropImpl).updateCreatorPayoutAddress(payoutAddress);
+        _updateCreatorPayoutAddress(seaDropImpl, payoutAddress);
     }
 
     function updateAllowedFeeRecipient(address seaDropImpl, address feeRecipient, bool allowed)
         external
         override
+        creatorAdminRequired(creatorContractAddress)
     {
-        _onlyCreatorAdminOrSelf();
-        ISeaDrop(seaDropImpl).updateAllowedFeeRecipient(feeRecipient, allowed);
+        _updateAllowedFeeRecipient(seaDropImpl, feeRecipient, allowed);
     }
 
     function updateDropURI(address seaDropImpl, string calldata dropURI)
         external
         override
+        creatorAdminRequired(creatorContractAddress)
     {
-        _onlyCreatorAdminOrSelf();
-        ISeaDrop(seaDropImpl).updateDropURI(dropURI);
+        _updateDropURI(seaDropImpl, dropURI);
     }
 
     function updatePayer(address seaDropImpl, address payer, bool allowed)
         external
         override
+        creatorAdminRequired(creatorContractAddress)
     {
-        _onlyCreatorAdminOrSelf();
+        _updatePayer(seaDropImpl, payer, allowed);
+    }
+
+    // -----------------------------------------------------------------------
+    // Internal setter helpers
+    // -----------------------------------------------------------------------
+    //
+    // Each external setter above does `creatorAdminRequired` and delegates to
+    // its internal helper here. `_applyConfig` calls the same internal
+    // helpers directly so the zero-gated dispatch doesn't need to re-run
+    // auth. This keeps clamping + per-field events in exactly one place
+    // without widening the admin surface to include `address(this)`.
+
+    function _setMaxSupply(uint256 newMaxSupply) internal {
+        if (newMaxSupply < _totalMinted) newMaxSupply = _totalMinted;
+        _maxSupply = newMaxSupply;
+        emit MaxSupplyUpdated(newMaxSupply);
+    }
+
+    function _setMaxMintsPerWallet(uint256 newMax) internal {
+        _maxMintsPerWallet = newMax;
+        emit MaxMintsPerWalletUpdated(newMax);
+    }
+
+    function _setContractURI(string memory newContractURI) internal {
+        _contractURI = newContractURI;
+        emit ContractURIUpdated(newContractURI);
+    }
+
+    function _updateTokenURI(StorageProtocol storageProtocol, string memory location) internal {
+        if (storageProtocol == StorageProtocol.INVALID) revert InvalidStorageProtocol();
+        _storageProtocol = storageProtocol;
+        _tokenUriLocation = location;
+        emit TokenURIUpdated();
+        emit BatchMetadataUpdate(_tokenId, _tokenId);
+    }
+
+    function _updatePublicDrop(address seaDropImpl, PublicDrop memory publicDrop) internal {
+        ISeaDrop(seaDropImpl).updatePublicDrop(publicDrop);
+    }
+
+    function _updateAllowList(address seaDropImpl, AllowListData memory allowListData) internal {
+        ISeaDrop(seaDropImpl).updateAllowList(allowListData);
+    }
+
+    function _updateCreatorPayoutAddress(address seaDropImpl, address payoutAddress) internal {
+        ISeaDrop(seaDropImpl).updateCreatorPayoutAddress(payoutAddress);
+    }
+
+    function _updateAllowedFeeRecipient(address seaDropImpl, address feeRecipient, bool allowed) internal {
+        ISeaDrop(seaDropImpl).updateAllowedFeeRecipient(feeRecipient, allowed);
+    }
+
+    function _updateDropURI(address seaDropImpl, string memory dropURI) internal {
+        ISeaDrop(seaDropImpl).updateDropURI(dropURI);
+    }
+
+    function _updatePayer(address seaDropImpl, address payer, bool allowed) internal {
         ISeaDrop(seaDropImpl).updatePayer(payer, allowed);
     }
 
@@ -572,7 +640,7 @@ contract ManifoldERC1155SeaDropShim is
     // owner() is inherited from Ownable (via AdminControl); the shim does not
     // override it. The inherited value is the deployer and is surfaced
     // verbatim for OpenSea / SeaDrop indexers that probe owner() as a UI
-    // admin hint. Auth flows through `_onlyCreatorAdminOrSelf` against the
+    // admin hint. Auth flows through `creatorAdminRequired` against the
     // bound Creator Core, not through this address.
 
     /**

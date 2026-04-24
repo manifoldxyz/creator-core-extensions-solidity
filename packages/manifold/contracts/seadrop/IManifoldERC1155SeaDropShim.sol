@@ -15,13 +15,14 @@ import {AllowListData, MultiConfigureStruct, PublicDrop, StorageProtocol} from "
  *      so this file never duplicates struct definitions.
  *
  *      Auth boundaries, re-stated here for readers:
- *        - admin setters accept either a creator-contract admin OR the shim
- *          itself as msg.sender; the "or self" branch is what lets
- *          multiConfigure dispatch via `this.updateX(...)` without losing the
- *          per-setter event + clamping logic;
- *        - mintSeaDrop is gated by the shim-local allowed-SeaDrop set and
- *          deliberately does NOT admit self — it's a mint path, not a config
- *          path;
+ *        - admin setters are gated by `creatorAdminRequired` against the
+ *          bound Creator Core's AdminControl — only wallets flagged as
+ *          admins on the creator contract can reconfigure the drop;
+ *        - multiConfigure / initialize share an internal `_applyConfig`
+ *          helper that calls internal `_setX` / `_updateX` helpers directly
+ *          (no `this.` self-calls), so the admin surface is NOT widened to
+ *          `address(this)`;
+ *        - mintSeaDrop is gated by the shim-local allowed-SeaDrop set;
  *        - getAllowedSeaDrop() / metadata views are unauthenticated.
  *
  *      The ICreatorExtensionTokenURI `tokenURI(address,uint256)` overload and
@@ -100,23 +101,24 @@ interface IManifoldERC1155SeaDropShim {
 
     /**
      * @notice One-shot initializer. Seeds the Creator Core tokenId via
-     *         mintExtensionNew(amount=0) then delegates to multiConfigure so
-     *         init and reconfigure share a single dispatch path.
-     * @dev Gated to creator admins (see auth notes above). Reverts with
-     *      AlreadyInitialized if called a second time. Requires the shim to
-     *      already be registered as an extension on the creator contract.
-     *      Because multiConfigure skips zero-value fields, admins must pass a
-     *      complete cfg on the first call — matching stock SeaDrop semantics.
+     *         mintExtensionNew(amount=0) then applies the full drop config
+     *         through the shared `_applyConfig` helper.
+     * @dev Gated by creatorAdminRequired. Reverts with AlreadyInitialized if
+     *      called a second time. Requires the shim to already be registered
+     *      as an extension on the creator contract. Because `_applyConfig`
+     *      skips zero-value fields, admins must pass a complete cfg on the
+     *      first call — matching stock SeaDrop semantics.
      */
     function initialize(MultiConfigureStruct calldata cfg) external;
 
     /**
      * @notice Configure multiple properties at a time.
-     * @dev Zero-value / empty-array fields are ignored — use the individual
-     *      external setters to unset or reset a property to zero. Each
-     *      populated field is dispatched via `this.updateX(...)` so the
-     *      targeted setter applies its own clamping + emits its own event.
-     *      Gated to creator admins. Reverts with NotInitialized before
+     * @dev Zero-value / empty-array fields are ignored — admins use the
+     *      individual external setters to unset or reset a property to zero.
+     *      Each populated field dispatches to an internal `_setX` / `_updateX`
+     *      helper so clamping + per-field events run consistently across
+     *      direct admin calls and batch reconfigures. Gated by
+     *      creatorAdminRequired. Reverts with NotInitialized before
      *      initialize() has been called.
      */
     function multiConfigure(MultiConfigureStruct calldata cfg) external;
