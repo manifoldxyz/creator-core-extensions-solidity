@@ -4,7 +4,14 @@ pragma solidity ^0.8.17;
 
 /// @author: manifold.xyz
 
-import {AllowListData, MultiConfigureStruct, PublicDrop, StorageProtocol} from "./SeaDropStructs.sol";
+import {
+    AllowListData,
+    MultiConfigureStruct,
+    PublicDrop,
+    SignedMintValidationParams,
+    StorageProtocol,
+    TokenGatedDropStage
+} from "./SeaDropStructs.sol";
 
 /**
  * @notice External ABI for ManifoldERC1155SeaDropShim — the SeaDrop-facing
@@ -56,17 +63,25 @@ interface IManifoldERC1155SeaDropShim {
     ///      that is not NONE.
     error InvalidStorageProtocol();
 
+    /// @dev Reverts from _applyConfig when a paired `{values, disallowed}` set
+    ///      of arrays (tokenGated, signedMint) has mismatched lengths between
+    ///      the two halves of the configure pair.
+    error MismatchedArrayLengths();
+
     // -----------------------------------------------------------------------
     // Events
     // -----------------------------------------------------------------------
 
-    /// @notice Emitted exactly once, from initialize(), after the Creator
-    ///         Core tokenId is seeded and before config is applied.
-    event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
+    /// @notice Emitted at the end of the shim constructor — mirrors the stock
+    ///         ERC721SeaDrop `SeaDropTokenDeployed` signal so indexers can
+    ///         detect a new Manifold x SeaDrop shim deployment without
+    ///         scanning Creator Core's registerExtension events.
+    event ManifoldSeaDropTokenDeployed();
 
-    /// @notice Emitted after _applyConfig finishes — from both initialize()
-    ///         and multiConfigure().
-    event Configured(uint256 indexed instanceId, uint256 indexed tokenId);
+    /// @notice Emitted exactly once, from initialize(), after _applyConfig has
+    ///         pushed the full drop config. Carries the correlation pair that
+    ///         indexers key off to associate the shim with a Studio drop.
+    event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
 
     /// @notice OpenSea collection metadata changed. Signature mirrors
     ///         ISeaDropTokenContractMetadata.ContractURIUpdated so SeaDrop /
@@ -83,11 +98,8 @@ interface IManifoldERC1155SeaDropShim {
     ///         other marketplaces invalidate their metadata cache.
     event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
 
-    /// @notice _maxSupply updated (possibly clamped to _totalMinted).
+    /// @notice _maxSupply updated.
     event MaxSupplyUpdated(uint256 newMaxSupply);
-
-    /// @notice _maxMintsPerWallet updated.
-    event MaxMintsPerWalletUpdated(uint256 newMax);
 
     /// @notice _allowedSeaDrop set replaced with the given addresses.
     event AllowedSeaDropUpdated(address[] allowed);
@@ -116,7 +128,7 @@ interface IManifoldERC1155SeaDropShim {
      * @dev Zero-value / empty-array fields are ignored — admins use the
      *      individual external setters to unset or reset a property to zero.
      *      Each populated field dispatches to an internal `_setX` / `_updateX`
-     *      helper so clamping + per-field events run consistently across
+     *      helper so bounds checks + per-field events run consistently across
      *      direct admin calls and batch reconfigures. Gated by
      *      creatorAdminRequired. Reverts with NotInitialized before
      *      initialize() has been called.
@@ -151,8 +163,6 @@ interface IManifoldERC1155SeaDropShim {
 
     function setMaxSupply(uint256 newMaxSupply) external;
 
-    function setMaxMintsPerWallet(uint256 newMax) external;
-
     function setContractURI(string calldata newContractURI) external;
 
     function updateTokenURI(StorageProtocol storageProtocol, string calldata location) external;
@@ -176,6 +186,18 @@ interface IManifoldERC1155SeaDropShim {
     function updateDropURI(address seaDropImpl, string calldata dropURI) external;
 
     function updatePayer(address seaDropImpl, address payer, bool allowed) external;
+
+    function updateTokenGatedDrop(
+        address seaDropImpl,
+        address allowedNftToken,
+        TokenGatedDropStage calldata dropStage
+    ) external;
+
+    function updateSignedMintValidationParams(
+        address seaDropImpl,
+        address signer,
+        SignedMintValidationParams calldata signedMintValidationParams
+    ) external;
 
     // -----------------------------------------------------------------------
     // Views

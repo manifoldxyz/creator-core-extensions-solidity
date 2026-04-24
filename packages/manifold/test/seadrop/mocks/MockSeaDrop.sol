@@ -6,7 +6,12 @@ pragma solidity ^0.8.17;
 
 import {ISeaDrop} from "../../../contracts/seadrop/ISeaDrop.sol";
 import {INonFungibleSeaDropToken} from "../../../contracts/seadrop/INonFungibleSeaDropToken.sol";
-import {AllowListData, PublicDrop} from "../../../contracts/seadrop/SeaDropStructs.sol";
+import {
+    AllowListData,
+    PublicDrop,
+    SignedMintValidationParams,
+    TokenGatedDropStage
+} from "../../../contracts/seadrop/SeaDropStructs.sol";
 
 /**
  * @notice Test-only mock of stock SeaDrop v1.
@@ -30,10 +35,14 @@ contract MockSeaDrop is ISeaDrop {
     bool public lastFeeRecipientAllowed;
     address public lastPayer;
     bool public lastPayerAllowed;
+    address public lastTokenGatedNftToken;
+    address public lastSigner;
 
     // Cumulative state so tests can assert "is this address currently allowed".
     mapping(address => bool) private _allowedFeeRecipients;
     mapping(address => bool) private _allowedPayers;
+    mapping(address => TokenGatedDropStage) private _tokenGatedDrops;
+    mapping(address => SignedMintValidationParams) private _signedMintValidationParams;
 
     event PublicDropUpdated(PublicDrop publicDrop);
     event AllowListUpdated(AllowListData allowListData);
@@ -41,6 +50,8 @@ contract MockSeaDrop is ISeaDrop {
     event AllowedFeeRecipientUpdated(address feeRecipient, bool allowed);
     event DropURIUpdated(string dropURI);
     event PayerUpdated(address payer, bool allowed);
+    event TokenGatedDropUpdated(address allowedNftToken, TokenGatedDropStage dropStage);
+    event SignedMintValidationParamsUpdated(address signer, SignedMintValidationParams params);
 
     function updatePublicDrop(PublicDrop calldata publicDrop) external override {
         _lastPublicDrop = publicDrop;
@@ -76,6 +87,24 @@ contract MockSeaDrop is ISeaDrop {
         emit PayerUpdated(payer, allowed);
     }
 
+    function updateTokenGatedDrop(address allowedNftToken, TokenGatedDropStage calldata dropStage)
+        external
+        override
+    {
+        lastTokenGatedNftToken = allowedNftToken;
+        _tokenGatedDrops[allowedNftToken] = dropStage;
+        emit TokenGatedDropUpdated(allowedNftToken, dropStage);
+    }
+
+    function updateSignedMintValidationParams(
+        address signer,
+        SignedMintValidationParams calldata params
+    ) external override {
+        lastSigner = signer;
+        _signedMintValidationParams[signer] = params;
+        emit SignedMintValidationParamsUpdated(signer, params);
+    }
+
     // Struct getters — mappings auto-generate getters, but struct state vars
     // do not return their nested dynamic fields through auto-getters, so we
     // expose explicit memory-returning reads for tests to deep-equal against.
@@ -93,6 +122,22 @@ contract MockSeaDrop is ISeaDrop {
 
     function allowedPayer(address payer) external view returns (bool) {
         return _allowedPayers[payer];
+    }
+
+    function tokenGatedDrop(address allowedNftToken)
+        external
+        view
+        returns (TokenGatedDropStage memory)
+    {
+        return _tokenGatedDrops[allowedNftToken];
+    }
+
+    function signedMintValidationParams(address signer)
+        external
+        view
+        returns (SignedMintValidationParams memory)
+    {
+        return _signedMintValidationParams[signer];
     }
 
     /**

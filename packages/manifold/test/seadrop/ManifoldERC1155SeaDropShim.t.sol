@@ -14,7 +14,9 @@ import {
     AllowListData,
     MultiConfigureStruct,
     PublicDrop,
-    StorageProtocol
+    SignedMintValidationParams,
+    StorageProtocol,
+    TokenGatedDropStage
 } from "../../contracts/seadrop/SeaDropStructs.sol";
 
 import {MockSeaDrop} from "./mocks/MockSeaDrop.sol";
@@ -36,8 +38,8 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     // Solidity only allows `emit` of events declared in the current contract
     // or a base contract, so mirroring the IManifoldERC1155SeaDropShim
     // signatures here is the cleanest way to assert on them.
+    event ManifoldSeaDropTokenDeployed();
     event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
-    event Configured(uint256 indexed instanceId, uint256 indexed tokenId);
     event SeaDropMint(address indexed minter, uint256 quantity);
     event MaxSupplyUpdated(uint256 newMaxSupply);
     event AllowedSeaDropUpdated(address[] allowed);
@@ -65,7 +67,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
         address[] memory allowed = new address[](1);
         allowed[0] = address(mockSeaDrop);
-        shim = new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+        shim = new ManifoldERC1155SeaDropShim(address(creator), allowed);
 
         creator.registerExtension(address(shim), "");
 
@@ -82,8 +84,8 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         feeRecipients[0] = feeRecipient;
 
         cfg = MultiConfigureStruct({
+            instanceId: INSTANCE_ID,
             maxSupply: 100,
-            maxMintsPerWallet: 5,
             tokenUriLocation: "https://example.com/meta.json",
             storageProtocol: StorageProtocol.NONE,
             contractURI: "https://example.com/contract.json",
@@ -105,7 +107,13 @@ contract ManifoldERC1155SeaDropShimTest is Test {
             allowedFeeRecipients: feeRecipients,
             disallowedFeeRecipients: new address[](0),
             allowedPayers: new address[](0),
-            disallowedPayers: new address[](0)
+            disallowedPayers: new address[](0),
+            tokenGatedAllowedNftTokens: new address[](0),
+            tokenGatedDropStages: new TokenGatedDropStage[](0),
+            disallowedTokenGatedAllowedNftTokens: new address[](0),
+            signers: new address[](0),
+            signedMintValidationParams: new SignedMintValidationParams[](0),
+            disallowedSigners: new address[](0)
         });
     }
 
@@ -114,11 +122,39 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         assertTrue(address(creator) != address(0), "creator deployed");
         assertTrue(address(mockSeaDrop) != address(0), "mockSeaDrop deployed");
         assertEq(shim.creatorContractAddress(), address(creator), "shim bound to creator");
-        assertEq(shim.instanceId(), INSTANCE_ID, "instanceId stored");
+        // instanceId is configured through _applyConfig, not the constructor — it
+        // reads 0 pre-initialize and the cfg.instanceId value afterwards.
+        assertEq(shim.instanceId(), 0, "instanceId unset pre-initialize");
 
         address[] memory allowed = shim.getAllowedSeaDrop();
         assertEq(allowed.length, 1, "one allowed seadrop");
         assertEq(allowed[0], address(mockSeaDrop), "mockSeaDrop is allowed");
+    }
+
+    /**
+     * @notice After initialize(cfg), instanceId() returns the value passed in
+     *         cfg.instanceId — confirms the _applyConfig dispatch + storage
+     *         getter wire together end-to-end.
+     */
+    function testInstanceIdStoredAfterInitialize() public {
+        _initializeDefault();
+        assertEq(shim.instanceId(), INSTANCE_ID, "instanceId set from cfg");
+    }
+
+    /**
+     * @notice The shim constructor emits ManifoldSeaDropTokenDeployed as its
+     *         last action — mirrors stock ERC721SeaDrop's SeaDropTokenDeployed
+     *         signal so off-chain indexers can watch for new shim deployments
+     *         without scanning Creator Core's registerExtension events.
+     */
+    function testConstructorEmitsManifoldSeaDropTokenDeployed() public {
+        address[] memory allowed = new address[](1);
+        allowed[0] = address(mockSeaDrop);
+
+        vm.expectEmit(false, false, false, false);
+        emit ManifoldSeaDropTokenDeployed();
+
+        new ManifoldERC1155SeaDropShim(address(creator), allowed);
     }
 
     // -----------------------------------------------------------------------
@@ -127,10 +163,10 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
     /**
      * @notice Full happy-path assertion: initialize seeds the tokenId via
-     *         Creator Core's mintExtensionNew, emits Initialized then
-     *         Configured, pushes every local cfg field into shim state, and
-     *         forwards publicDrop / allowList / payout / fee-recipient to the
-     *         configured SeaDrop impl.
+     *         Creator Core's mintExtensionNew, emits Initialized after
+     *         _applyConfig has run, pushes every local cfg field into shim
+     *         state, and forwards publicDrop / allowList / payout /
+     *         fee-recipient to the configured SeaDrop impl.
      * @dev A fresh ERC1155Creator assigns its first mintExtensionNew tokenId
      *      as 1 (Creator Core uses `_tokenCount + 1`), so we can hard-code
      *      the expected tokenId in the event match and subsequent tokenURI
@@ -140,13 +176,12 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         MultiConfigureStruct memory cfg = _defaultCfg();
         uint256 expectedTokenId = 1;
 
-        // Initialized is emitted BEFORE _applyConfig; Configured at the very
-        // end. Ordering matters to indexers that key off Configured to know
-        // the drop is fully live, so assert both events in sequence.
+        // Initialized fires after _applyConfig has populated _instanceId and
+        // the rest of drop state, so indexers that key off it see a fully-live
+        // drop. Per-field events (MaxSupplyUpdated, TokenURIUpdated, etc.)
+        // fire during _applyConfig before Initialized.
         vm.expectEmit(true, true, false, true, address(shim));
         emit Initialized(INSTANCE_ID, expectedTokenId);
-        vm.expectEmit(true, true, false, true, address(shim));
-        emit Configured(INSTANCE_ID, expectedTokenId);
 
         vm.prank(creatorAdmin);
         shim.initialize(cfg);
@@ -158,10 +193,9 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         // StorageProtocol.NONE -> empty prefix, so tokenURI == tokenUriLocation.
         assertEq(shim.tokenURI(expectedTokenId), cfg.tokenUriLocation, "tokenURI assembled");
 
-        // getMintStats exposes _maxMintsPerWallet indirectly via maxSupply;
-        // use the maxMintsPerWallet getter-equivalent by checking getMintStats
-        // also reflects the cap update path. Here we just assert supply cap
-        // propagated; US-016 covers the full getMintStats surface.
+        // getMintStats surfaces the supply cap applied during initialize.
+        // Per-wallet caps live on SeaDrop (PublicDrop.maxTotalMintableByWallet
+        // + allowlist merkle leaves), not the shim.
         (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(creatorAdmin);
         assertEq(minted, 0);
         assertEq(total, 0);
@@ -244,7 +278,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         address[] memory allowed = new address[](1);
         allowed[0] = address(mockSeaDrop);
         ManifoldERC1155SeaDropShim unregisteredShim =
-            new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+            new ManifoldERC1155SeaDropShim(address(creator), allowed);
 
         MultiConfigureStruct memory cfg = _defaultCfg();
 
@@ -425,27 +459,48 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     }
 
     /**
-     * @notice Lowering the cap below _totalMinted clamps up to _totalMinted
-     *         (never below actual supply) and emits MaxSupplyUpdated with the
-     *         post-clamp value. SeaDrop's getMintStats never implies over-mint.
+     * @notice Lowering the cap below _totalMinted reverts so SeaDrop's
+     *         getMintStats can never imply over-mint against the hard cap.
+     *         Supply + cap state must remain untouched on revert.
      */
-    function testGetMintStatsClampsMaxSupplyBelowMinted() public {
+    function testSetMaxSupplyRevertsBelowTotalMinted() public {
         _initializeDefault();
 
         mockSeaDrop.fakeMint(address(shim), alice, 5);
 
-        // Attempt to shrink cap to 3 — below _totalMinted (5). Clamp floor
-        // equals _totalMinted; the event must carry that clamped value.
-        vm.expectEmit(false, false, false, true, address(shim));
-        emit MaxSupplyUpdated(5);
-
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "NewMaxSupplyCannotBeLessThenTotalMinted(uint256,uint256)",
+                3,
+                5
+            )
+        );
         vm.prank(creatorAdmin);
         shim.setMaxSupply(3);
 
         (, uint256 total, uint256 cap) = shim.getMintStats(alice);
-        assertEq(total, 5, "totalMinted unchanged by cap update");
-        assertEq(cap, 5, "maxSupply clamped up to _totalMinted");
-        assertEq(shim.maxSupply(), 5, "maxSupply view agrees with clamp");
+        assertEq(total, 5, "totalMinted unchanged by reverted update");
+        assertEq(cap, 100, "maxSupply unchanged by reverted update");
+        assertEq(shim.maxSupply(), 100, "maxSupply view unchanged by revert");
+    }
+
+    /**
+     * @notice setMaxSupply must reject any value above uint64 max — SeaDrop
+     *         packs the cap into a uint64 in downstream state, so accepting
+     *         a larger value would silently truncate.
+     */
+    function testSetMaxSupplyRevertsAboveUint64() public {
+        _initializeDefault();
+
+        uint256 tooBig = uint256(type(uint64).max) + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSignature("CannotExceedMaxSupplyOfUint64(uint256)", tooBig)
+        );
+        vm.prank(creatorAdmin);
+        shim.setMaxSupply(tooBig);
+
+        assertEq(shim.maxSupply(), 100, "maxSupply unchanged by reverted update");
     }
 
     // -----------------------------------------------------------------------
@@ -485,7 +540,6 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         address newFeeRecipient = address(0xDEAD);
         MultiConfigureStruct memory cfg = _defaultCfg();
         cfg.maxSupply = 250;
-        cfg.maxMintsPerWallet = 10;
         cfg.storageProtocol = StorageProtocol.IPFS;
         cfg.tokenUriLocation = "QmNewHash";
         cfg.contractURI = "https://example.com/new-contract.json";
@@ -498,11 +552,9 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         newFeeRecipients[0] = newFeeRecipient;
         cfg.allowedFeeRecipients = newFeeRecipients;
 
-        // Configured re-emits with the same (instanceId, tokenId=1) pair from
-        // initialize — _tokenId is frozen after the first initialize().
-        vm.expectEmit(true, true, false, true, address(shim));
-        emit Configured(INSTANCE_ID, 1);
-
+        // Per-field events (TokenURIUpdated, MaxSupplyUpdated, etc.) fire as
+        // _applyConfig runs each dispatch branch — asserted on the local shim
+        // state below rather than via vm.expectEmit for readability.
         vm.prank(creatorAdmin);
         shim.multiConfigure(cfg);
 
@@ -912,5 +964,124 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         vm.prank(notAdmin);
         vm.expectRevert("Must be owner or admin of creator contract");
         shim.updatePublicDrop(address(mockSeaDrop), pd);
+    }
+
+    /**
+     * @notice Pass-through setters must reject a `seaDropImpl` that is not in
+     *         the shim's allowed-SeaDrop set — a typo in the admin-supplied
+     *         address cannot silently push config to an un-whitelisted SeaDrop
+     *         deployment. Asserts against updatePublicDrop as the representative
+     *         case; all six forwarders share the same `_onlyAllowedSeaDrop` gate.
+     */
+    function testPassThroughSetterRevertsForUnallowedSeaDrop() public {
+        PublicDrop memory pd = _defaultCfg().publicDrop;
+        address strangerSeaDrop = address(0xDEADBEEF);
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.OnlyAllowedSeaDrop.selector);
+        shim.updatePublicDrop(strangerSeaDrop, pd);
+    }
+
+    // -----------------------------------------------------------------------
+    // Token-gated + signed-mint pass-throughs
+    // -----------------------------------------------------------------------
+
+    /**
+     * @notice updateTokenGatedDrop forwards the (allowedNftToken, stage) tuple
+     *         to the mocked SeaDrop so OpenSea reads a token-gated phase keyed
+     *         off the shim's address. Admin gate + allowed-SeaDrop gate are
+     *         exercised via the shared _onlyAllowedSeaDrop path.
+     */
+    function testUpdateTokenGatedDropForwards() public {
+        _initializeDefault();
+
+        address gateToken = address(0xBEEFCAFE);
+        TokenGatedDropStage memory stage = TokenGatedDropStage({
+            mintPrice: 0.02 ether,
+            maxTotalMintableByWallet: 3,
+            startTime: uint48(block.timestamp),
+            endTime: uint48(block.timestamp + 7 days),
+            dropStageIndex: 1,
+            maxTokenSupplyForStage: 50,
+            feeBps: 500,
+            restrictFeeRecipients: true
+        });
+
+        vm.prank(creatorAdmin);
+        shim.updateTokenGatedDrop(address(mockSeaDrop), gateToken, stage);
+
+        assertEq(mockSeaDrop.lastTokenGatedNftToken(), gateToken, "nftToken forwarded");
+        TokenGatedDropStage memory stored = mockSeaDrop.tokenGatedDrop(gateToken);
+        assertEq(stored.mintPrice, stage.mintPrice, "stage.mintPrice");
+        assertEq(stored.maxTotalMintableByWallet, stage.maxTotalMintableByWallet);
+        assertEq(stored.dropStageIndex, stage.dropStageIndex);
+    }
+
+    /**
+     * @notice updateSignedMintValidationParams forwards the (signer, params)
+     *         tuple to the mocked SeaDrop — symmetrical to the tokenGated case.
+     */
+    function testUpdateSignedMintValidationParamsForwards() public {
+        _initializeDefault();
+
+        address signer = address(0xFEEDFACE);
+        SignedMintValidationParams memory params = SignedMintValidationParams({
+            minMintPrice: 0.01 ether,
+            maxMaxTotalMintableByWallet: 10,
+            minStartTime: uint40(block.timestamp),
+            maxEndTime: uint40(block.timestamp + 30 days),
+            maxMaxTokenSupplyForStage: 100,
+            minFeeBps: 250,
+            maxFeeBps: 1000
+        });
+
+        vm.prank(creatorAdmin);
+        shim.updateSignedMintValidationParams(address(mockSeaDrop), signer, params);
+
+        assertEq(mockSeaDrop.lastSigner(), signer, "signer forwarded");
+        SignedMintValidationParams memory stored = mockSeaDrop.signedMintValidationParams(signer);
+        assertEq(stored.minMintPrice, params.minMintPrice);
+        assertEq(stored.maxMaxTotalMintableByWallet, params.maxMaxTotalMintableByWallet);
+        assertEq(stored.maxFeeBps, params.maxFeeBps);
+    }
+
+    /**
+     * @notice _applyConfig must reject a MultiConfigureStruct where the paired
+     *         tokenGated arrays disagree in length — the shim would otherwise
+     *         silently push only the shorter-array prefix, which is the class
+     *         of bug stock SeaDrop's TokenGatedMismatch error exists to prevent.
+     */
+    function testMultiConfigureRevertsOnTokenGatedLengthMismatch() public {
+        _initializeDefault();
+
+        MultiConfigureStruct memory cfg = _defaultCfg();
+        cfg.tokenGatedAllowedNftTokens = new address[](2);
+        cfg.tokenGatedAllowedNftTokens[0] = address(0xCAFE01);
+        cfg.tokenGatedAllowedNftTokens[1] = address(0xCAFE02);
+        cfg.tokenGatedDropStages = new TokenGatedDropStage[](1);
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.MismatchedArrayLengths.selector);
+        shim.multiConfigure(cfg);
+    }
+
+    /**
+     * @notice Same length-mismatch invariant for the paired signers /
+     *         signedMintValidationParams arrays. Stock-style guard: the check
+     *         fires only when the primary `signedMintValidationParams` array
+     *         is non-empty — an empty params array paired with non-empty
+     *         signers is treated as a skip, matching stock SeaDrop semantics.
+     */
+    function testMultiConfigureRevertsOnSignerLengthMismatch() public {
+        _initializeDefault();
+
+        MultiConfigureStruct memory cfg = _defaultCfg();
+        cfg.signers = new address[](1);
+        cfg.signers[0] = address(0x516E);
+        cfg.signedMintValidationParams = new SignedMintValidationParams[](2);
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.MismatchedArrayLengths.selector);
+        shim.multiConfigure(cfg);
     }
 }

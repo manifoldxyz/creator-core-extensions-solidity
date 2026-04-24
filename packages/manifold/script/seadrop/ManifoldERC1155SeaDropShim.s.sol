@@ -11,12 +11,13 @@ import "../../contracts/seadrop/ManifoldERC1155SeaDropShim.sol";
  * Env vars:
  *   - PRIVATE_KEY      (uint256) — deployer EOA
  *   - CREATOR_CONTRACT (address) — Manifold Creator Core ERC1155 to bind to
- *   - INSTANCE_ID      (uint256) — Manifold drop instanceId (non-zero)
  *   - SEADROP_ADDRESS  (address) — SeaDrop deployment authorized to mint
  *                                   (0x00005EA00Ac477B1030CE78506496e8C2dE24bf5 on mainnet/Sepolia)
  *
  * Does NOT call registerExtension or initialize — those are manual runbook
  * steps from the creator admin wallet (see specs/manifold-seadrop-shim-erc1155.md).
+ * The Manifold drop instanceId is supplied through `MultiConfigureStruct.instanceId`
+ * when the admin calls `initialize(cfg)`.
  *
  * Example:
  *   forge script script/seadrop/ManifoldERC1155SeaDropShim.s.sol \
@@ -27,18 +28,16 @@ import "../../contracts/seadrop/ManifoldERC1155SeaDropShim.sol";
  *   forge verify-contract --compiler-version 0.8.17 --optimizer-runs 200 \
  *     --chain sepolia <DEPLOYED_ADDRESS> \
  *     contracts/seadrop/ManifoldERC1155SeaDropShim.sol:ManifoldERC1155SeaDropShim \
- *     --constructor-args $(cast abi-encode "constructor(address,uint256,address[])" \
- *       "${CREATOR_CONTRACT}" "${INSTANCE_ID}" "[${SEADROP_ADDRESS}]") \
+ *     --constructor-args $(cast abi-encode "constructor(address,address[])" \
+ *       "${CREATOR_CONTRACT}" "[${SEADROP_ADDRESS}]") \
  *     --watch
  */
 contract DeployManifoldERC1155SeaDropShim is Script {
     function run() external {
         address creatorContract = vm.envAddress("CREATOR_CONTRACT");
-        uint256 instanceId = vm.envUint("INSTANCE_ID");
         address seaDropAddress = vm.envAddress("SEADROP_ADDRESS");
 
         require(creatorContract != address(0), "CREATOR_CONTRACT not set");
-        require(instanceId != 0, "INSTANCE_ID not set");
         require(seaDropAddress != address(0), "SEADROP_ADDRESS not set");
 
         address[] memory initialAllowedSeaDrop = new address[](1);
@@ -49,7 +48,6 @@ contract DeployManifoldERC1155SeaDropShim is Script {
 
         ManifoldERC1155SeaDropShim shim = new ManifoldERC1155SeaDropShim(
             creatorContract,
-            instanceId,
             initialAllowedSeaDrop
         );
 
@@ -57,7 +55,6 @@ contract DeployManifoldERC1155SeaDropShim is Script {
 
         console.log("ManifoldERC1155SeaDropShim deployed at:", address(shim));
         console.log("  creatorContract:", creatorContract);
-        console.log(string.concat("  instanceId:      ", vm.toString(instanceId)));
         console.log("  allowedSeaDrop: ", seaDropAddress);
     }
 }

@@ -13,7 +13,9 @@ import {
     AllowListData,
     MultiConfigureStruct,
     PublicDrop,
-    StorageProtocol
+    SignedMintValidationParams,
+    StorageProtocol,
+    TokenGatedDropStage
 } from "../../contracts/seadrop/SeaDropStructs.sol";
 
 /**
@@ -143,7 +145,7 @@ contract ManifoldERC1155SeaDropShimForkTest is Test {
 
         address[] memory allowed = new address[](1);
         allowed[0] = SEADROP;
-        shim = new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+        shim = new ManifoldERC1155SeaDropShim(address(creator), allowed);
 
         creator.registerExtension(address(shim), "");
 
@@ -176,8 +178,8 @@ contract ManifoldERC1155SeaDropShimForkTest is Test {
         feeRecipients[0] = feeRecipient;
 
         cfg = MultiConfigureStruct({
+            instanceId: INSTANCE_ID,
             maxSupply: MAX_SUPPLY,
-            maxMintsPerWallet: MAX_MINTS_PER_WALLET,
             tokenUriLocation: "https://example.com/meta.json",
             storageProtocol: StorageProtocol.NONE,
             contractURI: "https://example.com/contract.json",
@@ -199,7 +201,13 @@ contract ManifoldERC1155SeaDropShimForkTest is Test {
             allowedFeeRecipients: feeRecipients,
             disallowedFeeRecipients: new address[](0),
             allowedPayers: new address[](0),
-            disallowedPayers: new address[](0)
+            disallowedPayers: new address[](0),
+            tokenGatedAllowedNftTokens: new address[](0),
+            tokenGatedDropStages: new TokenGatedDropStage[](0),
+            disallowedTokenGatedAllowedNftTokens: new address[](0),
+            signers: new address[](0),
+            signedMintValidationParams: new SignedMintValidationParams[](0),
+            disallowedSigners: new address[](0)
         });
     }
 

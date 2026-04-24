@@ -50,6 +50,9 @@ struct AllowListData {
  *      forward the stock SeaDrop setters in a single admin transaction.
  *      seaDropImpl is the SeaDrop deployment to configure (must also be in the
  *      shim's allowed-SeaDrop set for mintSeaDrop to accept its calls).
+ *      instanceId is the Manifold drop instanceId — admin must pass it non-zero
+ *      on the first initialize() call since _applyConfig zero-skips this field
+ *      (matching every other scalar in the struct).
  *
  *      multiConfigure ignores zero-value / empty-array fields — callers use
  *      the individual external setters to unset or reset a property to zero.
@@ -58,8 +61,8 @@ struct AllowListData {
  *      mirroring the stock SeaDrop MultiConfigureStruct semantics.
  */
 struct MultiConfigureStruct {
+    uint256 instanceId;
     uint256 maxSupply;
-    uint256 maxMintsPerWallet;
     string tokenUriLocation;
     StorageProtocol storageProtocol;
     string contractURI;
@@ -71,15 +74,29 @@ struct MultiConfigureStruct {
     address[] disallowedFeeRecipients;
     address[] allowedPayers;
     address[] disallowedPayers;
+
+    // Token-gated drops: tokenGatedAllowedNftTokens[i] is configured with
+    // tokenGatedDropStages[i] (arrays must have the same length). Entries in
+    // disallowedTokenGatedAllowedNftTokens are drained by forwarding a zero
+    // TokenGatedDropStage — matching stock SeaDrop's remove-via-zero semantics.
+    address[] tokenGatedAllowedNftTokens;
+    TokenGatedDropStage[] tokenGatedDropStages;
+    address[] disallowedTokenGatedAllowedNftTokens;
+
+    // Signed mints: signers[i] is configured with signedMintValidationParams[i]
+    // (arrays must have the same length). Entries in disallowedSigners are
+    // drained by forwarding a zero SignedMintValidationParams.
+    address[] signers;
+    SignedMintValidationParams[] signedMintValidationParams;
+    address[] disallowedSigners;
 }
 
 /**
  * @notice TokenGatedDropStage as declared by stock SeaDrop v1.
- * @dev Declared here solely so INonFungibleSeaDropToken can reference it when
- *      Solidity computes type(INonFungibleSeaDropToken).interfaceId — the shim
- *      itself does NOT implement updateTokenGatedDrop (token-gated drops are
- *      out of v1 scope per the spec). Field order and packing must mirror the
- *      canonical ProjectOpenSea/seadrop layout or the computed interfaceId
+ * @dev Used by the shim's `updateTokenGatedDrop` pass-through (and the paired
+ *      MultiConfigureStruct arrays) and by INonFungibleSeaDropToken when
+ *      Solidity computes its interfaceId. Field order and packing must mirror
+ *      the canonical ProjectOpenSea/seadrop layout or the computed interfaceId
  *      will drift from the value SeaDrop callers and OpenSea expect.
  */
 struct TokenGatedDropStage {
@@ -95,10 +112,9 @@ struct TokenGatedDropStage {
 
 /**
  * @notice SignedMintValidationParams as declared by stock SeaDrop v1.
- * @dev Declared here solely so INonFungibleSeaDropToken can reference it when
- *      Solidity computes type(INonFungibleSeaDropToken).interfaceId — the shim
- *      itself does NOT implement updateSignedMintValidationParams (signed
- *      mints are out of v1 scope per the spec). Field order and packing must
+ * @dev Used by the shim's `updateSignedMintValidationParams` pass-through (and
+ *      the paired MultiConfigureStruct arrays) and by INonFungibleSeaDropToken
+ *      when Solidity computes its interfaceId. Field order and packing must
  *      mirror the canonical ProjectOpenSea/seadrop layout to keep the derived
  *      interfaceId in sync with the value SeaDrop and OpenSea expect.
  */

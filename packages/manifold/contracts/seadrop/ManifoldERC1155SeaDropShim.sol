@@ -17,7 +17,14 @@ import {IManifoldERC1155SeaDropShim} from "./IManifoldERC1155SeaDropShim.sol";
 import {INonFungibleSeaDropToken} from "./INonFungibleSeaDropToken.sol";
 import {ISeaDrop} from "./ISeaDrop.sol";
 import {ISeaDropTokenContractMetadata} from "./ISeaDropTokenContractMetadata.sol";
-import {AllowListData, MultiConfigureStruct, PublicDrop, StorageProtocol} from "./SeaDropStructs.sol";
+import {
+    AllowListData,
+    MultiConfigureStruct,
+    PublicDrop,
+    SignedMintValidationParams,
+    StorageProtocol,
+    TokenGatedDropStage
+} from "./SeaDropStructs.sol";
 
 /**
  * @notice ManifoldERC1155SeaDropShim — SeaDrop-facing extension that fronts a
@@ -38,6 +45,11 @@ contract ManifoldERC1155SeaDropShim is
 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    // tokenURI prefixes — mirror ERC1155LazyPayableClaimCore / LazyPayableClaimCore
+    // so OpenSea sees identical metadata shape across Manifold extensions.
+    string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
+    string internal constant IPFS_PREFIX = "ipfs://";
+
     // -----------------------------------------------------------------------
     // Immutable binding (constructor)
     // -----------------------------------------------------------------------
@@ -45,13 +57,15 @@ contract ManifoldERC1155SeaDropShim is
     /// @notice The Manifold Creator Core contract this shim drops onto.
     address public immutable creatorContractAddress;
 
-    /// @notice Manifold drop instanceId — emitted in lifecycle events so
-    ///         indexers can correlate shims with Studio-side drop records.
-    uint256 public immutable instanceId;
-
     // -----------------------------------------------------------------------
     // Mutable state (populated by subsequent stories)
     // -----------------------------------------------------------------------
+
+    /// @dev Manifold drop instanceId — emitted in lifecycle events so indexers
+    ///      can correlate shims with Studio-side drop records. Set via
+    ///      `MultiConfigureStruct.instanceId` through `_applyConfig`; admin is
+    ///      expected to pass a non-zero value on the first initialize() call.
+    uint256 internal _instanceId;
 
     /// @dev Creator Core tokenId seeded by initialize() via mintExtensionNew.
     ///      Zero until initialize() runs; never re-assigned afterwards.
@@ -63,9 +77,6 @@ contract ManifoldERC1155SeaDropShim is
 
     /// @dev Admin-configured hard cap. SeaDrop enforces via getMintStats.
     uint256 internal _maxSupply;
-
-    /// @dev Admin-configured per-wallet cap. SeaDrop enforces via getMintStats.
-    uint256 internal _maxMintsPerWallet;
 
     /// @dev Per-wallet cumulative mints across allowlist + public phases.
     mapping(address => uint256) internal _minterNumMinted;
@@ -102,13 +113,13 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     /**
-     * @dev Gate for mintSeaDrop — msg.sender must be a SeaDrop deployment the
-     *      creator admin has whitelisted via the constructor or
-     *      updateAllowedSeaDrop.
+     * @dev Reverts if `seaDrop` is not in the shim's allowed-SeaDrop set.
+     *      Inlined (not a modifier) to save contract space, mirroring stock
+     *      ERC721SeaDrop — used by both `mintSeaDrop` (against msg.sender)
+     *      and every SeaDrop pass-through setter (against seaDropImpl).
      */
-    modifier onlyAllowedSeaDrop() {
-        if (!_allowedSeaDrop.contains(msg.sender)) revert OnlyAllowedSeaDrop();
-        _;
+    function _onlyAllowedSeaDrop(address seaDrop) internal view {
+        if (!_allowedSeaDrop.contains(seaDrop)) revert OnlyAllowedSeaDrop();
     }
 
     /**
@@ -128,11 +139,9 @@ contract ManifoldERC1155SeaDropShim is
 
     constructor(
         address creatorContractAddress_,
-        uint256 instanceId_,
         address[] memory initialAllowedSeaDrop_
     ) {
         creatorContractAddress = creatorContractAddress_;
-        instanceId = instanceId_;
 
         uint256 length = initialAllowedSeaDrop_.length;
         for (uint256 i; i < length;) {
@@ -141,6 +150,8 @@ contract ManifoldERC1155SeaDropShim is
                 ++i;
             }
         }
+
+        emit ManifoldSeaDropTokenDeployed();
     }
 
     // -----------------------------------------------------------------------
@@ -173,8 +184,8 @@ contract ManifoldERC1155SeaDropShim is
             .mintExtensionNew(recipients, amounts, uris);
         _tokenId = minted[0];
 
-        emit Initialized(instanceId, _tokenId);
         _applyConfig(cfg);
+        emit Initialized(_instanceId, _tokenId);
     }
 
     /**
@@ -201,17 +212,19 @@ contract ManifoldERC1155SeaDropShim is
     /**
      * @dev Shared zero-gated dispatch used by both initialize() and
      *      multiConfigure(). Routes each populated field through its internal
-     *      `_setX` / `_updateX` helper so clamping + per-field events live in
-     *      exactly one place (reused by the external setters). Auth lives on
+     *      `_setX` / `_updateX` helper so bounds checks + per-field events live
+     *      in exactly one place (reused by the external setters). Auth lives on
      *      the outer entry points, not here, because every caller of this
-     *      helper has already passed `creatorAdminRequired`.
+     *      helper has already passed `creatorAdminRequired`. Mirrors the stock
+     *      ERC721SeaDrop.multiConfigure layout: each array branch is guarded
+     *      by `length > 0` and reads `.length` inline (no stack caching).
      */
     function _applyConfig(MultiConfigureStruct calldata cfg) internal {
+        if (cfg.instanceId != 0) {
+            _setInstanceId(cfg.instanceId);
+        }
         if (cfg.maxSupply > 0) {
             _setMaxSupply(cfg.maxSupply);
-        }
-        if (cfg.maxMintsPerWallet > 0) {
-            _setMaxMintsPerWallet(cfg.maxMintsPerWallet);
         }
         if (bytes(cfg.contractURI).length != 0) {
             _setContractURI(cfg.contractURI);
@@ -231,29 +244,78 @@ contract ManifoldERC1155SeaDropShim is
         if (cfg.creatorPayoutAddress != address(0)) {
             _updateCreatorPayoutAddress(cfg.seaDropImpl, cfg.creatorPayoutAddress);
         }
-
-        uint256 length = cfg.allowedFeeRecipients.length;
-        for (uint256 i; i < length;) {
-            _updateAllowedFeeRecipient(cfg.seaDropImpl, cfg.allowedFeeRecipients[i], true);
-            unchecked { ++i; }
+        if (cfg.allowedFeeRecipients.length > 0) {
+            for (uint256 i = 0; i < cfg.allowedFeeRecipients.length;) {
+                _updateAllowedFeeRecipient(cfg.seaDropImpl, cfg.allowedFeeRecipients[i], true);
+                unchecked { ++i; }
+            }
         }
-        length = cfg.disallowedFeeRecipients.length;
-        for (uint256 i; i < length;) {
-            _updateAllowedFeeRecipient(cfg.seaDropImpl, cfg.disallowedFeeRecipients[i], false);
-            unchecked { ++i; }
+        if (cfg.disallowedFeeRecipients.length > 0) {
+            for (uint256 i = 0; i < cfg.disallowedFeeRecipients.length;) {
+                _updateAllowedFeeRecipient(cfg.seaDropImpl, cfg.disallowedFeeRecipients[i], false);
+                unchecked { ++i; }
+            }
         }
-        length = cfg.allowedPayers.length;
-        for (uint256 i; i < length;) {
-            _updatePayer(cfg.seaDropImpl, cfg.allowedPayers[i], true);
-            unchecked { ++i; }
+        if (cfg.allowedPayers.length > 0) {
+            for (uint256 i = 0; i < cfg.allowedPayers.length;) {
+                _updatePayer(cfg.seaDropImpl, cfg.allowedPayers[i], true);
+                unchecked { ++i; }
+            }
         }
-        length = cfg.disallowedPayers.length;
-        for (uint256 i; i < length;) {
-            _updatePayer(cfg.seaDropImpl, cfg.disallowedPayers[i], false);
-            unchecked { ++i; }
+        if (cfg.disallowedPayers.length > 0) {
+            for (uint256 i = 0; i < cfg.disallowedPayers.length;) {
+                _updatePayer(cfg.seaDropImpl, cfg.disallowedPayers[i], false);
+                unchecked { ++i; }
+            }
         }
-
-        emit Configured(instanceId, _tokenId);
+        if (cfg.tokenGatedDropStages.length > 0) {
+            if (cfg.tokenGatedDropStages.length != cfg.tokenGatedAllowedNftTokens.length) {
+                revert MismatchedArrayLengths();
+            }
+            for (uint256 i = 0; i < cfg.tokenGatedDropStages.length;) {
+                _updateTokenGatedDrop(
+                    cfg.seaDropImpl,
+                    cfg.tokenGatedAllowedNftTokens[i],
+                    cfg.tokenGatedDropStages[i]
+                );
+                unchecked { ++i; }
+            }
+        }
+        if (cfg.disallowedTokenGatedAllowedNftTokens.length > 0) {
+            for (uint256 i = 0; i < cfg.disallowedTokenGatedAllowedNftTokens.length;) {
+                TokenGatedDropStage memory emptyStage;
+                _updateTokenGatedDrop(
+                    cfg.seaDropImpl,
+                    cfg.disallowedTokenGatedAllowedNftTokens[i],
+                    emptyStage
+                );
+                unchecked { ++i; }
+            }
+        }
+        if (cfg.signedMintValidationParams.length > 0) {
+            if (cfg.signedMintValidationParams.length != cfg.signers.length) {
+                revert MismatchedArrayLengths();
+            }
+            for (uint256 i = 0; i < cfg.signedMintValidationParams.length;) {
+                _updateSignedMintValidationParams(
+                    cfg.seaDropImpl,
+                    cfg.signers[i],
+                    cfg.signedMintValidationParams[i]
+                );
+                unchecked { ++i; }
+            }
+        }
+        if (cfg.disallowedSigners.length > 0) {
+            for (uint256 i = 0; i < cfg.disallowedSigners.length;) {
+                SignedMintValidationParams memory emptyParams;
+                _updateSignedMintValidationParams(
+                    cfg.seaDropImpl,
+                    cfg.disallowedSigners[i],
+                    emptyParams
+                );
+                unchecked { ++i; }
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -265,7 +327,7 @@ contract ManifoldERC1155SeaDropShim is
      * @dev Counters are bumped BEFORE the external mint call so the accounting
      *      read by getMintStats is consistent even if Creator Core's
      *      mintExtensionExisting triggers an ERC1155 receiver hook — the shim's
-     *      own nonReentrant lock plus the onlyAllowedSeaDrop gate bound the
+     *      own nonReentrant lock plus the _onlyAllowedSeaDrop gate bound the
      *      re-entrancy surface. SeaDrop upstream has already enforced the
      *      per-wallet + maxSupply caps via getMintStats; the shim trusts that
      *      quote and does not double-check them here.
@@ -273,9 +335,9 @@ contract ManifoldERC1155SeaDropShim is
     function mintSeaDrop(address minter, uint256 quantity)
         external
         override
-        onlyAllowedSeaDrop
         nonReentrant
     {
+        _onlyAllowedSeaDrop(msg.sender);
         if (_tokenId == 0) revert NotInitialized();
 
         _minterNumMinted[minter] += quantity;
@@ -313,10 +375,10 @@ contract ManifoldERC1155SeaDropShim is
 
     /**
      * @notice Update the admin-configured supply cap.
-     * @dev Clamps `newMaxSupply` up to `_totalMinted` so the cap never falls
-     *      below already-minted supply — otherwise SeaDrop's getMintStats
-     *      would imply a drop has over-minted, which breaks its internal
-     *      invariants. Emits the post-clamp value.
+     * @dev Reverts with `CannotExceedMaxSupplyOfUint64` if the new cap exceeds
+     *      uint64, and with `NewMaxSupplyCannotBeLessThenTotalMinted` if the
+     *      new cap is below already-minted supply — SeaDrop's getMintStats
+     *      must never imply a drop has over-minted against its hard cap.
      */
     function setMaxSupply(uint256 newMaxSupply)
         external
@@ -324,20 +386,6 @@ contract ManifoldERC1155SeaDropShim is
         creatorAdminRequired(creatorContractAddress)
     {
         _setMaxSupply(newMaxSupply);
-    }
-
-    /**
-     * @notice Update the per-wallet cumulative mint cap SeaDrop reads via
-     *         getMintStats. No clamping — SeaDrop tolerates per-wallet caps
-     *         below a wallet's current mint count (it simply blocks further
-     *         mints for that wallet).
-     */
-    function setMaxMintsPerWallet(uint256 newMax)
-        external
-        override
-        creatorAdminRequired(creatorContractAddress)
-    {
-        _setMaxMintsPerWallet(newMax);
     }
 
     /**
@@ -392,7 +440,7 @@ contract ManifoldERC1155SeaDropShim is
      * @dev Only the shim-local allow list changes here — there is no forward
      *      to ISeaDrop because SeaDrop has no matching setter; it's a pure
      *      local-auth config. Emits the raw input array so indexers can diff
-     *      against the prior Configured/AllowedSeaDropUpdated state.
+     *      against the prior AllowedSeaDropUpdated state.
      */
     function updateAllowedSeaDrop(address[] calldata newAllowed)
         external
@@ -426,11 +474,11 @@ contract ManifoldERC1155SeaDropShim is
     // -----------------------------------------------------------------------
     //
     // Thin forwards so the creator admin can reconfigure a live drop through
-    // the shim's stable address. Each call targets an arbitrary SeaDrop
-    // deployment passed in by the admin — intentionally not gated against the
-    // shim's own `_allowedSeaDrop` set, because these setters are admin-only
-    // config operations, not mint operations, and the admin may want to push
-    // config to a SeaDrop instance before whitelisting it for mints.
+    // the shim's stable address. Each call is gated by `_onlyAllowedSeaDrop`
+    // inside the internal helper so a typo in `seaDropImpl` cannot push config
+    // to an un-whitelisted SeaDrop deployment. Runbook: admin adds the
+    // deployment via the constructor or `updateAllowedSeaDrop` first, then
+    // configures it through these forwarders.
 
     function updatePublicDrop(address seaDropImpl, PublicDrop calldata publicDrop)
         external
@@ -480,6 +528,30 @@ contract ManifoldERC1155SeaDropShim is
         _updatePayer(seaDropImpl, payer, allowed);
     }
 
+    function updateTokenGatedDrop(
+        address seaDropImpl,
+        address allowedNftToken,
+        TokenGatedDropStage calldata dropStage
+    )
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        _updateTokenGatedDrop(seaDropImpl, allowedNftToken, dropStage);
+    }
+
+    function updateSignedMintValidationParams(
+        address seaDropImpl,
+        address signer,
+        SignedMintValidationParams calldata signedMintValidationParams
+    )
+        external
+        override
+        creatorAdminRequired(creatorContractAddress)
+    {
+        _updateSignedMintValidationParams(seaDropImpl, signer, signedMintValidationParams);
+    }
+
     // -----------------------------------------------------------------------
     // Internal setter helpers
     // -----------------------------------------------------------------------
@@ -487,18 +559,29 @@ contract ManifoldERC1155SeaDropShim is
     // Each external setter above does `creatorAdminRequired` and delegates to
     // its internal helper here. `_applyConfig` calls the same internal
     // helpers directly so the zero-gated dispatch doesn't need to re-run
-    // auth. This keeps clamping + per-field events in exactly one place
+    // auth. This keeps bounds checks + per-field events in exactly one place
     // without widening the admin surface to include `address(this)`.
 
-    function _setMaxSupply(uint256 newMaxSupply) internal {
-        if (newMaxSupply < _totalMinted) newMaxSupply = _totalMinted;
-        _maxSupply = newMaxSupply;
-        emit MaxSupplyUpdated(newMaxSupply);
+    function _setInstanceId(uint256 newInstanceId) internal {
+        _instanceId = newInstanceId;
     }
 
-    function _setMaxMintsPerWallet(uint256 newMax) internal {
-        _maxMintsPerWallet = newMax;
-        emit MaxMintsPerWalletUpdated(newMax);
+    function _setMaxSupply(uint256 newMaxSupply) internal {
+        // Ensure the max supply does not exceed the maximum value of uint64.
+        if (newMaxSupply > 2**64 - 1) {
+            revert ISeaDropTokenContractMetadata.CannotExceedMaxSupplyOfUint64(newMaxSupply);
+        }
+
+        // Ensure the max supply does not exceed the total minted.
+        if (newMaxSupply < _totalMinted) {
+            revert ISeaDropTokenContractMetadata.NewMaxSupplyCannotBeLessThenTotalMinted(
+                newMaxSupply,
+                _totalMinted
+            );
+        }
+
+        _maxSupply = newMaxSupply;
+        emit MaxSupplyUpdated(newMaxSupply);
     }
 
     function _setContractURI(string memory newContractURI) internal {
@@ -515,27 +598,51 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     function _updatePublicDrop(address seaDropImpl, PublicDrop memory publicDrop) internal {
+        _onlyAllowedSeaDrop(seaDropImpl);
         ISeaDrop(seaDropImpl).updatePublicDrop(publicDrop);
     }
 
     function _updateAllowList(address seaDropImpl, AllowListData memory allowListData) internal {
+        _onlyAllowedSeaDrop(seaDropImpl);
         ISeaDrop(seaDropImpl).updateAllowList(allowListData);
     }
 
     function _updateCreatorPayoutAddress(address seaDropImpl, address payoutAddress) internal {
+        _onlyAllowedSeaDrop(seaDropImpl);
         ISeaDrop(seaDropImpl).updateCreatorPayoutAddress(payoutAddress);
     }
 
     function _updateAllowedFeeRecipient(address seaDropImpl, address feeRecipient, bool allowed) internal {
+        _onlyAllowedSeaDrop(seaDropImpl);
         ISeaDrop(seaDropImpl).updateAllowedFeeRecipient(feeRecipient, allowed);
     }
 
     function _updateDropURI(address seaDropImpl, string memory dropURI) internal {
+        _onlyAllowedSeaDrop(seaDropImpl);
         ISeaDrop(seaDropImpl).updateDropURI(dropURI);
     }
 
     function _updatePayer(address seaDropImpl, address payer, bool allowed) internal {
+        _onlyAllowedSeaDrop(seaDropImpl);
         ISeaDrop(seaDropImpl).updatePayer(payer, allowed);
+    }
+
+    function _updateTokenGatedDrop(
+        address seaDropImpl,
+        address allowedNftToken,
+        TokenGatedDropStage memory dropStage
+    ) internal {
+        _onlyAllowedSeaDrop(seaDropImpl);
+        ISeaDrop(seaDropImpl).updateTokenGatedDrop(allowedNftToken, dropStage);
+    }
+
+    function _updateSignedMintValidationParams(
+        address seaDropImpl,
+        address signer,
+        SignedMintValidationParams memory signedMintValidationParams
+    ) internal {
+        _onlyAllowedSeaDrop(seaDropImpl);
+        ISeaDrop(seaDropImpl).updateSignedMintValidationParams(signer, signedMintValidationParams);
     }
 
     // -----------------------------------------------------------------------
@@ -552,15 +659,21 @@ contract ManifoldERC1155SeaDropShim is
     /**
      * @notice Assemble the tokenURI for this shim's single drop tokenId.
      * @dev Reverts with TokenDNE on any tokenId other than the one
-     *      initialize() seeded. The prefix comes from the stored
-     *      StorageProtocol (NONE -> "", ARWEAVE -> "https://arweave.net/",
-     *      IPFS -> "ipfs://") and is concatenated with the opaque
-     *      _tokenUriLocation suffix maintained by updateTokenURI /
-     *      extendTokenURI.
+     *      initialize() seeded. Prefix resolution mirrors
+     *      ERC1155LazyPayableClaimCore.tokenURI — ARWEAVE -> ARWEAVE_PREFIX,
+     *      IPFS -> IPFS_PREFIX, anything else -> "" — concatenated with the
+     *      opaque _tokenUriLocation suffix maintained by updateTokenURI.
      */
-    function tokenURI(uint256 tokenId) external view override returns (string memory) {
+    function tokenURI(uint256 tokenId) external view override returns (string memory uri) {
         if (tokenId != _tokenId) revert TokenDNE();
-        return string.concat(_uriPrefix(), _tokenUriLocation);
+
+        string memory prefix = "";
+        if (_storageProtocol == StorageProtocol.ARWEAVE) {
+            prefix = ARWEAVE_PREFIX;
+        } else if (_storageProtocol == StorageProtocol.IPFS) {
+            prefix = IPFS_PREFIX;
+        }
+        uri = string(abi.encodePacked(prefix, _tokenUriLocation));
     }
 
     /**
@@ -570,9 +683,16 @@ contract ManifoldERC1155SeaDropShim is
      *         and Creator Core see identical metadata regardless of which
      *         caller queries.
      */
-    function tokenURI(address creator, uint256 tokenId) external view override returns (string memory) {
+    function tokenURI(address creator, uint256 tokenId) external view override returns (string memory uri) {
         if (creator != creatorContractAddress || tokenId != _tokenId) revert TokenDNE();
-        return string.concat(_uriPrefix(), _tokenUriLocation);
+
+        string memory prefix = "";
+        if (_storageProtocol == StorageProtocol.ARWEAVE) {
+            prefix = ARWEAVE_PREFIX;
+        } else if (_storageProtocol == StorageProtocol.IPFS) {
+            prefix = IPFS_PREFIX;
+        }
+        uri = string(abi.encodePacked(prefix, _tokenUriLocation));
     }
 
     /**
@@ -585,20 +705,18 @@ contract ManifoldERC1155SeaDropShim is
         return "";
     }
 
-    /**
-     * @dev Resolves _storageProtocol to its tokenURI prefix. Kept internal and
-     *      pure so both tokenURI overloads share a single source of truth.
-     */
-    function _uriPrefix() internal view returns (string memory) {
-        StorageProtocol sp = _storageProtocol;
-        if (sp == StorageProtocol.ARWEAVE) return "https://arweave.net/";
-        if (sp == StorageProtocol.IPFS) return "ipfs://";
-        return "";
-    }
-
     // -----------------------------------------------------------------------
     // SeaDrop + indexer views (US-011)
     // -----------------------------------------------------------------------
+
+    /**
+     * @notice Manifold drop instanceId — the correlation key emitted alongside
+     *         tokenId in every lifecycle event. Set via the MultiConfigureStruct
+     *         through _applyConfig (no constructor arg).
+     */
+    function instanceId() external view returns (uint256) {
+        return _instanceId;
+    }
 
     /**
      * @notice Admin-configured supply cap. SeaDrop polls this via

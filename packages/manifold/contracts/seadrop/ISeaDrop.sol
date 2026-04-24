@@ -4,7 +4,12 @@ pragma solidity ^0.8.17;
 
 /// @author: manifold.xyz
 
-import {AllowListData, PublicDrop} from "./SeaDropStructs.sol";
+import {
+    AllowListData,
+    PublicDrop,
+    SignedMintValidationParams,
+    TokenGatedDropStage
+} from "./SeaDropStructs.sol";
 
 /**
  * @notice Pass-through subset of stock SeaDrop v1 (deployed at
@@ -13,8 +18,10 @@ import {AllowListData, PublicDrop} from "./SeaDropStructs.sol";
  * @dev Intentionally narrow: only the setters the shim proxies during
  *      initialize / multiConfigure / admin pass-through calls. The structs
  *      live in SeaDropStructs.sol so both the shim and this interface
- *      encode arguments identically to the deployed SeaDrop ABI.
- *      Token-gated drop and signed-mint setters are omitted (non-goals).
+ *      encode arguments identically to the deployed SeaDrop ABI. Mint-phase
+ *      execution (public / allowlist / token-gated / signed) is NOT on this
+ *      interface — SeaDrop enforces its per-phase checks internally and
+ *      funnels every phase into `INonFungibleSeaDropToken.mintSeaDrop`.
  */
 interface ISeaDrop {
     function updatePublicDrop(PublicDrop calldata publicDrop) external;
@@ -28,4 +35,12 @@ interface ISeaDrop {
     function updateDropURI(string calldata dropURI) external;
 
     function updatePayer(address payer, bool allowed) external;
+
+    function updateTokenGatedDrop(address allowedNftToken, TokenGatedDropStage calldata dropStage)
+        external;
+
+    function updateSignedMintValidationParams(
+        address signer,
+        SignedMintValidationParams calldata signedMintValidationParams
+    ) external;
 }
