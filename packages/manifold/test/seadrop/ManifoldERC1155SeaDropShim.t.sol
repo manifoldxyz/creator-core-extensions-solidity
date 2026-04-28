@@ -150,12 +150,37 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         address[] memory allowed = new address[](1);
         allowed[0] = address(mockSeaDrop);
 
-        vm.expectEmit(false, false, false, false);
-        emit SeaDropTokenDeployed();
-        vm.expectEmit(false, false, false, true);
-        emit SeaDropShimForContract(address(creator));
+        vm.recordLogs();
+        ManifoldERC1155SeaDropShim deployed = new ManifoldERC1155SeaDropShim(
+            address(creator),
+            INSTANCE_ID,
+            allowed
+        );
+        Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+        // AdminControl emits OwnershipTransferred first; the SeaDrop indexing
+        // signals must be the constructor's final two logs, from the new shim.
+        assertGe(entries.length, 2, "constructor emitted indexing logs");
+        uint256 seaDropEventIndex = entries.length - 2;
+        assertEq(entries[seaDropEventIndex].emitter, address(deployed), "SeaDropTokenDeployed emitter");
+        assertEq(
+            entries[seaDropEventIndex].topics[0],
+            keccak256("SeaDropTokenDeployed()"),
+            "SeaDropTokenDeployed topic"
+        );
+
+        uint256 shimEventIndex = entries.length - 1;
+        assertEq(entries[shimEventIndex].emitter, address(deployed), "SeaDropShimForContract emitter");
+        assertEq(
+            entries[shimEventIndex].topics[0],
+            keccak256("SeaDropShimForContract(address)"),
+            "SeaDropShimForContract topic"
+        );
+        assertEq(
+            abi.decode(entries[shimEventIndex].data, (address)),
+            address(creator),
+            "SeaDropShimForContract creator"
+        );
     }
 
     /**
@@ -455,6 +480,90 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         assertEq(creator.balanceOf(alice, 1), 0, "no ERC1155 mint on revert");
     }
 
+    /**
+     * @notice Direct mintSeaDrop can mint exactly to maxSupply, then the next
+     *         allowed-SeaDrop mint reverts before counters or ERC1155 balance
+     *         change. This catches off-by-one errors in the shim's final guard.
+     */
+    function testMintSeaDropAllowsMaxSupplyThenRevertsNextMint() public {
+        _initializeDefault();
+
+        vm.prank(creatorAdmin);
+        shim.setMaxSupply(5);
+
+        mockSeaDrop.fakeMint(address(shim), alice, 5);
+        assertEq(creator.balanceOf(alice, 1), 5, "alice minted exactly to cap");
+
+        vm.expectRevert(
+            abi.encodeWithSignature("MintQuantityExceedsMaxSupply(uint256,uint256)", 6, 5)
+        );
+        mockSeaDrop.fakeMint(address(shim), bob, 1);
+
+        (uint256 bobMinted, uint256 total, uint256 cap) = shim.getMintStats(bob);
+        assertEq(bobMinted, 0, "bob counter unchanged");
+        assertEq(total, 5, "total stays at cap");
+        assertEq(cap, 5, "cap unchanged");
+        assertEq(creator.balanceOf(bob, 1), 0, "bob did not mint on revert");
+    }
+
+    /**
+     * @notice The same cap boundary is enforced when minting through the real
+     *         SeaDrop public path, not just the direct fakeMint trampoline.
+     */
+    function testMintPublicRevertsWhenDropSupplyExceededByRealSeaDrop() public {
+        _initializeDefault();
+
+        vm.prank(creatorAdmin);
+        shim.setMaxSupply(5);
+
+        _mintPublic(alice, 5);
+
+        uint256 payment = uint256(_defaultCfg().publicDrop.mintPrice);
+        vm.deal(bob, 1 ether);
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSignature("MintQuantityExceedsMaxSupply(uint256,uint256)", 6, 5)
+        );
+        mockSeaDrop.mintPublic{value: payment}(
+            address(shim),
+            feeRecipient,
+            address(0),
+            1
+        );
+
+        (uint256 bobMinted, uint256 total, uint256 cap) = shim.getMintStats(bob);
+        assertEq(bobMinted, 0, "bob counter unchanged");
+        assertEq(total, 5, "total remains capped");
+        assertEq(cap, 5, "cap unchanged");
+        assertEq(creator.balanceOf(bob, 1), 0, "bob did not mint through SeaDrop");
+    }
+
+    /**
+     * @notice Creator Core claim-style totals are bounded to uint24 even when
+     *         admin config allows a larger SeaDrop-visible maxSupply.
+     */
+    function testMintSeaDropRevertsAboveUint24EffectiveCap() public {
+        _initializeDefault();
+
+        uint256 overUint24 = uint256(type(uint24).max) + 1;
+        vm.prank(creatorAdmin);
+        shim.setMaxSupply(overUint24);
+
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "MintQuantityExceedsMaxSupply(uint256,uint256)",
+                overUint24,
+                uint256(type(uint24).max)
+            )
+        );
+        mockSeaDrop.fakeMint(address(shim), alice, overUint24);
+
+        (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(alice);
+        assertEq(minted, 0, "minter counter unchanged");
+        assertEq(total, 0, "total counter unchanged");
+        assertEq(cap, overUint24, "admin cap still visible in getMintStats");
+    }
+
     // -----------------------------------------------------------------------
     // getMintStats — SeaDrop cap-enforcement tuple (US-016)
     // -----------------------------------------------------------------------
@@ -750,6 +859,9 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     function testUpdateTokenURIIpfs() public {
         _initializeDefault();
 
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit BatchMetadataUpdate(1, 1);
+
         vm.prank(creatorAdmin);
         shim.updateTokenURI(StorageProtocol.IPFS, "QmHash");
 
@@ -770,6 +882,9 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         _initializeDefault();
 
         string memory fullUrl = "https://example.com/meta.json";
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit BatchMetadataUpdate(1, 1);
+
         vm.prank(creatorAdmin);
         shim.updateTokenURI(StorageProtocol.NONE, fullUrl);
 
