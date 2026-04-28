@@ -376,6 +376,11 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         );
     }
 
+    function _mintSeaDropDirect(address minter, uint256 quantity) internal {
+        vm.prank(address(mockSeaDrop));
+        shim.mintSeaDrop(minter, quantity);
+    }
+
     /**
      * @notice A direct EOA call to mintSeaDrop fails the allowed-SeaDrop gate.
      * @dev The shim's onlyAllowedSeaDrop modifier checks msg.sender against
@@ -457,7 +462,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
      */
     function testMintSeaDropRevertsBeforeInitialize() public {
         vm.expectRevert(IManifoldERC1155SeaDropShim.NotInitialized.selector);
-        mockSeaDrop.fakeMint(address(shim), alice, 1);
+        _mintSeaDropDirect(alice, 1);
     }
 
     /**
@@ -471,7 +476,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         vm.expectRevert(
             abi.encodeWithSignature("MintQuantityExceedsMaxSupply(uint256,uint256)", 101, 100)
         );
-        mockSeaDrop.fakeMint(address(shim), alice, 101);
+        _mintSeaDropDirect(alice, 101);
 
         (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(alice);
         assertEq(minted, 0, "minter counter unchanged");
@@ -491,13 +496,13 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         vm.prank(creatorAdmin);
         shim.setMaxSupply(5);
 
-        mockSeaDrop.fakeMint(address(shim), alice, 5);
+        _mintSeaDropDirect(alice, 5);
         assertEq(creator.balanceOf(alice, 1), 5, "alice minted exactly to cap");
 
         vm.expectRevert(
             abi.encodeWithSignature("MintQuantityExceedsMaxSupply(uint256,uint256)", 6, 5)
         );
-        mockSeaDrop.fakeMint(address(shim), bob, 1);
+        _mintSeaDropDirect(bob, 1);
 
         (uint256 bobMinted, uint256 total, uint256 cap) = shim.getMintStats(bob);
         assertEq(bobMinted, 0, "bob counter unchanged");
@@ -508,7 +513,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
     /**
      * @notice The same cap boundary is enforced when minting through the real
-     *         SeaDrop public path, not just the direct fakeMint trampoline.
+     *         SeaDrop public path, not just a direct allowed-SeaDrop call.
      */
     function testMintPublicRevertsWhenDropSupplyExceededByRealSeaDrop() public {
         _initializeDefault();
@@ -556,7 +561,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
                 uint256(type(uint24).max)
             )
         );
-        mockSeaDrop.fakeMint(address(shim), alice, overUint24);
+        _mintSeaDropDirect(alice, overUint24);
 
         (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(alice);
         assertEq(minted, 0, "minter counter unchanged");

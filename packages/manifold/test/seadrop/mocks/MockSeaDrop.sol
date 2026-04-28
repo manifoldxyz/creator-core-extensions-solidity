@@ -5,7 +5,6 @@ pragma solidity ^0.8.17;
 /// @author: manifold.xyz
 
 import {SeaDrop} from "seadrop/src/SeaDrop.sol";
-import {INonFungibleSeaDropToken as ShimSeaDropToken} from "../../../contracts/seadrop/INonFungibleSeaDropToken.sol";
 import {
     AllowListData as ShimAllowListData,
     PublicDrop as ShimPublicDrop,
@@ -105,13 +104,6 @@ contract MockSeaDrop is SeaDrop {
             minFeeBps: actual.minFeeBps,
             maxFeeBps: actual.maxFeeBps
         });
-    }
-
-    // Helpers preserved for legacy unit tests that need to exercise the shim's
-    // local onlyAllowedSeaDrop / NotInitialized checks without going through
-    // SeaDrop's full sale validation.
-    function fakeMint(address nftContract, address minter, uint256 quantity) external {
-        ShimSeaDropToken(nftContract).mintSeaDrop(minter, quantity);
     }
 
     function lastFeeRecipient() external pure returns (address) {
