@@ -409,12 +409,7 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     /**
-     * @notice Provenance-hash reveal flows are a v1 non-goal — the shim
-     *         implements the canonical signature so the contract satisfies
-     *         INonFungibleSeaDropToken at compile time, but the function
-     *         always reverts. provenanceHash() returns bytes32(0) so any
-     *         indexer probing for a commitment sees the "no commitment"
-     *         signal.
+     * @notice Provenance-hash not supported
      */
     function setProvenanceHash(bytes32)
         external
