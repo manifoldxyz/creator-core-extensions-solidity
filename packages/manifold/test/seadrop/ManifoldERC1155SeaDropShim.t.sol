@@ -9,6 +9,8 @@ import "forge-std/Test.sol";
 import {ERC1155Creator} from "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 
 import {IManifoldERC1155SeaDropShim} from "../../contracts/seadrop/IManifoldERC1155SeaDropShim.sol";
+import {INonFungibleSeaDropToken} from "../../contracts/seadrop/INonFungibleSeaDropToken.sol";
+import {ISeaDropTokenContractMetadata} from "../../contracts/seadrop/ISeaDropTokenContractMetadata.sol";
 import {ManifoldERC1155SeaDropShim} from "../../contracts/seadrop/ManifoldERC1155SeaDropShim.sol";
 import {
     AllowListData,
@@ -40,7 +42,6 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     // signatures here is the cleanest way to assert on them.
     event ManifoldSeaDropTokenDeployed();
     event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
-    event SeaDropMint(address indexed minter, uint256 quantity);
     event MaxSupplyUpdated(uint256 newMaxSupply);
     event AllowedSeaDropUpdated(address[] allowed);
 
@@ -67,7 +68,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
         address[] memory allowed = new address[](1);
         allowed[0] = address(mockSeaDrop);
-        shim = new ManifoldERC1155SeaDropShim(address(creator), allowed);
+        shim = new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
 
         creator.registerExtension(address(shim), "");
 
@@ -84,7 +85,6 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         feeRecipients[0] = feeRecipient;
 
         cfg = MultiConfigureStruct({
-            instanceId: INSTANCE_ID,
             maxSupply: 100,
             tokenUriLocation: "https://example.com/meta.json",
             storageProtocol: StorageProtocol.NONE,
@@ -98,6 +98,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
                 feeBps: 500,
                 restrictFeeRecipients: true
             }),
+            dropURI: "",
             allowListData: AllowListData({
                 merkleRoot: bytes32(0),
                 publicKeyURIs: new string[](0),
@@ -122,23 +123,13 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         assertTrue(address(creator) != address(0), "creator deployed");
         assertTrue(address(mockSeaDrop) != address(0), "mockSeaDrop deployed");
         assertEq(shim.creatorContractAddress(), address(creator), "shim bound to creator");
-        // instanceId is configured through _applyConfig, not the constructor — it
-        // reads 0 pre-initialize and the cfg.instanceId value afterwards.
-        assertEq(shim.instanceId(), 0, "instanceId unset pre-initialize");
+        // instanceId is bound at construction as an immutable, so it reads
+        // the constructor argument immediately — no initialize() required.
+        assertEq(shim.instanceId(), INSTANCE_ID, "instanceId set at construction");
 
         address[] memory allowed = shim.getAllowedSeaDrop();
         assertEq(allowed.length, 1, "one allowed seadrop");
         assertEq(allowed[0], address(mockSeaDrop), "mockSeaDrop is allowed");
-    }
-
-    /**
-     * @notice After initialize(cfg), instanceId() returns the value passed in
-     *         cfg.instanceId — confirms the _applyConfig dispatch + storage
-     *         getter wire together end-to-end.
-     */
-    function testInstanceIdStoredAfterInitialize() public {
-        _initializeDefault();
-        assertEq(shim.instanceId(), INSTANCE_ID, "instanceId set from cfg");
     }
 
     /**
@@ -154,7 +145,48 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         vm.expectEmit(false, false, false, false);
         emit ManifoldSeaDropTokenDeployed();
 
-        new ManifoldERC1155SeaDropShim(address(creator), allowed);
+        new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+    }
+
+    /**
+     * @notice CI tripwire pinning the locally-mirrored SeaDrop interfaceIds to
+     *         their canonical ProjectOpenSea/seadrop bytes4. Stock SeaDrop's
+     *         `onlyINonFungibleSeaDropToken` modifier ERC165-checks
+     *         `type(INonFungibleSeaDropToken).interfaceId` against the calling
+     *         shim — if our mirror drifts (function signature, struct layout)
+     *         the XOR shifts, supportsInterface returns false, and every
+     *         mintSeaDrop call from a real SeaDrop reverts. These literals are
+     *         the XOR of every directly-declared selector on each mirror;
+     *         inherited functions don't contribute (Solidity language rule).
+     *         Recompute via `cast sig "<selector>"` per function and XOR if
+     *         this test ever fails.
+     */
+    function testInterfaceIdsMatchUpstreamSeaDrop() public {
+        // Pinned against the deployed SeaDrop @ 0x00005EA00Ac477B1030CE78506496e8C2dE24bf5
+        // (verified Etherscan source). Recompute by XOR'ing the directly-declared
+        // selectors on each interface — inherited fns don't contribute (Solidity rule),
+        // and `payable` mutability does not affect the function selector.
+        bytes4 expectedNonFungible = 0x1890fe8e;
+        bytes4 expectedMetadata = 0x37c62e4e;
+
+        assertEq(
+            type(INonFungibleSeaDropToken).interfaceId,
+            expectedNonFungible,
+            "INonFungibleSeaDropToken.interfaceId drift"
+        );
+        assertEq(
+            type(ISeaDropTokenContractMetadata).interfaceId,
+            expectedMetadata,
+            "ISeaDropTokenContractMetadata.interfaceId drift"
+        );
+        assertTrue(
+            shim.supportsInterface(expectedNonFungible),
+            "shim does not advertise INonFungibleSeaDropToken"
+        );
+        assertTrue(
+            shim.supportsInterface(expectedMetadata),
+            "shim does not advertise ISeaDropTokenContractMetadata"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -278,7 +310,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         address[] memory allowed = new address[](1);
         allowed[0] = address(mockSeaDrop);
         ManifoldERC1155SeaDropShim unregisteredShim =
-            new ManifoldERC1155SeaDropShim(address(creator), allowed);
+            new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
 
         MultiConfigureStruct memory cfg = _defaultCfg();
 
@@ -312,21 +344,18 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         _initializeDefault();
 
         vm.prank(alice);
-        vm.expectRevert(IManifoldERC1155SeaDropShim.OnlyAllowedSeaDrop.selector);
+        vm.expectRevert(INonFungibleSeaDropToken.OnlyAllowedSeaDrop.selector);
         shim.mintSeaDrop(alice, 1);
     }
 
     /**
      * @notice Routing through MockSeaDrop.fakeMint satisfies the allowed gate
      *         (MockSeaDrop is in the shim's set via setUp) and updates the
-     *         per-wallet + drop-wide counters, emits SeaDropMint, and keeps
-     *         totalSupply() aligned with _totalMinted.
+     *         per-wallet + drop-wide counters, keeping totalSupply() aligned
+     *         with _totalMinted.
      */
     function testMintSeaDropIncrementsCounters() public {
         _initializeDefault();
-
-        vm.expectEmit(true, false, false, true, address(shim));
-        emit SeaDropMint(alice, 3);
 
         mockSeaDrop.fakeMint(address(shim), alice, 3);
 
@@ -794,6 +823,56 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         assertEq(shim.contractURI(), next, "contractURI reflects setContractURI");
     }
 
+    /**
+     * @notice setBaseURI is the canonical INonFungibleSeaDropToken entry that
+     *         OpenSea / SeaDrop tooling calls to update the URI location. It
+     *         shares the `_tokenUriLocation` storage slot with the shim's own
+     *         `updateTokenURI` flow, so baseURI() round-trips: read after
+     *         write returns the value just written, and tokenURI() reflects
+     *         the new location (no protocol prefix in this default cfg
+     *         because StorageProtocol.NONE is in effect).
+     */
+    function testSetBaseURIRoundTripsAndUpdatesTokenURI() public {
+        _initializeDefault();
+
+        string memory next = "https://example.com/updated-base.json";
+        vm.prank(creatorAdmin);
+        shim.setBaseURI(next);
+
+        assertEq(shim.baseURI(), next, "baseURI() reflects setBaseURI");
+        // Default cfg uses StorageProtocol.NONE, so tokenURI == location.
+        assertEq(shim.tokenURI(1), next, "tokenURI() reflects setBaseURI");
+    }
+
+    /**
+     * @notice setBaseURI is creatorAdmin-only — same gate as every other
+     *         shim setter. Non-admin callers hit the canonical revert string.
+     */
+    function testSetBaseURIRevertsForNonAdmin() public {
+        _initializeDefault();
+
+        vm.prank(notAdmin);
+        vm.expectRevert("Must be owner or admin of creator contract");
+        shim.setBaseURI("ignored");
+    }
+
+    /**
+     * @notice setProvenanceHash is implemented for canonical INonFungibleSeaDropToken
+     *         compliance but always reverts — provenance reveal flows are a v1
+     *         non-goal. Tooling that calls this fails loudly rather than
+     *         silently no-op'ing into a misleading "set" state.
+     */
+    function testSetProvenanceHashAlwaysReverts() public {
+        _initializeDefault();
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.ProvenanceHashNotSupported.selector);
+        shim.setProvenanceHash(bytes32(uint256(1)));
+
+        // Even an admin cannot set it — provenanceHash() stays bytes32(0).
+        assertEq(shim.provenanceHash(), bytes32(0), "provenanceHash unchanged");
+    }
+
     // -----------------------------------------------------------------------
     // SeaDrop pass-through setters forward correct args (US-019)
     // -----------------------------------------------------------------------
@@ -978,7 +1057,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         address strangerSeaDrop = address(0xDEADBEEF);
 
         vm.prank(creatorAdmin);
-        vm.expectRevert(IManifoldERC1155SeaDropShim.OnlyAllowedSeaDrop.selector);
+        vm.expectRevert(INonFungibleSeaDropToken.OnlyAllowedSeaDrop.selector);
         shim.updatePublicDrop(strangerSeaDrop, pd);
     }
 
@@ -1061,7 +1140,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         cfg.tokenGatedDropStages = new TokenGatedDropStage[](1);
 
         vm.prank(creatorAdmin);
-        vm.expectRevert(IManifoldERC1155SeaDropShim.MismatchedArrayLengths.selector);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.TokenGatedMismatch.selector);
         shim.multiConfigure(cfg);
     }
 
@@ -1081,7 +1160,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         cfg.signedMintValidationParams = new SignedMintValidationParams[](2);
 
         vm.prank(creatorAdmin);
-        vm.expectRevert(IManifoldERC1155SeaDropShim.MismatchedArrayLengths.selector);
+        vm.expectRevert(IManifoldERC1155SeaDropShim.SignersMismatch.selector);
         shim.multiConfigure(cfg);
     }
 }

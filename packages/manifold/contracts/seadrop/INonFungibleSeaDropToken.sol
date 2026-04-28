@@ -4,6 +4,8 @@ pragma solidity ^0.8.17;
 
 /// @author: manifold.xyz
 
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
 import {ISeaDropTokenContractMetadata} from "./ISeaDropTokenContractMetadata.sol";
 import {
     AllowListData,
@@ -20,15 +22,9 @@ import {
  *      NFT surface. Method signatures + struct layouts must mirror the
  *      canonical ProjectOpenSea/seadrop interface verbatim so
  *      type(INonFungibleSeaDropToken).interfaceId matches the value live
- *      SeaDrop deployments expect; pinning against the deployed bytecode is
- *      tracked under US-022.
- *
- *      The shim does NOT implement every method declared here:
- *        - updateTokenGatedDrop / updateSignedMintValidationParams are v1
- *          non-goals (token-gated drops + signed mints not in scope).
- *      Calls to those selectors will revert at the Solidity dispatcher.
+ *      SeaDrop deployments expect
  */
-interface INonFungibleSeaDropToken is ISeaDropTokenContractMetadata {
+interface INonFungibleSeaDropToken is ISeaDropTokenContractMetadata, IERC165 {
     /// @dev Thrown by mintSeaDrop when msg.sender is not an allowed SeaDrop.
     error OnlyAllowedSeaDrop();
 
@@ -37,7 +33,7 @@ interface INonFungibleSeaDropToken is ISeaDropTokenContractMetadata {
 
     function updateAllowedSeaDrop(address[] calldata allowedSeaDrop) external;
 
-    function mintSeaDrop(address minter, uint256 quantity) external;
+    function mintSeaDrop(address minter, uint256 quantity) external payable;
 
     function getMintStats(address minter)
         external

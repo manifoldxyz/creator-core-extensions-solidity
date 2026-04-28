@@ -12,8 +12,7 @@ import {
 } from "./SeaDropStructs.sol";
 
 /**
- * @notice Pass-through subset of stock SeaDrop v1 (deployed at
- *         0x00005EA00Ac477B1030CE78506496e8C2dE24bf5) that
+ * @notice Pass-through subset of stock SeaDrop v1 that
  *         ManifoldERC1155SeaDropShim forwards admin config to.
  * @dev Intentionally narrow: only the setters the shim proxies during
  *      initialize / multiConfigure / admin pass-through calls. The structs

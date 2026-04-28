@@ -6,8 +6,7 @@ pragma solidity ^0.8.17;
 
 /**
  * @notice Storage protocol used to resolve the tokenURI.
- * @dev Matches the ERC1155LazyPayableClaimCore storage-protocol pattern.
- *      INVALID is the default zero-value and is used as an "unset" sentinel.
+ * @dev INVALID is the default zero-value and is used as an "unset" sentinel.
  */
 enum StorageProtocol {
     INVALID,
@@ -18,7 +17,6 @@ enum StorageProtocol {
 
 /**
  * @notice PublicDrop as consumed by stock SeaDrop v1
- *         (0x00005EA00Ac477B1030CE78506496e8C2dE24bf5).
  * @dev Field order and packed sizes mirror the deployed SeaDrop ABI so that
  *      forwarding setters on the shim can pass the struct by value without
  *      re-encoding. Keep in sync with ISeaDrop.updatePublicDrop.
@@ -50,9 +48,8 @@ struct AllowListData {
  *      forward the stock SeaDrop setters in a single admin transaction.
  *      seaDropImpl is the SeaDrop deployment to configure (must also be in the
  *      shim's allowed-SeaDrop set for mintSeaDrop to accept its calls).
- *      instanceId is the Manifold drop instanceId — admin must pass it non-zero
- *      on the first initialize() call since _applyConfig zero-skips this field
- *      (matching every other scalar in the struct).
+ *      The Manifold drop instanceId is bound at deploy time as a constructor
+ *      immutable on the shim — it is NOT part of this struct.
  *
  *      multiConfigure ignores zero-value / empty-array fields — callers use
  *      the individual external setters to unset or reset a property to zero.
@@ -61,13 +58,13 @@ struct AllowListData {
  *      mirroring the stock SeaDrop MultiConfigureStruct semantics.
  */
 struct MultiConfigureStruct {
-    uint256 instanceId;
     uint256 maxSupply;
     string tokenUriLocation;
     StorageProtocol storageProtocol;
     string contractURI;
     address seaDropImpl;
     PublicDrop publicDrop;
+    string dropURI;
     AllowListData allowListData;
     address creatorPayoutAddress;
     address[] allowedFeeRecipients;

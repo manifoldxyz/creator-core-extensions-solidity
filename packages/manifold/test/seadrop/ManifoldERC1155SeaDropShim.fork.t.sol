@@ -145,7 +145,7 @@ contract ManifoldERC1155SeaDropShimForkTest is Test {
 
         address[] memory allowed = new address[](1);
         allowed[0] = SEADROP;
-        shim = new ManifoldERC1155SeaDropShim(address(creator), allowed);
+        shim = new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
 
         creator.registerExtension(address(shim), "");
 
@@ -178,7 +178,6 @@ contract ManifoldERC1155SeaDropShimForkTest is Test {
         feeRecipients[0] = feeRecipient;
 
         cfg = MultiConfigureStruct({
-            instanceId: INSTANCE_ID,
             maxSupply: MAX_SUPPLY,
             tokenUriLocation: "https://example.com/meta.json",
             storageProtocol: StorageProtocol.NONE,
@@ -192,6 +191,7 @@ contract ManifoldERC1155SeaDropShimForkTest is Test {
                 feeBps: uint16(FEE_BPS),
                 restrictFeeRecipients: true
             }),
+            dropURI: "",
             allowListData: AllowListData({
                 merkleRoot: merkleRoot,
                 publicKeyURIs: new string[](0),
