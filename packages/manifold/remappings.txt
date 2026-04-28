@@ -1,3 +1,6 @@
 create2-scripts/=lib/create2-helpers/script/
 create2-helpers/=lib/create2-helpers/src/
 forge-std/=lib/forge-std/src/
+seadrop/=lib/seadrop/
+openzeppelin-contracts/=lib/openzeppelin-contracts/
+solmate/=lib/solmate/src/

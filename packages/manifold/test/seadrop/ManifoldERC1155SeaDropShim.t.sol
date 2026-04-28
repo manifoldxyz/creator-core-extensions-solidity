@@ -44,6 +44,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
     event MaxSupplyUpdated(uint256 newMaxSupply);
     event AllowedSeaDropUpdated(address[] allowed);
+    event DropURIUpdated(address indexed nftContract, string newDropURI);
 
     uint256 internal constant INSTANCE_ID = 1;
 
@@ -70,6 +71,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         allowed[0] = address(mockSeaDrop);
         shim = new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
 
+        mockSeaDrop.setObservedNftContract(address(shim));
         creator.registerExtension(address(shim), "");
 
         vm.stopPrank();
@@ -80,6 +82,11 @@ contract ManifoldERC1155SeaDropShimTest is Test {
      *      exercise a specific field. Scenario tests should clone into a
      *      memory variable, tweak the fields they care about, then pass in.
      */
+    function _singleStringArray(string memory value) internal pure returns (string[] memory values) {
+        values = new string[](1);
+        values[0] = value;
+    }
+
     function _defaultCfg() internal view returns (MultiConfigureStruct memory cfg) {
         address[] memory feeRecipients = new address[](1);
         feeRecipients[0] = feeRecipient;
@@ -100,9 +107,9 @@ contract ManifoldERC1155SeaDropShimTest is Test {
             }),
             dropURI: "",
             allowListData: AllowListData({
-                merkleRoot: bytes32(0),
-                publicKeyURIs: new string[](0),
-                allowListURI: ""
+                merkleRoot: bytes32(uint256(0xA110)),
+                publicKeyURIs: _singleStringArray("https://keys.example.com/default"),
+                allowListURI: "https://example.com/default-allowlist.json"
             }),
             creatorPayoutAddress: payoutAddress,
             allowedFeeRecipients: feeRecipients,
@@ -252,12 +259,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
         AllowListData memory ald = mockSeaDrop.lastAllowListData();
         assertEq(ald.merkleRoot, cfg.allowListData.merkleRoot, "allowList.merkleRoot");
-        assertEq(ald.allowListURI, cfg.allowListData.allowListURI, "allowList.allowListURI");
-        assertEq(
-            ald.publicKeyURIs.length,
-            cfg.allowListData.publicKeyURIs.length,
-            "allowList.publicKeyURIs.length"
-        );
+        // Stock SeaDrop stores only the merkle root; publicKeyURIs and allowListURI are event-only.
 
         assertEq(mockSeaDrop.lastCreatorPayoutAddress(), payoutAddress, "payout forwarded");
         assertTrue(
@@ -334,6 +336,18 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         shim.initialize(_defaultCfg());
     }
 
+    function _mintPublic(address minter, uint256 quantity) internal {
+        uint256 payment = uint256(_defaultCfg().publicDrop.mintPrice) * quantity;
+        vm.deal(minter, 1 ether);
+        vm.prank(minter);
+        mockSeaDrop.mintPublic{value: payment}(
+            address(shim),
+            feeRecipient,
+            address(0),
+            quantity
+        );
+    }
+
     /**
      * @notice A direct EOA call to mintSeaDrop fails the allowed-SeaDrop gate.
      * @dev The shim's onlyAllowedSeaDrop modifier checks msg.sender against
@@ -349,15 +363,14 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     }
 
     /**
-     * @notice Routing through MockSeaDrop.fakeMint satisfies the allowed gate
-     *         (MockSeaDrop is in the shim's set via setUp) and updates the
-     *         per-wallet + drop-wide counters, keeping totalSupply() aligned
-     *         with _totalMinted.
+     * @notice Routing through stock SeaDrop's public mint path satisfies the
+     *         allowed gate and updates the per-wallet + drop-wide counters,
+     *         keeping totalSupply() aligned with _totalMinted.
      */
     function testMintSeaDropIncrementsCounters() public {
         _initializeDefault();
 
-        mockSeaDrop.fakeMint(address(shim), alice, 3);
+        _mintPublic(alice, 3);
 
         (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(alice);
         assertEq(minted, 3, "alice minterNumMinted");
@@ -374,8 +387,8 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     function testMintSeaDropAccumulatesAcrossCalls() public {
         _initializeDefault();
 
-        mockSeaDrop.fakeMint(address(shim), alice, 3);
-        mockSeaDrop.fakeMint(address(shim), alice, 2);
+        _mintPublic(alice, 3);
+        _mintPublic(alice, 2);
 
         (uint256 minted, uint256 total, ) = shim.getMintStats(alice);
         assertEq(minted, 5, "alice cumulative minterNumMinted");
@@ -395,8 +408,8 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         _initializeDefault();
         uint256 expectedTokenId = 1;
 
-        mockSeaDrop.fakeMint(address(shim), alice, 4);
-        mockSeaDrop.fakeMint(address(shim), bob, 2);
+        _mintPublic(alice, 4);
+        _mintPublic(bob, 2);
 
         assertEq(creator.balanceOf(alice, expectedTokenId), 4, "alice ERC1155 balance");
         assertEq(creator.balanceOf(bob, expectedTokenId), 2, "bob ERC1155 balance");
@@ -448,7 +461,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     function testGetMintStatsAfterMintIsPerWallet() public {
         _initializeDefault();
 
-        mockSeaDrop.fakeMint(address(shim), alice, 2);
+        _mintPublic(alice, 2);
 
         uint256 maxSupply = _defaultCfg().maxSupply;
 
@@ -471,7 +484,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     function testGetMintStatsReflectsMaxSupplyIncrease() public {
         _initializeDefault();
 
-        mockSeaDrop.fakeMint(address(shim), alice, 2);
+        _mintPublic(alice, 2);
 
         uint256 newCap = 200;
 
@@ -495,7 +508,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     function testSetMaxSupplyRevertsBelowTotalMinted() public {
         _initializeDefault();
 
-        mockSeaDrop.fakeMint(address(shim), alice, 5);
+        _mintPublic(alice, 5);
 
         vm.expectRevert(
             abi.encodeWithSignature(
@@ -629,18 +642,17 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     }
 
     /**
-     * @notice Idempotency — multiConfigure called twice with the same cfg does
-     *         not revert and leaves the shim + MockSeaDrop in the same
-     *         observable state as a single call. Every write in _applyConfig
-     *         is an unconditional overwrite of the same value, so repeat calls
-     *         are no-ops from the test's perspective.
+     * @notice Overwrite-only fields are idempotent when repeated. Additive set
+     *         updates such as allowedFeeRecipients are intentionally excluded:
+     *         stock SeaDrop reverts on duplicate fee recipients.
      */
-    function testMultiConfigureIsIdempotent() public {
+    function testMultiConfigureOverwriteFieldsAreIdempotent() public {
         _initializeDefault();
 
         MultiConfigureStruct memory cfg = _defaultCfg();
         cfg.maxSupply = 150;
         cfg.contractURI = "https://example.com/idempotent.json";
+        cfg.allowedFeeRecipients = new address[](0);
 
         vm.prank(creatorAdmin);
         shim.multiConfigure(cfg);
@@ -649,10 +661,9 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         uint256 supplyAfterFirst = shim.maxSupply();
         string memory contractURIAfterFirst = shim.contractURI();
         address payoutAfterFirst = mockSeaDrop.lastCreatorPayoutAddress();
-        bool feeAllowedAfterFirst = mockSeaDrop.allowedFeeRecipient(feeRecipient);
         PublicDrop memory pdAfterFirst = mockSeaDrop.lastPublicDrop();
 
-        // Second call with the exact same cfg should be a no-op observationally.
+        // Second call with the same overwrite-only cfg should be a no-op observationally.
         vm.prank(creatorAdmin);
         shim.multiConfigure(cfg);
 
@@ -663,16 +674,26 @@ contract ManifoldERC1155SeaDropShimTest is Test {
             payoutAfterFirst,
             "payout unchanged by repeat"
         );
-        assertEq(
-            mockSeaDrop.allowedFeeRecipient(feeRecipient),
-            feeAllowedAfterFirst,
-            "fee recipient allow-map unchanged by repeat"
-        );
 
         PublicDrop memory pdAfterSecond = mockSeaDrop.lastPublicDrop();
         assertEq(pdAfterSecond.mintPrice, pdAfterFirst.mintPrice, "publicDrop.mintPrice stable");
         assertEq(pdAfterSecond.endTime, pdAfterFirst.endTime, "publicDrop.endTime stable");
         assertEq(pdAfterSecond.feeBps, pdAfterFirst.feeBps, "publicDrop.feeBps stable");
+    }
+
+    /**
+     * @notice Stock SeaDrop rejects adding an already-allowed fee recipient.
+     *         The shim forwards additive arrays verbatim, so a repeated full
+     *         cfg is not idempotent when it includes allowedFeeRecipients.
+     */
+    function testMultiConfigureRevertsOnDuplicateAllowedFeeRecipient() public {
+        _initializeDefault();
+
+        MultiConfigureStruct memory cfg = _defaultCfg();
+
+        vm.prank(creatorAdmin);
+        vm.expectRevert(bytes4(keccak256("DuplicateFeeRecipient()")));
+        shim.multiConfigure(cfg);
     }
 
     // -----------------------------------------------------------------------
@@ -940,10 +961,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
         AllowListData memory recorded = mockSeaDrop.lastAllowListData();
         assertEq(recorded.merkleRoot, ald.merkleRoot, "merkleRoot forwarded");
-        assertEq(recorded.allowListURI, ald.allowListURI, "allowListURI forwarded");
-        assertEq(recorded.publicKeyURIs.length, 2, "publicKeyURIs length forwarded");
-        assertEq(recorded.publicKeyURIs[0], keyURIs[0], "publicKeyURIs[0] forwarded");
-        assertEq(recorded.publicKeyURIs[1], keyURIs[1], "publicKeyURIs[1] forwarded");
+        // Stock SeaDrop stores only the root; publicKeyURIs and allowListURI are event-only.
     }
 
     /**
@@ -970,13 +988,10 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         vm.prank(creatorAdmin);
         shim.updateAllowedFeeRecipient(address(mockSeaDrop), newFr, true);
         assertTrue(mockSeaDrop.allowedFeeRecipient(newFr), "fee recipient allowed");
-        assertEq(mockSeaDrop.lastFeeRecipient(), newFr, "lastFeeRecipient snapshot");
-        assertTrue(mockSeaDrop.lastFeeRecipientAllowed(), "lastFeeRecipientAllowed=true");
 
         vm.prank(creatorAdmin);
         shim.updateAllowedFeeRecipient(address(mockSeaDrop), newFr, false);
         assertFalse(mockSeaDrop.allowedFeeRecipient(newFr), "fee recipient revoked");
-        assertFalse(mockSeaDrop.lastFeeRecipientAllowed(), "lastFeeRecipientAllowed=false");
     }
 
     /**
@@ -985,10 +1000,11 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     function testUpdateDropURIForwardsString() public {
         string memory dropURI = "https://example.com/drop-metadata.json";
 
+        vm.expectEmit(true, false, false, true, address(mockSeaDrop));
+        emit DropURIUpdated(address(shim), dropURI);
+
         vm.prank(creatorAdmin);
         shim.updateDropURI(address(mockSeaDrop), dropURI);
-
-        assertEq(mockSeaDrop.lastDropURI(), dropURI, "dropURI forwarded");
     }
 
     /**
@@ -1000,8 +1016,6 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
         vm.prank(creatorAdmin);
         shim.updatePayer(address(mockSeaDrop), payer, true);
-        assertEq(mockSeaDrop.lastPayer(), payer, "lastPayer snapshot");
-        assertTrue(mockSeaDrop.lastPayerAllowed(), "lastPayerAllowed=true");
         assertTrue(mockSeaDrop.allowedPayer(payer), "payer allowed in map");
     }
 
@@ -1089,7 +1103,6 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         vm.prank(creatorAdmin);
         shim.updateTokenGatedDrop(address(mockSeaDrop), gateToken, stage);
 
-        assertEq(mockSeaDrop.lastTokenGatedNftToken(), gateToken, "nftToken forwarded");
         TokenGatedDropStage memory stored = mockSeaDrop.tokenGatedDrop(gateToken);
         assertEq(stored.mintPrice, stage.mintPrice, "stage.mintPrice");
         assertEq(stored.maxTotalMintableByWallet, stage.maxTotalMintableByWallet);
@@ -1117,7 +1130,6 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         vm.prank(creatorAdmin);
         shim.updateSignedMintValidationParams(address(mockSeaDrop), signer, params);
 
-        assertEq(mockSeaDrop.lastSigner(), signer, "signer forwarded");
         SignedMintValidationParams memory stored = mockSeaDrop.signedMintValidationParams(signer);
         assertEq(stored.minMintPrice, params.minMintPrice);
         assertEq(stored.maxMaxTotalMintableByWallet, params.maxMaxTotalMintableByWallet);
@@ -1134,6 +1146,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         _initializeDefault();
 
         MultiConfigureStruct memory cfg = _defaultCfg();
+        cfg.allowedFeeRecipients = new address[](0);
         cfg.tokenGatedAllowedNftTokens = new address[](2);
         cfg.tokenGatedAllowedNftTokens[0] = address(0xCAFE01);
         cfg.tokenGatedAllowedNftTokens[1] = address(0xCAFE02);
@@ -1155,6 +1168,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         _initializeDefault();
 
         MultiConfigureStruct memory cfg = _defaultCfg();
+        cfg.allowedFeeRecipients = new address[](0);
         cfg.signers = new address[](1);
         cfg.signers[0] = address(0x516E);
         cfg.signedMintValidationParams = new SignedMintValidationParams[](2);
