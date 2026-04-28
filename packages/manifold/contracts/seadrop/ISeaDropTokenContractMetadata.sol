@@ -30,13 +30,17 @@ interface ISeaDropTokenContractMetadata {
     ///      the new URI so indexers can avoid a follow-up read.
     event ContractURIUpdated(string newContractURI);
 
-    /// @dev Indexed metadata refresh range — emitted by deployed SeaDrop's
-    ///      ISeaDropTokenContractMetadata. The shim does NOT emit this event
-    ///      today; declared here for canonical-interface fidelity only.
+    /// @dev Indexed metadata refresh range — emitted by stock SeaDrop metadata
+    ///      setters and this shim's single-token metadata setters for OpenSea
+    ///      / EIP-4906 cache invalidation.
+    event BatchMetadataUpdate(uint256 fromTokenId, uint256 toTokenId);
+
+    /// @dev Emitted when the token URI changes in the deployed SeaDrop
+    ///      metadata interface. Declared here for canonical-interface fidelity.
     event TokenURIUpdated(uint256 indexed startTokenId, uint256 indexed endTokenId);
 
-    /// @dev Emitted when the base URI changes. Declared here for canonical
-    ///      interface fidelity; the shim's baseURI is a fixed empty string.
+    /// @dev Emitted when the base URI changes in the deployed SeaDrop
+    ///      metadata interface. Declared here for canonical-interface fidelity.
     event BaseURIUpdated(string baseURI);
 
     function contractURI() external view returns (string memory);

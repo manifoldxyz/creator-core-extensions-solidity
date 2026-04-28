@@ -31,9 +31,9 @@ interface IManifoldERC1155SeaDropShim {
     /// @dev Reverts from mintSeaDrop / multiConfigure when _tokenId == 0.
     error NotInitialized();
 
-    /// @dev Reserved for supply-cap violations surfaced by the shim itself.
-    ///      Day-to-day cap enforcement happens inside SeaDrop via getMintStats.
-    error ExceedsMaxSupply();
+    /// @dev Reverts from mintSeaDrop when the mint would exceed the configured
+    ///      max supply, mirroring stock ERC721SeaDrop's final safety guard.
+    error MintQuantityExceedsMaxSupply(uint256 total, uint256 maxSupply);
 
     /// @dev tokenURI lookups fail when the queried tokenId (or creator, for
     ///      the Creator Core overload) does not match the shim's single drop.
@@ -70,9 +70,12 @@ interface IManifoldERC1155SeaDropShim {
 
     /// @notice Emitted at the end of the shim constructor — mirrors stock
     ///         ERC721SeaDrop's SeaDropTokenDeployed signal so off-chain
-    ///         indexers can detect a new shim deployment without scanning
-    ///         Creator Core's registerExtension event stream.
-    event ManifoldSeaDropTokenDeployed();
+    ///         indexers can detect a new SeaDrop-compatible deployment.
+    event SeaDropTokenDeployed();
+
+    /// @notice Emitted at the end of the shim constructor to tell indexers the
+    ///         shim mints tokens on the bound Creator Core contract.
+    event SeaDropShimForContract(address nftContract);
 
     /// @notice Emitted exactly once, from initialize(), after _applyConfig has
     ///         pushed the full drop config. Carries the correlation pair that

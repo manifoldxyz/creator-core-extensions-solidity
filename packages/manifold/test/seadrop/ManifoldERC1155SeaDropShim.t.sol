@@ -40,11 +40,13 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     // Solidity only allows `emit` of events declared in the current contract
     // or a base contract, so mirroring the IManifoldERC1155SeaDropShim
     // signatures here is the cleanest way to assert on them.
-    event ManifoldSeaDropTokenDeployed();
+    event SeaDropTokenDeployed();
+    event SeaDropShimForContract(address nftContract);
     event Initialized(uint256 indexed instanceId, uint256 indexed tokenId);
     event MaxSupplyUpdated(uint256 newMaxSupply);
     event AllowedSeaDropUpdated(address[] allowed);
     event DropURIUpdated(address indexed nftContract, string newDropURI);
+    event BatchMetadataUpdate(uint256 fromTokenId, uint256 toTokenId);
 
     uint256 internal constant INSTANCE_ID = 1;
 
@@ -140,17 +142,18 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     }
 
     /**
-     * @notice The shim constructor emits ManifoldSeaDropTokenDeployed as its
-     *         last action — mirrors stock ERC721SeaDrop's SeaDropTokenDeployed
-     *         signal so off-chain indexers can watch for new shim deployments
-     *         without scanning Creator Core's registerExtension events.
+     * @notice The shim constructor emits stock SeaDrop deployment/indexing
+     *         events as its last action so OpenSea can discover the shim and
+     *         associate it with the underlying Creator Core contract.
      */
-    function testConstructorEmitsManifoldSeaDropTokenDeployed() public {
+    function testConstructorEmitsSeaDropIndexingEvents() public {
         address[] memory allowed = new address[](1);
         allowed[0] = address(mockSeaDrop);
 
         vm.expectEmit(false, false, false, false);
-        emit ManifoldSeaDropTokenDeployed();
+        emit SeaDropTokenDeployed();
+        vm.expectEmit(false, false, false, true);
+        emit SeaDropShimForContract(address(creator));
 
         new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
     }
@@ -432,6 +435,26 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         mockSeaDrop.fakeMint(address(shim), alice, 1);
     }
 
+    /**
+     * @notice Even though stock SeaDrop checks getMintStats before minting,
+     *         mintSeaDrop keeps its own final max-supply guard for direct-call
+     *         safety and reverts with the canonical SeaDrop error.
+     */
+    function testMintSeaDropRevertsWhenQuantityExceedsMaxSupply() public {
+        _initializeDefault();
+
+        vm.expectRevert(
+            abi.encodeWithSignature("MintQuantityExceedsMaxSupply(uint256,uint256)", 101, 100)
+        );
+        mockSeaDrop.fakeMint(address(shim), alice, 101);
+
+        (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(alice);
+        assertEq(minted, 0, "minter counter unchanged");
+        assertEq(total, 0, "total counter unchanged");
+        assertEq(cap, 100, "cap unchanged");
+        assertEq(creator.balanceOf(alice, 1), 0, "no ERC1155 mint on revert");
+    }
+
     // -----------------------------------------------------------------------
     // getMintStats — SeaDrop cap-enforcement tuple (US-016)
     // -----------------------------------------------------------------------
@@ -710,6 +733,9 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     function testUpdateTokenURIArweaveBothSignatures() public {
         _initializeDefault();
 
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit BatchMetadataUpdate(1, 1);
+
         vm.prank(creatorAdmin);
         shim.updateTokenURI(StorageProtocol.ARWEAVE, "abc123");
 
@@ -857,6 +883,9 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         _initializeDefault();
 
         string memory next = "https://example.com/updated-base.json";
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit BatchMetadataUpdate(1, 1);
+
         vm.prank(creatorAdmin);
         shim.setBaseURI(next);
 
