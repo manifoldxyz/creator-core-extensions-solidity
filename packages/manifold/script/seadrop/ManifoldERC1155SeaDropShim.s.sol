@@ -9,41 +9,56 @@ import "../../contracts/seadrop/ManifoldERC1155SeaDropShim.sol";
  * @notice Parameterized Forge deploy script for the per-drop SeaDrop shim.
  *
  * Env vars:
- *   - PRIVATE_KEY      (uint256) — deployer EOA
- *   - INITIAL_OWNER    (address) — wallet to set as the shim's Ownable owner
- *                                   (constructor's msg.sender is the CREATE2
- *                                   proxy when salt is used, so an explicit
- *                                   owner arg is required)
- *   - CREATOR_CONTRACT (address) — Manifold Creator Core ERC1155 to bind to
- *   - INSTANCE_ID      (uint256) — Manifold drop instanceId (must be non-zero)
+ *   - PRIVATE_KEY      (uint256) — deployer EOA. This wallet becomes the
+ *                                   shim's owner via TwoStepOwnable's
+ *                                   constructor (msg.sender is the broadcaster,
+ *                                   even with CREATE2 + salt).
+ *   - SHIM_NAME        (string)  — ERC721 name (used by ERC721A).
+ *                                   Defaults to "Manifold SeaDrop Shim".
+ *   - SHIM_SYMBOL      (string)  — ERC721 symbol (used by ERC721A).
+ *                                   Defaults to "MSS".
+ *   - CREATOR_CONTRACT (address) — Manifold Creator Core ERC1155 to bind to.
+ *   - INSTANCE_ID      (uint256) — Manifold drop instanceId (must be non-zero).
  *   - SEADROP_ADDRESS  (address) — SeaDrop deployment authorized to mint
- *                                   (0x00005EA00Ac477B1030CE78506496e8C2dE24bf5 on mainnet/Sepolia)
+ *                                   (0x00005EA00Ac477B1030CE78506496e8C2dE24bf5
+ *                                   on mainnet/Sepolia).
  *
  * Does NOT call registerExtension or initialize — those are manual runbook
- * steps from the creator admin wallet (see contracts/seadrop/docs/lifecycle-and-deployment.md).
- * The Manifold drop instanceId is bound at deploy time as a constructor immutable.
+ * steps. After deploy:
+ *   1. From a creator-admin wallet on the target Manifold Creator Core:
+ *      `creator.registerExtension(shim, "")`
+ *   2. From the shim owner (this deployer):
+ *      `shim.initialize()`           — seeds the ERC1155 tokenId
+ *   3. From the shim owner:
+ *      `shim.setMaxSupply(N)` and/or `shim.multiConfigure(cfg)` to push
+ *      drop config to SeaDrop.
  *
  * Example:
  *   forge script script/seadrop/ManifoldERC1155SeaDropShim.s.sol \
- *     --optimizer-runs 200 \
+ *     --optimizer-runs 500 \
  *     --rpc-url $SEPOLIA_RPC_URL \
  *     --broadcast
  *
- *   forge verify-contract --compiler-version 0.8.17 --optimizer-runs 200 \
+ *   forge verify-contract --compiler-version 0.8.17 --optimizer-runs 500 \
  *     --chain sepolia <DEPLOYED_ADDRESS> \
  *     contracts/seadrop/ManifoldERC1155SeaDropShim.sol:ManifoldERC1155SeaDropShim \
- *     --constructor-args $(cast abi-encode "constructor(address,address,uint256,address[])" \
- *       "${INITIAL_OWNER}" "${CREATOR_CONTRACT}" "${INSTANCE_ID}" "[${SEADROP_ADDRESS}]") \
+ *     --constructor-args $(cast abi-encode \
+ *       "constructor(string,string,address[],address,uint256)" \
+ *       "${SHIM_NAME}" "${SHIM_SYMBOL}" "[${SEADROP_ADDRESS}]" \
+ *       "${CREATOR_CONTRACT}" "${INSTANCE_ID}") \
  *     --watch
  */
 contract DeployManifoldERC1155SeaDropShim is Script {
     function run() external {
-        address initialOwner = vm.envAddress("INITIAL_OWNER");
         address creatorContract = vm.envAddress("CREATOR_CONTRACT");
         uint256 instanceId = vm.envUint("INSTANCE_ID");
         address seaDropAddress = vm.envAddress("SEADROP_ADDRESS");
+        string memory shimName = vm.envOr(
+            "SHIM_NAME",
+            string("Manifold SeaDrop Shim")
+        );
+        string memory shimSymbol = vm.envOr("SHIM_SYMBOL", string("MSS"));
 
-        require(initialOwner != address(0), "INITIAL_OWNER not set");
         require(creatorContract != address(0), "CREATOR_CONTRACT not set");
         require(instanceId != 0, "INSTANCE_ID not set");
         require(seaDropAddress != address(0), "SEADROP_ADDRESS not set");
@@ -59,16 +74,19 @@ contract DeployManifoldERC1155SeaDropShim is Script {
         ManifoldERC1155SeaDropShim shim = new ManifoldERC1155SeaDropShim{
             salt: 0x7a4d8e2b9c6f1a3d5e8b4c7f2a9d6e1b3c5f8a4d7e2b9c6f1a3d5e8b4c7f2a9d
         }(
-            initialOwner,
+            shimName,
+            shimSymbol,
+            initialAllowedSeaDrop,
             creatorContract,
-            instanceId,
-            initialAllowedSeaDrop
+            instanceId
         );
 
         vm.stopBroadcast();
 
         console.log("ManifoldERC1155SeaDropShim deployed at:", address(shim));
-        console.log("  initialOwner:  ", initialOwner);
+        console.log("  name:           ", shimName);
+        console.log("  symbol:         ", shimSymbol);
+        console.log("  owner:          ", shim.owner());
         console.log("  creatorContract:", creatorContract);
         console.log("  instanceId:    ", instanceId);
         console.log("  allowedSeaDrop:", seaDropAddress);

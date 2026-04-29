@@ -4,3 +4,5 @@ forge-std/=lib/forge-std/src/
 seadrop/=lib/seadrop/
 openzeppelin-contracts/=lib/openzeppelin-contracts/
 solmate/=lib/solmate/src/
+ERC721A/=lib/ERC721A/contracts/
+utility-contracts/=lib/utility-contracts/src/
