@@ -48,9 +48,6 @@ contract ManifoldERC1155SeaDropShim is
     string internal constant ARWEAVE_PREFIX = "https://arweave.net/";
     string internal constant IPFS_PREFIX = "ipfs://";
 
-    // Max Creator Core ERC1155 supply tracked by Manifold claim-style drops.
-    uint256 internal constant MAX_UINT_24 = 0xffffff;
-
     // -----------------------------------------------------------------------
     // Immutable binding (constructor)
     // -----------------------------------------------------------------------
@@ -323,10 +320,7 @@ contract ManifoldERC1155SeaDropShim is
      *      read by getMintStats is consistent even if Creator Core's
      *      mintExtensionExisting triggers an ERC1155 receiver hook — the shim's
      *      own nonReentrant lock plus the _onlyAllowedSeaDrop gate bound the
-     *      re-entrancy surface. Stock SeaDrop checks getMintStats before
-     *      calling mintSeaDrop, but the shim repeats the max-supply check as a
-     *      final safety guard before mutating local counters or minting on
-     *      Creator Core.
+     *      re-entrancy surface.
      */
     function mintSeaDrop(address minter, uint256 quantity)
         external
@@ -337,23 +331,13 @@ contract ManifoldERC1155SeaDropShim is
         _onlyAllowedSeaDrop(msg.sender);
         if (_tokenId == 0) revert NotInitialized();
 
-        uint256 effectiveMaxSupply = _maxSupply;
-        if (effectiveMaxSupply == 0 || effectiveMaxSupply > MAX_UINT_24) {
-            effectiveMaxSupply = MAX_UINT_24;
-        }
-
-        uint256 newTotalMinted;
-        if (quantity > type(uint256).max - _totalMinted) {
-            revert MintQuantityExceedsMaxSupply(type(uint256).max, effectiveMaxSupply);
-        }
-        newTotalMinted = _totalMinted + quantity;
-
-        if (newTotalMinted > effectiveMaxSupply) {
-            revert MintQuantityExceedsMaxSupply(newTotalMinted, effectiveMaxSupply);
+        // Extra safety check to ensure the max supply is not exceeded.
+        if (_totalMinted + quantity > _maxSupply) {
+            revert MintQuantityExceedsMaxSupply(_totalMinted + quantity, _maxSupply);
         }
 
         _minterNumMinted[minter] += quantity;
-        _totalMinted = newTotalMinted;
+        _totalMinted += quantity;
 
         address[] memory recipients = new address[](1);
         recipients[0] = minter;

@@ -225,7 +225,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     }
 
     // -----------------------------------------------------------------------
-    // initialize() — happy path + revert cases (US-014)
+    // initialize() — happy path + revert cases
     // -----------------------------------------------------------------------
 
     /**
@@ -544,29 +544,34 @@ contract ManifoldERC1155SeaDropShimTest is Test {
     }
 
     /**
-     * @notice Creator Core claim-style totals are bounded to uint24 even when
-     *         admin config allows a larger SeaDrop-visible maxSupply.
+     * @notice An admin-configured maxSupply above the legacy uint24 ceiling is
+     *         honored at face value — mintSeaDrop has no implicit uint24 clamp,
+     *         and the cap-exceeded revert reports the configured maxSupply, not
+     *         uint24.max.
      */
-    function testMintSeaDropRevertsAboveUint24EffectiveCap() public {
+    function testMintSeaDropAllowsSupplyAboveUint24() public {
         _initializeDefault();
 
         uint256 overUint24 = uint256(type(uint24).max) + 1;
         vm.prank(creatorAdmin);
         shim.setMaxSupply(overUint24);
 
-        vm.expectRevert(
-            abi.encodeWithSignature(
-                "MintQuantityExceedsMaxSupply(uint256,uint256)",
-                overUint24,
-                uint256(type(uint24).max)
-            )
-        );
         _mintSeaDropDirect(alice, overUint24);
 
         (uint256 minted, uint256 total, uint256 cap) = shim.getMintStats(alice);
-        assertEq(minted, 0, "minter counter unchanged");
-        assertEq(total, 0, "total counter unchanged");
-        assertEq(cap, overUint24, "admin cap still visible in getMintStats");
+        assertEq(minted, overUint24, "minter counter reflects mint above uint24");
+        assertEq(total, overUint24, "total counter reflects mint above uint24");
+        assertEq(cap, overUint24, "configured cap visible in getMintStats");
+        assertEq(creator.balanceOf(alice, 1), overUint24, "ERC1155 balance reflects mint above uint24");
+
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "MintQuantityExceedsMaxSupply(uint256,uint256)",
+                overUint24 + 1,
+                overUint24
+            )
+        );
+        _mintSeaDropDirect(bob, 1);
     }
 
     // -----------------------------------------------------------------------
