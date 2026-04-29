@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import {ERC721SeaDrop} from "seadrop/src/ERC721SeaDrop.sol";
 import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
-import {ICreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/core/ICreatorCore.sol";
 
 /**
  * @title  ManifoldERC1155SeaDropShim
@@ -185,92 +184,28 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
         maxSupply_ = maxSupply();
     }
 
-    // -------------------------------------------------------------------
-    // Creator Core metadata passthroughs
-    //
-    // Creator Core's `uri(tokenId)` resolution order:
-    //   1. Per-token override `_tokenURIs[tokenId]`     (setTokenURIExtension)
-    //   2. Else if extension supports ICreatorExtensionTokenURI → call it
-    //      (this shim does NOT — metadata is owned by the creator contract)
-    //   3. Else extension base URI `_extensionBaseURI[extension]`,
-    //      with `tokenId.toString()` suffix unless `identical=true`
-    //      (setBaseTokenURIExtension)
-    //
-    // All four setters on the creator contract gate on
-    // `msg.sender` == the registered extension (`extensionRequired`), so
-    // *only this shim* can configure the URI for the bound tokenId. These
-    // passthroughs let the shim owner drive that from outside.
-    //
-    // Auth: `onlyOwner`. Drop-page metadata (contractURI, baseURI on the
-    // shim) is separate and stays on the inherited ERC721ContractMetadata
-    // surface — those serve OpenSea's drop-page render, not the ERC1155
-    // token metadata that wallets and indexers fetch.
-    // -------------------------------------------------------------------
-
     /**
-     * @notice Set the base URI on the Manifold Creator Core contract for
-     *         every token minted by this shim. The 1-arg variant defaults
-     *         `identical=false`, so Creator Core appends `tokenId.toString()`
-     *         to the URI (`<uri>1`, `<uri>2`, ...).
+     * @notice Update the metadata URI for the bound ERC1155 tokenId on the
+     *         Manifold Creator Core contract.
      *
-     * @param uri_ The base URI to set on the creator contract.
-     */
-    function setBaseTokenURIExtension(string calldata uri_) external onlyOwner {
-        ICreatorCore(creatorContractAddress).setBaseTokenURIExtension(uri_);
-    }
-
-    /**
-     * @notice Set the base URI on the Manifold Creator Core contract for
-     *         every token minted by this shim. With `identical=true`, every
-     *         tokenId resolves to the same `uri_` (no suffix). For ERC1155
-     *         drops with a single bound tokenId — the canonical SeaDrop case
-     *         here — `identical=true` is what you want.
+     *         Creator Core gates `setTokenURIExtension` on `msg.sender`
+     *         being the registered extension that originally minted the
+     *         tokenId — that's this shim — so this passthrough is the only
+     *         way to drive token metadata after `initialize()`. Auth is
+     *         `onlyOwner` (the deploy wallet); see contract-level NatSpec
+     *         for the auth-model rationale.
      *
-     * @param uri_      The base URI to set on the creator contract.
-     * @param identical If true, every tokenId returns `uri_` verbatim with
-     *                  no `tokenId.toString()` suffix.
-     */
-    function setBaseTokenURIExtension(string calldata uri_, bool identical)
-        external
-        onlyOwner
-    {
-        ICreatorCore(creatorContractAddress).setBaseTokenURIExtension(
-            uri_,
-            identical
-        );
-    }
-
-    /**
-     * @notice Set a prefix that Creator Core prepends to per-token URIs
-     *         stored via `setTokenURIExtension`. Used for things like
-     *         `ar://` or `ipfs://` prefixes when the per-token override
-     *         only stores the bare CID.
+     *         `creator.uri(tokenId)` returns this value verbatim — no
+     *         tokenId suffix, no prefix — because we're writing the
+     *         per-token override (`_tokenURIs[tokenId]`), which Creator
+     *         Core's URI resolution prefers over the extension base URI.
      *
-     * @param prefix The prefix string.
+     * @param uri_ The metadata URI to set for the bound tokenId.
      */
-    function setTokenURIPrefixExtension(string calldata prefix)
-        external
-        onlyOwner
-    {
-        ICreatorCore(creatorContractAddress).setTokenURIPrefixExtension(prefix);
-    }
-
-    /**
-     * @notice Set a per-token URI override on the Manifold Creator Core
-     *         contract. Takes precedence over the extension base URI.
-     *
-     * @param tokenId_ The tokenId to override. Should typically equal
-     *                 `tokenId` (the one bound by `initialize()`); enforced
-     *                 by Creator Core's `_setTokenURIExtension` which
-     *                 requires `_tokenExtension(tokenId) == msg.sender`.
-     * @param uri_     The per-token URI.
-     */
-    function setTokenURIExtension(uint256 tokenId_, string calldata uri_)
-        external
-        onlyOwner
-    {
-        ICreatorCore(creatorContractAddress).setTokenURIExtension(
-            tokenId_,
+    function updateURI(string calldata uri_) external onlyOwner {
+        require(tokenId != 0, "Not initialized");
+        IERC1155CreatorCore(creatorContractAddress).setTokenURIExtension(
+            tokenId,
             uri_
         );
     }
