@@ -331,6 +331,10 @@ contract ManifoldERC1155SeaDropShimTest is
     // supportsInterface (inherited)
     // -------------------------------------------------------------------
 
+    // -------------------------------------------------------------------
+    // supportsInterface (inherited)
+    // -------------------------------------------------------------------
+
     function testSupportsInterfaceCovers165AndSeaDrop() public {
         assertTrue(shim.supportsInterface(type(INonFungibleSeaDropToken).interfaceId));
         assertTrue(
@@ -339,5 +343,134 @@ contract ManifoldERC1155SeaDropShimTest is
             )
         );
         assertTrue(shim.supportsInterface(0x01ffc9a7)); // ERC165
+    }
+
+    // -------------------------------------------------------------------
+    // Creator Core metadata passthroughs
+    // -------------------------------------------------------------------
+
+    function testSetBaseTokenURIExtensionWithSuffix() public {
+        shim.initialize();
+        uint256 tokenId = shim.tokenId();
+
+        // 1-arg variant — Creator Core defaults identical=false, so the
+        // returned URI is `<base><tokenId.toString()>`.
+        shim.setBaseTokenURIExtension("ipfs://bafy/");
+
+        assertEq(
+            creator.uri(tokenId),
+            string(abi.encodePacked("ipfs://bafy/", _toString(tokenId)))
+        );
+    }
+
+    function testSetBaseTokenURIExtensionIdenticalReturnsRawUri() public {
+        shim.initialize();
+        uint256 tokenId = shim.tokenId();
+
+        // identical=true — every tokenId resolves to the exact same URI,
+        // which is what we want for an ERC1155 drop with a single bound
+        // tokenId (no suffix appended).
+        shim.setBaseTokenURIExtension(
+            "ipfs://bafyidentical/metadata.json",
+            true
+        );
+
+        assertEq(creator.uri(tokenId), "ipfs://bafyidentical/metadata.json");
+    }
+
+    function testSetBaseTokenURIExtensionRevertsForNonOwner() public {
+        shim.initialize();
+        vm.prank(alice);
+        vm.expectRevert(); // TwoStepOwnable: OnlyOwner
+        shim.setBaseTokenURIExtension("ipfs://nope/");
+
+        vm.prank(alice);
+        vm.expectRevert();
+        shim.setBaseTokenURIExtension("ipfs://nope/", true);
+    }
+
+    function testSetBaseTokenURIExtensionPersistsAcrossMints() public {
+        shim.initialize();
+        shim.setMaxSupply(10);
+        shim.setBaseTokenURIExtension("https://api.example/meta.json", true);
+
+        uint256 tokenId = shim.tokenId();
+
+        // Mint after setting base URI — uri must still resolve correctly.
+        vm.prank(address(seadrop));
+        shim.mintSeaDrop(alice, 3);
+
+        assertEq(creator.uri(tokenId), "https://api.example/meta.json");
+        assertEq(IERC1155(address(creator)).balanceOf(alice, tokenId), 3);
+    }
+
+    function testSetBaseTokenURIExtensionUpdatableAfterMint() public {
+        shim.initialize();
+        shim.setMaxSupply(10);
+        shim.setBaseTokenURIExtension("ipfs://prereveal", true);
+
+        uint256 tokenId = shim.tokenId();
+
+        vm.prank(address(seadrop));
+        shim.mintSeaDrop(alice, 1);
+        assertEq(creator.uri(tokenId), "ipfs://prereveal");
+
+        // Reveal: shim owner updates the base URI on the creator contract.
+        shim.setBaseTokenURIExtension("ipfs://revealed/metadata.json", true);
+        assertEq(creator.uri(tokenId), "ipfs://revealed/metadata.json");
+    }
+
+    function testSetTokenURIExtensionTakesPrecedenceOverBase() public {
+        shim.initialize();
+        uint256 tokenId = shim.tokenId();
+
+        shim.setBaseTokenURIExtension("ipfs://base/", false);
+        // Per-token override should win over the base URI.
+        shim.setTokenURIExtension(tokenId, "ipfs://specific.json");
+
+        assertEq(creator.uri(tokenId), "ipfs://specific.json");
+    }
+
+    function testSetTokenURIPrefixExtensionPrependsToPerTokenUri() public {
+        shim.initialize();
+        uint256 tokenId = shim.tokenId();
+
+        // Creator Core only applies the prefix when there's a per-token
+        // override stored — base URIs are unaffected.
+        shim.setTokenURIPrefixExtension("ar://");
+        shim.setTokenURIExtension(tokenId, "kRZf...cidonly");
+
+        assertEq(creator.uri(tokenId), "ar://kRZf...cidonly");
+    }
+
+    function testSetTokenURIExtensionRevertsForNonOwner() public {
+        shim.initialize();
+        uint256 tokenId = shim.tokenId();
+
+        vm.prank(alice);
+        vm.expectRevert();
+        shim.setTokenURIExtension(tokenId, "ipfs://hijack");
+
+        vm.prank(alice);
+        vm.expectRevert();
+        shim.setTokenURIPrefixExtension("ar://");
+    }
+
+    /// @dev Minimal uint256 → decimal string for the suffix-mode assertion.
+    function _toString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) return "0";
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + (value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
 }
