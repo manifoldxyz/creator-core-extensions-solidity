@@ -67,7 +67,8 @@ contract ManifoldERC1155SeaDropShimTest is
             SYMBOL,
             allowedSeaDrop,
             address(creator),
-            INSTANCE_ID
+            INSTANCE_ID,
+            address(this) // initialOwner — test contract is the drop admin
         );
 
         creator.registerExtension(address(shim), "");
@@ -84,6 +85,40 @@ contract ManifoldERC1155SeaDropShimTest is
         assertEq(shim.owner(), address(this));
         assertEq(shim.name(), NAME);
         assertEq(shim.symbol(), SYMBOL);
+    }
+
+    function testConstructorTransfersOwnershipToInitialOwner() public {
+        address newOwner = address(0xCAFE);
+        address[] memory allowedSeaDrop = new address[](1);
+        allowedSeaDrop[0] = address(seadrop);
+
+        ManifoldERC1155SeaDropShim s = new ManifoldERC1155SeaDropShim(
+            NAME,
+            SYMBOL,
+            allowedSeaDrop,
+            address(creator),
+            INSTANCE_ID + 100,
+            newOwner
+        );
+
+        assertEq(s.owner(), newOwner, "owner must be initialOwner, not deployer");
+    }
+
+    function testConstructorRevertsForZeroInitialOwner() public {
+        address[] memory allowedSeaDrop = new address[](1);
+        allowedSeaDrop[0] = address(seadrop);
+
+        vm.expectRevert(
+            ManifoldERC1155SeaDropShim.InitialOwnerIsZeroAddress.selector
+        );
+        new ManifoldERC1155SeaDropShim(
+            NAME,
+            SYMBOL,
+            allowedSeaDrop,
+            address(creator),
+            INSTANCE_ID + 200,
+            address(0)
+        );
     }
 
     function testConstructorPopulatesAllowedSeaDrop() public {
@@ -127,7 +162,8 @@ contract ManifoldERC1155SeaDropShimTest is
             SYMBOL,
             allowedSeaDrop,
             address(creator),
-            INSTANCE_ID + 1
+            INSTANCE_ID + 1,
+            address(this)
         );
 
         vm.expectRevert(); // creator core "Must be registered extension"

@@ -42,6 +42,9 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     /// @notice Reverts if `initialize()` is called more than once.
     error AlreadyInitializedShim();
 
+    /// @notice Reverts if the constructor is given a zero `initialOwner_`.
+    error InitialOwnerIsZeroAddress();
+
     /// @notice The Manifold Creator Core contract this shim mints on.
     address public immutable creatorContractAddress;
 
@@ -71,16 +74,27 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
      *                                  call `mintSeaDrop` on this shim.
      * @param creatorContractAddress_   Manifold Creator Core contract.
      * @param instanceId_               Opaque drop instance identifier.
+     * @param initialOwner_             The wallet to transfer ownership to
+     *                                  immediately after deploy. Required
+     *                                  when deploying through a CREATE2
+     *                                  factory (where the broadcaster is the
+     *                                  factory address, not the intended
+     *                                  drop admin).
      */
     constructor(
         string memory name_,
         string memory symbol_,
         address[] memory allowedSeaDrop_,
         address creatorContractAddress_,
-        uint256 instanceId_
+        uint256 instanceId_,
+        address initialOwner_
     ) ERC721SeaDrop(name_, symbol_, allowedSeaDrop_) {
+        if (initialOwner_ == address(0)) revert InitialOwnerIsZeroAddress();
         creatorContractAddress = creatorContractAddress_;
         instanceId = instanceId_;
+        // ERC721SeaDrop's TwoStepOwnable constructor already set the owner
+        // to msg.sender; transfer to the explicit initialOwner.
+        _transferOwnership(initialOwner_);
     }
 
     /**
