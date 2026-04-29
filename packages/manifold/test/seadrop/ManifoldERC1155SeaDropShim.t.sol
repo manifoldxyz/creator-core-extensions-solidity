@@ -39,6 +39,8 @@ contract ManifoldERC1155SeaDropShimTest is
     ERC1155Holder,
     ERC721SeaDropStructsErrorsAndEvents
 {
+    /// @dev Mirror of ManifoldERC1155SeaDropShim.TokenURIUpdated for vm.expectEmit.
+    event TokenURIUpdated(uint256 indexed tokenId, string uri);
     uint256 internal constant INSTANCE_ID = 1;
     string internal constant NAME = "Manifold SeaDrop Shim";
     string internal constant SYMBOL = "MSS";
@@ -389,13 +391,15 @@ contract ManifoldERC1155SeaDropShimTest is
         shim.initialize();
         uint256 tokenId = shim.tokenId();
 
+        vm.expectEmit(true, false, false, true, address(shim));
+        emit TokenURIUpdated(tokenId, "ipfs://bafyidentical/metadata.json");
         shim.updateURI("ipfs://bafyidentical/metadata.json");
 
         assertEq(creator.uri(tokenId), "ipfs://bafyidentical/metadata.json");
     }
 
     function testUpdateURIRevertsBeforeInitialize() public {
-        vm.expectRevert("Not initialized");
+        vm.expectRevert(ManifoldERC1155SeaDropShim.NotInitialized.selector);
         shim.updateURI("ipfs://nope");
     }
 

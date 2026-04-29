@@ -45,6 +45,15 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     /// @notice Reverts if the constructor is given a zero `initialOwner_`.
     error InitialOwnerIsZeroAddress();
 
+    /// @notice Reverts if `updateURI` is called before `initialize()`.
+    error NotInitialized();
+
+    /// @notice Emitted when the bound tokenId's metadata URI is updated on
+    ///         the underlying Manifold Creator Core contract. Off-chain
+    ///         indexers (OpenSea, Manifold's own metadata pipeline) listen
+    ///         for this to refresh cached metadata after a reveal.
+    event TokenURIUpdated(uint256 indexed tokenId, string uri);
+
     /// @notice The Manifold Creator Core contract this shim mints on.
     address public immutable creatorContractAddress;
 
@@ -217,10 +226,11 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
      * @param uri_ The metadata URI to set for the bound tokenId.
      */
     function updateURI(string calldata uri_) external onlyOwner {
-        require(tokenId != 0, "Not initialized");
+        if (tokenId == 0) revert NotInitialized();
         IERC1155CreatorCore(creatorContractAddress).setTokenURIExtension(
             tokenId,
             uri_
         );
+        emit TokenURIUpdated(tokenId, uri_);
     }
 }
