@@ -15,11 +15,14 @@ import {INonFungibleSeaDropToken} from "seadrop/src/interfaces/INonFungibleSeaDr
 import {ISeaDropTokenContractMetadata} from "seadrop/src/interfaces/ISeaDropTokenContractMetadata.sol";
 import {
     AllowListData,
-    PublicDrop
+    PublicDrop,
+    MintParams
 } from "seadrop/src/lib/SeaDropStructs.sol";
 import {
     ERC721SeaDropStructsErrorsAndEvents
 } from "seadrop/src/lib/ERC721SeaDropStructsErrorsAndEvents.sol";
+
+import {ReentrantMinter} from "./mocks/ReentrantMinter.sol";
 
 /**
  * @notice Foundry harness for ManifoldERC1155SeaDropShim.
@@ -425,5 +428,251 @@ contract ManifoldERC1155SeaDropShimTest is
         // Reveal: shim owner rewrites the URI on the creator contract.
         shim.updateURI("ipfs://revealed/metadata.json");
         assertEq(creator.uri(tokenId), "ipfs://revealed/metadata.json");
+    }
+
+    // -------------------------------------------------------------------
+    // Reentrancy — proves nonReentrant on mintSeaDrop blocks the attack
+    // -------------------------------------------------------------------
+
+    function testMintSeaDropBlocksReentrancyViaERC1155Receiver() public {
+        shim.initialize();
+        shim.setMaxSupply(100);
+
+        ReentrantMinter attacker = new ReentrantMinter(address(shim));
+
+        // First call enters mintSeaDrop, which calls Creator Core's
+        // mintExtensionExisting, which calls _mint -> ERC1155 safe-transfer
+        // hook on the attacker, which re-enters mintSeaDrop. The shim's
+        // `nonReentrant` modifier reverts the inner call. Because the
+        // attacker swallows nothing and Creator Core surfaces the failure,
+        // the outer mint reverts too — counters remain unchanged.
+        vm.prank(address(seadrop));
+        vm.expectRevert(); // solmate ReentrancyGuard "REENTRANCY"
+        shim.mintSeaDrop(address(attacker), 1);
+
+        // Confirm no state mutation occurred.
+        (uint256 minted, uint256 total, ) = shim.getMintStats(address(attacker));
+        assertEq(minted, 0, "reentrancy attempt must not credit minter");
+        assertEq(total, 0, "reentrancy attempt must not bump total supply");
+        assertEq(
+            IERC1155(address(creator)).balanceOf(address(attacker), shim.tokenId()),
+            0,
+            "no ERC1155 balance must be transferred"
+        );
+    }
+
+    // -------------------------------------------------------------------
+    // mintAllowList end-to-end — covers the allowlist phase path
+    // -------------------------------------------------------------------
+
+    function testEndToEndAllowListMintViaSeaDrop() public {
+        shim.initialize();
+        shim.setMaxSupply(100);
+
+        // Allowlist params for `alice`. Single-leaf merkle tree means
+        // root == leaf and the proof is empty.
+        MintParams memory params = MintParams({
+            mintPrice: 0, // free allowlist phase per the CON-2955 spec
+            maxTotalMintableByWallet: 5,
+            startTime: block.timestamp,
+            endTime: block.timestamp + 1 days,
+            dropStageIndex: 1,
+            maxTokenSupplyForStage: 100,
+            feeBps: 0,
+            restrictFeeRecipients: true
+        });
+        bytes32 leaf = keccak256(abi.encode(alice, params));
+
+        AllowListData memory ald = AllowListData({
+            merkleRoot: leaf,
+            publicKeyURIs: new string[](0),
+            allowListURI: ""
+        });
+        shim.updateAllowList(address(seadrop), ald);
+        shim.updateCreatorPayoutAddress(address(seadrop), payoutAddress);
+        shim.updateAllowedFeeRecipient(address(seadrop), feeRecipient, true);
+
+        bytes32[] memory proof = new bytes32[](0);
+
+        vm.prank(alice);
+        seadrop.mintAllowList(
+            address(shim),
+            feeRecipient,
+            address(0),
+            3,
+            params,
+            proof
+        );
+
+        uint256 tokenId = shim.tokenId();
+        assertEq(IERC1155(address(creator)).balanceOf(alice, tokenId), 3);
+
+        (uint256 aMinted, uint256 total, ) = shim.getMintStats(alice);
+        assertEq(aMinted, 3);
+        assertEq(total, 3);
+    }
+
+    function testWalletCapIsCumulativeAcrossAllowListAndPublic() public {
+        // CON-2955 spec: per-wallet cap is cumulative across phases.
+        // SeaDrop reads `getMintStats(minter).minterNumMinted` which is our
+        // shim-local counter — this test proves an allowlist mint counts
+        // toward the public-phase per-wallet cap, and vice-versa.
+        shim.initialize();
+        shim.setMaxSupply(100);
+
+        // Allowlist phase: free, cap 2.
+        MintParams memory params = MintParams({
+            mintPrice: 0,
+            maxTotalMintableByWallet: 2,
+            startTime: block.timestamp,
+            endTime: block.timestamp + 1 days,
+            dropStageIndex: 1,
+            maxTokenSupplyForStage: 100,
+            feeBps: 0,
+            restrictFeeRecipients: true
+        });
+        bytes32 leaf = keccak256(abi.encode(alice, params));
+        AllowListData memory ald = AllowListData({
+            merkleRoot: leaf,
+            publicKeyURIs: new string[](0),
+            allowListURI: ""
+        });
+        shim.updateAllowList(address(seadrop), ald);
+
+        // Public phase: paid, cap 3 total per wallet (= allowlist + 1 more).
+        PublicDrop memory pd = PublicDrop({
+            mintPrice: 0,
+            startTime: uint48(block.timestamp),
+            endTime: uint48(block.timestamp + 1 days),
+            maxTotalMintableByWallet: 3,
+            feeBps: 0,
+            restrictFeeRecipients: true
+        });
+        shim.updatePublicDrop(address(seadrop), pd);
+        shim.updateCreatorPayoutAddress(address(seadrop), payoutAddress);
+        shim.updateAllowedFeeRecipient(address(seadrop), feeRecipient, true);
+
+        // Step 1: alice mints 2 from allowlist (hits allowlist cap).
+        bytes32[] memory proof = new bytes32[](0);
+        vm.prank(alice);
+        seadrop.mintAllowList(
+            address(shim),
+            feeRecipient,
+            address(0),
+            2,
+            params,
+            proof
+        );
+
+        // Step 2: alice mints 1 from public — succeeds (2 + 1 = 3 = cap).
+        vm.prank(alice);
+        seadrop.mintPublic(address(shim), feeRecipient, address(0), 1);
+
+        // Step 3: alice tries to mint 1 more from public — exceeds cumulative cap.
+        vm.prank(alice);
+        vm.expectRevert(); // MintQuantityExceedsMaxMintedPerWallet
+        seadrop.mintPublic(address(shim), feeRecipient, address(0), 1);
+
+        (uint256 minted, , ) = shim.getMintStats(alice);
+        assertEq(minted, 3, "cumulative across allowlist + public must equal 3");
+    }
+
+    // -------------------------------------------------------------------
+    // Fee split — proves SeaDrop actually pays out
+    // -------------------------------------------------------------------
+
+    function testPublicMintSplitsPaymentBetweenCreatorAndFeeRecipient() public {
+        shim.initialize();
+        shim.setMaxSupply(100);
+
+        PublicDrop memory pd = PublicDrop({
+            mintPrice: 1 ether,
+            startTime: uint48(block.timestamp),
+            endTime: uint48(block.timestamp + 1 days),
+            maxTotalMintableByWallet: 5,
+            feeBps: 1000, // 10% to feeRecipient, 90% to creator
+            restrictFeeRecipients: true
+        });
+        shim.updatePublicDrop(address(seadrop), pd);
+        shim.updateCreatorPayoutAddress(address(seadrop), payoutAddress);
+        shim.updateAllowedFeeRecipient(address(seadrop), feeRecipient, true);
+
+        uint256 quantity = 2;
+        uint256 totalCost = pd.mintPrice * quantity;
+        uint256 expectedFee = (totalCost * pd.feeBps) / 10_000;
+        uint256 expectedPayout = totalCost - expectedFee;
+
+        vm.deal(alice, totalCost);
+        uint256 creatorBalanceBefore = payoutAddress.balance;
+        uint256 feeBalanceBefore = feeRecipient.balance;
+
+        vm.prank(alice);
+        seadrop.mintPublic{value: totalCost}(
+            address(shim),
+            feeRecipient,
+            address(0),
+            quantity
+        );
+
+        assertEq(
+            payoutAddress.balance - creatorBalanceBefore,
+            expectedPayout,
+            "creator payout address must receive 90% of mint revenue"
+        );
+        assertEq(
+            feeRecipient.balance - feeBalanceBefore,
+            expectedFee,
+            "fee recipient must receive 10% of mint revenue"
+        );
+    }
+
+    function testPublicMintRevertsForUnallowedFeeRecipient() public {
+        shim.initialize();
+        shim.setMaxSupply(100);
+
+        PublicDrop memory pd = PublicDrop({
+            mintPrice: 0,
+            startTime: uint48(block.timestamp),
+            endTime: uint48(block.timestamp + 1 days),
+            maxTotalMintableByWallet: 5,
+            feeBps: 1000,
+            restrictFeeRecipients: true // <- gate is on
+        });
+        shim.updatePublicDrop(address(seadrop), pd);
+        shim.updateCreatorPayoutAddress(address(seadrop), payoutAddress);
+        // Note: feeRecipient is NOT added to allowedFeeRecipients.
+
+        vm.prank(alice);
+        vm.expectRevert(); // FeeRecipientNotAllowed
+        seadrop.mintPublic(address(shim), feeRecipient, address(0), 1);
+    }
+
+    // -------------------------------------------------------------------
+    // updateAllowedSeaDrop — emergency stop / SeaDrop rotation
+    // -------------------------------------------------------------------
+
+    function testUpdateAllowedSeaDropRevokesAccess() public {
+        shim.initialize();
+        shim.setMaxSupply(100);
+
+        // Verify the original SeaDrop can mint.
+        vm.prank(address(seadrop));
+        shim.mintSeaDrop(alice, 1);
+
+        // Owner revokes all SeaDrop deployments via empty array.
+        address[] memory empty = new address[](0);
+        shim.updateAllowedSeaDrop(empty);
+
+        // Original SeaDrop now rejected.
+        vm.prank(address(seadrop));
+        vm.expectRevert(); // OnlyAllowedSeaDrop
+        shim.mintSeaDrop(alice, 1);
+    }
+
+    function testUpdateAllowedSeaDropRevertsForNonOwner() public {
+        address[] memory empty = new address[](0);
+        vm.prank(alice);
+        vm.expectRevert();
+        shim.updateAllowedSeaDrop(empty);
     }
 }
