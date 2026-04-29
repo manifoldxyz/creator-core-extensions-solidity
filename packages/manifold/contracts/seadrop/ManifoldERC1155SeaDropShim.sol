@@ -130,10 +130,12 @@ contract ManifoldERC1155SeaDropShim is
     // -----------------------------------------------------------------------
 
     constructor(
+        address initialOwner,
         address creatorContractAddress_,
         uint256 instanceId_,
         address[] memory initialAllowedSeaDrop_
     ) {
+        _transferOwnership(initialOwner);
         creatorContractAddress = creatorContractAddress_;
         instanceId = instanceId_;
 

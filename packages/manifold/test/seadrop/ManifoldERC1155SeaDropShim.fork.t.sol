@@ -145,7 +145,7 @@ contract ManifoldERC1155SeaDropShimForkTest is Test {
 
         address[] memory allowed = new address[](1);
         allowed[0] = SEADROP;
-        shim = new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+        shim = new ManifoldERC1155SeaDropShim(creatorAdmin, address(creator), INSTANCE_ID, allowed);
 
         creator.registerExtension(address(shim), "");
 

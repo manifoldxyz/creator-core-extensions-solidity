@@ -71,7 +71,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
         address[] memory allowed = new address[](1);
         allowed[0] = address(mockSeaDrop);
-        shim = new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+        shim = new ManifoldERC1155SeaDropShim(creatorAdmin, address(creator), INSTANCE_ID, allowed);
 
         mockSeaDrop.setObservedNftContract(address(shim));
         creator.registerExtension(address(shim), "");
@@ -152,6 +152,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
 
         vm.recordLogs();
         ManifoldERC1155SeaDropShim deployed = new ManifoldERC1155SeaDropShim(
+            creatorAdmin,
             address(creator),
             INSTANCE_ID,
             allowed
@@ -340,7 +341,7 @@ contract ManifoldERC1155SeaDropShimTest is Test {
         address[] memory allowed = new address[](1);
         allowed[0] = address(mockSeaDrop);
         ManifoldERC1155SeaDropShim unregisteredShim =
-            new ManifoldERC1155SeaDropShim(address(creator), INSTANCE_ID, allowed);
+            new ManifoldERC1155SeaDropShim(creatorAdmin, address(creator), INSTANCE_ID, allowed);
 
         MultiConfigureStruct memory cfg = _defaultCfg();
 
