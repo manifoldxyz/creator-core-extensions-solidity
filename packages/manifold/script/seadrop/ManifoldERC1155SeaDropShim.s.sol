@@ -19,9 +19,7 @@ import "../../contracts/seadrop/ManifoldERC1155SeaDropShim.sol";
  *                                   is the factory, not the intended drop
  *                                   admin. Must be non-zero.
  *   - SHIM_NAME        (string)  — ERC721 name (used by ERC721A).
- *                                   Defaults to "Manifold SeaDrop Shim".
  *   - SHIM_SYMBOL      (string)  — ERC721 symbol (used by ERC721A).
- *                                   Defaults to "MSS".
  *   - CREATOR_CONTRACT (address) — Manifold Creator Core ERC1155 to bind to.
  *   - SEADROP_ADDRESS  (address) — SeaDrop deployment authorized to mint
  *                                   (0x00005EA00Ac477B1030CE78506496e8C2dE24bf5
@@ -57,11 +55,8 @@ contract DeployManifoldERC1155SeaDropShim is Script {
         address creatorContract = vm.envAddress("CREATOR_CONTRACT");
         address seaDropAddress = vm.envAddress("SEADROP_ADDRESS");
         address initialOwner = vm.envAddress("INITIAL_OWNER");
-        string memory shimName = vm.envOr(
-            "SHIM_NAME",
-            string("Manifold SeaDrop Shim")
-        );
-        string memory shimSymbol = vm.envOr("SHIM_SYMBOL", string("MSS"));
+        string memory shimName = vm.envString("SHIM_NAME");
+        string memory shimSymbol = vm.envString("SHIM_SYMBOL");
 
         require(creatorContract != address(0), "CREATOR_CONTRACT not set");
         require(seaDropAddress != address(0), "SEADROP_ADDRESS not set");

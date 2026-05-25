@@ -180,6 +180,38 @@ contract ManifoldERC1155SeaDropShimTest is
         shim.mintSeaDrop(alice, 1);
     }
 
+    function testMintSeaDropRevertsBeforeInitializeWhenMaxSupplyZero() public {
+        // initialize() never called; maxSupply still 0. The shim-local
+        // max-supply check trips first: newTotal (1) > cap (0).
+        vm.prank(address(seadrop));
+        vm.expectRevert(
+            abi.encodeWithSelector(MintQuantityExceedsMaxSupply.selector, 1, 0)
+        );
+        shim.mintSeaDrop(alice, 1);
+    }
+
+    function testMintSeaDropRevertsBeforeInitializeWhenMaxSupplySet() public {
+        // initialize() never called, but maxSupply *was* set. The local cap
+        // check passes; the call then routes mintExtensionExisting on the
+        // creator with tokenId=0, which Creator Core rejects (tokenId 0 has
+        // no registered extension). The whole tx reverts, so the speculative
+        // counter bumps in mintSeaDrop must not persist.
+        shim.setMaxSupply(100);
+
+        vm.prank(address(seadrop));
+        vm.expectRevert();
+        shim.mintSeaDrop(alice, 1);
+
+        (uint256 minted, uint256 total, ) = shim.getMintStats(alice);
+        assertEq(minted, 0, "no minter credit on revert");
+        assertEq(total, 0, "no total-supply bump on revert");
+        assertEq(
+            IERC1155(address(creator)).balanceOf(alice, 0),
+            0,
+            "no ERC1155 balance must be transferred"
+        );
+    }
+
     function testMintSeaDropMintsERC1155BalanceToMinter() public {
         shim.initialize();
         shim.setMaxSupply(100);
