@@ -25,7 +25,7 @@ import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/
  *         `ERC721SeaDrop`. The deploy wallet owns the drop config.
  *
  *         Deployment order:
- *           1. Deploy this shim (constructor sets immutable creator + instanceId).
+ *           1. Deploy this shim (constructor sets immutable creator).
  *           2. Call `creator.registerExtension(shim, "")` on the Manifold
  *              Creator Core contract.
  *           3. Call `shim.initialize()` to seed the ERC1155 tokenId on the
@@ -57,10 +57,6 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     /// @notice The Manifold Creator Core contract this shim mints on.
     address public immutable creatorContractAddress;
 
-    /// @notice An opaque identifier carried by Manifold's drop tooling so a
-    ///         single creator contract can host multiple shim deployments.
-    uint256 public immutable instanceId;
-
     /// @notice The ERC1155 tokenId on the creator contract this shim mints.
     ///         Set exactly once by `initialize()`. Zero until initialized.
     uint256 public tokenId;
@@ -82,7 +78,6 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
      * @param allowedSeaDrop_           SeaDrop contract addresses allowed to
      *                                  call `mintSeaDrop` on this shim.
      * @param creatorContractAddress_   Manifold Creator Core contract.
-     * @param instanceId_               Opaque drop instance identifier.
      * @param initialOwner_             The wallet to transfer ownership to
      *                                  immediately after deploy. Required
      *                                  when deploying through a CREATE2
@@ -95,12 +90,10 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
         string memory symbol_,
         address[] memory allowedSeaDrop_,
         address creatorContractAddress_,
-        uint256 instanceId_,
         address initialOwner_
     ) ERC721SeaDrop(name_, symbol_, allowedSeaDrop_) {
         if (initialOwner_ == address(0)) revert InitialOwnerIsZeroAddress();
         creatorContractAddress = creatorContractAddress_;
-        instanceId = instanceId_;
         // ERC721SeaDrop's TwoStepOwnable constructor already set the owner
         // to msg.sender; transfer to the explicit initialOwner.
         _transferOwnership(initialOwner_);

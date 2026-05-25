@@ -44,7 +44,6 @@ contract ManifoldERC1155SeaDropShimTest is
 {
     /// @dev Mirror of ManifoldERC1155SeaDropShim.TokenURIUpdated for vm.expectEmit.
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
-    uint256 internal constant INSTANCE_ID = 1;
     string internal constant NAME = "Manifold SeaDrop Shim";
     string internal constant SYMBOL = "MSS";
 
@@ -72,7 +71,6 @@ contract ManifoldERC1155SeaDropShimTest is
             SYMBOL,
             allowedSeaDrop,
             address(creator),
-            INSTANCE_ID,
             address(this) // initialOwner — test contract is the drop admin
         );
 
@@ -85,7 +83,6 @@ contract ManifoldERC1155SeaDropShimTest is
 
     function testConstructorSetsImmutablesAndOwner() public {
         assertEq(shim.creatorContractAddress(), address(creator));
-        assertEq(shim.instanceId(), INSTANCE_ID);
         assertEq(shim.tokenId(), 0);
         assertEq(shim.owner(), address(this));
         assertEq(shim.name(), NAME);
@@ -102,7 +99,6 @@ contract ManifoldERC1155SeaDropShimTest is
             SYMBOL,
             allowedSeaDrop,
             address(creator),
-            INSTANCE_ID + 100,
             newOwner
         );
 
@@ -121,7 +117,6 @@ contract ManifoldERC1155SeaDropShimTest is
             SYMBOL,
             allowedSeaDrop,
             address(creator),
-            INSTANCE_ID + 200,
             address(0)
         );
     }
@@ -167,7 +162,6 @@ contract ManifoldERC1155SeaDropShimTest is
             SYMBOL,
             allowedSeaDrop,
             address(creator),
-            INSTANCE_ID + 1,
             address(this)
         );
 
