@@ -4,62 +4,121 @@ pragma solidity ^0.8.17;
 /**
  * @title  ICXRDSPacks
  * @author manifold.xyz
- * @notice Interface for the CXRDS pack collection — the struct, events, and
- *         custom-error taxonomy of the gasless "rip" mechanic.
+ * @notice Interface for the CXRDS pack collection — the config/order structs,
+ *         events, and custom-error taxonomy of the gasless "rip" mechanic.
  *
  *         CXRDSPacks is a dual-role contract: an ERC721SeaDrop "pack"
  *         collection that is ALSO a registered extension on a separate stock
  *         ERC1155 creator-core "cards" contract. The core mechanic — "rip" —
- *         lets a signer submit collector-signed EIP-712 `RipPermit`s: the
- *         contract verifies the permit signer is the current owner of the
- *         pack, burns the pack, and mints exactly four cards to that owner.
- *         The whole flow is atomic and gasless for the collector.
+ *         lets a trusted signer submit collector-authorized EIP-712
+ *         `RipPermit`s: the contract verifies the permit against the current
+ *         owner of the pack (EOA via ECDSA or smart-contract wallet via
+ *         EIP-1271, through OpenZeppelin `SignatureChecker`), burns the pack,
+ *         and mints that pack's cards to the owner. The whole flow is atomic
+ *         and gasless for the collector.
+ *
+ *         Card-side parameters (variation count, cards-per-pack, rip window,
+ *         supply cap, metadata location) are NOT constants — they are captured
+ *         in a `PackConfig` set at `initializeCards` and owner-updatable via
+ *         `updateConfig`, mirroring the Serendipity claim
+ *         initialize/update ideology (`gachaclaims/ERC1155Serendipity.sol`).
  */
 interface ICXRDSPacks {
     /**
-     * @notice A single collector-signed instruction to rip one pack.
+     * @notice Card-side configuration for the pack collection. Set once at
+     *         `initializeCards` and owner-updatable via `updateConfig`.
+     *
+     * @param maxCardsSupply    Optional hard cap on total card units minted
+     *                          across all rips. `0` == unlimited. Cannot be set
+     *                          below the already-minted count (`mintedCards`).
+     * @param cardsPerPack      Exact number of card units a single pack yields
+     *                          when ripped. Every `RipOrder`'s `amounts` MUST
+     *                          sum to this value. Must be > 0. Freely updatable.
+     * @param numberOfVariations Number of contiguous card variation tokenIds
+     *                          reserved on the cards core (`> 0`, `<= 255` —
+     *                          the uint8 variation cap). May be RAISED via
+     *                          `updateConfig` (reserving additional contiguous
+     *                          ids) but never lowered.
+     * @param ripStartDate      Earliest timestamp at which `deliverBatch` may
+     *                          rip (inclusive lower gate).
+     * @param ripEndDate        Latest timestamp at which `deliverBatch` may rip.
+     *                          `0` == no end. When non-zero must be strictly
+     *                          greater than `ripStartDate`.
+     * @param cardsLocation     Folder-pattern base URI for card metadata. Card
+     *                          `tokenURI` is `cardsLocation + (tokenId -
+     *                          startingCardTokenId + 1)`. Freely updatable.
+     */
+    struct PackConfig {
+        uint256 maxCardsSupply;
+        uint256 cardsPerPack;
+        uint256 numberOfVariations;
+        uint256 ripStartDate;
+        uint256 ripEndDate;
+        string cardsLocation;
+    }
+
+    /**
+     * @notice A single collector-authorized instruction to rip one pack.
      *
      * @dev    The signed EIP-712 payload is the `RipPermit(uint256 packId,
      *         uint256 deadline)` typed struct — ONLY `packId` and `deadline`
-     *         are covered by the signature. `cardIds` are chosen by the
-     *         signer/backend and are validated on-chain (range check), not
-     *         signed; they are relay data, not part of the collector's
-     *         authorization. `(v, r, s)` is the collector's signature over
-     *         that typed payload.
+     *         are covered by the signature. `cardIds` and `amounts` are chosen
+     *         by the signer/backend and validated on-chain (range check + sum
+     *         == `cardsPerPack`), not signed; they are relay data, not part of
+     *         the collector's authorization. `signature` is the collector's
+     *         signature over that typed payload — an ECDSA signature packed as
+     *         `abi.encodePacked(r, s, v)` for an EOA owner, or any EIP-1271
+     *         `bytes` blob the owning contract wallet recognizes.
      *
-     * @param packId   The ERC721 pack tokenId to rip (burn). Also the replay
-     *                 lock: once burned, `ownerOf(packId)` reverts ERC721A's
-     *                 `OwnerQueryForNonexistentToken`, so the same permit
-     *                 cannot be redeemed twice (no nonces are used).
-     * @param cardIds  The four ERC1155 card variation tokenIds to mint to the
-     *                 pack owner. Fixed-length exactly four — the count is a
-     *                 compile-time guarantee, so no runtime "wrong count" case
-     *                 exists. Each id must fall in the valid card range.
-     * @param deadline Unix timestamp after which the permit is expired and
-     *                 the order reverts `PermitExpired`.
-     * @param v        `ecrecover` recovery id of the collector's signature.
-     * @param r        `ecrecover` r component of the collector's signature.
-     * @param s        `ecrecover` s component of the collector's signature.
+     * @param packId    The ERC721 pack tokenId to rip (burn). Also the replay
+     *                  lock: once burned, `ownerOf(packId)` reverts ERC721A's
+     *                  `OwnerQueryForNonexistentToken`, so the same permit
+     *                  cannot be redeemed twice (no nonces are used).
+     * @param cardIds   The ERC1155 card variation tokenIds to mint to the pack
+     *                  owner. Length must equal `amounts.length` and be > 0.
+     *                  Each id must fall in the reserved variation range. A
+     *                  pack may contain duplicate variations (the same id may
+     *                  appear more than once / carry amount > 1).
+     * @param amounts   Per-`cardIds` unit counts. `sum(amounts)` MUST equal
+     *                  `config.cardsPerPack` — the real runtime "wrong count"
+     *                  guard the old fixed-length array made impossible.
+     * @param deadline  Unix timestamp after which the permit is expired and the
+     *                  order reverts `PermitExpired`.
+     * @param signature The collector's signature over the typed
+     *                  `RipPermit(packId, deadline)` payload. Verified against
+     *                  `ownerOf(packId)` via `SignatureChecker.isValidSignatureNow`
+     *                  (EOA ECDSA OR EIP-1271 contract wallet) when
+     *                  `ripSignatureRequired` is true; ignored when false.
      */
     struct RipOrder {
         uint256 packId;
-        uint256[4] cardIds;
+        uint256[] cardIds;
+        uint256[] amounts;
         uint256 deadline;
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
+        bytes signature;
     }
 
     /**
      * @notice Emitted once per pack successfully ripped in a batch: the pack
-     *         has been burned and the four cards minted to `owner`.
+     *         has been burned and its cards minted to `owner`.
      *
-     * @param packId  The pack tokenId that was ripped (now burned).
-     * @param owner   The pack owner who received the four cards (the recovered
-     *                permit signer, asserted equal to `ownerOf(packId)`).
-     * @param cardIds The four card variation tokenIds minted to `owner`.
+     * @param packId            The pack tokenId that was ripped (now burned).
+     * @param owner             The pack owner who received the cards (the
+     *                          current `ownerOf(packId)`).
+     * @param cardIds           The card variation tokenIds minted to `owner`.
+     * @param amounts           The per-`cardIds` unit counts minted.
+     * @param signatureVerified Whether an owner permit was actually verified
+     *                          for THIS rip (the value of `ripSignatureRequired`
+     *                          at rip time). `false` means the trusted signer
+     *                          alone authorized the burn (break-glass mode).
      */
-    event Ripped(uint256 indexed packId, address indexed owner, uint256[4] cardIds);
+    event Ripped(
+        uint256 indexed packId,
+        address indexed owner,
+        uint256[] cardIds,
+        uint256[] amounts,
+        bool signatureVerified
+    );
 
     /**
      * @notice Emitted when the authorized rip `signer` is updated by the owner.
@@ -69,18 +128,29 @@ interface ICXRDSPacks {
     event SignerUpdated(address signer);
 
     /**
-     * @notice Emitted when the `ripStart` timestamp gate is updated by the owner.
+     * @notice Emitted when the card-side `PackConfig` is set at
+     *         `initializeCards`.
      *
-     * @param ripStart The new earliest timestamp at which ripping is allowed.
+     * @param startingCardTokenId The first reserved card variation tokenId.
+     * @param config              The initial card configuration.
      */
-    event RipStartUpdated(uint256 ripStart);
+    event CardsInitialized(uint256 startingCardTokenId, PackConfig config);
 
     /**
-     * @notice Emitted when the `cardsLocation` metadata folder base is updated.
+     * @notice Emitted when the card-side `PackConfig` is updated by the owner.
      *
-     * @param location The new folder-pattern base URI for card metadata.
+     * @param config The new card configuration.
      */
-    event CardsLocationUpdated(string location);
+    event ConfigUpdated(PackConfig config);
+
+    /**
+     * @notice Emitted when the owner toggles the per-rip signature requirement.
+     *
+     * @param required The new value of `ripSignatureRequired`. `false` is the
+     *                 break-glass mode where the trusted signer alone authorizes
+     *                 burns.
+     */
+    event RipSignatureRequirementUpdated(bool required);
 
     /**
      * @notice Reverts when `deliverBatch` is called by any address other than
@@ -89,9 +159,15 @@ interface ICXRDSPacks {
     error OnlySigner();
 
     /**
-     * @notice Reverts when `deliverBatch` is called before `ripStart`.
+     * @notice Reverts when `deliverBatch` is called before `config.ripStartDate`.
      */
     error RipNotStarted();
+
+    /**
+     * @notice Reverts when `deliverBatch` is called after `config.ripEndDate`
+     *         (only when `ripEndDate != 0`).
+     */
+    error RipEnded();
 
     /**
      * @notice Reverts when an order's `deadline` has already passed
@@ -100,35 +176,72 @@ interface ICXRDSPacks {
     error PermitExpired();
 
     /**
-     * @notice Reverts ONLY when `ecrecover` returns `address(0)` for a
-     *         malformed / structurally-invalid signature (bad `v`, or an
-     *         out-of-range `s`). This error is reserved for the
-     *         `ecrecover -> address(0)` case exclusively — a well-formed
-     *         signature that simply recovers to the wrong (non-owner) address
-     *         does NOT hit this path; it reverts `PermitSignerNotOwner`.
+     * @notice Reverts when `ripSignatureRequired` is true and the order's
+     *         `signature` does not validate against `ownerOf(packId)` via
+     *         `SignatureChecker.isValidSignatureNow` (neither a valid EOA ECDSA
+     *         signature from the owner NOR a valid EIP-1271 signature from an
+     *         owning contract wallet). This single error replaces the old
+     *         `InvalidSignature` / `PermitSignerNotOwner` split: SignatureChecker
+     *         returns one bool, so malformed, forged, non-owner, and
+     *         stale-after-transfer permits all collapse to this one error.
      */
-    error InvalidSignature();
+    error InvalidPermit();
 
     /**
-     * @notice Reverts when the recovered permit signer is not the current
-     *         owner of the pack. This single error covers every "well-formed
-     *         signature, wrong signer" case: a forged-but-well-formed
-     *         signature that recovers to some arbitrary address, a signature
-     *         from a non-owner, and a stale signature whose signer transferred
-     *         the pack away after signing. (Malformed `ecrecover -> address(0)`
-     *         signatures are handled earlier by `InvalidSignature`.)
+     * @notice Reverts when an order's `cardIds` / `amounts` are structurally
+     *         invalid: lengths differ, are zero, or `sum(amounts)` does not
+     *         equal `config.cardsPerPack`.
      */
-    error PermitSignerNotOwner();
+    error InvalidCardAmounts();
 
     /**
-     * @notice Reverts when any of an order's four `cardIds` falls outside the
-     *         valid card variation range
-     *         `[startingCardTokenId, startingCardTokenId + NUM_CARD_DESIGNS)`.
+     * @notice Reverts when any of an order's `cardIds` falls outside the valid
+     *         card variation range
+     *         `[startingCardTokenId, startingCardTokenId + numberOfVariations)`.
      */
     error InvalidCardIds();
 
     /**
-     * @notice Reverts when `initializeCards()` is called more than once (the
+     * @notice Reverts when a rip would push `mintedCards` above a non-zero
+     *         `config.maxCardsSupply`.
+     */
+    error MaxCardsSupplyExceeded();
+
+    /**
+     * @notice Reverts when a `PackConfig` fails validation at init/update:
+     *         `numberOfVariations == 0` or `> 255`, or `cardsPerPack == 0`.
+     */
+    error InvalidConfig();
+
+    /**
+     * @notice Reverts when `config.ripEndDate != 0` and
+     *         `config.ripStartDate >= config.ripEndDate` (mirrors Serendipity's
+     *         `InvalidDate`).
+     */
+    error InvalidDate();
+
+    /**
+     * @notice Reverts when `updateConfig` attempts to LOWER
+     *         `numberOfVariations` below its current value (variations may only
+     *         be raised).
+     */
+    error CannotLowerVariations();
+
+    /**
+     * @notice Reverts when `updateConfig` raises `numberOfVariations` but the
+     *         cards core does not hand back a contiguous block of ids (the new
+     *         first reserved id != `startingCardTokenId + oldNumberOfVariations`).
+     */
+    error NonContiguousVariations();
+
+    /**
+     * @notice Reverts when `updateConfig` sets a non-zero `maxCardsSupply`
+     *         below the already-minted card count (`mintedCards`).
+     */
+    error CannotLowerMaxBeyondMinted();
+
+    /**
+     * @notice Reverts when `initializeCards` is called more than once (the
      *         `startingCardTokenId` sentinel is already set).
      *
      * @dev    Named `CardsAlreadyInitialized` — NOT `AlreadyInitialized` —
@@ -136,4 +249,10 @@ interface ICXRDSPacks {
      *         inherited up the ERC721SeaDrop chain.
      */
     error CardsAlreadyInitialized();
+
+    /**
+     * @notice Reverts when `updateConfig` is called before `initializeCards`
+     *         (mirrors Serendipity's `ClaimNotInitialized`).
+     */
+    error CardsNotInitialized();
 }

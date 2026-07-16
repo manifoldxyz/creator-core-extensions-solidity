@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import {CXRDSPacks} from "../../contracts/cxrds/CXRDSPacks.sol";
+import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
 import {ISeaDropTokenContractMetadata} from "seadrop/src/interfaces/ISeaDropTokenContractMetadata.sol";
 import {
     ERC721SeaDropStructsErrorsAndEvents
@@ -52,15 +53,19 @@ import {
  *      the sequence is a runbook and not one atomic tx — the cards-core admin
  *      and the drop owner are distinct trust roles.
  *
- *   2. initializeCards()  [CXRDSPacks OWNER]:
- *          runInitializeCards()  → cxrds.initializeCards()
- *      Reserves the 251 contiguous card variation ids on the cards core. MUST
- *      run AFTER registerExtension (step 1) — creator-core rejects
+ *   2. initializeCards(config)  [CXRDSPacks OWNER]:
+ *          runInitializeCards()  → cxrds.initializeCards(config)
+ *      Reserves the 251 contiguous card variation ids on the cards core AND
+ *      stores the card `PackConfig` (cardsPerPack 4, numberOfVariations 251,
+ *      rip window + cardsLocation from env, maxCardsSupply 0 == unlimited).
+ *      MUST run AFTER registerExtension (step 1) — creator-core rejects
  *      mintExtensionNew from an unregistered extension.
  *
- *   3. setSigner + setRipStart + setCardsLocation  [CXRDSPacks OWNER]:
- *          runConfigureRip()  → setSigner(SIGNER) ; setRipStart(RIP_START)
- *                               ; setCardsLocation(CARDS_LOCATION)
+ *   3. setSigner  [CXRDSPacks OWNER]:
+ *          runConfigureRip()  → setSigner(SIGNER)
+ *      The rip window + cardsLocation now live in the PackConfig (set at
+ *      initializeCards, updatable via runUpdateConfig) — the old
+ *      setRipStart/setCardsLocation setters were removed.
  *
  *   4. SeaDrop drop config (3 phases) + royalty  [CXRDSPacks OWNER]:
  *          runConfigureSeaDrop()  → cxrds.multiConfigure(cfg)
@@ -93,8 +98,11 @@ import {
  *     CXRDS_PACKS       (address) — the deployed CXRDSPacks (from step 0 log).
  *     OWNER_PRIVATE_KEY (uint256) — INITIAL_OWNER's key (broadcasts owner legs).
  *     SIGNER            (address) — backend rip signer (setSigner).             [TBD-ops]
- *     RIP_START         (uint256) — earliest rip timestamp (setRipStart).       [TBD-5]
- *     CARDS_LOCATION    (string)  — card metadata folder base URI.              [TBD-3]
+ *     RIP_START         (uint256) — earliest rip timestamp (config.ripStartDate).[TBD-5]
+ *     RIP_END           (uint256) — latest rip timestamp (config.ripEndDate).
+ *                                   Optional; 0 == no end.                       [TBD-5]
+ *     CARDS_LOCATION    (string)  — card metadata folder base URI                [TBD-3]
+ *                                   (config.cardsLocation).
  *     BASE_URI          (string)  — sealed-pack image base URI.                 [TBD-3]
  *     CONTRACT_URI      (string)  — drop-page contract metadata URI.            [TBD-3]
  *     PUBLIC_START      (uint256) — public phase start timestamp.               [TBD-5]
@@ -124,6 +132,14 @@ contract DeployCXRDSPacks is Script {
     uint256 internal constant MINT_PRICE = 0.0069 ether;
     uint16 internal constant MAX_PER_WALLET = 2;
     uint256 internal constant MAX_SUPPLY = 3943;
+
+    /// @notice Locked card-side config defaults (mirrors the production drop):
+    ///         4 cards per pack, 251 contiguous card variations, no hard card
+    ///         supply cap (0 == unlimited). The rip window + metadata location
+    ///         are ops inputs (env), read in `runInitializeCards`.
+    uint256 internal constant CARDS_PER_PACK = 4;
+    uint256 internal constant NUMBER_OF_VARIATIONS = 251;
+    uint256 internal constant MAX_CARDS_SUPPLY = 0;
 
     /// @notice CREATE2 fixed salt: a second deploy with identical constructor
     ///         args on the same network reverts on address collision.
@@ -186,15 +202,24 @@ contract DeployCXRDSPacks is Script {
         CXRDSPacks packs = _packs();
         uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
 
+        ICXRDSPacks.PackConfig memory config = _buildPackConfig();
+
         vm.startBroadcast(ownerKey);
-        packs.initializeCards();
+        packs.initializeCards(config);
         vm.stopBroadcast();
 
         console.log("initializeCards() done. startingCardTokenId:", packs.startingCardTokenId());
+        console.log("  cardsPerPack:        ", config.cardsPerPack);
+        console.log("  numberOfVariations:  ", config.numberOfVariations);
+        console.log("  ripStartDate:        ", config.ripStartDate);
+        console.log("  ripEndDate:          ", config.ripEndDate);
+        console.log("  cardsLocation:       ", config.cardsLocation);
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Step 3 — signer / ripStart / cardsLocation (OWNER)
+    // Step 3 — signer (OWNER). The rip window + cardsLocation now live in the
+    // PackConfig (set at initializeCards, updatable via runUpdateConfig); the
+    // removed setRipStart/setCardsLocation setters are gone.
     // ─────────────────────────────────────────────────────────────────────
 
     function runConfigureRip() external {
@@ -202,19 +227,61 @@ contract DeployCXRDSPacks is Script {
         uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
 
         address signer = vm.envAddress("SIGNER");
-        uint256 ripStart = vm.envUint("RIP_START");
-        string memory cardsLocation = vm.envString("CARDS_LOCATION");
         require(signer != address(0), "SIGNER not set");
 
         vm.startBroadcast(ownerKey);
         packs.setSigner(signer);
-        packs.setRipStart(ripStart);
-        packs.setCardsLocation(cardsLocation);
         vm.stopBroadcast();
 
         console.log("Rip configured. signer:", packs.signer());
-        console.log("  ripStart:            ", packs.ripStart());
-        console.log("  cardsLocation:       ", packs.cardsLocation());
+        ICXRDSPacks.PackConfig memory config = packs.getConfig();
+        console.log("  ripStartDate:        ", config.ripStartDate);
+        console.log("  ripEndDate:          ", config.ripEndDate);
+        console.log("  cardsLocation:       ", config.cardsLocation);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Step 3b (optional) — updateConfig (OWNER). Adjust the rip window /
+    // cardsLocation (and raise numberOfVariations) post-init via the frozen
+    // updateConfig guard path. Reads the same env vars as initializeCards.
+    // ─────────────────────────────────────────────────────────────────────
+
+    function runUpdateConfig() external {
+        CXRDSPacks packs = _packs();
+        uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
+
+        ICXRDSPacks.PackConfig memory config = _buildPackConfig();
+
+        vm.startBroadcast(ownerKey);
+        packs.updateConfig(config);
+        vm.stopBroadcast();
+
+        console.log("updateConfig() done.");
+        console.log("  ripStartDate:        ", config.ripStartDate);
+        console.log("  ripEndDate:          ", config.ripEndDate);
+        console.log("  cardsLocation:       ", config.cardsLocation);
+    }
+
+    /**
+     * @notice Assemble the card-side `PackConfig` from env inputs + the locked
+     *         card constants. The rip window (`RIP_START` / `RIP_END`) and
+     *         `CARDS_LOCATION` are ops inputs; `RIP_END` is optional (0 == no
+     *         end). `cardsPerPack` (4), `numberOfVariations` (251) and
+     *         `maxCardsSupply` (0 == unlimited) are the locked drop values.
+     */
+    function _buildPackConfig() internal returns (ICXRDSPacks.PackConfig memory config) {
+        uint256 ripStart = vm.envUint("RIP_START");
+        uint256 ripEnd = vm.envOr("RIP_END", uint256(0));
+        string memory cardsLocation = vm.envString("CARDS_LOCATION");
+
+        config = ICXRDSPacks.PackConfig({
+            maxCardsSupply: MAX_CARDS_SUPPLY,
+            cardsPerPack: CARDS_PER_PACK,
+            numberOfVariations: NUMBER_OF_VARIATIONS,
+            ripStartDate: ripStart,
+            ripEndDate: ripEnd,
+            cardsLocation: cardsLocation
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────

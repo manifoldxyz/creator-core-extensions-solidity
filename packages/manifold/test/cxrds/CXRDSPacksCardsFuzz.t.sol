@@ -21,7 +21,7 @@ import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
  *             start+251 as reverts, start and start+250 as valid.
  *           - Permit-domain fuzz: only the owner's exact signature over the order's
  *             (packId, deadline) verifies; wrong signer or mismatched signed payload
- *             reverts PermitSignerNotOwner.
+ *             reverts InvalidPermit.
  */
 contract CXRDSPacksCardsFuzz is CXRDSTestBase {
     string internal constant LOCATION = "ipfs://QmCardsFolder/";
@@ -32,7 +32,7 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
 
     function test_initializeReserves251ContiguousZeroSupplyIds() public {
         // 251 contiguous variation ids reserved; none minted (0 supply) yet.
-        for (uint256 i = 0; i < cxrds.NUM_CARD_DESIGNS(); i++) {
+        for (uint256 i = 0; i < NUM_CARD_DESIGNS; i++) {
             assertEq(
                 creator.balanceOf(owner, startingCardTokenId + i),
                 0,
@@ -44,7 +44,7 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
     function test_doubleInitRevertsCardsAlreadyInitialized() public {
         vm.prank(owner);
         vm.expectRevert(ICXRDSPacks.CardsAlreadyInitialized.selector);
-        cxrds.initializeCards();
+        cxrds.initializeCards(defaultConfig());
     }
 
     // ---------------------------------------------------------------------
@@ -52,8 +52,10 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
     // ---------------------------------------------------------------------
 
     function test_cardURIResolvesAtRangeBoundaries() public {
+        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        cfg.cardsLocation = LOCATION;
         vm.prank(owner);
-        cxrds.setCardsLocation(LOCATION);
+        cxrds.updateConfig(cfg);
 
         // First reserved card -> location/1.
         assertEq(
@@ -148,7 +150,7 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
         orders[0] = buildRipOrder(wrongPk, 1, cardsForPack(1), block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.PermitSignerNotOwner.selector);
+        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
         cxrds.deliverBatch(orders);
     }
 
@@ -158,25 +160,26 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
     ) public {
         // Owner signs over signedDeadline, but the order carries orderDeadline.
         // Both are far-future so PermitExpired is not what we trip; the digest
-        // mismatch means recovered != owner -> PermitSignerNotOwner.
+        // mismatch means the signature does not verify -> InvalidPermit.
         uint256 signedDeadline = bound(rawSignedDeadline, block.timestamp + 1, block.timestamp + 100 days);
         uint256 orderDeadline = bound(rawOrderDeadline, block.timestamp + 1, block.timestamp + 100 days);
         vm.assume(signedDeadline != orderDeadline);
 
-        (uint8 v, bytes32 r, bytes32 s) = signRipPermit(OWNER_PK, 1, signedDeadline);
+        // Sign over signedDeadline, but assemble the order with orderDeadline.
+        uint256[4] memory sheet = cardsForPack(1);
+        (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(sheet);
         ICXRDSPacks.RipOrder memory order = ICXRDSPacks.RipOrder({
             packId: 1,
-            cardIds: cardsForPack(1),
+            cardIds: ids,
+            amounts: amounts,
             deadline: orderDeadline, // != signed deadline -> digest mismatch
-            v: v,
-            r: r,
-            s: s
+            signature: signRipPermitBytes(OWNER_PK, 1, signedDeadline)
         });
         ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.PermitSignerNotOwner.selector);
+        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
         cxrds.deliverBatch(orders);
     }
 
@@ -186,20 +189,20 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
         vm.assume(signedPackId != 1);
         uint256 deadline = block.timestamp + 1 days;
 
-        (uint8 v, bytes32 r, bytes32 s) = signRipPermit(OWNER_PK, signedPackId, deadline);
+        uint256[4] memory sheet = cardsForPack(1);
+        (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(sheet);
         ICXRDSPacks.RipOrder memory order = ICXRDSPacks.RipOrder({
             packId: 1, // order targets pack 1, but sig covers signedPackId
-            cardIds: cardsForPack(1),
+            cardIds: ids,
+            amounts: amounts,
             deadline: deadline,
-            v: v,
-            r: r,
-            s: s
+            signature: signRipPermitBytes(OWNER_PK, signedPackId, deadline)
         });
         ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.PermitSignerNotOwner.selector);
+        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
         cxrds.deliverBatch(orders);
     }
 
@@ -207,8 +210,8 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
     // Helpers.
     // ---------------------------------------------------------------------
 
-    function NUM_CARDS() internal view returns (uint256) {
-        return cxrds.NUM_CARD_DESIGNS();
+    function NUM_CARDS() internal pure returns (uint256) {
+        return NUM_CARD_DESIGNS;
     }
 
     function _ripSingleCard(uint256 packId, uint256 cardId) internal {

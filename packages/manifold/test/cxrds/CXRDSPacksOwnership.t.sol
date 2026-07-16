@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
+import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
 
 /**
  * @title  CXRDSPacksOwnership
@@ -9,12 +10,13 @@ import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
  *
  *         Exercises the inherited TwoStepOwnable flow (transferOwnership ->
  *         acceptOwnership) transferring the CXRDSPacks owner role to a partner
- *         wallet. After the new owner accepts:
+ *         After the new owner accepts:
  *           - the OLD owner can no longer call ANY owner-gated function
- *             (setSigner / setRipStart / setCardsLocation / initializeCards and
- *             the SeaDrop-token config: setMaxSupply / setBaseURI /
- *             updateAllowedSeaDrop) — all revert OnlyOwner.
- *           - the NEW owner CAN run setSigner / setRipStart and the SeaDrop config.
+ *             (setSigner / updateConfig / initializeCards and the SeaDrop-token
+ *             config: setMaxSupply / setBaseURI / updateAllowedSeaDrop) — all
+ *             revert OnlyOwner.
+ *           - the NEW owner CAN run setSigner / updateConfig and the SeaDrop
+ *             config.
  *
  *         All owner-gated paths revert with the `OnlyOwner()` custom error
  *         (selector shared by TwoStepOwnable and ERC721ContractMetadata's
@@ -79,6 +81,7 @@ contract CXRDSPacksOwnership is CXRDSTestBase {
         uint256 maxPacks = cxrds.MAX_PACKS();
         address[] memory allowed = new address[](1);
         allowed[0] = address(seaDropCaller);
+        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
 
         // Every owner-gated function reverts OnlyOwner for the OLD owner. Each
         // is pranked individually so expectRevert binds cleanly to one call.
@@ -88,15 +91,11 @@ contract CXRDSPacksOwnership is CXRDSTestBase {
 
         vm.prank(owner);
         vm.expectRevert(ONLY_OWNER_SELECTOR);
-        cxrds.setRipStart(block.timestamp + 1);
+        cxrds.updateConfig(cfg);
 
         vm.prank(owner);
         vm.expectRevert(ONLY_OWNER_SELECTOR);
-        cxrds.setCardsLocation("ipfs://old/");
-
-        vm.prank(owner);
-        vm.expectRevert(ONLY_OWNER_SELECTOR);
-        cxrds.initializeCards();
+        cxrds.initializeCards(cfg);
 
         // SeaDrop-token config is equally locked for the old owner.
         vm.prank(owner);
@@ -121,14 +120,14 @@ contract CXRDSPacksOwnership is CXRDSTestBase {
         cxrds.setSigner(collector);
         assertEq(cxrds.signer(), collector, "new owner set signer");
 
-        // setRipStart + read back.
+        // Update rip window + cards location via updateConfig + read back.
         uint256 newRipStart = block.timestamp + 7 days;
-        cxrds.setRipStart(newRipStart);
-        assertEq(cxrds.ripStart(), newRipStart, "new owner set ripStart");
-
-        // setCardsLocation + read back.
-        cxrds.setCardsLocation("ipfs://partner/");
-        assertEq(cxrds.cardsLocation(), "ipfs://partner/", "new owner set location");
+        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        cfg.ripStartDate = newRipStart;
+        cfg.cardsLocation = "ipfs://partner/";
+        cxrds.updateConfig(cfg);
+        assertEq(cxrds.getConfig().ripStartDate, newRipStart, "new owner set ripStart");
+        assertEq(cxrds.getConfig().cardsLocation, "ipfs://partner/", "new owner set location");
 
         // SeaDrop config surface the new owner can run.
         cxrds.setMaxSupply(cxrds.MAX_PACKS());

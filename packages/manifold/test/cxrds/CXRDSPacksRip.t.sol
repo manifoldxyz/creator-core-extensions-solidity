@@ -16,7 +16,13 @@ import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
  */
 contract CXRDSPacksRip is CXRDSTestBase {
     // Re-declared here so vm.expectEmit can reference the event shape.
-    event Ripped(uint256 indexed packId, address indexed owner, uint256[4] cardIds);
+    event Ripped(
+        uint256 indexed packId,
+        address indexed owner,
+        uint256[] cardIds,
+        uint256[] amounts,
+        bool signatureVerified
+    );
 
     // ------------------------------------------------------------------
     // AC-3: rip-phase gate.
@@ -25,9 +31,8 @@ contract CXRDSPacksRip is CXRDSTestBase {
     /// @notice Before ripStart, deliverBatch reverts RipNotStarted; after it,
     ///         the same order succeeds.
     function testRipBeforeStartReverts() public {
-        // Close the rip phase: move ripStart into the future.
-        vm.prank(owner);
-        cxrds.setRipStart(block.timestamp + 1 days);
+        // Close the rip phase: move ripStart into the future (via updateConfig).
+        _setRipStart(block.timestamp + 1 days);
 
         // Deadline is comfortably beyond the ripStart warp below so the permit
         // stays valid once the phase opens.
@@ -69,8 +74,9 @@ contract CXRDSPacksRip is CXRDSTestBase {
         ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(packId);
 
+        (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cards);
         vm.expectEmit(true, true, false, true, address(cxrds));
-        emit Ripped(packId, owner, cards);
+        emit Ripped(packId, owner, ids, amounts, true);
 
         vm.prank(signerAddr);
         cxrds.deliverBatch(orders);
@@ -102,7 +108,7 @@ contract CXRDSPacksRip is CXRDSTestBase {
 
         for (uint256 i = 0; i < 4; i++) {
             assertGe(cards[i], startingCardTokenId, "card >= start");
-            assertLt(cards[i], startingCardTokenId + cxrds.NUM_CARD_DESIGNS(), "card < start+251");
+            assertLt(cards[i], startingCardTokenId + NUM_CARD_DESIGNS, "card < start+251");
             assertEq(creator.balanceOf(owner, cards[i]), 1, "card minted");
         }
     }
@@ -128,8 +134,9 @@ contract CXRDSPacksRip is CXRDSTestBase {
         ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
         orders[0] = buildRipOrder(COLLECTOR_PK, packId, cards, block.timestamp + 1 days);
 
+        (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cards);
         vm.expectEmit(true, true, false, true, address(cxrds));
-        emit Ripped(packId, collector, cards);
+        emit Ripped(packId, collector, ids, amounts, true);
 
         vm.prank(signerAddr);
         cxrds.deliverBatch(orders);

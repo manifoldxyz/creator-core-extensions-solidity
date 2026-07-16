@@ -12,19 +12,25 @@ import {MockSeaDropCaller} from "./mocks/MockSeaDropCaller.sol";
 
 /**
  * @title  CXRDSTestBase
- * @notice Shared Foundry harness for the CXRDS pack contract test suite
- *         (US-005..US-012 / US-014 inherit this). Deploys a stock ERC1155Creator
- *         as the "cards" core, deploys CXRDSPacks wired to it, registers the
- *         extension (a cards-core admin action) BEFORE initializeCards, sets the
- *         backend signer and ripStart, and exposes: three test wallets, a mock
- *         allowed-SeaDrop caller, a frozen-sheet fixture of 10 packs -> uint256[4]
- *         card ids, and an EIP-712 RipPermit signing helper that reproduces the
- *         exact digest CXRDSPacks verifies via `_hashTypedDataV4`.
+ * @notice Shared Foundry harness for the CXRDS pack contract test suite.
+ *         Deploys a stock ERC1155Creator as the "cards" core, deploys
+ *         CXRDSPacks wired to it, registers the extension (a cards-core admin
+ *         action) BEFORE initializeCards, initializes the card `PackConfig`
+ *         (251 variations, 4 cards/pack, rip open now, no end, no cap), sets the
+ *         backend signer, and exposes: three test wallets, a mock allowed-
+ *         SeaDrop caller, a frozen-sheet fixture of 10 packs -> uint256[4] card
+ *         ids, and EIP-712 RipPermit signing helpers that reproduce the exact
+ *         digest CXRDSPacks verifies via `_hashTypedDataV4` and pack the
+ *         signature as `bytes` (abi.encodePacked(r, s, v)) for
+ *         `SignatureChecker`.
  *
  * @dev    Error taxonomy children exercise (pinned by the contract):
- *           - InvalidSignature: ONLY ecrecover -> address(0) (malformed v/r/s).
- *           - PermitSignerNotOwner: well-formed sig recovering to a non-owner,
- *             a forged sig, or a stale sig after transfer.
+ *           - InvalidPermit: SignatureChecker rejects the permit against the
+ *             current owner (malformed, forged, non-owner, or stale-after-
+ *             transfer — all collapse to one error now).
+ *           - InvalidCardAmounts: mismatched/empty cardIds+amounts or
+ *             sum(amounts) != cardsPerPack.
+ *           - InvalidCardIds: a card id outside the reserved variation range.
  *           - OwnerQueryForNonexistentToken (ERC721A): burned/nonexistent pack
  *             (the replay lock — no nonces).
  *           - CardsAlreadyInitialized: double initializeCards().
@@ -32,9 +38,8 @@ import {MockSeaDropCaller} from "./mocks/MockSeaDropCaller.sol";
 contract CXRDSTestBase is Test {
     // ---------------------------------------------------------------------
     // Wallets. All three carry known private keys (via vm.addr) so children
-    // can sign RipPermits as the pack owner — the rip mechanic requires the
-    // recovered permit signer to equal ownerOf(packId), so the pack HOLDER
-    // must be able to sign. See ASSUMPTIONS.md entry for why all three are keyed.
+    // can sign RipPermits as the pack owner — the rip mechanic verifies the
+    // permit against ownerOf(packId), so the pack HOLDER must be able to sign.
     // ---------------------------------------------------------------------
 
     /// @notice Owner / partner-stand-in: cards-core admin AND the CXRDSPacks
@@ -50,6 +55,16 @@ contract CXRDSTestBase is Test {
     /// @notice Backend signer authorized to call `deliverBatch`.
     uint256 internal constant SIGNER_PK = 0xBEEF;
     address internal signerAddr;
+
+    // ---------------------------------------------------------------------
+    // Card config constants (mirror the production defaults).
+    // ---------------------------------------------------------------------
+
+    /// @notice Number of contiguous card variation ids reserved on init.
+    uint256 internal constant NUM_CARD_DESIGNS = 251;
+
+    /// @notice Number of card units a single pack yields when ripped.
+    uint256 internal constant CARDS_PER_PACK = 4;
 
     // ---------------------------------------------------------------------
     // Deployed system under test.
@@ -108,13 +123,12 @@ contract CXRDSTestBase is Test {
         );
 
         // Order matters: registerExtension (a cards-core ADMIN action) THEN
-        // initializeCards on the pack contract.
+        // initializeCards on the pack contract with the card config.
         creator.registerExtension(address(cxrds), "");
-        cxrds.initializeCards();
+        cxrds.initializeCards(defaultConfig());
 
-        // Configure the backend signer and open the rip phase now.
+        // Configure the backend signer.
         cxrds.setSigner(signerAddr);
-        cxrds.setRipStart(block.timestamp);
 
         // Allow SeaDrop minting: cap supply and mint the fixture packs to owner.
         cxrds.setMaxSupply(cxrds.MAX_PACKS());
@@ -135,6 +149,56 @@ contract CXRDSTestBase is Test {
                 startingCardTokenId + 3
             ];
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Config helpers.
+    // ---------------------------------------------------------------------
+
+    /// @notice The default card config used at setUp: rip open at the current
+    ///         timestamp, no end, no supply cap, empty location.
+    function defaultConfig() internal view returns (ICXRDSPacks.PackConfig memory) {
+        return ICXRDSPacks.PackConfig({
+            maxCardsSupply: 0,
+            cardsPerPack: CARDS_PER_PACK,
+            numberOfVariations: NUM_CARD_DESIGNS,
+            ripStartDate: block.timestamp,
+            ripEndDate: 0,
+            cardsLocation: ""
+        });
+    }
+
+    /// @notice Set only the rip start date via updateConfig (owner-pranked).
+    function _setRipStart(uint256 ripStartDate) internal {
+        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        cfg.ripStartDate = ripStartDate;
+        vm.prank(owner);
+        cxrds.updateConfig(cfg);
+    }
+
+    /// @notice Set the rip window via updateConfig (owner-pranked).
+    function _setRipWindow(uint256 ripStartDate, uint256 ripEndDate) internal {
+        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        cfg.ripStartDate = ripStartDate;
+        cfg.ripEndDate = ripEndDate;
+        vm.prank(owner);
+        cxrds.updateConfig(cfg);
+    }
+
+    /// @notice Set the cards metadata location via updateConfig (owner-pranked).
+    function _setCardsLocation(string memory location) internal {
+        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        cfg.cardsLocation = location;
+        vm.prank(owner);
+        cxrds.updateConfig(cfg);
+    }
+
+    /// @notice Set the max card supply cap via updateConfig (owner-pranked).
+    function _setMaxCardsSupply(uint256 maxCardsSupply) internal {
+        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        cfg.maxCardsSupply = maxCardsSupply;
+        vm.prank(owner);
+        cxrds.updateConfig(cfg);
     }
 
     // ---------------------------------------------------------------------
@@ -172,8 +236,7 @@ contract CXRDSTestBase is Test {
 
     /**
      * @notice Sign a RipPermit over (packId, deadline) with an arbitrary private
-     *         key. Pass the pack owner's key for a valid permit, another key to
-     *         exercise PermitSignerNotOwner.
+     *         key, returning the raw (v, r, s) components.
      */
     function signRipPermit(uint256 privateKey, uint256 packId, uint256 deadline)
         internal
@@ -184,11 +247,25 @@ contract CXRDSTestBase is Test {
     }
 
     /**
-     * @notice Build a fully-populated RipOrder signed by `privateKey`.
+     * @notice Sign a RipPermit and pack it as the 65-byte `bytes` signature
+     *         SignatureChecker/ECDSA expects: `abi.encodePacked(r, s, v)`.
+     */
+    function signRipPermitBytes(uint256 privateKey, uint256 packId, uint256 deadline)
+        internal
+        view
+        returns (bytes memory)
+    {
+        (uint8 v, bytes32 r, bytes32 s) = signRipPermit(privateKey, packId, deadline);
+        return abi.encodePacked(r, s, v);
+    }
+
+    /**
+     * @notice Build a fully-populated RipOrder signed by `privateKey`, using a
+     *         fixed 4-card sheet (each card amount 1, so sum == CARDS_PER_PACK).
      *
      * @param privateKey The key to sign the permit with.
      * @param packId     The pack tokenId to rip.
-     * @param cardIds    The four card ids to mint.
+     * @param cardIds    The four card ids to mint (amount 1 each).
      * @param deadline   The permit deadline.
      */
     function buildRipOrder(
@@ -197,14 +274,38 @@ contract CXRDSTestBase is Test {
         uint256[4] memory cardIds,
         uint256 deadline
     ) internal view returns (ICXRDSPacks.RipOrder memory order) {
-        (uint8 v, bytes32 r, bytes32 s) = signRipPermit(privateKey, packId, deadline);
+        uint256[] memory ids = new uint256[](4);
+        uint256[] memory amounts = new uint256[](4);
+        for (uint256 i = 0; i < 4; i++) {
+            ids[i] = cardIds[i];
+            amounts[i] = 1;
+        }
+        order = ICXRDSPacks.RipOrder({
+            packId: packId,
+            cardIds: ids,
+            amounts: amounts,
+            deadline: deadline,
+            signature: signRipPermitBytes(privateKey, packId, deadline)
+        });
+    }
+
+    /**
+     * @notice Build a RipOrder with arbitrary dynamic cardIds + amounts (for
+     *         duplicate-variation and count-validation tests).
+     */
+    function buildRipOrderDyn(
+        uint256 privateKey,
+        uint256 packId,
+        uint256[] memory cardIds,
+        uint256[] memory amounts,
+        uint256 deadline
+    ) internal view returns (ICXRDSPacks.RipOrder memory order) {
         order = ICXRDSPacks.RipOrder({
             packId: packId,
             cardIds: cardIds,
+            amounts: amounts,
             deadline: deadline,
-            v: v,
-            r: r,
-            s: s
+            signature: signRipPermitBytes(privateKey, packId, deadline)
         });
     }
 
@@ -225,6 +326,25 @@ contract CXRDSTestBase is Test {
         return fixtureCards[packId];
     }
 
+    /**
+     * @notice Convert a fixed 4-card fixture sheet into the dynamic
+     *         `cardIds` / `amounts` arrays the new `RipOrder` / `Ripped` event
+     *         carry (each card amount 1, so sum == CARDS_PER_PACK). Handy for
+     *         reconstructing the exact `Ripped` event payload in vm.expectEmit.
+     */
+    function _fixtureArrays(uint256[4] memory cardIds)
+        internal
+        pure
+        returns (uint256[] memory ids, uint256[] memory amounts)
+    {
+        ids = new uint256[](4);
+        amounts = new uint256[](4);
+        for (uint256 i = 0; i < 4; i++) {
+            ids[i] = cardIds[i];
+            amounts[i] = 1;
+        }
+    }
+
     // ---------------------------------------------------------------------
     // Sanity test — verifies the harness wiring compiles and initializes.
     // ---------------------------------------------------------------------
@@ -232,7 +352,8 @@ contract CXRDSTestBase is Test {
     function testHarnessSetup() public {
         assertEq(cxrds.owner(), owner, "cxrds owner");
         assertEq(cxrds.signer(), signerAddr, "backend signer");
-        assertEq(cxrds.ripStart(), block.timestamp, "ripStart open");
+        assertEq(cxrds.getConfig().ripStartDate, block.timestamp, "ripStart open");
+        assertTrue(cxrds.ripSignatureRequired(), "sig required by default");
         assertGt(startingCardTokenId, 0, "cards initialized");
         assertEq(cxrds.ownerOf(1), owner, "fixture pack 1 owned by owner");
         assertEq(cxrds.ownerOf(FIXTURE_PACK_COUNT), owner, "fixture pack N owned by owner");

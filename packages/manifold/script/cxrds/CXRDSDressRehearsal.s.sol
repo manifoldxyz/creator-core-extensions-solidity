@@ -296,13 +296,23 @@ contract CXRDSDressRehearsal is Script {
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(collectorKey, digest);
+
+        // New RipOrder shape: dynamic cardIds/amounts (each amount 1, so
+        // sum == cardsPerPack == 4) + a `bytes` ECDSA signature packed as
+        // abi.encodePacked(r, s, v) for SignatureChecker (EOA path).
+        uint256[] memory ids = new uint256[](4);
+        uint256[] memory amounts = new uint256[](4);
+        for (uint256 i = 0; i < 4; i++) {
+            ids[i] = cardIds[i];
+            amounts[i] = 1;
+        }
+
         order = ICXRDSPacks.RipOrder({
             packId: packId,
-            cardIds: cardIds,
+            cardIds: ids,
+            amounts: amounts,
             deadline: deadline,
-            v: v,
-            r: r,
-            s: s
+            signature: abi.encodePacked(r, s, v)
         });
     }
 }

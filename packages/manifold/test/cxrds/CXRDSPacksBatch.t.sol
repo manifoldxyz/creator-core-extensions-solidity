@@ -26,7 +26,13 @@ contract CXRDSPacksBatch is CXRDSTestBase {
     uint256 internal constant BATCH_N = 5;
 
     /// @dev Local mirror of ICXRDSPacks.Ripped for vm.expectEmit matching.
-    event Ripped(uint256 indexed packId, address indexed owner, uint256[4] cardIds);
+    event Ripped(
+        uint256 indexed packId,
+        address indexed owner,
+        uint256[] cardIds,
+        uint256[] amounts,
+        bool signatureVerified
+    );
 
     // ---------------------------------------------------------------------
     // AC-7: N valid orders settle atomically in one tx.
@@ -55,8 +61,9 @@ contract CXRDSPacksBatch is CXRDSTestBase {
         // Expect one Ripped event per order, in order.
         for (uint256 i = 0; i < BATCH_N; i++) {
             uint256 packId = i + 1;
+            (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cardsForPack(packId));
             vm.expectEmit(true, true, false, true, address(cxrds));
-            emit Ripped(packId, owner, cardsForPack(packId));
+            emit Ripped(packId, owner, ids, amounts, true);
         }
 
         vm.prank(signerAddr);
@@ -97,7 +104,7 @@ contract CXRDSPacksBatch is CXRDSTestBase {
             startingCardTokenId,
             startingCardTokenId + 1,
             startingCardTokenId + 2,
-            startingCardTokenId + NUM_CARD_DESIGNS() // out of range (>= start+251)
+            startingCardTokenId + NUM_CARD_DESIGNS // out of range (>= start+251)
         ];
         orders[2] = buildRipOrder(OWNER_PK, badPackId, badCards, block.timestamp + 1 days);
 
@@ -167,13 +174,8 @@ contract CXRDSPacksBatch is CXRDSTestBase {
         // NOTE: registerExtension deliberately NOT called. mintExtensionNew is
         // gated by requireExtension() on the cards core.
         vm.expectRevert(bytes("Must be registered extension"));
-        freshPacks.initializeCards();
+        freshPacks.initializeCards(defaultConfig());
 
         vm.stopPrank();
-    }
-
-    /// @dev Local view mirror of the contract constant for readability.
-    function NUM_CARD_DESIGNS() internal view returns (uint256) {
-        return cxrds.NUM_CARD_DESIGNS();
     }
 }
