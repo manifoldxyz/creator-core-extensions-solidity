@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {ManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 
 import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
 import {MockERC1271Wallet} from "./mocks/MockERC1271Wallet.sol";
@@ -39,19 +39,19 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
             ids[i] = startingCardTokenId;
             amounts[i] = 1;
         }
-        IManifoldPacks.RipOrder memory order = IManifoldPacks.RipOrder({
+        IManifoldPacksSeaDropShim.RipOrder memory order = IManifoldPacksSeaDropShim.RipOrder({
             packId: 1,
             cardIds: ids,
             amounts: amounts,
             deadline: block.timestamp + 1 days,
             signature: hex"deadbeef" // garbage
         });
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         // Default mode (sig required): garbage signature reverts InvalidPermit.
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
     }
 
@@ -66,14 +66,14 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
             ids[i] = startingCardTokenId;
             amounts[i] = 1;
         }
-        IManifoldPacks.RipOrder memory order = IManifoldPacks.RipOrder({
+        IManifoldPacksSeaDropShim.RipOrder memory order = IManifoldPacksSeaDropShim.RipOrder({
             packId: 1,
             cardIds: ids,
             amounts: amounts,
             deadline: block.timestamp + 1 days,
             signature: hex"" // empty
         });
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
@@ -86,7 +86,7 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
     }
 
     function test_perRipFlag_trueInNormalMode() public {
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(1);
 
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cardsForPack(1));
@@ -102,14 +102,14 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
         packs.setRipSignatureRequired(false);
 
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cardsForPack(1));
-        IManifoldPacks.RipOrder memory order = IManifoldPacks.RipOrder({
+        IManifoldPacksSeaDropShim.RipOrder memory order = IManifoldPacksSeaDropShim.RipOrder({
             packId: 1,
             cardIds: ids,
             amounts: amounts,
             deadline: block.timestamp + 1 days,
             signature: hex""
         });
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         vm.expectEmit(true, true, false, true, address(packs));
@@ -142,14 +142,14 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
         // The wallet's owner EOA signs the permit; the wallet validates it via
         // isValidSignature -> magic value, so SignatureChecker accepts it.
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cardsForPack(1));
-        IManifoldPacks.RipOrder memory order = IManifoldPacks.RipOrder({
+        IManifoldPacksSeaDropShim.RipOrder memory order = IManifoldPacksSeaDropShim.RipOrder({
             packId: 1,
             cardIds: ids,
             amounts: amounts,
             deadline: block.timestamp + 1 days,
             signature: signRipPermitBytes(OWNER_PK, 1, block.timestamp + 1 days)
         });
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
@@ -176,9 +176,9 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
         ids[1] = startingCardTokenId + 1;  amounts[1] = 1;
         ids[2] = startingCardTokenId + 2;  amounts[2] = 1;
 
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, 1, ids, amounts, block.timestamp + 1 days);
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
@@ -197,13 +197,13 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
             ids[i] = startingCardTokenId + i;
             amounts[i] = 1;
         }
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, 1, ids, amounts, block.timestamp + 1 days);
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardAmounts.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardAmounts.selector);
         packs.deliverBatch(orders);
     }
 
@@ -215,11 +215,11 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
         _setRipWindow(block.timestamp, block.timestamp + 1 days);
         vm.warp(block.timestamp + 2 days); // past ripEndDate
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(1);
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.RipEnded.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.RipEnded.selector);
         packs.deliverBatch(orders);
     }
 
@@ -228,16 +228,16 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
         // MaxCardsSupplyExceeded.
         _setMaxCardsSupply(4);
 
-        IManifoldPacks.RipOrder[] memory first = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory first = new IManifoldPacksSeaDropShim.RipOrder[](1);
         first[0] = buildFixtureRipOrder(1);
         vm.prank(signerAddr);
         packs.deliverBatch(first);
         assertEq(packs.mintedCards(), 4, "first rip minted 4");
 
-        IManifoldPacks.RipOrder[] memory second = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory second = new IManifoldPacksSeaDropShim.RipOrder[](1);
         second[0] = buildFixtureRipOrder(2);
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.MaxCardsSupplyExceeded.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.MaxCardsSupplyExceeded.selector);
         packs.deliverBatch(second);
     }
 
@@ -246,38 +246,38 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
     // -----------------------------------------------------------------
 
     function test_updateConfig_cannotLowerVariations() public {
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.numberOfVariations = cfg.numberOfVariations - 1;
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.CannotChangeVariations.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.CannotChangeVariations.selector);
         packs.updateConfig(cfg);
     }
 
     function test_updateConfig_cannotRaiseVariations() public {
         // numberOfVariations is fixed at init — raising it also reverts.
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.numberOfVariations = cfg.numberOfVariations + 1;
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.CannotChangeVariations.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.CannotChangeVariations.selector);
         packs.updateConfig(cfg);
     }
 
     function test_updateConfig_cannotLowerMaxBelowMinted() public {
         // Rip one pack (mints 4 cards), then try to set maxCardsSupply below 4.
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(1);
         vm.prank(signerAddr);
         packs.deliverBatch(orders);
 
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.maxCardsSupply = 2; // below the 4 already minted
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.CannotLowerMaxBeyondMinted.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.CannotLowerMaxBeyondMinted.selector);
         packs.updateConfig(cfg);
     }
 
     function test_updateConfig_onlyOwner() public {
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         vm.prank(collector);
         vm.expectRevert();
         packs.updateConfig(cfg);

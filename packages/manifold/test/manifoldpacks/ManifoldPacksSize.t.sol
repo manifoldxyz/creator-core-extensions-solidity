@@ -7,7 +7,7 @@ import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
  * @title  ManifoldPacksSize
  * @notice US-011 — EIP-170 runtime-size assertion (AC-12 size leg).
  *
- *         Reads the REAL deployed runtime bytecode length of the ManifoldPacks
+ *         Reads the REAL deployed runtime bytecode length of the ManifoldPacksSeaDropShim
  *         instance deployed by ManifoldPacksTestBase and asserts it is strictly below the
  *         EIP-170 contract-size limit of 24,576 bytes. Size is solved as a single
  *         contract (~18,872 B, ~5,704 B headroom) — no companion split is taken.
@@ -25,7 +25,7 @@ contract ManifoldPacksSize is ManifoldPacksTestBase {
         assertLt(
             codeSize,
             EIP170_MAX_CODE_SIZE,
-            "ManifoldPacks runtime bytecode must be < 24576 B (EIP-170)"
+            "ManifoldPacksSeaDropShim runtime bytecode must be < 24576 B (EIP-170)"
         );
 
         // Informational log so the actual size and headroom show under -vv.

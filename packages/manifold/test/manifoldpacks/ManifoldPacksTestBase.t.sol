@@ -5,22 +5,22 @@ import "forge-std/Test.sol";
 
 import {ERC1155Creator} from "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 
-import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {ManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 
 import {MockSeaDropCaller} from "./mocks/MockSeaDropCaller.sol";
 
 /**
  * @title  ManifoldPacksTestBase
- * @notice Shared Foundry harness for the ManifoldPacks pack contract test suite.
+ * @notice Shared Foundry harness for the ManifoldPacksSeaDropShim pack contract test suite.
  *         Deploys a stock ERC1155Creator as the "cards" core, deploys
- *         ManifoldPacks wired to it, registers the extension (a cards-core admin
+ *         ManifoldPacksSeaDropShim wired to it, registers the extension (a cards-core admin
  *         action) BEFORE initializeCards, initializes the card `PackConfig`
  *         (251 variations, 4 cards/pack, rip open now, no end, no cap), sets the
  *         backend signer, and exposes: three test wallets, a mock allowed-
  *         SeaDrop caller, a frozen-sheet fixture of 10 packs -> uint256[4] card
  *         ids, and EIP-712 RipPermit signing helpers that reproduce the exact
- *         digest ManifoldPacks verifies via `_hashTypedDataV4` and pack the
+ *         digest ManifoldPacksSeaDropShim verifies via `_hashTypedDataV4` and pack the
  *         signature as `bytes` (abi.encodePacked(r, s, v)) for
  *         `SignatureChecker`.
  *
@@ -42,7 +42,7 @@ contract ManifoldPacksTestBase is Test {
     // permit against ownerOf(packId), so the pack HOLDER must be able to sign.
     // ---------------------------------------------------------------------
 
-    /// @notice Owner / partner-stand-in: cards-core admin AND the ManifoldPacks
+    /// @notice Owner / partner-stand-in: cards-core admin AND the ManifoldPacksSeaDropShim
     ///         owner. Holds the frozen-sheet fixture packs.
     uint256 internal constant OWNER_PK = 0xA11CE;
     address internal owner;
@@ -74,7 +74,7 @@ contract ManifoldPacksTestBase is Test {
     ERC1155Creator internal creator;
 
     /// @notice The pack collection under test.
-    ManifoldPacks internal packs;
+    ManifoldPacksSeaDropShim internal packs;
 
     /// @notice Mock allowed-SeaDrop caller wired into `allowedSeaDrop_`.
     MockSeaDropCaller internal seaDropCaller;
@@ -110,7 +110,7 @@ contract ManifoldPacksTestBase is Test {
         vm.startPrank(owner);
 
         // Deploy the cards core (owner becomes its admin).
-        creator = new ERC1155Creator("ManifoldPacks Cards", "ManifoldPacks");
+        creator = new ERC1155Creator("ManifoldPacksSeaDropShim Cards", "ManifoldPacksSeaDropShim");
 
         // Deploy the mock SeaDrop caller and wire it as an allowed SeaDrop.
         seaDropCaller = new MockSeaDropCaller();
@@ -119,8 +119,8 @@ contract ManifoldPacksTestBase is Test {
 
         // Deploy the pack collection. Constructor sets owner to msg.sender then
         // transfers to initialOwner (owner here).
-        packs = new ManifoldPacks(
-            "ManifoldPacks Packs",
+        packs = new ManifoldPacksSeaDropShim(
+            "ManifoldPacksSeaDropShim Packs",
             "PACK",
             allowedSeaDrop,
             owner
@@ -162,8 +162,8 @@ contract ManifoldPacksTestBase is Test {
 
     /// @notice The default card config used at setUp: rip open at the current
     ///         timestamp, no end, no supply cap, empty location.
-    function defaultConfig() internal view returns (IManifoldPacks.PackConfig memory) {
-        return IManifoldPacks.PackConfig({
+    function defaultConfig() internal view returns (IManifoldPacksSeaDropShim.PackConfig memory) {
+        return IManifoldPacksSeaDropShim.PackConfig({
             maxCardsSupply: 0,
             cardsPerPack: CARDS_PER_PACK,
             numberOfVariations: NUM_CARD_DESIGNS,
@@ -175,7 +175,7 @@ contract ManifoldPacksTestBase is Test {
 
     /// @notice Set only the rip start date via updateConfig (owner-pranked).
     function _setRipStart(uint256 ripStartDate) internal {
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.ripStartDate = ripStartDate;
         vm.prank(owner);
         packs.updateConfig(cfg);
@@ -183,7 +183,7 @@ contract ManifoldPacksTestBase is Test {
 
     /// @notice Set the rip window via updateConfig (owner-pranked).
     function _setRipWindow(uint256 ripStartDate, uint256 ripEndDate) internal {
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.ripStartDate = ripStartDate;
         cfg.ripEndDate = ripEndDate;
         vm.prank(owner);
@@ -192,7 +192,7 @@ contract ManifoldPacksTestBase is Test {
 
     /// @notice Set the cards metadata location via updateConfig (owner-pranked).
     function _setCardsLocation(string memory location) internal {
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.cardsLocation = location;
         vm.prank(owner);
         packs.updateConfig(cfg);
@@ -200,7 +200,7 @@ contract ManifoldPacksTestBase is Test {
 
     /// @notice Set the max card supply cap via updateConfig (owner-pranked).
     function _setMaxCardsSupply(uint256 maxCardsSupply) internal {
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.maxCardsSupply = maxCardsSupply;
         vm.prank(owner);
         packs.updateConfig(cfg);
@@ -211,8 +211,8 @@ contract ManifoldPacksTestBase is Test {
     // ---------------------------------------------------------------------
 
     /**
-     * @notice The EIP-712 domain separator for the deployed ManifoldPacks, matching
-     *         OZ EIP712("ManifoldPacks", "1") exactly.
+     * @notice The EIP-712 domain separator for the deployed ManifoldPacksSeaDropShim, matching
+     *         OZ EIP712("ManifoldPacksSeaDropShim", "1") exactly.
      */
     function _domainSeparator() internal view returns (bytes32) {
         return keccak256(
@@ -220,7 +220,7 @@ contract ManifoldPacksTestBase is Test {
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256(bytes("ManifoldPacks")),
+                keccak256(bytes("ManifoldPacksSeaDropShim")),
                 keccak256(bytes("1")),
                 block.chainid,
                 address(packs)
@@ -229,7 +229,7 @@ contract ManifoldPacksTestBase is Test {
     }
 
     /**
-     * @notice Reproduce the EXACT digest ManifoldPacks verifies via
+     * @notice Reproduce the EXACT digest ManifoldPacksSeaDropShim verifies via
      *         `_hashTypedDataV4(keccak256(abi.encode(RIP_TYPEHASH, packId,
      *         deadline)))`. Uses the contract's own RIP_TYPEHASH constant so the
      *         struct hash is byte-for-byte identical.
@@ -278,14 +278,14 @@ contract ManifoldPacksTestBase is Test {
         uint256 packId,
         uint256[4] memory cardIds,
         uint256 deadline
-    ) internal view returns (IManifoldPacks.RipOrder memory order) {
+    ) internal view returns (IManifoldPacksSeaDropShim.RipOrder memory order) {
         uint256[] memory ids = new uint256[](4);
         uint256[] memory amounts = new uint256[](4);
         for (uint256 i = 0; i < 4; i++) {
             ids[i] = cardIds[i];
             amounts[i] = 1;
         }
-        order = IManifoldPacks.RipOrder({
+        order = IManifoldPacksSeaDropShim.RipOrder({
             packId: packId,
             cardIds: ids,
             amounts: amounts,
@@ -304,8 +304,8 @@ contract ManifoldPacksTestBase is Test {
         uint256[] memory cardIds,
         uint256[] memory amounts,
         uint256 deadline
-    ) internal view returns (IManifoldPacks.RipOrder memory order) {
-        order = IManifoldPacks.RipOrder({
+    ) internal view returns (IManifoldPacksSeaDropShim.RipOrder memory order) {
+        order = IManifoldPacksSeaDropShim.RipOrder({
             packId: packId,
             cardIds: cardIds,
             amounts: amounts,
@@ -321,7 +321,7 @@ contract ManifoldPacksTestBase is Test {
     function buildFixtureRipOrder(uint256 packId)
         internal
         view
-        returns (IManifoldPacks.RipOrder memory)
+        returns (IManifoldPacksSeaDropShim.RipOrder memory)
     {
         return buildRipOrder(OWNER_PK, packId, fixtureCards[packId], block.timestamp + 1 days);
     }

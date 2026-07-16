@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import {ERC1155Creator} from "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 
-import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {ManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 
 import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
 
@@ -25,7 +25,7 @@ import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
 contract ManifoldPacksBatch is ManifoldPacksTestBase {
     uint256 internal constant BATCH_N = 5;
 
-    /// @dev Local mirror of IManifoldPacks.Ripped for vm.expectEmit matching.
+    /// @dev Local mirror of IManifoldPacksSeaDropShim.Ripped for vm.expectEmit matching.
     event Ripped(
         uint256 indexed packId,
         address indexed owner,
@@ -52,7 +52,7 @@ contract ManifoldPacksBatch is ManifoldPacksTestBase {
         }
 
         // Build N valid orders for fixture packs 1..N.
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](BATCH_N);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](BATCH_N);
         for (uint256 i = 0; i < BATCH_N; i++) {
             uint256 packId = i + 1;
             orders[i] = buildFixtureRipOrder(packId);
@@ -93,7 +93,7 @@ contract ManifoldPacksBatch is ManifoldPacksTestBase {
     // ---------------------------------------------------------------------
 
     function test_poisonedBatchOutOfRangeCardRevertsWhole() public {
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](BATCH_N);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](BATCH_N);
         for (uint256 i = 0; i < BATCH_N; i++) {
             orders[i] = buildFixtureRipOrder(i + 1);
         }
@@ -109,14 +109,14 @@ contract ManifoldPacksBatch is ManifoldPacksTestBase {
         orders[2] = buildRipOrder(OWNER_PK, badPackId, badCards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardIds.selector);
         packs.deliverBatch(orders);
 
         _assertNoStateChange();
     }
 
     function test_poisonedBatchExpiredDeadlineRevertsWhole() public {
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](BATCH_N);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](BATCH_N);
         for (uint256 i = 0; i < BATCH_N; i++) {
             orders[i] = buildFixtureRipOrder(i + 1);
         }
@@ -131,7 +131,7 @@ contract ManifoldPacksBatch is ManifoldPacksTestBase {
         );
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.PermitExpired.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.PermitExpired.selector);
         packs.deliverBatch(orders);
 
         _assertNoStateChange();
@@ -163,7 +163,7 @@ contract ManifoldPacksBatch is ManifoldPacksTestBase {
         address[] memory allowedSeaDrop = new address[](1);
         allowedSeaDrop[0] = address(seaDropCaller);
 
-        ManifoldPacks freshPacks = new ManifoldPacks(
+        ManifoldPacksSeaDropShim freshPacks = new ManifoldPacksSeaDropShim(
             "Fresh Packs",
             "FPACK",
             allowedSeaDrop,

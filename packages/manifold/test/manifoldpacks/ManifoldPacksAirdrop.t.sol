@@ -2,8 +2,8 @@
 pragma solidity ^0.8.17;
 
 import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
-import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {ManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 /**
@@ -89,7 +89,7 @@ contract ManifoldPacksAirdrop is ManifoldPacksTestBase {
         amts[0] = 1; amts[1] = 1;
 
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.InvalidAirdrop.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidAirdrop.selector);
         packs.airdrop(tos, ids, amts);
     }
 
@@ -99,7 +99,7 @@ contract ManifoldPacksAirdrop is ManifoldPacksTestBase {
         uint256[] memory amts = new uint256[](0);
 
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.InvalidAirdrop.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidAirdrop.selector);
         packs.airdrop(tos, ids, amts);
     }
 
@@ -109,7 +109,7 @@ contract ManifoldPacksAirdrop is ManifoldPacksTestBase {
             _single(alice, startingCardTokenId + NUM_CARD_DESIGNS, 1);
 
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardIds.selector);
         packs.airdrop(tos, ids, amts);
     }
 
@@ -120,7 +120,7 @@ contract ManifoldPacksAirdrop is ManifoldPacksTestBase {
             _single(alice, startingCardTokenId - 1, 1);
 
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardIds.selector);
         packs.airdrop(tos, ids, amts);
     }
 
@@ -154,7 +154,7 @@ contract ManifoldPacksAirdrop is ManifoldPacksTestBase {
         assertEq(packs.mintedCards(), 0, "airdrop did not touch mintedCards");
 
         // A full-cap rip of a fixture pack still succeeds (budget intact).
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(1);
         vm.prank(signerAddr);
         packs.deliverBatch(orders);
@@ -167,13 +167,13 @@ contract ManifoldPacksAirdrop is ManifoldPacksTestBase {
         address[] memory allowed = new address[](1);
         allowed[0] = address(seaDropCaller);
         vm.prank(owner);
-        ManifoldPacks fresh = new ManifoldPacks("Fresh", "FRSH", allowed, owner);
+        ManifoldPacksSeaDropShim fresh = new ManifoldPacksSeaDropShim("Fresh", "FRSH", allowed, owner);
 
         (address[] memory tos, uint256[] memory ids, uint256[] memory amts) =
             _single(alice, 1, 1);
 
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.CardsNotInitialized.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.CardsNotInitialized.selector);
         fresh.airdrop(tos, ids, amts);
     }
 }

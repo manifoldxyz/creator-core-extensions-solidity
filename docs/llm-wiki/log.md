@@ -25,8 +25,8 @@
 - broken links: 0 | orphans: 0 | missing frontmatter: 0 | oversized pages: 0
 
 ## [2026-07-16] create | concepts/manifold-packs.md (US-016)
-- New concept page for the ManifoldPacks pack contract family (branch `manifoldpacks-pack-contract`)
-- Read & cited: manifold/contracts/manifoldpacks/ManifoldPacks.sol + IManifoldPacks.sol (confidence: high)
+- New concept page for the ManifoldPacksSeaDropShim pack contract family (branch `manifoldpacks-pack-contract`)
+- Read & cited: manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol + IManifoldPacksSeaDropShim.sol (confidence: high)
 - Documents: dual-role ERC721SeaDrop pack + ERC1155 cards-core extension; RipOrder struct; deliverBatch/initializeCards/both tokenURI surfaces; EIP-712 RipPermit consent model (no nonces — burn is the replay lock); verbatim error taxonomy
 - Pitfalls captured: CardsAlreadyInitialized naming (avoids inherited ConstructorInitializable.AlreadyInitialized collision); OZ EIP712 from node_modules not lib/openzeppelin-contracts; EIP-1271/Safe holders cannot rip in v1 (ecrecover-only, accepted non-goal); registerExtension is a cards-core admin action
 - index.md: added catalog line under Burn/Redeem Families with the no-nonces / burn-is-the-lock gotcha

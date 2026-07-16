@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 
 import {IERC721A} from "ERC721A/IERC721A.sol";
 
@@ -27,9 +27,9 @@ contract ManifoldPacksReplay is ManifoldPacksTestBase {
     ///         ownerOf reverts — ERC721A's own error, no nonces).
     function testReplayAfterRipReverts() public {
         uint256 packId = 1;
-        IManifoldPacks.RipOrder memory order = buildFixtureRipOrder(packId);
+        IManifoldPacksSeaDropShim.RipOrder memory order = buildFixtureRipOrder(packId);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         // First submission succeeds and burns the pack.
@@ -58,7 +58,7 @@ contract ManifoldPacksReplay is ManifoldPacksTestBase {
         uint256[4] memory cards = cardsForPack(packId);
 
         // Two orders sharing the same packId (identical permits).
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](2);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](2);
         orders[0] = buildFixtureRipOrder(packId);
         orders[1] = buildFixtureRipOrder(packId);
 
@@ -77,7 +77,7 @@ contract ManifoldPacksReplay is ManifoldPacksTestBase {
     ///         above is specifically the duplicate/burned-pack lock, not a
     ///         general multi-order failure.
     function testDistinctPacksInOneBatchSucceed() public {
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](2);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](2);
         orders[0] = buildFixtureRipOrder(1);
         orders[1] = buildFixtureRipOrder(2);
 
@@ -98,9 +98,9 @@ contract ManifoldPacksReplay is ManifoldPacksTestBase {
         uint256 ghostPack = 9_999;
         uint256[4] memory cards = cardsForPack(1); // any in-range card ids
 
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(OWNER_PK, ghostPack, cards, block.timestamp + 1 days);
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);

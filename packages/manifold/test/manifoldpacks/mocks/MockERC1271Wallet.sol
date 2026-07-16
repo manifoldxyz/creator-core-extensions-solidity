@@ -12,7 +12,7 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  *         owner EOA; `isValidSignature(hash, sig)` returns the ERC-1271 magic
  *         value `0x1626ba7e` iff `sig` is a valid ECDSA signature over `hash`
  *         by that owner. Also accepts ERC721/ERC1155 transfers so it can hold a
- *         pack and receive ripped cards. Proves the ManifoldPacks
+ *         pack and receive ripped cards. Proves the ManifoldPacksSeaDropShim
  *         `SignatureChecker` EIP-1271 path (Safe/smart-wallet holders can rip).
  */
 contract MockERC1271Wallet is IERC721Receiver, IERC1155Receiver {

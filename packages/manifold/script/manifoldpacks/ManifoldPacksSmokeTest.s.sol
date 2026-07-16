@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {ManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 import {ERC1155Creator} from "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 import {ISeaDrop} from "seadrop/src/interfaces/ISeaDrop.sol";
 import {PublicDrop} from "seadrop/src/lib/SeaDropStructs.sol";
@@ -13,15 +13,15 @@ import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 /**
  * @title  ManifoldPacksSmokeTest
  * @author manifold.xyz
- * @notice SELF-CONTAINED live smoke test for the ManifoldPacks pack "rip" journey on
- *         Shape Sepolia. Unlike the production runbook (`ManifoldPacks.s.sol`,
+ * @notice SELF-CONTAINED live smoke test for the ManifoldPacksSeaDropShim pack "rip" journey on
+ *         Shape Sepolia. Unlike the production runbook (`ManifoldPacksSeaDropShim.s.sol`,
  *         which crosses trust boundaries across multiple wallets), this script
  *         collapses EVERY role — cards-core admin, pack owner, backend signer,
  *         payer, and collector — into the SINGLE `TEST_WALLET_PRIVATE_KEY`
  *         wallet, so the entire flow runs as one ordered broadcast:
  *
  *           1. deploy a stock ERC1155Creator ("cards" core)   [deployer = admin]
- *           2. deploy ManifoldPacks (collection name "TEST")      [deployer = owner]
+ *           2. deploy ManifoldPacksSeaDropShim (collection name "TEST")      [deployer = owner]
  *           3. cards.registerExtension(packs, "")              [admin action]
  *           4. packs.initializeCards(cards, config)            [reserve N cards]
  *           5. packs.setSigner(deployer)                       [backend signer]
@@ -80,7 +80,7 @@ contract ManifoldPacksSmokeTest is Script {
         address wallet;
         address seaDrop;
         string name;
-        ManifoldPacks packs;
+        ManifoldPacksSeaDropShim packs;
         ERC1155Creator cards;
     }
 
@@ -91,7 +91,7 @@ contract ManifoldPacksSmokeTest is Script {
         ctx.seaDrop = vm.envOr("SEADROP_ADDRESS", CANONICAL_SEADROP);
         ctx.name = vm.envOr("PACKS_NAME", string("TEST"));
 
-        console.log("=== ManifoldPacks Shape Sepolia smoke test ===");
+        console.log("=== ManifoldPacksSeaDropShim Shape Sepolia smoke test ===");
         console.log("wallet (all roles):", ctx.wallet);
         console.log("seaDrop:           ", ctx.seaDrop);
         console.log("collection name:   ", ctx.name);
@@ -103,14 +103,14 @@ contract ManifoldPacksSmokeTest is Script {
         ctx.cards = new ERC1155Creator("TEST Cards", "TESTCARD");
         address[] memory allowed = new address[](1);
         allowed[0] = ctx.seaDrop;
-        ctx.packs = new ManifoldPacks(ctx.name, "TEST", allowed, ctx.wallet);
+        ctx.packs = new ManifoldPacksSeaDropShim(ctx.name, "TEST", allowed, ctx.wallet);
 
         // 3-4. Register the extension (admin) then reserve the card variations.
         ctx.cards.registerExtension(address(ctx.packs), "");
         ctx.packs.initializeCards(address(ctx.cards), _config());
 
         // Assert the production card config landed exactly as requested.
-        IManifoldPacks.PackConfig memory got = ctx.packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory got = ctx.packs.getConfig();
         require(got.maxCardsSupply == MAX_CARDS_SUPPLY, "maxCardsSupply mismatch");
         require(got.cardsPerPack == CARDS_PER_PACK, "cardsPerPack mismatch");
         require(got.numberOfVariations == NUM_VARIATIONS, "numberOfVariations mismatch");
@@ -142,7 +142,7 @@ contract ManifoldPacksSmokeTest is Script {
 
         // 11-12. Sign the RipPermit off-chain, then deliverBatch (burn + cards).
         uint256[4] memory cardIds = _pickCards(ctx.packs);
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = _buildOrder(ctx, packId, cardIds);
         ctx.packs.deliverBatch(orders);
         console.log("LEG rip: deliverBatch submitted (pack burned + 4 cards minted).");
@@ -182,8 +182,8 @@ contract ManifoldPacksSmokeTest is Script {
         console.log("packs:     ", address(ctx.packs));
     }
 
-    function _config() internal pure returns (IManifoldPacks.PackConfig memory) {
-        return IManifoldPacks.PackConfig({
+    function _config() internal pure returns (IManifoldPacksSeaDropShim.PackConfig memory) {
+        return IManifoldPacksSeaDropShim.PackConfig({
             maxCardsSupply: MAX_CARDS_SUPPLY,
             cardsPerPack: CARDS_PER_PACK,
             numberOfVariations: NUM_VARIATIONS,
@@ -204,27 +204,27 @@ contract ManifoldPacksSmokeTest is Script {
         });
     }
 
-    function _pickCards(ManifoldPacks packs) internal view returns (uint256[4] memory cardIds) {
+    function _pickCards(ManifoldPacksSeaDropShim packs) internal view returns (uint256[4] memory cardIds) {
         uint256 start = packs.startingCardTokenId();
         cardIds = [start, start + 1, start + 2, start + 3];
     }
 
     /**
-     * @notice Reproduce the EXACT EIP-712 digest ManifoldPacks verifies (OZ
-     *         EIP712("ManifoldPacks","1") domain — note the domain name stays
-     *         "ManifoldPacks" even though the ERC721 collection name is "TEST"),
+     * @notice Reproduce the EXACT EIP-712 digest ManifoldPacksSeaDropShim verifies (OZ
+     *         EIP712("ManifoldPacksSeaDropShim","1") domain — note the domain name stays
+     *         "ManifoldPacksSeaDropShim" even though the ERC721 collection name is "TEST"),
      *         sign it with the wallet key, and pack the RipOrder.
      */
     function _buildOrder(Ctx memory ctx, uint256 packId, uint256[4] memory cardIds)
         internal
         view
-        returns (IManifoldPacks.RipOrder memory order)
+        returns (IManifoldPacksSeaDropShim.RipOrder memory order)
     {
         uint256 deadline = block.timestamp + 1 days;
         bytes32 domainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes("ManifoldPacks")),
+                keccak256(bytes("ManifoldPacksSeaDropShim")),
                 keccak256(bytes("1")),
                 block.chainid,
                 address(ctx.packs)
@@ -240,7 +240,7 @@ contract ManifoldPacksSmokeTest is Script {
             ids[i] = cardIds[i];
             amounts[i] = 1;
         }
-        order = IManifoldPacks.RipOrder({
+        order = IManifoldPacksSeaDropShim.RipOrder({
             packId: packId,
             cardIds: ids,
             amounts: amounts,

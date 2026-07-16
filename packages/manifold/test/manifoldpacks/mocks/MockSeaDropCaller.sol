@@ -13,7 +13,7 @@ interface IMintSeaDrop {
 
 /**
  * @title  MockSeaDropCaller
- * @notice A stand-in for a real SeaDrop contract in tests. ManifoldPacks gates
+ * @notice A stand-in for a real SeaDrop contract in tests. ManifoldPacksSeaDropShim gates
  *         `mintSeaDrop` on `_allowedSeaDrop[msg.sender] == true`, so an instance
  *         of this mock must be passed in the `allowedSeaDrop_` constructor array
  *         (or added later via `updateAllowedSeaDrop`). Because this contract IS
@@ -24,7 +24,7 @@ contract MockSeaDropCaller {
     /**
      * @notice Drive the pack collection's SeaDrop mint entrypoint.
      *
-     * @param token    The ManifoldPacks (ERC721SeaDrop) collection to mint on.
+     * @param token    The ManifoldPacksSeaDropShim (ERC721SeaDrop) collection to mint on.
      * @param minter   The address to receive the minted packs.
      * @param quantity The number of packs to mint.
      */

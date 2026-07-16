@@ -41,7 +41,7 @@ import {
  *              test logs a skip notice and returns cleanly — it must NEVER fail
  *              the suite offline.
  *
- *         Inherits `ManifoldPacksTestBase` (US-004 base) for the deployed ManifoldPacks +
+ *         Inherits `ManifoldPacksTestBase` (US-004 base) for the deployed ManifoldPacksSeaDropShim +
  *         cards core + wallets. The base already minted the fixture packs via a
  *         mock SeaDrop caller in setUp; this test replaces the allowed-SeaDrop
  *         set with the (local or live) SeaDrop before configuring, since

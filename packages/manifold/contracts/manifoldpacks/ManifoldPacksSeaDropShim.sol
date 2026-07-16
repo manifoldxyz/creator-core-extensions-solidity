@@ -8,10 +8,10 @@ import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/
 import {ICreatorExtensionTokenURI} from "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-import {IManifoldPacks} from "./IManifoldPacks.sol";
+import {IManifoldPacksSeaDropShim} from "./IManifoldPacksSeaDropShim.sol";
 
 /**
- * @title  ManifoldPacks
+ * @title  ManifoldPacksSeaDropShim
  * @author manifold.xyz
  * @notice A dual-role NFT contract: an ERC721SeaDrop "pack" collection that is
  *         ALSO a registered extension on a separate stock ERC1155 creator-core
@@ -41,7 +41,7 @@ import {IManifoldPacks} from "./IManifoldPacks.sol";
  *         is left to the inherited `ERC721ContractMetadata`/`ERC721SeaDrop`
  *         behavior (no bespoke pack `tokenURI` override).
  */
-contract ManifoldPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, IManifoldPacks {
+contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, IManifoldPacksSeaDropShim {
     /// @notice Upper bound on `numberOfVariations` — the uint8 variation cap
     ///         (mirrors Serendipity `MAX_UINT_8`).
     uint256 internal constant MAX_UINT_8 = 0xff;
@@ -95,7 +95,7 @@ contract ManifoldPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, IMan
         string memory symbol_,
         address[] memory allowedSeaDrop_,
         address initialOwner_
-    ) ERC721SeaDrop(name_, symbol_, allowedSeaDrop_) EIP712("ManifoldPacks", "1") {
+    ) ERC721SeaDrop(name_, symbol_, allowedSeaDrop_) EIP712("ManifoldPacksSeaDropShim", "1") {
         // Default ON: every rip requires a valid owner permit unless the owner
         // explicitly flips the break-glass off-switch.
         ripSignatureRequired = true;

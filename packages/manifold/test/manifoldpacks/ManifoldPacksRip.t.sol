@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 
 /**
  * @title  ManifoldPacksRip
@@ -36,11 +36,11 @@ contract ManifoldPacksRip is ManifoldPacksTestBase {
 
         // Deadline is comfortably beyond the ripStart warp below so the permit
         // stays valid once the phase opens.
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, 1, cardsForPack(1), block.timestamp + 30 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.RipNotStarted.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.RipNotStarted.selector);
         packs.deliverBatch(orders);
 
         // Warp past ripStart -> the same order now succeeds.
@@ -71,7 +71,7 @@ contract ManifoldPacksRip is ManifoldPacksTestBase {
         // The pack owner spends no ETH (collector/owner here is the pack holder).
         uint256 ownerEthBefore = owner.balance;
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(packId);
 
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cards);
@@ -100,7 +100,7 @@ contract ManifoldPacksRip is ManifoldPacksTestBase {
         uint256 packId = 2;
         uint256[4] memory cards = cardsForPack(packId);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(packId);
 
         vm.prank(signerAddr);
@@ -131,7 +131,7 @@ contract ManifoldPacksRip is ManifoldPacksTestBase {
         assertEq(packs.ownerOf(packId), collector, "pack transferred to collector");
 
         // New owner signs its own permit.
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(COLLECTOR_PK, packId, cards, block.timestamp + 1 days);
 
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cards);

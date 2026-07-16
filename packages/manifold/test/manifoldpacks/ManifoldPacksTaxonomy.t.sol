@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 
 /**
  * @title  ManifoldPacksTaxonomy
@@ -37,8 +37,8 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
     uint256 internal constant FORGER_PK = 0xF0F0;
 
     // Helper: submit a single-order batch as the configured signer.
-    function _deliver(IManifoldPacks.RipOrder memory order) internal {
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+    function _deliver(IManifoldPacksSeaDropShim.RipOrder memory order) internal {
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
         packs.deliverBatch(orders);
@@ -49,12 +49,12 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
     // ------------------------------------------------------------------
 
     function testOnlySigner() public {
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(1);
 
         // Called by owner (not the signer) -> OnlySigner.
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.OnlySigner.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.OnlySigner.selector);
         packs.deliverBatch(orders);
     }
 
@@ -65,13 +65,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
     function testPermitExpired() public {
         // Owner signs, but with a deadline already in the past.
         uint256 pastDeadline = block.timestamp - 1;
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(OWNER_PK, 1, cardsForPack(1), pastDeadline);
 
         vm.prank(signerAddr);
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
-        vm.expectRevert(IManifoldPacks.PermitExpired.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.PermitExpired.selector);
         packs.deliverBatch(orders);
     }
 
@@ -85,14 +85,14 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
     function testInvalidPermitMalformed() public {
         // Start from a valid owner permit, then replace the signature with a
         // 65-byte garbage blob (v out of range) that recovers to nothing.
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(OWNER_PK, 1, cardsForPack(1), block.timestamp + 1 days);
         order.signature = new bytes(65); // all-zero -> ECDSA InvalidSignature/no recovery.
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
     }
 
@@ -100,13 +100,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
     ///         arbitrary nonzero address (the forger key) which is not the pack
     ///         owner.
     function testInvalidPermit_forgedWellFormed() public {
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(FORGER_PK, 1, cardsForPack(1), block.timestamp + 1 days);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
     }
 
@@ -114,13 +114,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
     ///         owned by someone else.
     function testInvalidPermit_nonOwner() public {
         // Pack 1 is owned by owner; collector signs a permit for it.
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(COLLECTOR_PK, 1, cardsForPack(1), block.timestamp + 1 days);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
     }
 
@@ -129,17 +129,17 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
     function testInvalidPermit_staleAfterTransfer() public {
         uint256 packId = 1;
         // Owner signs a valid permit while still holding the pack.
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(OWNER_PK, packId, cardsForPack(packId), block.timestamp + 1 days);
 
         // Then transfers the pack to collector, staling the signature.
         vm.prank(owner);
         packs.transferFrom(owner, collector, packId);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
     }
 
@@ -160,13 +160,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
         }
         amounts[3] = 0; // sum == 3, not cardsPerPack (4).
 
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, packId, ids, amounts, block.timestamp + 1 days);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardAmounts.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardAmounts.selector);
         packs.deliverBatch(orders);
     }
 
@@ -182,13 +182,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
             amounts[i] = 1;
         }
 
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, packId, ids, amounts, block.timestamp + 1 days);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardAmounts.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardAmounts.selector);
         packs.deliverBatch(orders);
     }
 
@@ -198,13 +198,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
         uint256[] memory ids = new uint256[](0);
         uint256[] memory amounts = new uint256[](0);
 
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, packId, ids, amounts, block.timestamp + 1 days);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardAmounts.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardAmounts.selector);
         packs.deliverBatch(orders);
     }
 
@@ -222,13 +222,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
             startingCardTokenId + 2,
             startingCardTokenId + NUM_CARD_DESIGNS // out of range
         ];
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(OWNER_PK, packId, badCards, block.timestamp + 1 days);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardIds.selector);
         packs.deliverBatch(orders);
     }
 
@@ -242,13 +242,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
             startingCardTokenId + 2,
             startingCardTokenId + 3
         ];
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(OWNER_PK, packId, badCards, block.timestamp + 1 days);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardIds.selector);
         packs.deliverBatch(orders);
     }
 
@@ -258,7 +258,7 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
 
     function testCardsAlreadyInitialized() public {
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.CardsAlreadyInitialized.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.CardsAlreadyInitialized.selector);
         packs.initializeCards(address(creator), defaultConfig());
     }
 
@@ -273,13 +273,13 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
         // The (compromised) signer forges a permit with its OWN key. It is
         // well-formed but recovers to the signer, not the pack owner ->
         // InvalidPermit. The pack is NOT burned.
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(SIGNER_PK, packId, cardsForPack(packId), block.timestamp + 1 days);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
 
         // Pack still exists and is still owned by owner — nothing was ripped.

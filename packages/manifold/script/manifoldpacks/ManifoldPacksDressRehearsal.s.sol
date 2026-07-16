@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {ManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 import {ISeaDrop} from "seadrop/src/interfaces/ISeaDrop.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
@@ -12,7 +12,7 @@ import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensi
 /**
  * @title  ManifoldPacksDressRehearsal
  * @author manifold.xyz
- * @notice AC-11 dress-rehearsal harness for the ManifoldPacks pack "rip" journey,
+ * @notice AC-11 dress-rehearsal harness for the ManifoldPacksSeaDropShim pack "rip" journey,
  *         designed to run against Shape Sepolia (or any fork of it). It drives
  *         the full end-to-end flow with real txs and captures a receipt/log per
  *         leg so the QA/preview gate has human-visible artifacts:
@@ -25,9 +25,9 @@ import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensi
  *                   tokenId + the mint tx.
  *           LEG 2 — Gasless consent: the zero-balance `collector` signs an
  *                   EIP-712 `RipPermit(packId, deadline)` OFF-CHAIN (no tx, no
- *                   gas). Reproduces the exact digest `ManifoldPacks` verifies via
+ *                   gas). Reproduces the exact digest `ManifoldPacksSeaDropShim` verifies via
  *                   `_hashTypedDataV4` using the on-chain `RIP_TYPEHASH` + the
- *                   OZ EIP712("ManifoldPacks","1") domain.
+ *                   OZ EIP712("ManifoldPacksSeaDropShim","1") domain.
  *           LEG 3 — Delivery: the authorized `signer` submits ONE
  *                   `deliverBatch([order])` tx that atomically burns the pack and
  *                   mints the 4 correct cards to the collector on the 1155 cards
@@ -48,7 +48,7 @@ import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensi
  * ─────────────────────────────────────────────────────────────────────────────
  * PRECONDITIONS (the stack must already be deployed + configured — US-013 runbook)
  * ─────────────────────────────────────────────────────────────────────────────
- *   - ManifoldPacks deployed, registered as an extension on the cards core, and
+ *   - ManifoldPacksSeaDropShim deployed, registered as an extension on the cards core, and
  *     initializeCards() run (startingCardTokenId != 0).
  *   - signer + ripStart set (ripStart <= now), cardsLocation set.
  *   - SeaDrop public drop configured (US-013 step 4) with the SeaDrop at
@@ -57,7 +57,7 @@ import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensi
  * ─────────────────────────────────────────────────────────────────────────────
  * ENV VARS (all secrets via env — NEVER hardcode keys)
  * ─────────────────────────────────────────────────────────────────────────────
- *   MANIFOLD_PACKS         (address) — deployed ManifoldPacks.
+ *   MANIFOLD_PACKS         (address) — deployed ManifoldPacksSeaDropShim.
  *   SEADROP_ADDRESS     (address) — SeaDrop to mint through
  *                                   (0x00005EA00Ac477B1030CE78506496e8C2dE24bf5).
  *   FEE_RECIPIENT       (address) — allowed SeaDrop fee recipient (from US-013).
@@ -89,7 +89,7 @@ contract ManifoldPacksDressRehearsal is Script {
     /// @notice Resolved run context, grouped to keep `run()` under the
     ///         stack-depth limit (avoids "Stack too deep" without via-ir).
     struct Ctx {
-        ManifoldPacks packs;
+        ManifoldPacksSeaDropShim packs;
         address creator;
         address seaDrop;
         address feeRecipient;
@@ -111,7 +111,7 @@ contract ManifoldPacksDressRehearsal is Script {
         require(ctx.packs.startingCardTokenId() != 0, "cards not initialized (run US-013 step 2)");
         require(ctx.packs.signer() == ctx.signer, "SIGNER_PRIVATE_KEY != configured rip signer");
 
-        console.log("=== ManifoldPacks dress rehearsal (AC-11) ===");
+        console.log("=== ManifoldPacksSeaDropShim dress rehearsal (AC-11) ===");
         console.log("packs:      ", address(ctx.packs));
         console.log("cards core: ", ctx.creator);
         console.log("seaDrop:    ", ctx.seaDrop);
@@ -131,7 +131,7 @@ contract ManifoldPacksDressRehearsal is Script {
 
     /// @notice Load + derive all run parameters from env into a single struct.
     function _loadCtx() internal returns (Ctx memory ctx) {
-        ctx.packs = ManifoldPacks(vm.envAddress("MANIFOLD_PACKS"));
+        ctx.packs = ManifoldPacksSeaDropShim(vm.envAddress("MANIFOLD_PACKS"));
         ctx.creator = ctx.packs.creatorContractAddress();
         ctx.seaDrop = vm.envOr("SEADROP_ADDRESS", CANONICAL_SEADROP);
         ctx.feeRecipient = vm.envAddress("FEE_RECIPIENT");
@@ -172,12 +172,12 @@ contract ManifoldPacksDressRehearsal is Script {
      *         deliverBatch tx that atomically burns the pack and mints 4 cards.
      */
     function _legDeliver(Ctx memory ctx, uint256 packId, uint256[4] memory cardIds) internal {
-        IManifoldPacks.RipOrder memory order =
+        IManifoldPacksSeaDropShim.RipOrder memory order =
             _buildSignedOrder(ctx.packs, ctx.collectorKey, packId, cardIds, ctx.deadline);
         console.log("LEG 2 done. Collector signed RipPermit off-chain. deadline:", ctx.deadline);
         console.log("collector ETH after signing:", ctx.collector.balance, "(unchanged)");
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
         vm.startBroadcast(ctx.signerKey);
         ctx.packs.deliverBatch(orders);
@@ -223,7 +223,7 @@ contract ManifoldPacksDressRehearsal is Script {
      *         tokens, so this is only a starting point — `_resolveMintedPack`
      *         confirms/scans for the actual minted id.
      */
-    function _totalMintedGuess(ManifoldPacks packs) internal returns (uint256) {
+    function _totalMintedGuess(ManifoldPacksSeaDropShim packs) internal returns (uint256) {
         try packs.totalSupply() returns (uint256 ts) {
             return ts;
         } catch {
@@ -236,7 +236,7 @@ contract ManifoldPacksDressRehearsal is Script {
      *         first, then scans a small forward window (handles prior mints /
      *         burns shifting the sequential counter).
      */
-    function _resolveMintedPack(ManifoldPacks packs, address collector, uint256 guess)
+    function _resolveMintedPack(ManifoldPacksSeaDropShim packs, address collector, uint256 guess)
         internal
         returns (uint256)
     {
@@ -249,7 +249,7 @@ contract ManifoldPacksDressRehearsal is Script {
         revert("could not resolve minted packId for collector");
     }
 
-    function _ownsQuietly(ManifoldPacks packs, uint256 id) internal returns (address) {
+    function _ownsQuietly(ManifoldPacksSeaDropShim packs, uint256 id) internal returns (address) {
         try packs.ownerOf(id) returns (address o) {
             return o;
         } catch {
@@ -263,30 +263,30 @@ contract ManifoldPacksDressRehearsal is Script {
      *         take the first four reserved variation ids (all inside
      *         [startingCardTokenId, startingCardTokenId + NUM_CARD_DESIGNS)).
      */
-    function _pickCards(ManifoldPacks packs) internal view returns (uint256[4] memory cardIds) {
+    function _pickCards(ManifoldPacksSeaDropShim packs) internal view returns (uint256[4] memory cardIds) {
         uint256 start = packs.startingCardTokenId();
         cardIds = [start, start + 1, start + 2, start + 3];
     }
 
     /**
-     * @notice Reproduce the EXACT EIP-712 digest ManifoldPacks verifies and sign it
+     * @notice Reproduce the EXACT EIP-712 digest ManifoldPacksSeaDropShim verifies and sign it
      *         with the collector's key, producing a fully-populated RipOrder.
      *         Only (packId, deadline) are covered by the signature; cardIds are
      *         relay data validated on-chain (range check).
      */
     function _buildSignedOrder(
-        ManifoldPacks packs,
+        ManifoldPacksSeaDropShim packs,
         uint256 collectorKey,
         uint256 packId,
         uint256[4] memory cardIds,
         uint256 deadline
-    ) internal view returns (IManifoldPacks.RipOrder memory order) {
+    ) internal view returns (IManifoldPacksSeaDropShim.RipOrder memory order) {
         bytes32 domainSeparator = keccak256(
             abi.encode(
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256(bytes("ManifoldPacks")),
+                keccak256(bytes("ManifoldPacksSeaDropShim")),
                 keccak256(bytes("1")),
                 block.chainid,
                 address(packs)
@@ -307,7 +307,7 @@ contract ManifoldPacksDressRehearsal is Script {
             amounts[i] = 1;
         }
 
-        order = IManifoldPacks.RipOrder({
+        order = IManifoldPacksSeaDropShim.RipOrder({
             packId: packId,
             cardIds: ids,
             amounts: amounts,

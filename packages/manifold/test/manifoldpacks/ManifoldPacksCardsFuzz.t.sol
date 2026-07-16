@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {ManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 
 import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
 
@@ -43,7 +43,7 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
 
     function test_doubleInitRevertsCardsAlreadyInitialized() public {
         vm.prank(owner);
-        vm.expectRevert(IManifoldPacks.CardsAlreadyInitialized.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.CardsAlreadyInitialized.selector);
         packs.initializeCards(address(creator), defaultConfig());
     }
 
@@ -52,7 +52,7 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
     // ---------------------------------------------------------------------
 
     function test_cardURIResolvesAtRangeBoundaries() public {
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.cardsLocation = LOCATION;
         vm.prank(owner);
         packs.updateConfig(cfg);
@@ -83,7 +83,7 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
         uint256 cardId = bound(rawCardId, start, start + NUM_CARDS() - 1);
 
         uint256[4] memory cards = [cardId, cardId, cardId, cardId];
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, 1, cards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
@@ -110,11 +110,11 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
         }
 
         uint256[4] memory cards = [start, start, start, cardId];
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, 1, cards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardIds.selector);
         packs.deliverBatch(orders);
     }
 
@@ -146,11 +146,11 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
         uint256 wrongPk = bound(rawPk, 1, type(uint128).max);
         vm.assume(wrongPk != OWNER_PK);
 
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(wrongPk, 1, cardsForPack(1), block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
     }
 
@@ -168,18 +168,18 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
         // Sign over signedDeadline, but assemble the order with orderDeadline.
         uint256[4] memory sheet = cardsForPack(1);
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(sheet);
-        IManifoldPacks.RipOrder memory order = IManifoldPacks.RipOrder({
+        IManifoldPacksSeaDropShim.RipOrder memory order = IManifoldPacksSeaDropShim.RipOrder({
             packId: 1,
             cardIds: ids,
             amounts: amounts,
             deadline: orderDeadline, // != signed deadline -> digest mismatch
             signature: signRipPermitBytes(OWNER_PK, 1, signedDeadline)
         });
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
     }
 
@@ -191,18 +191,18 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
 
         uint256[4] memory sheet = cardsForPack(1);
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(sheet);
-        IManifoldPacks.RipOrder memory order = IManifoldPacks.RipOrder({
+        IManifoldPacksSeaDropShim.RipOrder memory order = IManifoldPacksSeaDropShim.RipOrder({
             packId: 1, // order targets pack 1, but sig covers signedPackId
             cardIds: ids,
             amounts: amounts,
             deadline: deadline,
             signature: signRipPermitBytes(OWNER_PK, signedPackId, deadline)
         });
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidPermit.selector);
         packs.deliverBatch(orders);
     }
 
@@ -216,7 +216,7 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
 
     function _ripSingleCard(uint256 packId, uint256 cardId) internal {
         uint256[4] memory cards = [cardId, cardId, cardId, cardId];
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, packId, cards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
@@ -227,11 +227,11 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
 
     function _expectInvalidCardIds(uint256 packId, uint256 cardId) internal {
         uint256[4] memory cards = [cardId, cardId, cardId, cardId];
-        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, packId, cards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        vm.expectRevert(IManifoldPacksSeaDropShim.InvalidCardIds.selector);
         packs.deliverBatch(orders);
     }
 }

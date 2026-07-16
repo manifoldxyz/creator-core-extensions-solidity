@@ -2,14 +2,14 @@
 pragma solidity ^0.8.17;
 
 import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
-import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
+import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol";
 
 /**
  * @title  ManifoldPacksOwnership
  * @notice US-012 — Two-step ownership transfer + post-transfer auth matrix (AC-9).
  *
  *         Exercises the inherited TwoStepOwnable flow (transferOwnership ->
- *         acceptOwnership) transferring the ManifoldPacks owner role to a partner
+ *         acceptOwnership) transferring the ManifoldPacksSeaDropShim owner role to a partner
  *         After the new owner accepts:
  *           - the OLD owner can no longer call ANY owner-gated function
  *             (setSigner / updateConfig / initializeCards and the SeaDrop-token
@@ -81,7 +81,7 @@ contract ManifoldPacksOwnership is ManifoldPacksTestBase {
         uint256 maxPacks = MAX_PACKS;
         address[] memory allowed = new address[](1);
         allowed[0] = address(seaDropCaller);
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
 
         // Every owner-gated function reverts OnlyOwner for the OLD owner. Each
         // is pranked individually so expectRevert binds cleanly to one call.
@@ -122,7 +122,7 @@ contract ManifoldPacksOwnership is ManifoldPacksTestBase {
 
         // Update rip window + cards location via updateConfig + read back.
         uint256 newRipStart = block.timestamp + 7 days;
-        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
+        IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
         cfg.ripStartDate = newRipStart;
         cfg.cardsLocation = "ipfs://partner/";
         packs.updateConfig(cfg);
