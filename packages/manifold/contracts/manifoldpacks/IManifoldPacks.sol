@@ -120,6 +120,16 @@ interface IManifoldPacks {
     );
 
     /**
+     * @notice Emitted when the owner airdrops card variations directly to
+     *         recipients (bypassing the pack-burn rip flow).
+     *
+     * @param recipients The addresses that received cards.
+     * @param cardIds    The card variation tokenIds minted (parallel to amounts).
+     * @param amounts    The per-entry unit counts minted.
+     */
+    event Airdropped(address[] recipients, uint256[] cardIds, uint256[] amounts);
+
+    /**
      * @notice Emitted when the card-side `PackConfig` is set at
      *         `initializeCards`.
      *
@@ -245,4 +255,10 @@ interface IManifoldPacks {
      *         (mirrors Serendipity's `ClaimNotInitialized`).
      */
     error CardsNotInitialized();
+
+    /**
+     * @notice Reverts when `airdrop` is given empty or mismatched-length
+     *         `recipients` / `cardIds` / `amounts` arrays.
+     */
+    error InvalidAirdrop();
 }

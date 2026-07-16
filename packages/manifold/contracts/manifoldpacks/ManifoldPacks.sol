@@ -295,6 +295,60 @@ contract ManifoldPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, IMan
     }
 
     /**
+     * @notice Owner airdrop: mint reserved card variations directly to
+     *         recipients, bypassing the pack-burn rip flow. An admin escape
+     *         hatch for corrections, giveaways, or partner allocations.
+     *
+     * @dev    Parallel arrays: recipient `recipients[i]` receives `amounts[i]`
+     *         units of card variation `cardIds[i]`. All three lengths must be
+     *         equal and non-zero (to give one recipient several cards, repeat
+     *         the address across entries). Every `cardIds[i]` must fall in the
+     *         reserved variation range. `onlyOwner`.
+     *
+     *         DELIBERATELY independent of the rip budget: unlike the reference
+     *         lazy-claim airdrop (which counts toward the claim total and
+     *         auto-raises the max), this does NOT touch `mintedCards` or
+     *         `config.maxCardsSupply`. Those govern RIP output (pack economics:
+     *         packs * cardsPerPack) and coupling an airdrop into them could
+     *         starve unripped packs of their cap headroom and make them
+     *         permanently un-rippable. Airdropped card supply is still fully
+     *         accounted on the cards core via `totalSupply(cardId)`.
+     *
+     *         No rip-window gate (`ripStartDate`/`ripEndDate` are not checked)
+     *         — the owner may airdrop any time after `initializeCards`.
+     *
+     * @param recipients The addresses to receive cards (parallel to cardIds/amounts).
+     * @param cardIds    The card variation tokenIds to mint (each in range).
+     * @param amounts    The per-entry unit counts to mint.
+     */
+    function airdrop(
+        address[] calldata recipients,
+        uint256[] calldata cardIds,
+        uint256[] calldata amounts
+    ) external onlyOwner nonReentrant {
+        if (startingCardTokenId == 0) revert CardsNotInitialized();
+
+        uint256 len = recipients.length;
+        if (len == 0 || len != cardIds.length || len != amounts.length) revert InvalidAirdrop();
+
+        uint256 start = startingCardTokenId;
+        uint256 rangeEnd = start + _config.numberOfVariations;
+        for (uint256 i = 0; i < len;) {
+            uint256 cardId = cardIds[i];
+            if (cardId < start || cardId >= rangeEnd) revert InvalidCardIds();
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Parallel-array mint: for len == 1 the cards core does a single mint;
+        // for len > 1 it mints cardIds[i] (amounts[i]) to recipients[i].
+        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, cardIds, amounts);
+
+        emit Airdropped(recipients, cardIds, amounts);
+    }
+
+    /**
      * @notice Card metadata resolution delegated by the cards core
      *         (`ICreatorExtensionTokenURI`). Serves a folder-pattern URI:
      *         `cardsLocation + (tokenId - startingCardTokenId + 1)`, so the

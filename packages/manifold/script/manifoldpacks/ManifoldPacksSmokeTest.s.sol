@@ -71,6 +71,10 @@ contract ManifoldPacksSmokeTest is Script {
     uint16 internal constant FEE_BPS = 250; // 2.5%
     uint16 internal constant MAX_PER_WALLET = 5;
 
+    /// @notice A distinct recipient for the airdrop leg (not the deployer), so
+    ///         the airdropped card balances are unambiguously attributable.
+    address internal constant AIRDROP_RECIPIENT = 0x000000000000000000000000000000000000dEaD;
+
     struct Ctx {
         uint256 key;
         address wallet;
@@ -143,10 +147,34 @@ contract ManifoldPacksSmokeTest is Script {
         ctx.packs.deliverBatch(orders);
         console.log("LEG rip: deliverBatch submitted (pack burned + 4 cards minted).");
 
+        // 13. AIRDROP: owner mints reserved cards directly (no pack burn) to a
+        //     distinct recipient, exercising the new airdrop escape hatch.
+        address[] memory adTos = new address[](2);
+        uint256[] memory adIds = new uint256[](2);
+        uint256[] memory adAmts = new uint256[](2);
+        uint256 startCard = ctx.packs.startingCardTokenId();
+        adTos[0] = AIRDROP_RECIPIENT; adIds[0] = startCard;     adAmts[0] = 3;
+        adTos[1] = AIRDROP_RECIPIENT; adIds[1] = startCard + 1; adAmts[1] = 2;
+        ctx.packs.airdrop(adTos, adIds, adAmts);
+        console.log("LEG airdrop: 3x card", startCard, "+ 2x next card to recipient.");
+
         vm.stopBroadcast();
 
-        // 13. VERIFY on the resulting state.
+        // 14. VERIFY rip + airdrop on the resulting state.
         _verify(ctx, packId, cardIds);
+
+        require(
+            IERC1155(address(ctx.cards)).balanceOf(AIRDROP_RECIPIENT, startCard) == 3,
+            "airdrop card A balance != 3"
+        );
+        require(
+            IERC1155(address(ctx.cards)).balanceOf(AIRDROP_RECIPIENT, startCard + 1) == 2,
+            "airdrop card B balance != 2"
+        );
+        console.log("VERIFY airdrop: recipient holds 3 + 2 airdropped cards.");
+        // Airdrop must NOT have touched the rip budget (still just the 4 ripped).
+        require(ctx.packs.mintedCards() == CARDS_PER_PACK, "airdrop corrupted rip budget");
+        console.log("VERIFY airdrop: mintedCards still", ctx.packs.mintedCards(), "(rip budget intact).");
 
         console.log("wallet ETH after:  ", ctx.wallet.balance);
         console.log("=== smoke test complete ===");
