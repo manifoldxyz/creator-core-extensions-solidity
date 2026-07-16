@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
+import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
 
 import {INonFungibleSeaDropToken} from "seadrop/src/interfaces/INonFungibleSeaDropToken.sol";
 import {
@@ -9,7 +9,7 @@ import {
 } from "seadrop/src/lib/ERC721SeaDropStructsErrorsAndEvents.sol";
 
 /**
- * @title  CXRDSPacksMint
+ * @title  ManifoldPacksMint
  * @notice US-005 — SeaDrop mint + access unit tests (AC-1, AC-2).
  *
  *         Proves that packs mint as REAL sequential ERC721A tokens through the
@@ -19,7 +19,7 @@ import {
  *         are both driven by those real counters, and that only an allowed
  *         SeaDrop caller may invoke `mintSeaDrop`.
  */
-contract CXRDSPacksMint is CXRDSTestBase {
+contract ManifoldPacksMint is ManifoldPacksTestBase {
     // A fresh minter with no keys needed — receipt-only assertions.
     address internal walletA = address(0xA1);
     address internal walletB = address(0xB2);
@@ -35,24 +35,24 @@ contract CXRDSPacksMint is CXRDSTestBase {
     ///         tokens starting at id 1.
     function testFixturePacksAreSequentialERC721ATokens() public {
         for (uint256 id = 1; id <= FIXTURE_PACK_COUNT; id++) {
-            assertEq(cxrds.ownerOf(id), owner, "sequential pack owned by owner");
+            assertEq(packs.ownerOf(id), owner, "sequential pack owned by owner");
         }
         // ERC721A is 1-based: token id 0 never exists.
         vm.expectRevert();
-        cxrds.ownerOf(0);
+        packs.ownerOf(0);
     }
 
     /// @notice A wallet can mint packs through the allowed SeaDrop caller; the
     ///         packs appear as real ERC721A tokens with sequential ids that
     ///         continue after the fixture packs.
     function testAllowedSeaDropCallerMints() public {
-        seaDropCaller.mint(address(cxrds), walletA, 2);
+        seaDropCaller.mint(address(packs), walletA, 2);
 
         // New packs continue the sequential numbering after the 10 fixture packs.
         uint256 firstNew = FIXTURE_PACK_COUNT + 1;
-        assertEq(cxrds.ownerOf(firstNew), walletA, "pack 11 -> walletA");
-        assertEq(cxrds.ownerOf(firstNew + 1), walletA, "pack 12 -> walletA");
-        assertEq(cxrds.balanceOf(walletA), 2, "walletA balance");
+        assertEq(packs.ownerOf(firstNew), walletA, "pack 11 -> walletA");
+        assertEq(packs.ownerOf(firstNew + 1), walletA, "pack 12 -> walletA");
+        assertEq(packs.balanceOf(walletA), 2, "walletA balance");
     }
 
     // ------------------------------------------------------------------
@@ -64,20 +64,20 @@ contract CXRDSPacksMint is CXRDSTestBase {
     ///         shim-local ledger.
     function testGetMintStatsReflectsRealCounters() public {
         // Baseline: only the 10 fixture packs exist, all minted to owner.
-        (uint256 ownerMinted, uint256 total, uint256 maxSupply) = cxrds.getMintStats(owner);
+        (uint256 ownerMinted, uint256 total, uint256 maxSupply) = packs.getMintStats(owner);
         assertEq(ownerMinted, FIXTURE_PACK_COUNT, "owner numberMinted baseline");
         assertEq(total, FIXTURE_PACK_COUNT, "total minted baseline");
         assertEq(maxSupply, MAX_PACKS, "max supply == 3943");
 
         // Mint 3 more to walletB; both minter and total counters advance by the
         // real minted quantity.
-        seaDropCaller.mint(address(cxrds), walletB, 3);
-        (uint256 bMinted, uint256 total2,) = cxrds.getMintStats(walletB);
+        seaDropCaller.mint(address(packs), walletB, 3);
+        (uint256 bMinted, uint256 total2,) = packs.getMintStats(walletB);
         assertEq(bMinted, 3, "walletB numberMinted");
         assertEq(total2, FIXTURE_PACK_COUNT + 3, "total minted after walletB");
 
         // owner's own counter is untouched by walletB's mint.
-        (uint256 ownerMinted2,,) = cxrds.getMintStats(owner);
+        (uint256 ownerMinted2,,) = packs.getMintStats(owner);
         assertEq(ownerMinted2, FIXTURE_PACK_COUNT, "owner counter unchanged");
     }
 
@@ -86,8 +86,8 @@ contract CXRDSPacksMint is CXRDSTestBase {
     ///         reports exactly 2 — the value a 2-per-wallet public drop uses to
     ///         block the 3rd.
     function testPerWalletCapDrivenByRealNumberMinted() public {
-        seaDropCaller.mint(address(cxrds), walletA, 2);
-        (uint256 aMinted,,) = cxrds.getMintStats(walletA);
+        seaDropCaller.mint(address(packs), walletA, 2);
+        (uint256 aMinted,,) = packs.getMintStats(walletA);
         assertEq(aMinted, 2, "walletA at the 2-per-wallet cap");
     }
 
@@ -97,8 +97,8 @@ contract CXRDSPacksMint is CXRDSTestBase {
         uint256 remaining = MAX_PACKS - FIXTURE_PACK_COUNT;
 
         // Fill the collection exactly to its max supply.
-        seaDropCaller.mint(address(cxrds), whale, remaining);
-        (, uint256 total,) = cxrds.getMintStats(whale);
+        seaDropCaller.mint(address(packs), whale, remaining);
+        (, uint256 total,) = packs.getMintStats(whale);
         assertEq(total, MAX_PACKS, "collection at max supply");
 
         // One more pack exceeds MAX_PACKS -> revert with the real supply-check
@@ -110,7 +110,7 @@ contract CXRDSPacksMint is CXRDSTestBase {
                 MAX_PACKS
             )
         );
-        seaDropCaller.mint(address(cxrds), whale, 1);
+        seaDropCaller.mint(address(packs), whale, 1);
     }
 
     // ------------------------------------------------------------------
@@ -121,7 +121,7 @@ contract CXRDSPacksMint is CXRDSTestBase {
     ///         invoking mintSeaDrop directly reverts OnlyAllowedSeaDrop.
     function testNonSeaDropCallerReverts() public {
         vm.expectRevert(INonFungibleSeaDropToken.OnlyAllowedSeaDrop.selector);
-        cxrds.mintSeaDrop(walletA, 1);
+        packs.mintSeaDrop(walletA, 1);
     }
 
     /// @notice Even the pack owner cannot mint directly — the gate is the
@@ -129,6 +129,6 @@ contract CXRDSPacksMint is CXRDSTestBase {
     function testOwnerCannotMintDirectly() public {
         vm.prank(owner);
         vm.expectRevert(INonFungibleSeaDropToken.OnlyAllowedSeaDrop.selector);
-        cxrds.mintSeaDrop(owner, 1);
+        packs.mintSeaDrop(owner, 1);
     }
 }

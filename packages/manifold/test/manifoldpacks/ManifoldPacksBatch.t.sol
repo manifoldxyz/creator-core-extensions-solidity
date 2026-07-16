@@ -3,15 +3,15 @@ pragma solidity ^0.8.17;
 
 import {ERC1155Creator} from "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 
-import {CXRDSPacks} from "../../contracts/cxrds/CXRDSPacks.sol";
-import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
+import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
 
-import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
+import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
 
 /**
- * @title  CXRDSPacksBatch
+ * @title  ManifoldPacksBatch
  * @notice US-009 — Batch semantics + poisoned-batch integration tests run against
- *         the REAL stock ERC1155Creator provided by CXRDSTestBase (AC-7).
+ *         the REAL stock ERC1155Creator provided by ManifoldPacksTestBase (AC-7).
  *
  *         Covers:
  *           - N valid orders settle atomically in ONE deliverBatch tx: all packs
@@ -22,10 +22,10 @@ import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
  *           - initializeCards without a prior registerExtension reverts (the cards
  *             core gates mintExtensionNew on registration).
  */
-contract CXRDSPacksBatch is CXRDSTestBase {
+contract ManifoldPacksBatch is ManifoldPacksTestBase {
     uint256 internal constant BATCH_N = 5;
 
-    /// @dev Local mirror of ICXRDSPacks.Ripped for vm.expectEmit matching.
+    /// @dev Local mirror of IManifoldPacks.Ripped for vm.expectEmit matching.
     event Ripped(
         uint256 indexed packId,
         address indexed owner,
@@ -41,7 +41,7 @@ contract CXRDSPacksBatch is CXRDSTestBase {
     function test_batchAtomicSettlesAllOrders() public {
         // Sanity: before the batch, packs exist and no cards are minted.
         for (uint256 packId = 1; packId <= BATCH_N; packId++) {
-            assertEq(cxrds.ownerOf(packId), owner, "pack owned pre-batch");
+            assertEq(packs.ownerOf(packId), owner, "pack owned pre-batch");
         }
         for (uint256 k = 0; k < 4; k++) {
             assertEq(
@@ -52,7 +52,7 @@ contract CXRDSPacksBatch is CXRDSTestBase {
         }
 
         // Build N valid orders for fixture packs 1..N.
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](BATCH_N);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](BATCH_N);
         for (uint256 i = 0; i < BATCH_N; i++) {
             uint256 packId = i + 1;
             orders[i] = buildFixtureRipOrder(packId);
@@ -62,17 +62,17 @@ contract CXRDSPacksBatch is CXRDSTestBase {
         for (uint256 i = 0; i < BATCH_N; i++) {
             uint256 packId = i + 1;
             (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cardsForPack(packId));
-            vm.expectEmit(true, true, false, true, address(cxrds));
+            vm.expectEmit(true, true, false, true, address(packs));
             emit Ripped(packId, owner, ids, amounts, true);
         }
 
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
 
         // All N packs are burned -> ownerOf reverts (ERC721A replay lock).
         for (uint256 packId = 1; packId <= BATCH_N; packId++) {
             vm.expectRevert();
-            cxrds.ownerOf(packId);
+            packs.ownerOf(packId);
         }
 
         // All 4N card balances landed on the 1155. Every fixture pack mints
@@ -93,7 +93,7 @@ contract CXRDSPacksBatch is CXRDSTestBase {
     // ---------------------------------------------------------------------
 
     function test_poisonedBatchOutOfRangeCardRevertsWhole() public {
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](BATCH_N);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](BATCH_N);
         for (uint256 i = 0; i < BATCH_N; i++) {
             orders[i] = buildFixtureRipOrder(i + 1);
         }
@@ -109,14 +109,14 @@ contract CXRDSPacksBatch is CXRDSTestBase {
         orders[2] = buildRipOrder(OWNER_PK, badPackId, badCards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidCardIds.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        packs.deliverBatch(orders);
 
         _assertNoStateChange();
     }
 
     function test_poisonedBatchExpiredDeadlineRevertsWhole() public {
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](BATCH_N);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](BATCH_N);
         for (uint256 i = 0; i < BATCH_N; i++) {
             orders[i] = buildFixtureRipOrder(i + 1);
         }
@@ -131,8 +131,8 @@ contract CXRDSPacksBatch is CXRDSTestBase {
         );
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.PermitExpired.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.PermitExpired.selector);
+        packs.deliverBatch(orders);
 
         _assertNoStateChange();
     }
@@ -140,7 +140,7 @@ contract CXRDSPacksBatch is CXRDSTestBase {
     /// @dev After a reverted poisoned batch, no pack burned and no card minted.
     function _assertNoStateChange() internal {
         for (uint256 packId = 1; packId <= BATCH_N; packId++) {
-            assertEq(cxrds.ownerOf(packId), owner, "pack NOT burned after revert");
+            assertEq(packs.ownerOf(packId), owner, "pack NOT burned after revert");
         }
         for (uint256 k = 0; k < 4; k++) {
             assertEq(
@@ -163,7 +163,7 @@ contract CXRDSPacksBatch is CXRDSTestBase {
         address[] memory allowedSeaDrop = new address[](1);
         allowedSeaDrop[0] = address(seaDropCaller);
 
-        CXRDSPacks freshPacks = new CXRDSPacks(
+        ManifoldPacks freshPacks = new ManifoldPacks(
             "Fresh Packs",
             "FPACK",
             allowedSeaDrop,

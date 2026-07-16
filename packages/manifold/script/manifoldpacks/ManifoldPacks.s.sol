@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import {CXRDSPacks} from "../../contracts/cxrds/CXRDSPacks.sol";
-import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
+import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
 import {ISeaDropTokenContractMetadata} from "seadrop/src/interfaces/ISeaDropTokenContractMetadata.sol";
 import {
     ERC721SeaDropStructsErrorsAndEvents
@@ -17,12 +17,12 @@ import {
 } from "seadrop/src/lib/SeaDropStructs.sol";
 
 /**
- * @title  DeployCXRDSPacks
+ * @title  DeployManifoldPacks
  * @author manifold.xyz
- * @notice Parameterized Forge deploy + configuration runbook for the CXRDS pack
- *         collection (`contracts/cxrds/CXRDSPacks.sol`).
+ * @notice Parameterized Forge deploy + configuration runbook for the ManifoldPacks pack
+ *         collection (`contracts/manifoldpacks/ManifoldPacks.sol`).
  *
- *         The `run()` function ONLY deploys `CXRDSPacks` via CREATE2 with a
+ *         The `run()` function ONLY deploys `ManifoldPacks` via CREATE2 with a
  *         fixed salt and prints the deployed address + owner + creator, mirroring
  *         the shim precedent (`script/seadrop/ManifoldERC1155SeaDropShim.s.sol`).
  *         The full post-deploy sequence is NOT a single atomic broadcast — it
@@ -39,37 +39,37 @@ import {
  * POST-DEPLOY RUNBOOK (ordered — each leg is a separate tx / signer)
  * ─────────────────────────────────────────────────────────────────────────────
  *   PRECONDITION: the partner's Studio-deployed ERC1155 creator-core "cards"
- *   contract (CREATOR_CONTRACT) MUST already exist on-chain. CXRDSPacks binds to
+ *   contract (CREATOR_CONTRACT) MUST already exist on-chain. ManifoldPacks binds to
  *   it immutably at construction; register/initialize will revert otherwise.
  *
- *   0. `run()` — deploy CXRDSPacks (CREATE2 fixed salt). Broadcaster = deployer
+ *   0. `run()` — deploy ManifoldPacks (CREATE2 fixed salt). Broadcaster = deployer
  *      EOA (pays gas). Ownership is transferred to INITIAL_OWNER in the
  *      constructor (CREATE2-safe).
  *
  *   1. registerExtension  [CARDS-CORE ADMIN action — NOT self-callable by
- *      CXRDSPacks, and NOT part of this script's broadcast]:
- *          creator.registerExtension(address(cxrds), "")   // 2-arg overload
+ *      ManifoldPacks, and NOT part of this script's broadcast]:
+ *          creator.registerExtension(address(packs), "")   // 2-arg overload
  *      Must be executed by an admin of the CREATOR_CONTRACT. This is the reason
  *      the sequence is a runbook and not one atomic tx — the cards-core admin
  *      and the drop owner are distinct trust roles.
  *
- *   2. initializeCards(config)  [CXRDSPacks OWNER]:
- *          runInitializeCards()  → cxrds.initializeCards(config)
+ *   2. initializeCards(config)  [ManifoldPacks OWNER]:
+ *          runInitializeCards()  → packs.initializeCards(config)
  *      Reserves the 251 contiguous card variation ids on the cards core AND
  *      stores the card `PackConfig` (cardsPerPack 4, numberOfVariations 251,
  *      rip window + cardsLocation from env, maxCardsSupply 0 == unlimited).
  *      MUST run AFTER registerExtension (step 1) — creator-core rejects
  *      mintExtensionNew from an unregistered extension.
  *
- *   3. setSigner  [CXRDSPacks OWNER]:
+ *   3. setSigner  [ManifoldPacks OWNER]:
  *          runConfigureRip()  → setSigner(SIGNER)
  *      The rip window + cardsLocation now live in the PackConfig (set at
  *      initializeCards, updatable via runUpdateConfig) — the old
  *      setRipStart/setCardsLocation setters were removed.
  *
- *   4. SeaDrop drop config (3 phases) + royalty  [CXRDSPacks OWNER]:
- *          runConfigureSeaDrop()  → cxrds.multiConfigure(cfg)
- *                                   cxrds.setRoyaltyInfo(royalty)
+ *   4. SeaDrop drop config (3 phases) + royalty  [ManifoldPacks OWNER]:
+ *          runConfigureSeaDrop()  → packs.multiConfigure(cfg)
+ *                                   packs.setRoyaltyInfo(royalty)
  *      Phases (LOCKED shape): artists (1h) → allowlist (2h) → public.
  *      Price 0.0069 ETH, per-wallet cap 2, maxSupply 3943. Exact phase
  *      timestamps + allowlist merkle root are OPS inputs (env). multiConfigure
@@ -78,9 +78,9 @@ import {
  *      driven by the SeaDrop backend using the same feeBps/price — see the
  *      runbook note in `runConfigureSeaDrop`.
  *
- *   5. Two-step ownership transfer to the partner wallet  [CXRDSPacks OWNER]:
- *          runTransferOwnership()  → cxrds.transferOwnership(PARTNER_OWNER)
- *      Then, from PARTNER_OWNER:  cxrds.acceptOwnership()  (TwoStepOwnable).
+ *   5. Two-step ownership transfer to the partner wallet  [ManifoldPacks OWNER]:
+ *          runTransferOwnership()  → packs.transferOwnership(PARTNER_OWNER)
+ *      Then, from PARTNER_OWNER:  packs.acceptOwnership()  (TwoStepOwnable).
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * ENV VARS
@@ -95,7 +95,7 @@ import {
  *     SEADROP_ADDRESS   (address) — canonical SeaDrop, defaults to
  *                                   0x00005EA00Ac477B1030CE78506496e8C2dE24bf5.
  *   Owner legs (steps 2-5):
- *     CXRDS_PACKS       (address) — the deployed CXRDSPacks (from step 0 log).
+ *     MANIFOLD_PACKS       (address) — the deployed ManifoldPacks (from step 0 log).
  *     OWNER_PRIVATE_KEY (uint256) — INITIAL_OWNER's key (broadcasts owner legs).
  *     SIGNER            (address) — backend rip signer (setSigner).             [TBD-ops]
  *     RIP_START         (uint256) — earliest rip timestamp (config.ripStartDate).[TBD-5]
@@ -117,14 +117,14 @@ import {
  *     PARTNER_OWNER     (address) — partner wallet to receive ownership.        [TBD-ops]
  *
  * Example (deploy):
- *   forge script script/cxrds/CXRDSPacks.s.sol:DeployCXRDSPacks \
+ *   forge script script/manifoldpacks/ManifoldPacks.s.sol:DeployManifoldPacks \
  *     --optimizer-runs 500 --rpc-url $RPC_URL --broadcast
  *
  * Example (owner config leg 4):
- *   forge script script/cxrds/CXRDSPacks.s.sol:DeployCXRDSPacks \
+ *   forge script script/manifoldpacks/ManifoldPacks.s.sol:DeployManifoldPacks \
  *     --sig "runConfigureSeaDrop()" --rpc-url $RPC_URL --broadcast
  */
-contract DeployCXRDSPacks is Script {
+contract DeployManifoldPacks is Script {
     /// @notice The canonical SeaDrop deployment, live on both Shape chains.
     address internal constant CANONICAL_SEADROP = 0x00005EA00Ac477B1030CE78506496e8C2dE24bf5;
 
@@ -167,7 +167,7 @@ contract DeployCXRDSPacks is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        CXRDSPacks packs = new CXRDSPacks{salt: SALT}(
+        ManifoldPacks packs = new ManifoldPacks{salt: SALT}(
             packsName,
             packsSymbol,
             initialAllowedSeaDrop,
@@ -176,7 +176,7 @@ contract DeployCXRDSPacks is Script {
 
         vm.stopBroadcast();
 
-        console.log("CXRDSPacks deployed at:      ", address(packs));
+        console.log("ManifoldPacks deployed at:      ", address(packs));
         console.log("  name:                      ", packsName);
         console.log("  symbol:                    ", packsSymbol);
         console.log("  owner:                     ", packs.owner());
@@ -197,12 +197,12 @@ contract DeployCXRDSPacks is Script {
     // ─────────────────────────────────────────────────────────────────────
 
     function runInitializeCards() external {
-        CXRDSPacks packs = _packs();
+        ManifoldPacks packs = _packs();
         uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
         address creatorContract = vm.envAddress("CREATOR_CONTRACT");
         require(creatorContract != address(0), "CREATOR_CONTRACT not set");
 
-        ICXRDSPacks.PackConfig memory config = _buildPackConfig();
+        IManifoldPacks.PackConfig memory config = _buildPackConfig();
 
         vm.startBroadcast(ownerKey);
         packs.initializeCards(creatorContract, config);
@@ -224,7 +224,7 @@ contract DeployCXRDSPacks is Script {
     // ─────────────────────────────────────────────────────────────────────
 
     function runConfigureRip() external {
-        CXRDSPacks packs = _packs();
+        ManifoldPacks packs = _packs();
         uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
 
         address signer = vm.envAddress("SIGNER");
@@ -235,7 +235,7 @@ contract DeployCXRDSPacks is Script {
         vm.stopBroadcast();
 
         console.log("Rip configured. signer:", packs.signer());
-        ICXRDSPacks.PackConfig memory config = packs.getConfig();
+        IManifoldPacks.PackConfig memory config = packs.getConfig();
         console.log("  ripStartDate:        ", config.ripStartDate);
         console.log("  ripEndDate:          ", config.ripEndDate);
         console.log("  cardsLocation:       ", config.cardsLocation);
@@ -248,10 +248,10 @@ contract DeployCXRDSPacks is Script {
     // ─────────────────────────────────────────────────────────────────────
 
     function runUpdateConfig() external {
-        CXRDSPacks packs = _packs();
+        ManifoldPacks packs = _packs();
         uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
 
-        ICXRDSPacks.PackConfig memory config = _buildPackConfig();
+        IManifoldPacks.PackConfig memory config = _buildPackConfig();
 
         vm.startBroadcast(ownerKey);
         packs.updateConfig(config);
@@ -270,12 +270,12 @@ contract DeployCXRDSPacks is Script {
      *         end). `cardsPerPack` (4), `numberOfVariations` (251) and
      *         `maxCardsSupply` (0 == unlimited) are the locked drop values.
      */
-    function _buildPackConfig() internal returns (ICXRDSPacks.PackConfig memory config) {
+    function _buildPackConfig() internal returns (IManifoldPacks.PackConfig memory config) {
         uint256 ripStart = vm.envUint("RIP_START");
         uint256 ripEnd = vm.envOr("RIP_END", uint256(0));
         string memory cardsLocation = vm.envString("CARDS_LOCATION");
 
-        config = ICXRDSPacks.PackConfig({
+        config = IManifoldPacks.PackConfig({
             maxCardsSupply: MAX_CARDS_SUPPLY,
             cardsPerPack: CARDS_PER_PACK,
             numberOfVariations: NUMBER_OF_VARIATIONS,
@@ -297,7 +297,7 @@ contract DeployCXRDSPacks is Script {
     // ─────────────────────────────────────────────────────────────────────
 
     function runConfigureSeaDrop() external {
-        CXRDSPacks packs = _packs();
+        ManifoldPacks packs = _packs();
 
         // All SeaDrop/royalty env reads + struct assembly happen inside the
         // helpers below so their locals never occupy this function's stack.
@@ -414,7 +414,7 @@ contract DeployCXRDSPacks is Script {
     // ─────────────────────────────────────────────────────────────────────
 
     function runTransferOwnership() external {
-        CXRDSPacks packs = _packs();
+        ManifoldPacks packs = _packs();
         uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
         address partner = vm.envAddress("PARTNER_OWNER");
         require(partner != address(0), "PARTNER_OWNER not set");
@@ -431,9 +431,9 @@ contract DeployCXRDSPacks is Script {
     // Helpers
     // ─────────────────────────────────────────────────────────────────────
 
-    function _packs() internal view returns (CXRDSPacks) {
-        address addr = vm.envAddress("CXRDS_PACKS");
-        require(addr != address(0), "CXRDS_PACKS not set");
-        return CXRDSPacks(addr);
+    function _packs() internal view returns (ManifoldPacks) {
+        address addr = vm.envAddress("MANIFOLD_PACKS");
+        require(addr != address(0), "MANIFOLD_PACKS not set");
+        return ManifoldPacks(addr);
     }
 }

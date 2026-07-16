@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
-import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
+import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
 
 import {IERC721A} from "ERC721A/IERC721A.sol";
 
 /**
- * @title  CXRDSPacksReplay
+ * @title  ManifoldPacksReplay
  * @notice US-008 — Replay / already-ripped / in-batch-duplicate tests (AC-6).
  *
  *         Replay is structurally impossible (nonce-less design): once a pack is
@@ -17,7 +17,7 @@ import {IERC721A} from "ERC721A/IERC721A.sol";
  *         the replay lock. deliverBatch is atomic, so an in-batch duplicate
  *         rolls the whole batch back.
  */
-contract CXRDSPacksReplay is CXRDSTestBase {
+contract ManifoldPacksReplay is ManifoldPacksTestBase {
     // ------------------------------------------------------------------
     // AC-6: a used permit cannot be replayed across transactions.
     // ------------------------------------------------------------------
@@ -27,22 +27,22 @@ contract CXRDSPacksReplay is CXRDSTestBase {
     ///         ownerOf reverts — ERC721A's own error, no nonces).
     function testReplayAfterRipReverts() public {
         uint256 packId = 1;
-        ICXRDSPacks.RipOrder memory order = buildFixtureRipOrder(packId);
+        IManifoldPacks.RipOrder memory order = buildFixtureRipOrder(packId);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
 
         // First submission succeeds and burns the pack.
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
         vm.expectRevert(); // confirm burned
-        cxrds.ownerOf(packId);
+        packs.ownerOf(packId);
 
         // Second submission of the SAME permit -> ownerOf reverts
         // OwnerQueryForNonexistentToken (ERC721A's own error).
         vm.prank(signerAddr);
         vm.expectRevert(IERC721A.OwnerQueryForNonexistentToken.selector);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
     }
 
     // ------------------------------------------------------------------
@@ -58,16 +58,16 @@ contract CXRDSPacksReplay is CXRDSTestBase {
         uint256[4] memory cards = cardsForPack(packId);
 
         // Two orders sharing the same packId (identical permits).
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](2);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](2);
         orders[0] = buildFixtureRipOrder(packId);
         orders[1] = buildFixtureRipOrder(packId);
 
         vm.prank(signerAddr);
         vm.expectRevert(IERC721A.OwnerQueryForNonexistentToken.selector);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
 
         // Atomic rollback: the pack still exists and no cards were minted.
-        assertEq(cxrds.ownerOf(packId), owner, "pack survives rolled-back batch");
+        assertEq(packs.ownerOf(packId), owner, "pack survives rolled-back batch");
         for (uint256 i = 0; i < 4; i++) {
             assertEq(creator.balanceOf(owner, cards[i]), 0, "no cards minted on rollback");
         }
@@ -77,17 +77,17 @@ contract CXRDSPacksReplay is CXRDSTestBase {
     ///         above is specifically the duplicate/burned-pack lock, not a
     ///         general multi-order failure.
     function testDistinctPacksInOneBatchSucceed() public {
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](2);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](2);
         orders[0] = buildFixtureRipOrder(1);
         orders[1] = buildFixtureRipOrder(2);
 
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
 
         vm.expectRevert();
-        cxrds.ownerOf(1);
+        packs.ownerOf(1);
         vm.expectRevert();
-        cxrds.ownerOf(2);
+        packs.ownerOf(2);
     }
 
     /// @notice Ripping a never-minted (nonexistent) pack reverts the same
@@ -98,13 +98,13 @@ contract CXRDSPacksReplay is CXRDSTestBase {
         uint256 ghostPack = 9_999;
         uint256[4] memory cards = cardsForPack(1); // any in-range card ids
 
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(OWNER_PK, ghostPack, cards, block.timestamp + 1 days);
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
         vm.expectRevert(IERC721A.OwnerQueryForNonexistentToken.selector);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
     }
 }

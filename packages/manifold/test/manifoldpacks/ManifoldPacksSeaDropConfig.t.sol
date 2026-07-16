@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
 
-import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
+import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
 
 import {SeaDrop} from "seadrop/src/SeaDrop.sol";
 import {ISeaDrop} from "seadrop/src/interfaces/ISeaDrop.sol";
@@ -19,7 +19,7 @@ import {
 } from "seadrop/src/lib/SeaDropStructs.sol";
 
 /**
- * @title  CXRDSPacksSeaDropConfig
+ * @title  ManifoldPacksSeaDropConfig
  * @author manifold.xyz
  * @notice Verifies the US-013 SeaDrop drop configuration is REAL against the
  *         canonical SeaDrop surface — the 3-phase drop config (artists → allow
@@ -34,20 +34,20 @@ import {
  *              (`lib/seadrop/src/SeaDrop.sol`) and drives the inherited
  *              `multiConfigure` against it. No RPC required — runs in CI and
  *              offline.
- *           2. FORK (opt-in): if the env var `CXRDS_FORK_RPC_URL` is set, forks
+ *           2. FORK (opt-in): if the env var `MANIFOLD_FORK_RPC_URL` is set, forks
  *              that chain and drives the SAME config against the LIVE canonical
  *              SeaDrop at 0x00005EA00Ac477B1030CE78506496e8C2dE24bf5 (verified
  *              live on both Shape chains). When the env var is UNSET the fork
  *              test logs a skip notice and returns cleanly — it must NEVER fail
  *              the suite offline.
  *
- *         Inherits `CXRDSTestBase` (US-004 base) for the deployed CXRDSPacks +
+ *         Inherits `ManifoldPacksTestBase` (US-004 base) for the deployed ManifoldPacks +
  *         cards core + wallets. The base already minted the fixture packs via a
  *         mock SeaDrop caller in setUp; this test replaces the allowed-SeaDrop
  *         set with the (local or live) SeaDrop before configuring, since
  *         `multiConfigure` gates every leg on `_onlyAllowedSeaDrop(seaDropImpl)`.
  */
-contract CXRDSPacksSeaDropConfig is CXRDSTestBase {
+contract ManifoldPacksSeaDropConfig is ManifoldPacksTestBase {
     /// @notice Canonical SeaDrop 1.0, live on both Shape chains.
     address internal constant CANONICAL_SEADROP = 0x00005EA00Ac477B1030CE78506496e8C2dE24bf5;
 
@@ -57,7 +57,7 @@ contract CXRDSPacksSeaDropConfig is CXRDSTestBase {
     uint256 internal constant DROP_MAX_SUPPLY = 3943;
     uint16 internal constant FEE_BPS = 500; // 5% platform fee (example ops input)
     uint96 internal constant ROYALTY_BPS = 690; // 6.9% creator royalty
-    bytes32 internal constant ALLOWLIST_ROOT = keccak256("cxrds-allowlist-root-fixture");
+    bytes32 internal constant ALLOWLIST_ROOT = keccak256("packs-allowlist-root-fixture");
 
     // Config parties (parameterizable in ops; fixed fixtures here).
     address internal feeRecipient = address(0xFEE);
@@ -88,13 +88,13 @@ contract CXRDSPacksSeaDropConfig is CXRDSTestBase {
 
     // ─────────────────────────────────────────────────────────────────────
     // Path 2 — FORK against the LIVE canonical SeaDrop. Skips cleanly when
-    // `CXRDS_FORK_RPC_URL` is unset (offline / CI without a fork RPC).
+    // `MANIFOLD_FORK_RPC_URL` is unset (offline / CI without a fork RPC).
     // ─────────────────────────────────────────────────────────────────────
 
     function testConfigAgainstLiveSeaDropFork() public {
-        string memory rpcUrl = vm.envOr("CXRDS_FORK_RPC_URL", string(""));
+        string memory rpcUrl = vm.envOr("MANIFOLD_FORK_RPC_URL", string(""));
         if (bytes(rpcUrl).length == 0) {
-            emit log("SKIP: CXRDS_FORK_RPC_URL not set - live SeaDrop fork leg skipped (offline OK)");
+            emit log("SKIP: MANIFOLD_FORK_RPC_URL not set - live SeaDrop fork leg skipped (offline OK)");
             return;
         }
 
@@ -136,23 +136,23 @@ contract CXRDSPacksSeaDropConfig is CXRDSTestBase {
             });
 
         vm.startPrank(owner);
-        cxrds.updateAllowedSeaDrop(allowed);
-        cxrds.multiConfigure(cfg);
-        cxrds.setRoyaltyInfo(royalty);
+        packs.updateAllowedSeaDrop(allowed);
+        packs.multiConfigure(cfg);
+        packs.setRoyaltyInfo(royalty);
         vm.stopPrank();
 
         // AC-1: maxSupply + per-wallet cap + price readable back.
-        assertEq(cxrds.maxSupply(), DROP_MAX_SUPPLY, "maxSupply back");
+        assertEq(packs.maxSupply(), DROP_MAX_SUPPLY, "maxSupply back");
 
         (uint256 minterNumMinted, uint256 currentTotalSupply, uint256 statsMaxSupply) =
-            cxrds.getMintStats(collector);
+            packs.getMintStats(collector);
         assertEq(minterNumMinted, 0, "collector minted 0");
         // Base minted FIXTURE_PACK_COUNT packs to owner in setUp.
         assertEq(currentTotalSupply, FIXTURE_PACK_COUNT, "total minted = fixture");
         assertEq(statsMaxSupply, DROP_MAX_SUPPLY, "getMintStats maxSupply");
 
         // Public drop stage pushed to SeaDrop and readable back.
-        PublicDrop memory pd = ISeaDrop(seaDropImpl).getPublicDrop(address(cxrds));
+        PublicDrop memory pd = ISeaDrop(seaDropImpl).getPublicDrop(address(packs));
         assertEq(uint256(pd.mintPrice), MINT_PRICE, "public price 0.0069 ETH");
         assertEq(uint256(pd.maxTotalMintableByWallet), uint256(MAX_PER_WALLET), "per-wallet cap 2");
         assertEq(uint256(pd.startTime), publicStart, "public start");
@@ -162,24 +162,24 @@ contract CXRDSPacksSeaDropConfig is CXRDSTestBase {
 
         // Allowlist merkle root pushed and readable back.
         assertEq(
-            ISeaDrop(seaDropImpl).getAllowListMerkleRoot(address(cxrds)),
+            ISeaDrop(seaDropImpl).getAllowListMerkleRoot(address(packs)),
             ALLOWLIST_ROOT,
             "allowlist root"
         );
 
         // Creator payout + fee recipient allowlisting readable back.
         assertEq(
-            ISeaDrop(seaDropImpl).getCreatorPayoutAddress(address(cxrds)),
+            ISeaDrop(seaDropImpl).getCreatorPayoutAddress(address(packs)),
             creatorPayout,
             "creator payout"
         );
         assertTrue(
-            ISeaDrop(seaDropImpl).getFeeRecipientIsAllowed(address(cxrds), feeRecipient),
+            ISeaDrop(seaDropImpl).getFeeRecipientIsAllowed(address(packs), feeRecipient),
             "fee recipient allowed"
         );
 
         // AC-2: ERC-2981 royalty configurable + readable back.
-        (address recv, uint256 amount) = cxrds.royaltyInfo(1, 1 ether);
+        (address recv, uint256 amount) = packs.royaltyInfo(1, 1 ether);
         assertEq(recv, royaltyRecipient, "royalty receiver");
         assertEq(amount, (1 ether * ROYALTY_BPS) / 10_000, "royalty amount 6.9%");
     }
@@ -209,7 +209,7 @@ contract CXRDSPacksSeaDropConfig is CXRDSTestBase {
         AllowListData memory allowListData = AllowListData({
             merkleRoot: ALLOWLIST_ROOT,
             publicKeyURIs: new string[](0),
-            allowListURI: "ipfs://cxrds-allowlist"
+            allowListURI: "ipfs://packs-allowlist"
         });
 
         address[] memory allowedFeeRecipients = new address[](1);
@@ -217,8 +217,8 @@ contract CXRDSPacksSeaDropConfig is CXRDSTestBase {
 
         cfg = ERC721SeaDropStructsErrorsAndEvents.MultiConfigureStruct({
             maxSupply: DROP_MAX_SUPPLY,
-            baseURI: "ipfs://cxrds-pack-base/",
-            contractURI: "ipfs://cxrds-contract",
+            baseURI: "ipfs://packs-pack-base/",
+            contractURI: "ipfs://packs-contract",
             seaDropImpl: seaDropImpl,
             publicDrop: publicDrop,
             dropURI: "",

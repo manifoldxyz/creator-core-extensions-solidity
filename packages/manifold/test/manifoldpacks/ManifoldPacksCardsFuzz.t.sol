@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {CXRDSPacks} from "../../contracts/cxrds/CXRDSPacks.sol";
-import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
+import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
 
-import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
+import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
 
 /**
- * @title  CXRDSPacksCardsFuzz
+ * @title  ManifoldPacksCardsFuzz
  * @notice US-010 — initializeCards boundary + folder-URI + card-id/permit-domain
  *         fuzz tests (AC-8, AC-12 fuzz leg).
  *
@@ -23,7 +23,7 @@ import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
  *             (packId, deadline) verifies; wrong signer or mismatched signed payload
  *             reverts InvalidPermit.
  */
-contract CXRDSPacksCardsFuzz is CXRDSTestBase {
+contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
     string internal constant LOCATION = "ipfs://QmCardsFolder/";
 
     // ---------------------------------------------------------------------
@@ -43,8 +43,8 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
 
     function test_doubleInitRevertsCardsAlreadyInitialized() public {
         vm.prank(owner);
-        vm.expectRevert(ICXRDSPacks.CardsAlreadyInitialized.selector);
-        cxrds.initializeCards(address(creator), defaultConfig());
+        vm.expectRevert(IManifoldPacks.CardsAlreadyInitialized.selector);
+        packs.initializeCards(address(creator), defaultConfig());
     }
 
     // ---------------------------------------------------------------------
@@ -52,21 +52,21 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
     // ---------------------------------------------------------------------
 
     function test_cardURIResolvesAtRangeBoundaries() public {
-        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
         cfg.cardsLocation = LOCATION;
         vm.prank(owner);
-        cxrds.updateConfig(cfg);
+        packs.updateConfig(cfg);
 
         // First reserved card -> location/1.
         assertEq(
-            cxrds.tokenURI(address(creator), startingCardTokenId),
+            packs.tokenURI(address(creator), startingCardTokenId),
             string(abi.encodePacked(LOCATION, "1")),
             "first card URI"
         );
 
         // 251st reserved card (start+250) -> location/251.
         assertEq(
-            cxrds.tokenURI(address(creator), startingCardTokenId + 250),
+            packs.tokenURI(address(creator), startingCardTokenId + 250),
             string(abi.encodePacked(LOCATION, "251")),
             "last card URI"
         );
@@ -83,15 +83,15 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
         uint256 cardId = bound(rawCardId, start, start + NUM_CARDS() - 1);
 
         uint256[4] memory cards = [cardId, cardId, cardId, cardId];
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, 1, cards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
 
         // Pack burned; four of the fuzzed card design minted to owner.
         vm.expectRevert();
-        cxrds.ownerOf(1);
+        packs.ownerOf(1);
         assertEq(creator.balanceOf(owner, cardId), 4, "in-range cards minted");
     }
 
@@ -110,12 +110,12 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
         }
 
         uint256[4] memory cards = [start, start, start, cardId];
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, 1, cards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidCardIds.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        packs.deliverBatch(orders);
     }
 
     // ---------------------------------------------------------------------
@@ -146,12 +146,12 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
         uint256 wrongPk = bound(rawPk, 1, type(uint128).max);
         vm.assume(wrongPk != OWNER_PK);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildRipOrder(wrongPk, 1, cardsForPack(1), block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        packs.deliverBatch(orders);
     }
 
     function testFuzz_mismatchedSignedPayloadReverts(
@@ -168,19 +168,19 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
         // Sign over signedDeadline, but assemble the order with orderDeadline.
         uint256[4] memory sheet = cardsForPack(1);
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(sheet);
-        ICXRDSPacks.RipOrder memory order = ICXRDSPacks.RipOrder({
+        IManifoldPacks.RipOrder memory order = IManifoldPacks.RipOrder({
             packId: 1,
             cardIds: ids,
             amounts: amounts,
             deadline: orderDeadline, // != signed deadline -> digest mismatch
             signature: signRipPermitBytes(OWNER_PK, 1, signedDeadline)
         });
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        packs.deliverBatch(orders);
     }
 
     function testFuzz_mismatchedSignedPackIdReverts(uint256 rawSignedPackId) public {
@@ -191,19 +191,19 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
 
         uint256[4] memory sheet = cardsForPack(1);
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(sheet);
-        ICXRDSPacks.RipOrder memory order = ICXRDSPacks.RipOrder({
+        IManifoldPacks.RipOrder memory order = IManifoldPacks.RipOrder({
             packId: 1, // order targets pack 1, but sig covers signedPackId
             cardIds: ids,
             amounts: amounts,
             deadline: deadline,
             signature: signRipPermitBytes(OWNER_PK, signedPackId, deadline)
         });
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        packs.deliverBatch(orders);
     }
 
     // ---------------------------------------------------------------------
@@ -216,22 +216,22 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
 
     function _ripSingleCard(uint256 packId, uint256 cardId) internal {
         uint256[4] memory cards = [cardId, cardId, cardId, cardId];
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, packId, cards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
 
         assertEq(creator.balanceOf(owner, cardId), 4, "boundary card minted");
     }
 
     function _expectInvalidCardIds(uint256 packId, uint256 cardId) internal {
         uint256[4] memory cards = [cardId, cardId, cardId, cardId];
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, packId, cards, block.timestamp + 1 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidCardIds.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        packs.deliverBatch(orders);
     }
 }

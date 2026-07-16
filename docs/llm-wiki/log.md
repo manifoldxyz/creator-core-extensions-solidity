@@ -24,14 +24,14 @@
 ## [2026-07-15] lint | 0 issues
 - broken links: 0 | orphans: 0 | missing frontmatter: 0 | oversized pages: 0
 
-## [2026-07-16] create | concepts/cxrds-packs.md (US-016)
-- New concept page for the CXRDS pack contract family (branch `cxrds-pack-contract`)
-- Read & cited: manifold/contracts/cxrds/CXRDSPacks.sol + ICXRDSPacks.sol (confidence: high)
+## [2026-07-16] create | concepts/manifold-packs.md (US-016)
+- New concept page for the ManifoldPacks pack contract family (branch `manifoldpacks-pack-contract`)
+- Read & cited: manifold/contracts/manifoldpacks/ManifoldPacks.sol + IManifoldPacks.sol (confidence: high)
 - Documents: dual-role ERC721SeaDrop pack + ERC1155 cards-core extension; RipOrder struct; deliverBatch/initializeCards/both tokenURI surfaces; EIP-712 RipPermit consent model (no nonces — burn is the replay lock); verbatim error taxonomy
 - Pitfalls captured: CardsAlreadyInitialized naming (avoids inherited ConstructorInitializable.AlreadyInitialized collision); OZ EIP712 from node_modules not lib/openzeppelin-contracts; EIP-1271/Safe holders cannot rip in v1 (ecrecover-only, accepted non-goal); registerExtension is a cards-core admin action
 - index.md: added catalog line under Burn/Redeem Families with the no-nonces / burn-is-the-lock gotcha
 - Wikilinks: [[repo-overview]], [[burn-redeem]], [[collectible]], [[shared-libraries]]
 
-- 2026-07-16 — cxrds-packs: reworked per PR #119 review — PackConfig (owner-updatable card params, Serendipity-style init/update guards), SignatureChecker+EIP-1271 (Safe holders can rip), break-glass ripSignatureRequired switch + signatureVerified event flag, dynamic RipOrder cardIds/amounts (duplicate variations, sum==cardsPerPack), removed pack tokenURI override.
+- 2026-07-16 — manifold-packs: reworked per PR #119 review — PackConfig (owner-updatable card params, Serendipity-style init/update guards), SignatureChecker+EIP-1271 (Safe holders can rip), break-glass ripSignatureRequired switch + signatureVerified event flag, dynamic RipOrder cardIds/amounts (duplicate variations, sum==cardsPerPack), removed pack tokenURI override.
 
-- 2026-07-16 — cxrds-packs: 2nd review pass (PR #119) — removed MAX_PACKS constant (SeaDrop maxSupply is the cap); ripSignatureRequired now internal (per-rip signatureVerified flag suffices); creatorContractAddress moved from constructor immutable to a set-once param of initializeCards(cardsCreator, config); dropped SignerUpdated event; numberOfVariations now FIXED at init (CannotChangeVariations replaces raise-path CannotLowerVariations/NonContiguousVariations).
+- 2026-07-16 — manifold-packs: 2nd review pass (PR #119) — removed MAX_PACKS constant (SeaDrop maxSupply is the cap); ripSignatureRequired now internal (per-rip signatureVerified flag suffices); creatorContractAddress moved from constructor immutable to a set-once param of initializeCards(cardsCreator, config); dropped SignerUpdated event; numberOfVariations now FIXED at init (CannotChangeVariations replaces raise-path CannotLowerVariations/NonContiguousVariations).

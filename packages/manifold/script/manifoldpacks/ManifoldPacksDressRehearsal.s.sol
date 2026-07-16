@@ -3,31 +3,31 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import {CXRDSPacks} from "../../contracts/cxrds/CXRDSPacks.sol";
-import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
+import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
 import {ISeaDrop} from "seadrop/src/interfaces/ISeaDrop.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
 
 /**
- * @title  CXRDSDressRehearsal
+ * @title  ManifoldPacksDressRehearsal
  * @author manifold.xyz
- * @notice AC-11 dress-rehearsal harness for the CXRDS pack "rip" journey,
+ * @notice AC-11 dress-rehearsal harness for the ManifoldPacks pack "rip" journey,
  *         designed to run against Shape Sepolia (or any fork of it). It drives
  *         the full end-to-end flow with real txs and captures a receipt/log per
  *         leg so the QA/preview gate has human-visible artifacts:
  *
  *           LEG 1 — SeaDrop-path mint: a PAYER wallet calls
- *                   `ISeaDrop.mintPublic{value}(cxrds, feeRecipient, collector, 1)`
+ *                   `ISeaDrop.mintPublic{value}(packs, feeRecipient, collector, 1)`
  *                   minting ONE pack to the ZERO-BALANCE `collector`
  *                   (`minterIfNotPayer = collector`, so the collector spends no
  *                   ETH — the payer covers price + gas). Captures the pack
  *                   tokenId + the mint tx.
  *           LEG 2 — Gasless consent: the zero-balance `collector` signs an
  *                   EIP-712 `RipPermit(packId, deadline)` OFF-CHAIN (no tx, no
- *                   gas). Reproduces the exact digest `CXRDSPacks` verifies via
+ *                   gas). Reproduces the exact digest `ManifoldPacks` verifies via
  *                   `_hashTypedDataV4` using the on-chain `RIP_TYPEHASH` + the
- *                   OZ EIP712("CXRDSPacks","1") domain.
+ *                   OZ EIP712("ManifoldPacks","1") domain.
  *           LEG 3 — Delivery: the authorized `signer` submits ONE
  *                   `deliverBatch([order])` tx that atomically burns the pack and
  *                   mints the 4 correct cards to the collector on the 1155 cards
@@ -48,7 +48,7 @@ import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensi
  * ─────────────────────────────────────────────────────────────────────────────
  * PRECONDITIONS (the stack must already be deployed + configured — US-013 runbook)
  * ─────────────────────────────────────────────────────────────────────────────
- *   - CXRDSPacks deployed, registered as an extension on the cards core, and
+ *   - ManifoldPacks deployed, registered as an extension on the cards core, and
  *     initializeCards() run (startingCardTokenId != 0).
  *   - signer + ripStart set (ripStart <= now), cardsLocation set.
  *   - SeaDrop public drop configured (US-013 step 4) with the SeaDrop at
@@ -57,7 +57,7 @@ import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensi
  * ─────────────────────────────────────────────────────────────────────────────
  * ENV VARS (all secrets via env — NEVER hardcode keys)
  * ─────────────────────────────────────────────────────────────────────────────
- *   CXRDS_PACKS         (address) — deployed CXRDSPacks.
+ *   MANIFOLD_PACKS         (address) — deployed ManifoldPacks.
  *   SEADROP_ADDRESS     (address) — SeaDrop to mint through
  *                                   (0x00005EA00Ac477B1030CE78506496e8C2dE24bf5).
  *   FEE_RECIPIENT       (address) — allowed SeaDrop fee recipient (from US-013).
@@ -75,21 +75,21 @@ import {IERC1155MetadataURI} from "@openzeppelin/contracts/token/ERC1155/extensi
  *                                   now + 1 hour.
  *
  * Example (DRY RUN against a local fork of Shape Sepolia — NO broadcast):
- *   forge script script/cxrds/CXRDSDressRehearsal.s.sol:CXRDSDressRehearsal \
+ *   forge script script/manifoldpacks/ManifoldPacksDressRehearsal.s.sol:ManifoldPacksDressRehearsal \
  *     --rpc-url $SHAPE_SEPOLIA_RPC_URL
  *
  * Example (LIVE — downstream live-ops ONLY, not CI):
- *   forge script script/cxrds/CXRDSDressRehearsal.s.sol:CXRDSDressRehearsal \
+ *   forge script script/manifoldpacks/ManifoldPacksDressRehearsal.s.sol:ManifoldPacksDressRehearsal \
  *     --rpc-url $SHAPE_SEPOLIA_RPC_URL --broadcast --slow
  */
-contract CXRDSDressRehearsal is Script {
+contract ManifoldPacksDressRehearsal is Script {
     address internal constant CANONICAL_SEADROP = 0x00005EA00Ac477B1030CE78506496e8C2dE24bf5;
     uint256 internal constant DEFAULT_MINT_PRICE = 0.0069 ether;
 
     /// @notice Resolved run context, grouped to keep `run()` under the
     ///         stack-depth limit (avoids "Stack too deep" without via-ir).
     struct Ctx {
-        CXRDSPacks packs;
+        ManifoldPacks packs;
         address creator;
         address seaDrop;
         address feeRecipient;
@@ -106,13 +106,13 @@ contract CXRDSDressRehearsal is Script {
     function run() external {
         Ctx memory ctx = _loadCtx();
 
-        require(address(ctx.packs) != address(0), "CXRDS_PACKS not set");
+        require(address(ctx.packs) != address(0), "MANIFOLD_PACKS not set");
         require(ctx.feeRecipient != address(0), "FEE_RECIPIENT not set");
         require(ctx.packs.startingCardTokenId() != 0, "cards not initialized (run US-013 step 2)");
         require(ctx.packs.signer() == ctx.signer, "SIGNER_PRIVATE_KEY != configured rip signer");
 
-        console.log("=== CXRDS dress rehearsal (AC-11) ===");
-        console.log("cxrds:      ", address(ctx.packs));
+        console.log("=== ManifoldPacks dress rehearsal (AC-11) ===");
+        console.log("packs:      ", address(ctx.packs));
         console.log("cards core: ", ctx.creator);
         console.log("seaDrop:    ", ctx.seaDrop);
         console.log("payer:      ", ctx.payer);
@@ -131,7 +131,7 @@ contract CXRDSDressRehearsal is Script {
 
     /// @notice Load + derive all run parameters from env into a single struct.
     function _loadCtx() internal returns (Ctx memory ctx) {
-        ctx.packs = CXRDSPacks(vm.envAddress("CXRDS_PACKS"));
+        ctx.packs = ManifoldPacks(vm.envAddress("MANIFOLD_PACKS"));
         ctx.creator = ctx.packs.creatorContractAddress();
         ctx.seaDrop = vm.envOr("SEADROP_ADDRESS", CANONICAL_SEADROP);
         ctx.feeRecipient = vm.envAddress("FEE_RECIPIENT");
@@ -172,12 +172,12 @@ contract CXRDSDressRehearsal is Script {
      *         deliverBatch tx that atomically burns the pack and mints 4 cards.
      */
     function _legDeliver(Ctx memory ctx, uint256 packId, uint256[4] memory cardIds) internal {
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             _buildSignedOrder(ctx.packs, ctx.collectorKey, packId, cardIds, ctx.deadline);
         console.log("LEG 2 done. Collector signed RipPermit off-chain. deadline:", ctx.deadline);
         console.log("collector ETH after signing:", ctx.collector.balance, "(unchanged)");
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.startBroadcast(ctx.signerKey);
         ctx.packs.deliverBatch(orders);
@@ -223,7 +223,7 @@ contract CXRDSDressRehearsal is Script {
      *         tokens, so this is only a starting point — `_resolveMintedPack`
      *         confirms/scans for the actual minted id.
      */
-    function _totalMintedGuess(CXRDSPacks packs) internal returns (uint256) {
+    function _totalMintedGuess(ManifoldPacks packs) internal returns (uint256) {
         try packs.totalSupply() returns (uint256 ts) {
             return ts;
         } catch {
@@ -236,7 +236,7 @@ contract CXRDSDressRehearsal is Script {
      *         first, then scans a small forward window (handles prior mints /
      *         burns shifting the sequential counter).
      */
-    function _resolveMintedPack(CXRDSPacks packs, address collector, uint256 guess)
+    function _resolveMintedPack(ManifoldPacks packs, address collector, uint256 guess)
         internal
         returns (uint256)
     {
@@ -249,7 +249,7 @@ contract CXRDSDressRehearsal is Script {
         revert("could not resolve minted packId for collector");
     }
 
-    function _ownsQuietly(CXRDSPacks packs, uint256 id) internal returns (address) {
+    function _ownsQuietly(ManifoldPacks packs, uint256 id) internal returns (address) {
         try packs.ownerOf(id) returns (address o) {
             return o;
         } catch {
@@ -263,30 +263,30 @@ contract CXRDSDressRehearsal is Script {
      *         take the first four reserved variation ids (all inside
      *         [startingCardTokenId, startingCardTokenId + NUM_CARD_DESIGNS)).
      */
-    function _pickCards(CXRDSPacks packs) internal view returns (uint256[4] memory cardIds) {
+    function _pickCards(ManifoldPacks packs) internal view returns (uint256[4] memory cardIds) {
         uint256 start = packs.startingCardTokenId();
         cardIds = [start, start + 1, start + 2, start + 3];
     }
 
     /**
-     * @notice Reproduce the EXACT EIP-712 digest CXRDSPacks verifies and sign it
+     * @notice Reproduce the EXACT EIP-712 digest ManifoldPacks verifies and sign it
      *         with the collector's key, producing a fully-populated RipOrder.
      *         Only (packId, deadline) are covered by the signature; cardIds are
      *         relay data validated on-chain (range check).
      */
     function _buildSignedOrder(
-        CXRDSPacks packs,
+        ManifoldPacks packs,
         uint256 collectorKey,
         uint256 packId,
         uint256[4] memory cardIds,
         uint256 deadline
-    ) internal view returns (ICXRDSPacks.RipOrder memory order) {
+    ) internal view returns (IManifoldPacks.RipOrder memory order) {
         bytes32 domainSeparator = keccak256(
             abi.encode(
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256(bytes("CXRDSPacks")),
+                keccak256(bytes("ManifoldPacks")),
                 keccak256(bytes("1")),
                 block.chainid,
                 address(packs)
@@ -307,7 +307,7 @@ contract CXRDSDressRehearsal is Script {
             amounts[i] = 1;
         }
 
-        order = ICXRDSPacks.RipOrder({
+        order = IManifoldPacks.RipOrder({
             packId: packId,
             cardIds: ids,
             amounts: amounts,

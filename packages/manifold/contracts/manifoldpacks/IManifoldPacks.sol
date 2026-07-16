@@ -2,12 +2,12 @@
 pragma solidity ^0.8.17;
 
 /**
- * @title  ICXRDSPacks
+ * @title  IManifoldPacks
  * @author manifold.xyz
- * @notice Interface for the CXRDS pack collection — the config/order structs,
+ * @notice Interface for the ManifoldPacks pack collection — the config/order structs,
  *         events, and custom-error taxonomy of the gasless "rip" mechanic.
  *
- *         CXRDSPacks is a dual-role contract: an ERC721SeaDrop "pack"
+ *         ManifoldPacks is a dual-role contract: an ERC721SeaDrop "pack"
  *         collection that is ALSO a registered extension on a separate stock
  *         ERC1155 creator-core "cards" contract. The core mechanic — "rip" —
  *         lets a trusted signer submit collector-authorized EIP-712
@@ -22,7 +22,7 @@ pragma solidity ^0.8.17;
  *         in a `PackConfig` set at `initializeCards` and owner-updatable via
  *         `updateConfig`.
  */
-interface ICXRDSPacks {
+interface IManifoldPacks {
     /**
      * @notice Card-side configuration for the pack collection. Set once at
      *         `initializeCards` and owner-updatable via `updateConfig`.

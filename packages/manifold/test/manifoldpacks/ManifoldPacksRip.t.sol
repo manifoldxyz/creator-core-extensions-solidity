@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
-import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
+import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
 
 /**
- * @title  CXRDSPacksRip
+ * @title  ManifoldPacksRip
  * @notice US-006 — Permit + happy-path rip unit tests (AC-3, AC-4).
  *
  *         Proves the rip-phase gate (RipNotStarted before ripStart), the
@@ -14,7 +14,7 @@ import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
  *         untouched), and the secondary-buyer path (pack transferred, NEW owner
  *         signs, rip succeeds to the new owner).
  */
-contract CXRDSPacksRip is CXRDSTestBase {
+contract ManifoldPacksRip is ManifoldPacksTestBase {
     // Re-declared here so vm.expectEmit can reference the event shape.
     event Ripped(
         uint256 indexed packId,
@@ -36,19 +36,19 @@ contract CXRDSPacksRip is CXRDSTestBase {
 
         // Deadline is comfortably beyond the ripStart warp below so the permit
         // stays valid once the phase opens.
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, 1, cardsForPack(1), block.timestamp + 30 days);
 
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.RipNotStarted.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.RipNotStarted.selector);
+        packs.deliverBatch(orders);
 
         // Warp past ripStart -> the same order now succeeds.
         vm.warp(block.timestamp + 2 days);
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
         vm.expectRevert(); // pack burned
-        cxrds.ownerOf(1);
+        packs.ownerOf(1);
     }
 
     // ------------------------------------------------------------------
@@ -71,19 +71,19 @@ contract CXRDSPacksRip is CXRDSTestBase {
         // The pack owner spends no ETH (collector/owner here is the pack holder).
         uint256 ownerEthBefore = owner.balance;
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(packId);
 
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cards);
-        vm.expectEmit(true, true, false, true, address(cxrds));
+        vm.expectEmit(true, true, false, true, address(packs));
         emit Ripped(packId, owner, ids, amounts, true);
 
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
 
         // Pack burned: ownerOf reverts.
         vm.expectRevert();
-        cxrds.ownerOf(packId);
+        packs.ownerOf(packId);
 
         // Exactly four cards minted, +1 each, to the pack owner.
         for (uint256 i = 0; i < 4; i++) {
@@ -100,11 +100,11 @@ contract CXRDSPacksRip is CXRDSTestBase {
         uint256 packId = 2;
         uint256[4] memory cards = cardsForPack(packId);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(packId);
 
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
 
         for (uint256 i = 0; i < 4; i++) {
             assertGe(cards[i], startingCardTokenId, "card >= start");
@@ -127,23 +127,23 @@ contract CXRDSPacksRip is CXRDSTestBase {
         // Sealed transfer: owner -> collector (collector is a keyed wallet so
         // it can sign its own permit).
         vm.prank(owner);
-        cxrds.transferFrom(owner, collector, packId);
-        assertEq(cxrds.ownerOf(packId), collector, "pack transferred to collector");
+        packs.transferFrom(owner, collector, packId);
+        assertEq(packs.ownerOf(packId), collector, "pack transferred to collector");
 
         // New owner signs its own permit.
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildRipOrder(COLLECTOR_PK, packId, cards, block.timestamp + 1 days);
 
         (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cards);
-        vm.expectEmit(true, true, false, true, address(cxrds));
+        vm.expectEmit(true, true, false, true, address(packs));
         emit Ripped(packId, collector, ids, amounts, true);
 
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
 
         // Pack burned; cards land with the NEW owner, not the original minter.
         vm.expectRevert();
-        cxrds.ownerOf(packId);
+        packs.ownerOf(packId);
         for (uint256 i = 0; i < 4; i++) {
             assertEq(creator.balanceOf(collector, cards[i]), 1, "card -> new owner");
             assertEq(creator.balanceOf(owner, cards[i]), 0, "original minter got nothing");

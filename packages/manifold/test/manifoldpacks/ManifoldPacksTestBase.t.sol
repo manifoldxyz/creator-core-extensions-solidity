@@ -5,22 +5,22 @@ import "forge-std/Test.sol";
 
 import {ERC1155Creator} from "@manifoldxyz/creator-core-solidity/contracts/ERC1155Creator.sol";
 
-import {CXRDSPacks} from "../../contracts/cxrds/CXRDSPacks.sol";
-import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+import {ManifoldPacks} from "../../contracts/manifoldpacks/ManifoldPacks.sol";
+import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
 
 import {MockSeaDropCaller} from "./mocks/MockSeaDropCaller.sol";
 
 /**
- * @title  CXRDSTestBase
- * @notice Shared Foundry harness for the CXRDS pack contract test suite.
+ * @title  ManifoldPacksTestBase
+ * @notice Shared Foundry harness for the ManifoldPacks pack contract test suite.
  *         Deploys a stock ERC1155Creator as the "cards" core, deploys
- *         CXRDSPacks wired to it, registers the extension (a cards-core admin
+ *         ManifoldPacks wired to it, registers the extension (a cards-core admin
  *         action) BEFORE initializeCards, initializes the card `PackConfig`
  *         (251 variations, 4 cards/pack, rip open now, no end, no cap), sets the
  *         backend signer, and exposes: three test wallets, a mock allowed-
  *         SeaDrop caller, a frozen-sheet fixture of 10 packs -> uint256[4] card
  *         ids, and EIP-712 RipPermit signing helpers that reproduce the exact
- *         digest CXRDSPacks verifies via `_hashTypedDataV4` and pack the
+ *         digest ManifoldPacks verifies via `_hashTypedDataV4` and pack the
  *         signature as `bytes` (abi.encodePacked(r, s, v)) for
  *         `SignatureChecker`.
  *
@@ -35,14 +35,14 @@ import {MockSeaDropCaller} from "./mocks/MockSeaDropCaller.sol";
  *             (the replay lock — no nonces).
  *           - CardsAlreadyInitialized: double initializeCards().
  */
-contract CXRDSTestBase is Test {
+contract ManifoldPacksTestBase is Test {
     // ---------------------------------------------------------------------
     // Wallets. All three carry known private keys (via vm.addr) so children
     // can sign RipPermits as the pack owner — the rip mechanic verifies the
     // permit against ownerOf(packId), so the pack HOLDER must be able to sign.
     // ---------------------------------------------------------------------
 
-    /// @notice Owner / partner-stand-in: cards-core admin AND the CXRDSPacks
+    /// @notice Owner / partner-stand-in: cards-core admin AND the ManifoldPacks
     ///         owner. Holds the frozen-sheet fixture packs.
     uint256 internal constant OWNER_PK = 0xA11CE;
     address internal owner;
@@ -74,7 +74,7 @@ contract CXRDSTestBase is Test {
     ERC1155Creator internal creator;
 
     /// @notice The pack collection under test.
-    CXRDSPacks internal cxrds;
+    ManifoldPacks internal packs;
 
     /// @notice Mock allowed-SeaDrop caller wired into `allowedSeaDrop_`.
     MockSeaDropCaller internal seaDropCaller;
@@ -92,7 +92,7 @@ contract CXRDSTestBase is Test {
     uint256 internal constant MAX_PACKS = 3943;
 
     /// @notice The first reserved card variation id on the cards core
-    ///         (== cxrds.startingCardTokenId() after initializeCards).
+    ///         (== packs.startingCardTokenId() after initializeCards).
     uint256 internal startingCardTokenId;
 
     /// @notice packId => the four valid card ids to mint when that pack is
@@ -110,7 +110,7 @@ contract CXRDSTestBase is Test {
         vm.startPrank(owner);
 
         // Deploy the cards core (owner becomes its admin).
-        creator = new ERC1155Creator("CXRDS Cards", "CXRDS");
+        creator = new ERC1155Creator("ManifoldPacks Cards", "ManifoldPacks");
 
         // Deploy the mock SeaDrop caller and wire it as an allowed SeaDrop.
         seaDropCaller = new MockSeaDropCaller();
@@ -119,8 +119,8 @@ contract CXRDSTestBase is Test {
 
         // Deploy the pack collection. Constructor sets owner to msg.sender then
         // transfers to initialOwner (owner here).
-        cxrds = new CXRDSPacks(
-            "CXRDS Packs",
+        packs = new ManifoldPacks(
+            "ManifoldPacks Packs",
             "PACK",
             allowedSeaDrop,
             owner
@@ -129,23 +129,23 @@ contract CXRDSTestBase is Test {
         // Order matters: registerExtension (a cards-core ADMIN action) THEN
         // initializeCards on the pack contract with the cards-core address and
         // the card config.
-        creator.registerExtension(address(cxrds), "");
-        cxrds.initializeCards(address(creator), defaultConfig());
+        creator.registerExtension(address(packs), "");
+        packs.initializeCards(address(creator), defaultConfig());
 
         // Configure the backend signer.
-        cxrds.setSigner(signerAddr);
+        packs.setSigner(signerAddr);
 
         // Allow SeaDrop minting: cap supply and mint the fixture packs to owner.
-        cxrds.setMaxSupply(MAX_PACKS);
+        packs.setMaxSupply(MAX_PACKS);
 
         vm.stopPrank();
 
         // Mint FIXTURE_PACK_COUNT packs to owner via the allowed SeaDrop caller.
         // ERC721A starts token ids at 1, so packs are ids 1..FIXTURE_PACK_COUNT.
-        seaDropCaller.mint(address(cxrds), owner, FIXTURE_PACK_COUNT);
+        seaDropCaller.mint(address(packs), owner, FIXTURE_PACK_COUNT);
 
         // Record the reserved card range and build the frozen sheet fixture.
-        startingCardTokenId = cxrds.startingCardTokenId();
+        startingCardTokenId = packs.startingCardTokenId();
         for (uint256 packId = 1; packId <= FIXTURE_PACK_COUNT; packId++) {
             fixtureCards[packId] = [
                 startingCardTokenId,
@@ -162,8 +162,8 @@ contract CXRDSTestBase is Test {
 
     /// @notice The default card config used at setUp: rip open at the current
     ///         timestamp, no end, no supply cap, empty location.
-    function defaultConfig() internal view returns (ICXRDSPacks.PackConfig memory) {
-        return ICXRDSPacks.PackConfig({
+    function defaultConfig() internal view returns (IManifoldPacks.PackConfig memory) {
+        return IManifoldPacks.PackConfig({
             maxCardsSupply: 0,
             cardsPerPack: CARDS_PER_PACK,
             numberOfVariations: NUM_CARD_DESIGNS,
@@ -175,35 +175,35 @@ contract CXRDSTestBase is Test {
 
     /// @notice Set only the rip start date via updateConfig (owner-pranked).
     function _setRipStart(uint256 ripStartDate) internal {
-        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
         cfg.ripStartDate = ripStartDate;
         vm.prank(owner);
-        cxrds.updateConfig(cfg);
+        packs.updateConfig(cfg);
     }
 
     /// @notice Set the rip window via updateConfig (owner-pranked).
     function _setRipWindow(uint256 ripStartDate, uint256 ripEndDate) internal {
-        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
         cfg.ripStartDate = ripStartDate;
         cfg.ripEndDate = ripEndDate;
         vm.prank(owner);
-        cxrds.updateConfig(cfg);
+        packs.updateConfig(cfg);
     }
 
     /// @notice Set the cards metadata location via updateConfig (owner-pranked).
     function _setCardsLocation(string memory location) internal {
-        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
         cfg.cardsLocation = location;
         vm.prank(owner);
-        cxrds.updateConfig(cfg);
+        packs.updateConfig(cfg);
     }
 
     /// @notice Set the max card supply cap via updateConfig (owner-pranked).
     function _setMaxCardsSupply(uint256 maxCardsSupply) internal {
-        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
+        IManifoldPacks.PackConfig memory cfg = packs.getConfig();
         cfg.maxCardsSupply = maxCardsSupply;
         vm.prank(owner);
-        cxrds.updateConfig(cfg);
+        packs.updateConfig(cfg);
     }
 
     // ---------------------------------------------------------------------
@@ -211,8 +211,8 @@ contract CXRDSTestBase is Test {
     // ---------------------------------------------------------------------
 
     /**
-     * @notice The EIP-712 domain separator for the deployed CXRDSPacks, matching
-     *         OZ EIP712("CXRDSPacks", "1") exactly.
+     * @notice The EIP-712 domain separator for the deployed ManifoldPacks, matching
+     *         OZ EIP712("ManifoldPacks", "1") exactly.
      */
     function _domainSeparator() internal view returns (bytes32) {
         return keccak256(
@@ -220,22 +220,22 @@ contract CXRDSTestBase is Test {
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256(bytes("CXRDSPacks")),
+                keccak256(bytes("ManifoldPacks")),
                 keccak256(bytes("1")),
                 block.chainid,
-                address(cxrds)
+                address(packs)
             )
         );
     }
 
     /**
-     * @notice Reproduce the EXACT digest CXRDSPacks verifies via
+     * @notice Reproduce the EXACT digest ManifoldPacks verifies via
      *         `_hashTypedDataV4(keccak256(abi.encode(RIP_TYPEHASH, packId,
      *         deadline)))`. Uses the contract's own RIP_TYPEHASH constant so the
      *         struct hash is byte-for-byte identical.
      */
     function _ripDigest(uint256 packId, uint256 deadline) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(cxrds.RIP_TYPEHASH(), packId, deadline));
+        bytes32 structHash = keccak256(abi.encode(packs.RIP_TYPEHASH(), packId, deadline));
         return keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
     }
 
@@ -278,14 +278,14 @@ contract CXRDSTestBase is Test {
         uint256 packId,
         uint256[4] memory cardIds,
         uint256 deadline
-    ) internal view returns (ICXRDSPacks.RipOrder memory order) {
+    ) internal view returns (IManifoldPacks.RipOrder memory order) {
         uint256[] memory ids = new uint256[](4);
         uint256[] memory amounts = new uint256[](4);
         for (uint256 i = 0; i < 4; i++) {
             ids[i] = cardIds[i];
             amounts[i] = 1;
         }
-        order = ICXRDSPacks.RipOrder({
+        order = IManifoldPacks.RipOrder({
             packId: packId,
             cardIds: ids,
             amounts: amounts,
@@ -304,8 +304,8 @@ contract CXRDSTestBase is Test {
         uint256[] memory cardIds,
         uint256[] memory amounts,
         uint256 deadline
-    ) internal view returns (ICXRDSPacks.RipOrder memory order) {
-        order = ICXRDSPacks.RipOrder({
+    ) internal view returns (IManifoldPacks.RipOrder memory order) {
+        order = IManifoldPacks.RipOrder({
             packId: packId,
             cardIds: cardIds,
             amounts: amounts,
@@ -321,7 +321,7 @@ contract CXRDSTestBase is Test {
     function buildFixtureRipOrder(uint256 packId)
         internal
         view
-        returns (ICXRDSPacks.RipOrder memory)
+        returns (IManifoldPacks.RipOrder memory)
     {
         return buildRipOrder(OWNER_PK, packId, fixtureCards[packId], block.timestamp + 1 days);
     }
@@ -355,12 +355,12 @@ contract CXRDSTestBase is Test {
     // ---------------------------------------------------------------------
 
     function testHarnessSetup() public {
-        assertEq(cxrds.owner(), owner, "cxrds owner");
-        assertEq(cxrds.signer(), signerAddr, "backend signer");
-        assertEq(cxrds.getConfig().ripStartDate, block.timestamp, "ripStart open");
+        assertEq(packs.owner(), owner, "packs owner");
+        assertEq(packs.signer(), signerAddr, "backend signer");
+        assertEq(packs.getConfig().ripStartDate, block.timestamp, "ripStart open");
         assertGt(startingCardTokenId, 0, "cards initialized");
-        assertEq(cxrds.ownerOf(1), owner, "fixture pack 1 owned by owner");
-        assertEq(cxrds.ownerOf(FIXTURE_PACK_COUNT), owner, "fixture pack N owned by owner");
+        assertEq(packs.ownerOf(1), owner, "fixture pack 1 owned by owner");
+        assertEq(packs.ownerOf(FIXTURE_PACK_COUNT), owner, "fixture pack N owned by owner");
 
         // Signing helper recovers to the signing key's address.
         (uint8 v, bytes32 r, bytes32 s) = signRipPermit(OWNER_PK, 1, block.timestamp + 1 days);

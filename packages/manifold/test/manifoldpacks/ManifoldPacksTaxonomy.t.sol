@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
-import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+import {ManifoldPacksTestBase} from "./ManifoldPacksTestBase.t.sol";
+import {IManifoldPacks} from "../../contracts/manifoldpacks/IManifoldPacks.sol";
 
 /**
- * @title  CXRDSPacksTaxonomy
+ * @title  ManifoldPacksTaxonomy
  * @notice US-007 — Error-taxonomy unit tests (AC-5, AC-10): exactly one revert
  *         test per pinned error row.
  *
@@ -29,19 +29,19 @@ import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
  *
  *         SignatureChecker now supports EIP-1271 contract wallets — the old
  *         "Safe holders can't rip" v1 non-goal is REMOVED (see the dedicated
- *         EIP-1271 rip test in CXRDSPacksSignature.t.sol).
+ *         EIP-1271 rip test in ManifoldPacksSignature.t.sol).
  */
-contract CXRDSPacksTaxonomy is CXRDSTestBase {
+contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
     // An arbitrary key that is neither owner, collector, nor signer — used to
     // forge a well-formed signature that recovers to a wrong, nonzero address.
     uint256 internal constant FORGER_PK = 0xF0F0;
 
     // Helper: submit a single-order batch as the configured signer.
-    function _deliver(ICXRDSPacks.RipOrder memory order) internal {
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+    function _deliver(IManifoldPacks.RipOrder memory order) internal {
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        cxrds.deliverBatch(orders);
+        packs.deliverBatch(orders);
     }
 
     // ------------------------------------------------------------------
@@ -49,13 +49,13 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
     // ------------------------------------------------------------------
 
     function testOnlySigner() public {
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = buildFixtureRipOrder(1);
 
         // Called by owner (not the signer) -> OnlySigner.
         vm.prank(owner);
-        vm.expectRevert(ICXRDSPacks.OnlySigner.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.OnlySigner.selector);
+        packs.deliverBatch(orders);
     }
 
     // ------------------------------------------------------------------
@@ -65,14 +65,14 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
     function testPermitExpired() public {
         // Owner signs, but with a deadline already in the past.
         uint256 pastDeadline = block.timestamp - 1;
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(OWNER_PK, 1, cardsForPack(1), pastDeadline);
 
         vm.prank(signerAddr);
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
-        vm.expectRevert(ICXRDSPacks.PermitExpired.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.PermitExpired.selector);
+        packs.deliverBatch(orders);
     }
 
     // ------------------------------------------------------------------
@@ -85,43 +85,43 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
     function testInvalidPermitMalformed() public {
         // Start from a valid owner permit, then replace the signature with a
         // 65-byte garbage blob (v out of range) that recovers to nothing.
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(OWNER_PK, 1, cardsForPack(1), block.timestamp + 1 days);
         order.signature = new bytes(65); // all-zero -> ECDSA InvalidSignature/no recovery.
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        packs.deliverBatch(orders);
     }
 
     /// @notice (2) Forged-but-well-formed signature that recovers to an
     ///         arbitrary nonzero address (the forger key) which is not the pack
     ///         owner.
     function testInvalidPermit_forgedWellFormed() public {
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(FORGER_PK, 1, cardsForPack(1), block.timestamp + 1 days);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        packs.deliverBatch(orders);
     }
 
     /// @notice (3) A permit signed by a known non-owner (collector) for a pack
     ///         owned by someone else.
     function testInvalidPermit_nonOwner() public {
         // Pack 1 is owned by owner; collector signs a permit for it.
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(COLLECTOR_PK, 1, cardsForPack(1), block.timestamp + 1 days);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        packs.deliverBatch(orders);
     }
 
     /// @notice (4) A stale permit: owner signs, then transfers the pack away.
@@ -129,18 +129,18 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
     function testInvalidPermit_staleAfterTransfer() public {
         uint256 packId = 1;
         // Owner signs a valid permit while still holding the pack.
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(OWNER_PK, packId, cardsForPack(packId), block.timestamp + 1 days);
 
         // Then transfers the pack to collector, staling the signature.
         vm.prank(owner);
-        cxrds.transferFrom(owner, collector, packId);
+        packs.transferFrom(owner, collector, packId);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        packs.deliverBatch(orders);
     }
 
     // ------------------------------------------------------------------
@@ -160,14 +160,14 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
         }
         amounts[3] = 0; // sum == 3, not cardsPerPack (4).
 
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, packId, ids, amounts, block.timestamp + 1 days);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidCardAmounts.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidCardAmounts.selector);
+        packs.deliverBatch(orders);
     }
 
     function testInvalidCardAmountsMismatchedLengths() public {
@@ -182,14 +182,14 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
             amounts[i] = 1;
         }
 
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, packId, ids, amounts, block.timestamp + 1 days);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidCardAmounts.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidCardAmounts.selector);
+        packs.deliverBatch(orders);
     }
 
     function testInvalidCardAmountsEmpty() public {
@@ -198,14 +198,14 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
         uint256[] memory ids = new uint256[](0);
         uint256[] memory amounts = new uint256[](0);
 
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, packId, ids, amounts, block.timestamp + 1 days);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidCardAmounts.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidCardAmounts.selector);
+        packs.deliverBatch(orders);
     }
 
     // ------------------------------------------------------------------
@@ -222,14 +222,14 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
             startingCardTokenId + 2,
             startingCardTokenId + NUM_CARD_DESIGNS // out of range
         ];
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(OWNER_PK, packId, badCards, block.timestamp + 1 days);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidCardIds.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        packs.deliverBatch(orders);
     }
 
     /// @notice A card id below the reserved range (e.g. 0, or start-1) also
@@ -242,14 +242,14 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
             startingCardTokenId + 2,
             startingCardTokenId + 3
         ];
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(OWNER_PK, packId, badCards, block.timestamp + 1 days);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidCardIds.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidCardIds.selector);
+        packs.deliverBatch(orders);
     }
 
     // ------------------------------------------------------------------
@@ -258,8 +258,8 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
 
     function testCardsAlreadyInitialized() public {
         vm.prank(owner);
-        vm.expectRevert(ICXRDSPacks.CardsAlreadyInitialized.selector);
-        cxrds.initializeCards(address(creator), defaultConfig());
+        vm.expectRevert(IManifoldPacks.CardsAlreadyInitialized.selector);
+        packs.initializeCards(address(creator), defaultConfig());
     }
 
     // ------------------------------------------------------------------
@@ -273,16 +273,16 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
         // The (compromised) signer forges a permit with its OWN key. It is
         // well-formed but recovers to the signer, not the pack owner ->
         // InvalidPermit. The pack is NOT burned.
-        ICXRDSPacks.RipOrder memory order =
+        IManifoldPacks.RipOrder memory order =
             buildRipOrder(SIGNER_PK, packId, cardsForPack(packId), block.timestamp + 1 days);
 
-        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        IManifoldPacks.RipOrder[] memory orders = new IManifoldPacks.RipOrder[](1);
         orders[0] = order;
         vm.prank(signerAddr);
-        vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
-        cxrds.deliverBatch(orders);
+        vm.expectRevert(IManifoldPacks.InvalidPermit.selector);
+        packs.deliverBatch(orders);
 
         // Pack still exists and is still owned by owner — nothing was ripped.
-        assertEq(cxrds.ownerOf(packId), owner, "pack untouched by compromised signer");
+        assertEq(packs.ownerOf(packId), owner, "pack untouched by compromised signer");
     }
 }
