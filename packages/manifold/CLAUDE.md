@@ -1,5 +1,7 @@
 # CLAUDE.md - AI Assistant Guidelines
 
+> **Gather context first:** this repo has a source-grounded LLM wiki at the repo root — `docs/llm-wiki/`. Start at `docs/llm-wiki/index.md` (catalog + per-family gotchas), then the family page for whatever you're touching (e.g. `concepts/lazy-payable-claim.md`, `concepts/burn-redeem.md`). It documents contract maps, real signatures/structs, fee handling, and pitfalls for every family in this package, each claim cited to source. On conflict, source wins — then update the wiki page.
+
 ## Project Overview
 **Manifold Creator Core Extensions** - Solidity smart contracts providing extension functionality for [Manifold Creator Core](https://github.com/manifoldxyz/creator-core-solidity) NFT contracts deployed via [Manifold Studio](https://studio.manifold.xyz).
 
