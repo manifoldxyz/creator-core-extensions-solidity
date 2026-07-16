@@ -1,0 +1,145 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import {CXRDSTestBase} from "./CXRDSTestBase.t.sol";
+import {ICXRDSPacks} from "../../contracts/cxrds/ICXRDSPacks.sol";
+
+/**
+ * @title  CXRDSPacksRip
+ * @notice US-006 — Permit + happy-path rip unit tests (AC-3, AC-4).
+ *
+ *         Proves the rip-phase gate (RipNotStarted before ripStart), the
+ *         gasless happy path (owner-signed permit -> pack burned + exactly four
+ *         cards minted to the owner on the 1155, Ripped emitted, collector ETH
+ *         untouched), and the secondary-buyer path (pack transferred, NEW owner
+ *         signs, rip succeeds to the new owner).
+ */
+contract CXRDSPacksRip is CXRDSTestBase {
+    // Re-declared here so vm.expectEmit can reference the event shape.
+    event Ripped(uint256 indexed packId, address indexed owner, uint256[4] cardIds);
+
+    // ------------------------------------------------------------------
+    // AC-3: rip-phase gate.
+    // ------------------------------------------------------------------
+
+    /// @notice Before ripStart, deliverBatch reverts RipNotStarted; after it,
+    ///         the same order succeeds.
+    function testRipBeforeStartReverts() public {
+        // Close the rip phase: move ripStart into the future.
+        vm.prank(owner);
+        cxrds.setRipStart(block.timestamp + 1 days);
+
+        // Deadline is comfortably beyond the ripStart warp below so the permit
+        // stays valid once the phase opens.
+        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        orders[0] = buildRipOrder(OWNER_PK, 1, cardsForPack(1), block.timestamp + 30 days);
+
+        vm.prank(signerAddr);
+        vm.expectRevert(ICXRDSPacks.RipNotStarted.selector);
+        cxrds.deliverBatch(orders);
+
+        // Warp past ripStart -> the same order now succeeds.
+        vm.warp(block.timestamp + 2 days);
+        vm.prank(signerAddr);
+        cxrds.deliverBatch(orders);
+        vm.expectRevert(); // pack burned
+        cxrds.ownerOf(1);
+    }
+
+    // ------------------------------------------------------------------
+    // AC-4: gasless happy-path rip.
+    // ------------------------------------------------------------------
+
+    /// @notice A valid owner-signed order submitted by the signer burns the
+    ///         pack, mints exactly the four supplied cards to the owner on the
+    ///         1155 (+1 each), emits Ripped, and leaves the collector's ETH
+    ///         balance untouched (zero-gas path — the signer pays).
+    function testHappyPathRip() public {
+        uint256 packId = 1;
+        uint256[4] memory cards = cardsForPack(packId);
+
+        // Card balances start at zero.
+        for (uint256 i = 0; i < 4; i++) {
+            assertEq(creator.balanceOf(owner, cards[i]), 0, "card balance pre-rip");
+        }
+
+        // The pack owner spends no ETH (collector/owner here is the pack holder).
+        uint256 ownerEthBefore = owner.balance;
+
+        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        orders[0] = buildFixtureRipOrder(packId);
+
+        vm.expectEmit(true, true, false, true, address(cxrds));
+        emit Ripped(packId, owner, cards);
+
+        vm.prank(signerAddr);
+        cxrds.deliverBatch(orders);
+
+        // Pack burned: ownerOf reverts.
+        vm.expectRevert();
+        cxrds.ownerOf(packId);
+
+        // Exactly four cards minted, +1 each, to the pack owner.
+        for (uint256 i = 0; i < 4; i++) {
+            assertEq(creator.balanceOf(owner, cards[i]), 1, "card minted +1");
+        }
+
+        // Owner (the collector in this path) spent no ETH.
+        assertEq(owner.balance, ownerEthBefore, "pack owner ETH untouched");
+    }
+
+    /// @notice A distinct four-card assertion using a second fixture pack:
+    ///         the four ids are all inside the reserved variation range.
+    function testRipMintsFourInRangeCards() public {
+        uint256 packId = 2;
+        uint256[4] memory cards = cardsForPack(packId);
+
+        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        orders[0] = buildFixtureRipOrder(packId);
+
+        vm.prank(signerAddr);
+        cxrds.deliverBatch(orders);
+
+        for (uint256 i = 0; i < 4; i++) {
+            assertGe(cards[i], startingCardTokenId, "card >= start");
+            assertLt(cards[i], startingCardTokenId + cxrds.NUM_CARD_DESIGNS(), "card < start+251");
+            assertEq(creator.balanceOf(owner, cards[i]), 1, "card minted");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // AC-4 secondary-buyer happy path.
+    // ------------------------------------------------------------------
+
+    /// @notice After a sealed transfer to a second wallet, the NEW owner's
+    ///         signed permit rips the pack to the NEW owner (cards land with
+    ///         the new owner, not the original minter).
+    function testSecondaryOwnerRip() public {
+        uint256 packId = 3;
+        uint256[4] memory cards = cardsForPack(packId);
+
+        // Sealed transfer: owner -> collector (collector is a keyed wallet so
+        // it can sign its own permit).
+        vm.prank(owner);
+        cxrds.transferFrom(owner, collector, packId);
+        assertEq(cxrds.ownerOf(packId), collector, "pack transferred to collector");
+
+        // New owner signs its own permit.
+        ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
+        orders[0] = buildRipOrder(COLLECTOR_PK, packId, cards, block.timestamp + 1 days);
+
+        vm.expectEmit(true, true, false, true, address(cxrds));
+        emit Ripped(packId, collector, cards);
+
+        vm.prank(signerAddr);
+        cxrds.deliverBatch(orders);
+
+        // Pack burned; cards land with the NEW owner, not the original minter.
+        vm.expectRevert();
+        cxrds.ownerOf(packId);
+        for (uint256 i = 0; i < 4; i++) {
+            assertEq(creator.balanceOf(collector, cards[i]), 1, "card -> new owner");
+            assertEq(creator.balanceOf(owner, cards[i]), 0, "original minter got nothing");
+        }
+    }
+}

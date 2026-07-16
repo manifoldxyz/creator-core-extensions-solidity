@@ -23,3 +23,11 @@
 
 ## [2026-07-15] lint | 0 issues
 - broken links: 0 | orphans: 0 | missing frontmatter: 0 | oversized pages: 0
+
+## [2026-07-16] create | concepts/cxrds-packs.md (US-016)
+- New concept page for the CXRDS pack contract family (branch `cxrds-pack-contract`)
+- Read & cited: manifold/contracts/cxrds/CXRDSPacks.sol + ICXRDSPacks.sol (confidence: high)
+- Documents: dual-role ERC721SeaDrop pack + ERC1155 cards-core extension; RipOrder struct; deliverBatch/initializeCards/both tokenURI surfaces; EIP-712 RipPermit consent model (no nonces — burn is the replay lock); verbatim error taxonomy
+- Pitfalls captured: CardsAlreadyInitialized naming (avoids inherited ConstructorInitializable.AlreadyInitialized collision); OZ EIP712 from node_modules not lib/openzeppelin-contracts; EIP-1271/Safe holders cannot rip in v1 (ecrecover-only, accepted non-goal); registerExtension is a cards-core admin action
+- index.md: added catalog line under Burn/Redeem Families with the no-nonces / burn-is-the-lock gotcha
+- Wikilinks: [[repo-overview]], [[burn-redeem]], [[collectible]], [[shared-libraries]]
