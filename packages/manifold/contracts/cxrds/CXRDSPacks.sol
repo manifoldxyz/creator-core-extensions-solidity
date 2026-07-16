@@ -32,8 +32,7 @@ import {ICXRDSPacks} from "./ICXRDSPacks.sol";
  *         Card-side parameters live in an owner-configurable `PackConfig`
  *         (variation count, cards-per-pack, rip window, optional supply cap,
  *         metadata location), set once at `initializeCards` and updatable via
- *         `updateConfig`, mirroring the Serendipity claim initialize/update
- *         ideology (`gachaclaims/ERC1155Serendipity.sol`).
+ *         `updateConfig`.
  *
  *         As a card-metadata extension, this contract also implements
  *         `ICreatorExtensionTokenURI` — the cards core delegates
@@ -41,25 +40,6 @@ import {ICXRDSPacks} from "./ICXRDSPacks.sol";
  *         folder-pattern URI derived from `config.cardsLocation`. Pack metadata
  *         is left to the inherited `ERC721ContractMetadata`/`ERC721SeaDrop`
  *         behavior (no bespoke pack `tokenURI` override).
- *
- *         SIGNATURE OFF-SWITCH (break-glass): `ripSignatureRequired` defaults
- *         to `true` — every rip requires a valid owner permit. The owner MAY
- *         flip it to `false` via `setRipSignatureRequired`, in which case
- *         signature verification is SKIPPED ENTIRELY and the trusted `signer`
- *         ALONE authorizes burns. A compromised signer could then rip ANY pack.
- *         This is a deliberate break-glass control, not the normal mode — the
- *         per-rip `signatureVerified` flag on the `Ripped` event records which
- *         rips were unverified.
- *
- *         Deployment order:
- *           1. Deploy this contract (constructor stores the immutable cards
- *              creator and transfers ownership to `initialOwner`).
- *           2. Cards-core admin calls `registerExtension(thisContract, "")` on
- *              the cards core (an ADMIN action — NOT performed by this contract).
- *           3. Call `initializeCards(config)` to reserve the contiguous card
- *              variation ids on the cards core (amount 0 / blank URI) and store
- *              the card configuration.
- *           4. Configure `signer` and the SeaDrop drop parameters.
  */
 contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSPacks {
     /// @notice Upper bound on `numberOfVariations` — the uint8 variation cap
@@ -232,20 +212,12 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
     /**
      * @notice Deliver a batch of collector-authorized rip permits. For each
      *         order: verify the permit (unless the off-switch is set), burn the
-     *         pack, and mint its cards to the owner. Atomic — any single failure
-     *         reverts the entire batch.
+     *         pack, and mint its cards to the owner.
      *
      * @dev    Callable only by `signer`, only within the configured rip window.
      *         No nonces and no burn-credit ledger: replay is prevented
      *         structurally because a burned pack makes `ownerOf(packId)` revert
      *         ERC721A's `OwnerQueryForNonexistentToken`.
-     *
-     *         Error order (pinned; matters for tests):
-     *           OnlySigner -> RipNotStarted -> RipEnded ->
-     *           (per order) PermitExpired ->
-     *           [ownerOf revert for burned/nonexistent pack] ->
-     *           InvalidPermit (only when ripSignatureRequired) ->
-     *           InvalidCardAmounts -> InvalidCardIds -> MaxCardsSupplyExceeded.
      *
      * @param orders The rip orders to process.
      */

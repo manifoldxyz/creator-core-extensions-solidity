@@ -20,8 +20,7 @@ pragma solidity ^0.8.17;
  *         Card-side parameters (variation count, cards-per-pack, rip window,
  *         supply cap, metadata location) are NOT constants — they are captured
  *         in a `PackConfig` set at `initializeCards` and owner-updatable via
- *         `updateConfig`, mirroring the Serendipity claim
- *         initialize/update ideology (`gachaclaims/ERC1155Serendipity.sol`).
+ *         `updateConfig`.
  */
 interface ICXRDSPacks {
     /**
