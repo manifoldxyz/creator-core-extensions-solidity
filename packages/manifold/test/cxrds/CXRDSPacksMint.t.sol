@@ -67,7 +67,7 @@ contract CXRDSPacksMint is CXRDSTestBase {
         (uint256 ownerMinted, uint256 total, uint256 maxSupply) = cxrds.getMintStats(owner);
         assertEq(ownerMinted, FIXTURE_PACK_COUNT, "owner numberMinted baseline");
         assertEq(total, FIXTURE_PACK_COUNT, "total minted baseline");
-        assertEq(maxSupply, cxrds.MAX_PACKS(), "max supply == 3943");
+        assertEq(maxSupply, MAX_PACKS, "max supply == 3943");
 
         // Mint 3 more to walletB; both minter and total counters advance by the
         // real minted quantity.
@@ -94,20 +94,20 @@ contract CXRDSPacksMint is CXRDSTestBase {
     /// @notice Minting beyond MAX_PACKS (3,943) total reverts via the real
     ///         _totalMinted supply check in mintSeaDrop.
     function testMintBeyondMaxSupplyReverts() public {
-        uint256 remaining = cxrds.MAX_PACKS() - FIXTURE_PACK_COUNT;
+        uint256 remaining = MAX_PACKS - FIXTURE_PACK_COUNT;
 
         // Fill the collection exactly to its max supply.
         seaDropCaller.mint(address(cxrds), whale, remaining);
         (, uint256 total,) = cxrds.getMintStats(whale);
-        assertEq(total, cxrds.MAX_PACKS(), "collection at max supply");
+        assertEq(total, MAX_PACKS, "collection at max supply");
 
         // One more pack exceeds MAX_PACKS -> revert with the real supply-check
         // error, carrying (attemptedTotal, maxSupply) = (3944, 3943).
         vm.expectRevert(
             abi.encodeWithSelector(
                 ERC721SeaDropStructsErrorsAndEvents.MintQuantityExceedsMaxSupply.selector,
-                cxrds.MAX_PACKS() + 1,
-                cxrds.MAX_PACKS()
+                MAX_PACKS + 1,
+                MAX_PACKS
             )
         );
         seaDropCaller.mint(address(cxrds), whale, 1);

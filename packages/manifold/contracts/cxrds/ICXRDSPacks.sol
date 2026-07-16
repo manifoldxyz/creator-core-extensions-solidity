@@ -121,13 +121,6 @@ interface ICXRDSPacks {
     );
 
     /**
-     * @notice Emitted when the authorized rip `signer` is updated by the owner.
-     *
-     * @param signer The new signer address permitted to call `deliverBatch`.
-     */
-    event SignerUpdated(address signer);
-
-    /**
      * @notice Emitted when the card-side `PackConfig` is set at
      *         `initializeCards`.
      *
@@ -221,18 +214,16 @@ interface ICXRDSPacks {
     error InvalidDate();
 
     /**
-     * @notice Reverts when `updateConfig` attempts to LOWER
-     *         `numberOfVariations` below its current value (variations may only
-     *         be raised).
+     * @notice Reverts when `updateConfig` attempts to change `numberOfVariations`
+     *         (it is fixed at `initializeCards`; mirrors Serendipity's
+     *         `CannotChangeTokenVariations`).
      */
-    error CannotLowerVariations();
+    error CannotChangeVariations();
 
     /**
-     * @notice Reverts when `updateConfig` raises `numberOfVariations` but the
-     *         cards core does not hand back a contiguous block of ids (the new
-     *         first reserved id != `startingCardTokenId + oldNumberOfVariations`).
+     * @notice Reverts when `initializeCards` is given a zero cards-core address.
      */
-    error NonContiguousVariations();
+    error InvalidCardsCreator();
 
     /**
      * @notice Reverts when `updateConfig` sets a non-zero `maxCardsSupply`

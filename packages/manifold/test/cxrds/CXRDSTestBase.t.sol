@@ -86,6 +86,11 @@ contract CXRDSTestBase is Test {
     /// @notice Number of packs pre-minted to `owner` in the frozen fixture.
     uint256 internal constant FIXTURE_PACK_COUNT = 10;
 
+    /// @notice Pack collection size for the drop (SeaDrop max supply). The
+    ///         contract no longer exposes this as a constant — it lives in the
+    ///         SeaDrop `maxSupply` config — so the harness keeps its own copy.
+    uint256 internal constant MAX_PACKS = 3943;
+
     /// @notice The first reserved card variation id on the cards core
     ///         (== cxrds.startingCardTokenId() after initializeCards).
     uint256 internal startingCardTokenId;
@@ -118,20 +123,20 @@ contract CXRDSTestBase is Test {
             "CXRDS Packs",
             "PACK",
             allowedSeaDrop,
-            address(creator),
             owner
         );
 
         // Order matters: registerExtension (a cards-core ADMIN action) THEN
-        // initializeCards on the pack contract with the card config.
+        // initializeCards on the pack contract with the cards-core address and
+        // the card config.
         creator.registerExtension(address(cxrds), "");
-        cxrds.initializeCards(defaultConfig());
+        cxrds.initializeCards(address(creator), defaultConfig());
 
         // Configure the backend signer.
         cxrds.setSigner(signerAddr);
 
         // Allow SeaDrop minting: cap supply and mint the fixture packs to owner.
-        cxrds.setMaxSupply(cxrds.MAX_PACKS());
+        cxrds.setMaxSupply(MAX_PACKS);
 
         vm.stopPrank();
 
@@ -353,7 +358,6 @@ contract CXRDSTestBase is Test {
         assertEq(cxrds.owner(), owner, "cxrds owner");
         assertEq(cxrds.signer(), signerAddr, "backend signer");
         assertEq(cxrds.getConfig().ripStartDate, block.timestamp, "ripStart open");
-        assertTrue(cxrds.ripSignatureRequired(), "sig required by default");
         assertGt(startingCardTokenId, 0, "cards initialized");
         assertEq(cxrds.ownerOf(1), owner, "fixture pack 1 owned by owner");
         assertEq(cxrds.ownerOf(FIXTURE_PACK_COUNT), owner, "fixture pack N owned by owner");

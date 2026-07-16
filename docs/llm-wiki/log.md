@@ -33,3 +33,5 @@
 - Wikilinks: [[repo-overview]], [[burn-redeem]], [[collectible]], [[shared-libraries]]
 
 - 2026-07-16 — cxrds-packs: reworked per PR #119 review — PackConfig (owner-updatable card params, Serendipity-style init/update guards), SignatureChecker+EIP-1271 (Safe holders can rip), break-glass ripSignatureRequired switch + signatureVerified event flag, dynamic RipOrder cardIds/amounts (duplicate variations, sum==cardsPerPack), removed pack tokenURI override.
+
+- 2026-07-16 — cxrds-packs: 2nd review pass (PR #119) — removed MAX_PACKS constant (SeaDrop maxSupply is the cap); ripSignatureRequired now internal (per-rip signatureVerified flag suffices); creatorContractAddress moved from constructor immutable to a set-once param of initializeCards(cardsCreator, config); dropped SignerUpdated event; numberOfVariations now FIXED at init (CannotChangeVariations replaces raise-path CannotLowerVariations/NonContiguousVariations).

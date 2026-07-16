@@ -44,7 +44,7 @@ contract CXRDSPacksCardsFuzz is CXRDSTestBase {
     function test_doubleInitRevertsCardsAlreadyInitialized() public {
         vm.prank(owner);
         vm.expectRevert(ICXRDSPacks.CardsAlreadyInitialized.selector);
-        cxrds.initializeCards(defaultConfig());
+        cxrds.initializeCards(address(creator), defaultConfig());
     }
 
     // ---------------------------------------------------------------------

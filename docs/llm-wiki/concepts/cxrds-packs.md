@@ -18,11 +18,11 @@ A **dual-role** contract, unlike the shared-singleton extensions that dominate t
 | File | Role |
 |---|---|
 | `cxrds/CXRDSPacks.sol` | The dual-role contract: `ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSPacks`. Holds pack supply, the rip flow, the owner-updatable `PackConfig`, and the card tokenURI surface ^[manifold/contracts/cxrds/CXRDSPacks.sol#L45] |
-| `cxrds/ICXRDSPacks.sol` | Interface: `PackConfig` + `RipOrder` structs, events (`Ripped`, `SignerUpdated`, `CardsInitialized`, `ConfigUpdated`, `RipSignatureRequirementUpdated`), and the full custom-error taxonomy ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L26] |
+| `cxrds/ICXRDSPacks.sol` | Interface: `PackConfig` + `RipOrder` structs, events (`Ripped`, `CardsInitialized`, `ConfigUpdated`, `RipSignatureRequirementUpdated`), and the full custom-error taxonomy ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L26] |
 
-Key constant (`CXRDSPacks.sol`): `MAX_PACKS = 3943` (SeaDrop max supply). `RIP_TYPEHASH = keccak256("RipPermit(uint256 packId,uint256 deadline)")`. `MAX_UINT_8 = 255` (the variation cap). **The card-side params are NOT constants** — `cardsPerPack`, `numberOfVariations`, `maxCardsSupply`, the rip window, and `cardsLocation` all live in the owner-updatable `PackConfig` (see below), mirroring the Serendipity claim initialize/update ideology ([[gacha-serendipity]]). ^[manifold/contracts/cxrds/CXRDSPacks.sol#L47]
+Constant (`CXRDSPacks.sol`): `RIP_TYPEHASH = keccak256("RipPermit(uint256 packId,uint256 deadline)")`; `MAX_UINT_8 = 255` (the variation cap). **The card-side params are NOT constants** — `cardsPerPack`, `numberOfVariations`, `maxCardsSupply`, the rip window, and `cardsLocation` all live in the owner-updatable `PackConfig` (see below), mirroring the Serendipity claim initialize/update ideology ([[gacha-serendipity]]). There is **no `MAX_PACKS` constant** — the pack cap is SeaDrop's own `maxSupply`. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L67]
 
-State: `creatorContractAddress` (immutable — the ERC1155 cards core), `startingCardTokenId` (first reserved card id, `0` until `initializeCards`), `signer`, `mintedCards` (running total of card units minted, for the supply cap), `ripSignatureRequired` (the break-glass switch, defaults `true`), and the internal `_config` (read via `getConfig()`). ^[manifold/contracts/cxrds/CXRDSPacks.sol#L62]
+State: `creatorContractAddress` (the ERC1155 cards core — **set once at `initializeCards`**, zero until then, NOT a constructor immutable), `startingCardTokenId` (first reserved card id, `0` until `initializeCards`), `signer`, `mintedCards` (running total of card units minted, for the supply cap), `ripSignatureRequired` (the break-glass switch, `internal`, defaults `true` — no external getter; the per-rip `signatureVerified` event flag records state off-chain), and the internal `_config` (read via `getConfig()`). ^[manifold/contracts/cxrds/CXRDSPacks.sol#L74]
 
 ## The `PackConfig` struct — owner-updatable card params
 
@@ -38,7 +38,7 @@ struct PackConfig {
 ```
 ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L51]
 
-Set once at `initializeCards(config)` and mutated via `updateConfig(config)` (both `onlyOwner`). This replaces the old `CARDS_PER_PACK` / `NUM_CARD_DESIGNS` constants and the standalone `setRipStart` / `setCardsLocation` setters (all removed). ^[manifold/contracts/cxrds/CXRDSPacks.sol#L145]
+Set once at `initializeCards(cardsCreator, config)` and mutated via `updateConfig(config)` (both `onlyOwner`). `numberOfVariations` is **fixed at init** — `updateConfig` reverts `CannotChangeVariations` if it differs (mirrors Serendipity's `CannotChangeTokenVariations`); `cardsPerPack`, the rip window, and `cardsLocation` stay freely updatable; `maxCardsSupply` can't drop below `mintedCards`. This replaces the old `CARDS_PER_PACK` / `NUM_CARD_DESIGNS` constants and the standalone `setRipStart` / `setCardsLocation` setters (all removed). **The cards-core address is a parameter of `initializeCards`, not the constructor** — the pack contract can be deployed before the cards core exists. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L145]
 
 ## The `RipOrder` struct (`ICXRDSPacks.sol`)
 
@@ -58,8 +58,8 @@ The signed EIP-712 payload is only `RipPermit(uint256 packId, uint256 deadline)`
 ## External surface
 
 - **`deliverBatch(RipOrder[] calldata orders) external nonReentrant`** — the only rip entrypoint. Callable **only by `signer`**, **only within `[ripStartDate, ripEndDate]`**. Iterates orders; per order verifies the permit (when required), burns the pack, mints the cards, emits `Ripped`. Atomic: any single failure reverts the whole batch. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L265]
-- **`initializeCards(PackConfig calldata config) external onlyOwner`** — one-time. Validates the config, calls `mintExtensionNew` with a `numberOfVariations`-length **zeros** amounts array (register-without-minting), records `startingCardTokenId = ids[0]` and stores the config. Reverts `CardsAlreadyInitialized` if already initialized. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L145]
-- **`updateConfig(PackConfig calldata config) external onlyOwner`** — Serendipity-style update with raise-only guards: `numberOfVariations` may be **raised** (reserves the additional contiguous ids, asserting contiguity) but not lowered; `maxCardsSupply` cannot drop below `mintedCards`; the rip window and `cardsLocation` are freely updatable. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L176]
+- **`initializeCards(address cardsCreator, PackConfig calldata config) external onlyOwner`** — one-time. Sets `creatorContractAddress` (reverts `InvalidCardsCreator` on zero), validates the config, calls `mintExtensionNew` with a `numberOfVariations`-length **zeros** amounts array (register-without-minting), records `startingCardTokenId = ids[0]` and stores the config. Reverts `CardsAlreadyInitialized` if already initialized. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L145]
+- **`updateConfig(PackConfig calldata config) external onlyOwner`** — Serendipity-style update: `numberOfVariations` is **fixed** (reverts `CannotChangeVariations` if changed); `maxCardsSupply` cannot drop below `mintedCards`; `cardsPerPack`, the rip window, and `cardsLocation` are freely updatable. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L176]
 - **`setSigner(address) / setRipSignatureRequired(bool) external onlyOwner`** — signer rotation; the break-glass switch (see below). ^[manifold/contracts/cxrds/CXRDSPacks.sol#L224]
 - **`getConfig() external view returns (PackConfig)`** — read the current card config. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L215]
 - **`tokenURI(address, uint256 tokenId) external view override returns (string)`** — the **card** (`ICreatorExtensionTokenURI`) surface delegated by the cards core: folder-pattern `cardsLocation + (tokenId - startingCardTokenId + 1)`, so the first reserved variation maps to `.../1`. **The pack (ERC721A/SeaDrop) `tokenURI` is NOT overridden** — packs use stock `ERC721ContractMetadata`/SeaDrop metadata. ^[manifold/contracts/cxrds/CXRDSPacks.sol#L347]
@@ -96,7 +96,8 @@ Per order in `deliverBatch`: ^[manifold/contracts/cxrds/CXRDSPacks.sol#L280]
 | `MaxCardsSupplyExceeded()` | a rip would push `mintedCards` past a non-zero `maxCardsSupply` ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L208] |
 | `InvalidConfig()` | `numberOfVariations == 0` or `> 255`, or `cardsPerPack == 0` ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L214] |
 | `InvalidDate()` | `ripEndDate != 0 && ripStartDate >= ripEndDate` ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L221] |
-| `CannotLowerVariations()` / `NonContiguousVariations()` | `updateConfig` lowers variations, or a raise gets a non-contiguous id block ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L228] |
+| `CannotChangeVariations()` | `updateConfig` changes `numberOfVariations` (fixed at init) ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L228] |
+| `InvalidCardsCreator()` | `initializeCards` given a zero cards-core address ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L234] |
 | `CannotLowerMaxBeyondMinted()` | `updateConfig` sets `maxCardsSupply` below `mintedCards` ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L241] |
 | `CardsAlreadyInitialized()` / `CardsNotInitialized()` | double `initializeCards`, or `updateConfig` before init ^[manifold/contracts/cxrds/ICXRDSPacks.sol#L251] |
 

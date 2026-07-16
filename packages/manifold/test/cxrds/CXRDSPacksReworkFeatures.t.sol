@@ -49,7 +49,7 @@ contract CXRDSPacksReworkFeatures is CXRDSTestBase {
         ICXRDSPacks.RipOrder[] memory orders = new ICXRDSPacks.RipOrder[](1);
         orders[0] = order;
 
-        assertTrue(cxrds.ripSignatureRequired(), "sig required by default");
+        // Default mode (sig required): garbage signature reverts InvalidPermit.
         vm.prank(signerAddr);
         vm.expectRevert(ICXRDSPacks.InvalidPermit.selector);
         cxrds.deliverBatch(orders);
@@ -59,7 +59,6 @@ contract CXRDSPacksReworkFeatures is CXRDSTestBase {
         // Owner flips the switch off; the same garbage signature now rips.
         vm.prank(owner);
         cxrds.setRipSignatureRequired(false);
-        assertFalse(cxrds.ripSignatureRequired(), "sig requirement off");
 
         uint256[] memory ids = new uint256[](4);
         uint256[] memory amounts = new uint256[](4);
@@ -250,27 +249,16 @@ contract CXRDSPacksReworkFeatures is CXRDSTestBase {
         ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
         cfg.numberOfVariations = cfg.numberOfVariations - 1;
         vm.prank(owner);
-        vm.expectRevert(ICXRDSPacks.CannotLowerVariations.selector);
+        vm.expectRevert(ICXRDSPacks.CannotChangeVariations.selector);
         cxrds.updateConfig(cfg);
     }
 
-    function test_updateConfig_raiseVariationsReservesMore() public {
-        // Default is 251; raise to 255 (the uint8 cap) — reserves 4 more ids.
-        uint256 before = cxrds.getConfig().numberOfVariations;
+    function test_updateConfig_cannotRaiseVariations() public {
+        // numberOfVariations is fixed at init — raising it also reverts.
         ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
-        cfg.numberOfVariations = 255;
+        cfg.numberOfVariations = cfg.numberOfVariations + 1;
         vm.prank(owner);
-        cxrds.updateConfig(cfg);
-        assertEq(cxrds.getConfig().numberOfVariations, 255, "variations raised");
-        assertGt(255, before, "raised above prior");
-    }
-
-    function test_updateConfig_raiseAboveUint8CapReverts() public {
-        // Raising past 255 hits the uint8 variation cap -> InvalidConfig.
-        ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
-        cfg.numberOfVariations = 256;
-        vm.prank(owner);
-        vm.expectRevert(ICXRDSPacks.InvalidConfig.selector);
+        vm.expectRevert(ICXRDSPacks.CannotChangeVariations.selector);
         cxrds.updateConfig(cfg);
     }
 

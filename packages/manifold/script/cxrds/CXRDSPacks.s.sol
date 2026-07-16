@@ -171,7 +171,6 @@ contract DeployCXRDSPacks is Script {
             packsName,
             packsSymbol,
             initialAllowedSeaDrop,
-            creatorContract,
             initialOwner
         );
 
@@ -181,13 +180,12 @@ contract DeployCXRDSPacks is Script {
         console.log("  name:                      ", packsName);
         console.log("  symbol:                    ", packsSymbol);
         console.log("  owner:                     ", packs.owner());
-        console.log("  creatorContractAddress:    ", packs.creatorContractAddress());
         console.log("  allowedSeaDrop:            ", seaDropAddress);
-        console.log("  MAX_PACKS:                 ", packs.MAX_PACKS());
+        console.log("  cardsCreator (set at init):", creatorContract);
         console.log("");
         console.log("NEXT (runbook, in order):");
         console.log("  1. CARDS-CORE ADMIN: creator.registerExtension(packs, bytes(''))");
-        console.log("  2. OWNER: --sig runInitializeCards()");
+        console.log("  2. OWNER: --sig runInitializeCards()  (passes CREATOR_CONTRACT + config)");
         console.log("  3. OWNER: --sig runConfigureRip()");
         console.log("  4. OWNER: --sig runConfigureSeaDrop()");
         console.log("  5. OWNER: --sig runTransferOwnership(); then partner acceptOwnership()");
@@ -201,14 +199,17 @@ contract DeployCXRDSPacks is Script {
     function runInitializeCards() external {
         CXRDSPacks packs = _packs();
         uint256 ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
+        address creatorContract = vm.envAddress("CREATOR_CONTRACT");
+        require(creatorContract != address(0), "CREATOR_CONTRACT not set");
 
         ICXRDSPacks.PackConfig memory config = _buildPackConfig();
 
         vm.startBroadcast(ownerKey);
-        packs.initializeCards(config);
+        packs.initializeCards(creatorContract, config);
         vm.stopBroadcast();
 
         console.log("initializeCards() done. startingCardTokenId:", packs.startingCardTokenId());
+        console.log("  creatorContractAddress:", packs.creatorContractAddress());
         console.log("  cardsPerPack:        ", config.cardsPerPack);
         console.log("  numberOfVariations:  ", config.numberOfVariations);
         console.log("  ripStartDate:        ", config.ripStartDate);

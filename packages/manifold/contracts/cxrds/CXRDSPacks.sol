@@ -62,10 +62,6 @@ import {ICXRDSPacks} from "./ICXRDSPacks.sol";
  *           4. Configure `signer` and the SeaDrop drop parameters.
  */
 contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSPacks {
-    /// @notice Total number of packs in the collection (informational; the
-    ///         authoritative pack max-supply cap is SeaDrop's own `maxSupply`).
-    uint256 public constant MAX_PACKS = 3943;
-
     /// @notice Upper bound on `numberOfVariations` — the uint8 variation cap
     ///         (mirrors Serendipity `MAX_UINT_8`).
     uint256 internal constant MAX_UINT_8 = 0xff;
@@ -75,8 +71,9 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
     bytes32 public constant RIP_TYPEHASH = keccak256("RipPermit(uint256 packId,uint256 deadline)");
 
     /// @notice The ERC1155 creator-core "cards" contract this pack collection
-    ///         is registered on and mints cards from. Immutable, set at deploy.
-    address public immutable creatorContractAddress;
+    ///         is registered on and mints cards from. Set once at
+    ///         `initializeCards` (zero until then).
+    address public creatorContractAddress;
 
     /// @notice The first of the contiguous card variation tokenIds reserved on
     ///         the cards core by `initializeCards`. Zero until initialized —
@@ -92,8 +89,10 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
 
     /// @notice Whether every rip requires a valid owner permit. Defaults to
     ///         `true`. When `false`, signature verification is skipped and the
-    ///         trusted `signer` alone authorizes burns (break-glass).
-    bool public ripSignatureRequired;
+    ///         trusted `signer` alone authorizes burns (break-glass). Internal:
+    ///         the per-rip `signatureVerified` flag on `Ripped` records state
+    ///         off-chain, so no external getter is exposed.
+    bool internal ripSignatureRequired;
 
     /// @notice Card-side configuration. Set at `initializeCards`, owner-updatable
     ///         via `updateConfig`. Read externally via `getConfig()`.
@@ -106,7 +105,6 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
      * @param symbol_           ERC721 symbol (used by ERC721A).
      * @param allowedSeaDrop_   SeaDrop contract addresses allowed to call
      *                          `mintSeaDrop` on this collection.
-     * @param cardsCreator_     The ERC1155 creator-core "cards" contract.
      * @param initialOwner_     Wallet to transfer ownership to immediately
      *                          after deploy. Required when deploying through a
      *                          CREATE2 factory (where the broadcaster is the
@@ -116,10 +114,8 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
         string memory name_,
         string memory symbol_,
         address[] memory allowedSeaDrop_,
-        address cardsCreator_,
         address initialOwner_
     ) ERC721SeaDrop(name_, symbol_, allowedSeaDrop_) EIP712("CXRDSPacks", "1") {
-        creatorContractAddress = cardsCreator_;
         // Default ON: every rip requires a valid owner permit unless the owner
         // explicitly flips the break-glass off-switch.
         ripSignatureRequired = true;
@@ -130,21 +126,27 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
 
     /**
      * @notice Reserve `config_.numberOfVariations` contiguous card variation
-     *         tokenIds on the cards core and store the card configuration. Calls
-     *         `mintExtensionNew` with a zeros amounts array (register-without-
-     *         minting) and an empty uris array (all cards use the extension/
-     *         default uri). Records the first reserved id as `startingCardTokenId`.
+     *         tokenIds on the cards core and store the cards-core address plus
+     *         the card configuration. Calls `mintExtensionNew` with a zeros
+     *         amounts array (register-without-minting) and an empty uris array
+     *         (all cards use the extension/default uri). Records the first
+     *         reserved id as `startingCardTokenId`.
      *
      * @dev    Must be called after this contract has been registered as an
      *         extension on the cards core via `registerExtension` (an admin
      *         action on the cards core). Reverts `CardsAlreadyInitialized` if
      *         already initialized.
      *
-     * @param config_ The initial card configuration.
+     * @param cardsCreator_ The ERC1155 creator-core "cards" contract to reserve
+     *                      variations on and mint cards from. Set once here.
+     * @param config_       The initial card configuration.
      */
-    function initializeCards(PackConfig calldata config_) external onlyOwner {
+    function initializeCards(address cardsCreator_, PackConfig calldata config_) external onlyOwner {
         if (startingCardTokenId != 0) revert CardsAlreadyInitialized();
+        if (cardsCreator_ == address(0)) revert InvalidCardsCreator();
         _validateConfig(config_);
+
+        creatorContractAddress = cardsCreator_;
 
         address[] memory to = new address[](1);
         to[0] = msg.sender;
@@ -153,7 +155,7 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
         // Empty uris -> all reserved cards use the default/extension uri.
         string[] memory uris = new string[](0);
 
-        uint256[] memory ids = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(to, amounts, uris);
+        uint256[] memory ids = IERC1155CreatorCore(cardsCreator_).mintExtensionNew(to, amounts, uris);
 
         startingCardTokenId = ids[0];
         _config = config_;
@@ -164,9 +166,7 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
     /**
      * @notice Update the card configuration. Mirrors Serendipity's `updateClaim`
      *         guard semantics:
-     *           - `numberOfVariations` may be RAISED (reserving the additional
-     *             contiguous ids on the cards core and asserting contiguity) but
-     *             never lowered.
+     *           - `numberOfVariations` is FIXED at init and may not change.
      *           - `maxCardsSupply` cannot be set below already-minted cards.
      *           - `cardsPerPack`, the rip window, and `cardsLocation` are freely
      *             updatable (subject to the shared `PackConfig` validation).
@@ -177,19 +177,7 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
         if (startingCardTokenId == 0) revert CardsNotInitialized();
         _validateConfig(config_);
 
-        uint256 oldVariations = _config.numberOfVariations;
-        if (config_.numberOfVariations < oldVariations) revert CannotLowerVariations();
-        if (config_.numberOfVariations > oldVariations) {
-            // Reserve the additional contiguous ids and assert they continue the
-            // existing block (no other extension slipped ids in between).
-            uint256 additional = config_.numberOfVariations - oldVariations;
-            address[] memory to = new address[](1);
-            to[0] = msg.sender;
-            uint256[] memory amounts = new uint256[](additional);
-            string[] memory uris = new string[](0);
-            uint256[] memory ids = IERC1155CreatorCore(creatorContractAddress).mintExtensionNew(to, amounts, uris);
-            if (ids[0] != startingCardTokenId + oldVariations) revert NonContiguousVariations();
-        }
+        if (config_.numberOfVariations != _config.numberOfVariations) revert CannotChangeVariations();
 
         if (config_.maxCardsSupply != 0 && config_.maxCardsSupply < mintedCards) {
             revert CannotLowerMaxBeyondMinted();
@@ -223,7 +211,6 @@ contract CXRDSPacks is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, ICXRDSP
      */
     function setSigner(address signer_) external onlyOwner {
         signer = signer_;
-        emit SignerUpdated(signer_);
     }
 
     /**

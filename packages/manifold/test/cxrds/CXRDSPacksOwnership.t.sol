@@ -78,7 +78,7 @@ contract CXRDSPacksOwnership is CXRDSTestBase {
 
         // Precompute view values so no external view call is captured by an
         // expectRevert (expectRevert binds to the very next external call).
-        uint256 maxPacks = cxrds.MAX_PACKS();
+        uint256 maxPacks = MAX_PACKS;
         address[] memory allowed = new address[](1);
         allowed[0] = address(seaDropCaller);
         ICXRDSPacks.PackConfig memory cfg = cxrds.getConfig();
@@ -95,7 +95,7 @@ contract CXRDSPacksOwnership is CXRDSTestBase {
 
         vm.prank(owner);
         vm.expectRevert(ONLY_OWNER_SELECTOR);
-        cxrds.initializeCards(cfg);
+        cxrds.initializeCards(address(creator), cfg);
 
         // SeaDrop-token config is equally locked for the old owner.
         vm.prank(owner);
@@ -130,8 +130,8 @@ contract CXRDSPacksOwnership is CXRDSTestBase {
         assertEq(cxrds.getConfig().cardsLocation, "ipfs://partner/", "new owner set location");
 
         // SeaDrop config surface the new owner can run.
-        cxrds.setMaxSupply(cxrds.MAX_PACKS());
-        assertEq(cxrds.maxSupply(), cxrds.MAX_PACKS(), "new owner set maxSupply");
+        cxrds.setMaxSupply(MAX_PACKS);
+        assertEq(cxrds.maxSupply(), MAX_PACKS, "new owner set maxSupply");
 
         cxrds.setBaseURI("ipfs://partner-base/");
 

@@ -167,14 +167,13 @@ contract CXRDSPacksBatch is CXRDSTestBase {
             "Fresh Packs",
             "FPACK",
             allowedSeaDrop,
-            address(freshCreator),
             owner
         );
 
         // NOTE: registerExtension deliberately NOT called. mintExtensionNew is
         // gated by requireExtension() on the cards core.
         vm.expectRevert(bytes("Must be registered extension"));
-        freshPacks.initializeCards(defaultConfig());
+        freshPacks.initializeCards(address(freshCreator), defaultConfig());
 
         vm.stopPrank();
     }

@@ -259,7 +259,7 @@ contract CXRDSPacksTaxonomy is CXRDSTestBase {
     function testCardsAlreadyInitialized() public {
         vm.prank(owner);
         vm.expectRevert(ICXRDSPacks.CardsAlreadyInitialized.selector);
-        cxrds.initializeCards(defaultConfig());
+        cxrds.initializeCards(address(creator), defaultConfig());
     }
 
     // ------------------------------------------------------------------
