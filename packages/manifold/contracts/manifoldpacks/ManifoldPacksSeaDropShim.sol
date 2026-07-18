@@ -38,20 +38,6 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     ///         Only `packId` and `deadline` are covered by the signature.
     bytes32 public constant RIP_TYPEHASH = keccak256("RipPermit(uint256 packId,uint256 deadline)");
 
-    // -------------------------------------------------------------------------
-    // Storage — width-sized and ordered so related fields share slots.
-    //
-    //   Slot A: signer + mintedCards + ripSignatureRequired + transfersPaused
-    //   Slot B: creatorContractAddress + startingCardTokenId
-    //   Slot C: contentsRoot
-    //   Slot D+: _config (its five numeric fields share one slot; see PackConfig)
-    //
-    // The `deliverBatch` hot path reads signer/ripSignatureRequired (slot A),
-    // startingCardTokenId (slot B), contentsRoot (slot C) and all five config
-    // numerics (slot D) in four SLOADs total, and writes mintedCards back into
-    // the already-warm slot A.
-    // -------------------------------------------------------------------------
-
     /// @notice The address authorized to submit rip batches via `deliverBatch`.
     address public signer;
 
@@ -65,8 +51,6 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     ///         `true`.
     bool internal ripSignatureRequired;
 
-    /// @notice Whether secondary transfers/approvals are paused. Defaults to
-    ///         `true`.
     bool public transfersPaused;
 
     /// @notice The ERC1155 creator-core "cards" contract this pack collection
