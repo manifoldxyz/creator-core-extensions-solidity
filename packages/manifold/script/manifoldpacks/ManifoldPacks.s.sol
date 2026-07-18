@@ -276,11 +276,11 @@ contract DeployManifoldPacks is Script {
         string memory cardsLocation = vm.envString("CARDS_LOCATION");
 
         config = IManifoldPacksSeaDropShim.PackConfig({
-            maxCardsSupply: MAX_CARDS_SUPPLY,
-            cardsPerPack: CARDS_PER_PACK,
-            numberOfVariations: NUMBER_OF_VARIATIONS,
-            ripStartDate: ripStart,
-            ripEndDate: ripEnd,
+            maxCardsSupply: uint32(MAX_CARDS_SUPPLY),
+            cardsPerPack: uint16(CARDS_PER_PACK),
+            numberOfVariations: uint8(NUMBER_OF_VARIATIONS),
+            ripStartDate: uint48(ripStart),
+            ripEndDate: uint48(ripEnd),
             cardsLocation: cardsLocation,
             tokenURIExtension: address(0)
         });

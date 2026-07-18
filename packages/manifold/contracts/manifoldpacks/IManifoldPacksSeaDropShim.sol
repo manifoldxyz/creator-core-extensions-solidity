@@ -10,22 +10,30 @@ interface IManifoldPacksSeaDropShim {
      * @notice Card-side configuration for the pack collection. Set once at
      *         `initializeCards` and owner-updatable via `updateConfig`.
      *
+     *         Numeric fields are width-sized (following the Serendipity `Claim`
+     *         convention: uint32 supply, uint48 dates, uint8 variations) so the
+     *         five of them pack into a SINGLE storage slot — one SLOAD on the
+     *         `deliverBatch` hot path instead of five.
+     *
      * @param maxCardsSupply    Optional hard cap on total card units minted
      *                          across all rips. `0` == unlimited. Cannot be set
      *                          below the already-minted count (`mintedCards`).
+     *                          `uint32` (max ~4.29e9 card units).
      * @param cardsPerPack      Exact number of card units a single pack yields
      *                          when ripped. Every `RipOrder`'s `amounts` MUST
      *                          sum to this value. Must be > 0. Freely updatable.
+     *                          `uint16` (max 65,535).
      * @param numberOfVariations Number of contiguous card variation tokenIds
-     *                          reserved on the cards core (`> 0`, `<= 255` —
-     *                          the uint8 variation cap). May be RAISED via
-     *                          `updateConfig` (reserving additional contiguous
-     *                          ids) but never lowered.
+     *                          reserved on the cards core (`> 0`). `uint8`, so
+     *                          the `<= 255` cap is now enforced by the type
+     *                          itself. May be RAISED via `updateConfig`
+     *                          (reserving additional contiguous ids) but never
+     *                          lowered.
      * @param ripStartDate      Earliest timestamp at which `deliverBatch` may
-     *                          rip (inclusive lower gate).
+     *                          rip (inclusive lower gate). `uint48`.
      * @param ripEndDate        Latest timestamp at which `deliverBatch` may rip.
      *                          `0` == no end. When non-zero must be strictly
-     *                          greater than `ripStartDate`.
+     *                          greater than `ripStartDate`. `uint48`.
      * @param cardsLocation     Folder-pattern base URI for card metadata. Card
      *                          `tokenURI` is `cardsLocation + (tokenId -
      *                          startingCardTokenId + 1)`. Freely updatable.
@@ -39,11 +47,11 @@ interface IManifoldPacksSeaDropShim {
      *                          built-in folder-pattern resolution.
      */
     struct PackConfig {
-        uint256 maxCardsSupply;
-        uint256 cardsPerPack;
-        uint256 numberOfVariations;
-        uint256 ripStartDate;
-        uint256 ripEndDate;
+        uint32 maxCardsSupply;
+        uint16 cardsPerPack;
+        uint8 numberOfVariations;
+        uint48 ripStartDate;
+        uint48 ripEndDate;
         string cardsLocation;
         address tokenURIExtension;
     }

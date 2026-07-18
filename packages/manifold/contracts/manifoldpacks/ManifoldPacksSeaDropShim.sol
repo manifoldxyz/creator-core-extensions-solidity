@@ -34,12 +34,40 @@ import {IManifoldPacksSeaDropShim} from "./IManifoldPacksSeaDropShim.sol";
  *         `updateConfig`.
  */
 contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, IManifoldPacksSeaDropShim {
-    /// @notice Upper bound on `numberOfVariations` — the uint8 variation cap
-    uint256 internal constant MAX_UINT_8 = 0xff;
-
     /// @notice EIP-712 typehash of the collector-signed rip authorization.
     ///         Only `packId` and `deadline` are covered by the signature.
     bytes32 public constant RIP_TYPEHASH = keccak256("RipPermit(uint256 packId,uint256 deadline)");
+
+    // -------------------------------------------------------------------------
+    // Storage — width-sized and ordered so related fields share slots.
+    //
+    //   Slot A: signer + mintedCards + ripSignatureRequired + transfersPaused
+    //   Slot B: creatorContractAddress + startingCardTokenId
+    //   Slot C: contentsRoot
+    //   Slot D+: _config (its five numeric fields share one slot; see PackConfig)
+    //
+    // The `deliverBatch` hot path reads signer/ripSignatureRequired (slot A),
+    // startingCardTokenId (slot B), contentsRoot (slot C) and all five config
+    // numerics (slot D) in four SLOADs total, and writes mintedCards back into
+    // the already-warm slot A.
+    // -------------------------------------------------------------------------
+
+    /// @notice The address authorized to submit rip batches via `deliverBatch`.
+    address public signer;
+
+    /// @notice Running total of card units minted across all rips. Enforced
+    ///         against `config.maxCardsSupply` when that cap is non-zero.
+    ///         `uint32` to share the `maxCardsSupply` domain and pack with
+    ///         `signer`.
+    uint32 public mintedCards;
+
+    /// @notice Whether every rip requires a valid owner permit. Defaults to
+    ///         `true`.
+    bool internal ripSignatureRequired;
+
+    /// @notice Whether secondary transfers/approvals are paused. Defaults to
+    ///         `true`.
+    bool public transfersPaused;
 
     /// @notice The ERC1155 creator-core "cards" contract this pack collection
     ///         is registered on and mints cards from. Set once at
@@ -49,22 +77,11 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     /// @notice The first of the contiguous card variation tokenIds reserved on
     ///         the cards core by `initializeCards`. Zero until initialized —
     ///         the uninitialized sentinel (creator-core token ids start at 1).
-    uint256 public startingCardTokenId;
+    ///         `uint80` (packs with `creatorContractAddress`).
+    uint80 public startingCardTokenId;
 
-    /// @notice The address authorized to submit rip batches via `deliverBatch`.
-    address public signer;
-
-    /// @notice Running total of card units minted across all rips. Enforced
-    ///         against `config.maxCardsSupply` when that cap is non-zero.
-    uint256 public mintedCards;
-
-    /// @notice Whether every rip requires a valid owner permit. Defaults to
-    ///         `true`.
-    bool internal ripSignatureRequired;
-
+    /// @notice Merkle root committing each pack's cards. `bytes32(0)` == unseeded.
     bytes32 public contentsRoot;
-
-    bool public transfersPaused;
 
     /// @notice Card-side configuration. Set at `initializeCards`, owner-updatable
     ///         via `updateConfig`. Read externally via `getConfig()`.
@@ -126,7 +143,7 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
 
         uint256[] memory ids = IERC1155CreatorCore(cardsCreator_).mintExtensionNew(to, amounts, uris);
 
-        startingCardTokenId = ids[0];
+        startingCardTokenId = uint80(ids[0]);
         _config = config_;
 
         emit CardsInitialized(ids[0], config_);
@@ -158,10 +175,11 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
 
     /**
      * @notice Shared `PackConfig` validation used by init and update: variation
-     *         count in `(0, 255]`, cards-per-pack > 0, and a coherent rip window.
+     *         count > 0 (the `<= 255` upper bound is enforced by the uint8
+     *         type), cards-per-pack > 0, and a coherent rip window.
      */
     function _validateConfig(PackConfig calldata config_) internal pure {
-        if (config_.numberOfVariations == 0 || config_.numberOfVariations > MAX_UINT_8) revert InvalidConfig();
+        if (config_.numberOfVariations == 0) revert InvalidConfig();
         if (config_.cardsPerPack == 0) revert InvalidConfig();
         if (config_.ripEndDate != 0 && config_.ripStartDate >= config_.ripEndDate) revert InvalidDate();
     }
@@ -225,6 +243,10 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
         if (contentsRoot == bytes32(0)) revert ContentsNotSeeded();
         uint256 len = orders.length;
 
+        // Accumulate minted cards in a local, write back to storage once after
+        // the batch (mintedCards shares a warm slot with `signer`).
+        uint256 mintedCardsLocal = mintedCards;
+
         for (uint256 i = 0; i < len;) {
             RipOrder calldata order = orders[i];
 
@@ -267,10 +289,10 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
                 )
             ) revert ContentsMismatch();
 
-            if (maxCardsSupply != 0 && mintedCards + sum > maxCardsSupply) {
+            if (maxCardsSupply != 0 && mintedCardsLocal + sum > maxCardsSupply) {
                 revert MaxCardsSupplyExceeded();
             }
-            mintedCards += sum;
+            mintedCardsLocal += sum;
 
             // Burn the pack, then mint the pack's cards to the owner.
             _burn(order.packId);
@@ -285,6 +307,8 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
                 ++i;
             }
         }
+
+        mintedCards = uint32(mintedCardsLocal);
     }
 
     /**
@@ -317,9 +341,10 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
             }
         }
 
-        mintedCards += totalAmount;
-        if (_config.maxCardsSupply != 0 && mintedCards > _config.maxCardsSupply) {
-            _config.maxCardsSupply = mintedCards;
+        uint256 newMinted = uint256(mintedCards) + totalAmount;
+        mintedCards = uint32(newMinted);
+        if (_config.maxCardsSupply != 0 && newMinted > _config.maxCardsSupply) {
+            _config.maxCardsSupply = uint32(newMinted);
         }
 
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, cardIds, amounts);

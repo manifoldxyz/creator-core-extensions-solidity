@@ -192,9 +192,9 @@ contract ManifoldPacksSmokeTest is Script {
 
     function _config() internal pure returns (IManifoldPacksSeaDropShim.PackConfig memory) {
         return IManifoldPacksSeaDropShim.PackConfig({
-            maxCardsSupply: MAX_CARDS_SUPPLY,
-            cardsPerPack: CARDS_PER_PACK,
-            numberOfVariations: NUM_VARIATIONS,
+            maxCardsSupply: uint32(MAX_CARDS_SUPPLY),
+            cardsPerPack: uint16(CARDS_PER_PACK),
+            numberOfVariations: uint8(NUM_VARIATIONS),
             ripStartDate: 1, // always in the past => rip open immediately
             ripEndDate: 0, // no end
             cardsLocation: "https://example.com/manifoldpacks/cards/",

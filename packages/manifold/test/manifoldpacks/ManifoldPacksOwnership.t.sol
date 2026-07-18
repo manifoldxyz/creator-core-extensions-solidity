@@ -123,7 +123,7 @@ contract ManifoldPacksOwnership is ManifoldPacksTestBase {
         // Update rip window + cards location via updateConfig + read back.
         uint256 newRipStart = block.timestamp + 7 days;
         IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
-        cfg.ripStartDate = newRipStart;
+        cfg.ripStartDate = uint48(newRipStart);
         cfg.cardsLocation = "ipfs://partner/";
         packs.updateConfig(cfg);
         assertEq(packs.getConfig().ripStartDate, newRipStart, "new owner set ripStart");

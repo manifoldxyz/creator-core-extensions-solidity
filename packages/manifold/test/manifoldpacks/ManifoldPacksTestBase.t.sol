@@ -285,9 +285,9 @@ contract ManifoldPacksTestBase is Test {
     function defaultConfig() internal view returns (IManifoldPacksSeaDropShim.PackConfig memory) {
         return IManifoldPacksSeaDropShim.PackConfig({
             maxCardsSupply: 0,
-            cardsPerPack: CARDS_PER_PACK,
-            numberOfVariations: NUM_CARD_DESIGNS,
-            ripStartDate: block.timestamp,
+            cardsPerPack: uint16(CARDS_PER_PACK),
+            numberOfVariations: uint8(NUM_CARD_DESIGNS),
+            ripStartDate: uint48(block.timestamp),
             ripEndDate: 0,
             cardsLocation: "",
             tokenURIExtension: address(0)
@@ -297,7 +297,7 @@ contract ManifoldPacksTestBase is Test {
     /// @notice Set only the rip start date via updateConfig (owner-pranked).
     function _setRipStart(uint256 ripStartDate) internal {
         IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
-        cfg.ripStartDate = ripStartDate;
+        cfg.ripStartDate = uint48(ripStartDate);
         vm.prank(owner);
         packs.updateConfig(cfg);
     }
@@ -305,8 +305,8 @@ contract ManifoldPacksTestBase is Test {
     /// @notice Set the rip window via updateConfig (owner-pranked).
     function _setRipWindow(uint256 ripStartDate, uint256 ripEndDate) internal {
         IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
-        cfg.ripStartDate = ripStartDate;
-        cfg.ripEndDate = ripEndDate;
+        cfg.ripStartDate = uint48(ripStartDate);
+        cfg.ripEndDate = uint48(ripEndDate);
         vm.prank(owner);
         packs.updateConfig(cfg);
     }
@@ -322,7 +322,7 @@ contract ManifoldPacksTestBase is Test {
     /// @notice Set the max card supply cap via updateConfig (owner-pranked).
     function _setMaxCardsSupply(uint256 maxCardsSupply) internal {
         IManifoldPacksSeaDropShim.PackConfig memory cfg = packs.getConfig();
-        cfg.maxCardsSupply = maxCardsSupply;
+        cfg.maxCardsSupply = uint32(maxCardsSupply);
         vm.prank(owner);
         packs.updateConfig(cfg);
     }
