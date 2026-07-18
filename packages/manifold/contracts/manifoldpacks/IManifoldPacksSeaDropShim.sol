@@ -88,6 +88,21 @@ interface IManifoldPacksSeaDropShim {
      *                  `ownerOf(packId)` via `SignatureChecker.isValidSignatureNow`
      *                  (EOA ECDSA OR EIP-1271 contract wallet) when
      *                  `ripSignatureRequired` is true; ignored when false.
+     * @param salt      Per-pack CSPRNG salt included in the committed leaf
+     *                  preimage. It never appears in the collector's signature —
+     *                  it is contents-commitment data, supplied by the signer at
+     *                  rip time. Its purpose is confidentiality: it blinds the
+     *                  leaf hash so that a pack's contents cannot be brute-forced
+     *                  from the sibling-leaf hashes that every burn's proof
+     *                  publishes (surprise-until-burn). Salt loss = that pack can
+     *                  never be ripped; salt leak = surprise lost, integrity
+     *                  intact.
+     * @param proof     Merkle proof that this pack's leaf
+     *                  `keccak256(abi.encode(packId, cardIds, amounts, salt))`
+     *                  is committed under `contentsRoot`. `cardIds`/`amounts` are
+     *                  therefore NOT free signer choice — they are bound to the
+     *                  frozen commitment; a compromised signer can only deliver
+     *                  the committed multiset or revert `ContentsMismatch`.
      */
     struct RipOrder {
         uint256 packId;
@@ -95,6 +110,8 @@ interface IManifoldPacksSeaDropShim {
         uint256[] amounts;
         uint256 deadline;
         bytes signature;
+        bytes32 salt;
+        bytes32[] proof;
     }
 
     /**
@@ -153,6 +170,16 @@ interface IManifoldPacksSeaDropShim {
      *                 burns.
      */
     event RipSignatureRequirementUpdated(bool required);
+
+    /**
+     * @notice Emitted when the owner seeds or updates the Merkle contents root
+     *         via `seedContents`. Fires on every (re-)seed so that a root change
+     *         — a trusted-owner power — is publicly monitorable on-chain.
+     *
+     * @param root The new Merkle root committing each pack's cards. Each leaf is
+     *             `keccak256(abi.encode(packId, cardIds, amounts, salt))`.
+     */
+    event ContentsSeeded(bytes32 root);
 
     /**
      * @notice Reverts when `deliverBatch` is called by any address other than
@@ -261,4 +288,21 @@ interface IManifoldPacksSeaDropShim {
      *         `recipients` / `cardIds` / `amounts` arrays.
      */
     error InvalidAirdrop();
+
+    /**
+     * @notice Reverts when `deliverBatch` is called while `contentsRoot` is
+     *         unseeded (`bytes32(0)`) — the contract refuses to rip any pack
+     *         until a contents commitment exists.
+     */
+    error ContentsNotSeeded();
+
+    /**
+     * @notice Reverts when an order's `(cardIds, amounts, salt)` do not hash to
+     *         a leaf committed under `contentsRoot` for `packId` (the Merkle
+     *         proof fails). This is the contents-integrity gate: a compromised
+     *         signer trying to substitute contents, swap another pack's cards
+     *         onto this `packId`, over-mint, or present a wrong/absent proof all
+     *         collapse to this one error.
+     */
+    error ContentsMismatch();
 }

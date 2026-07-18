@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import {ERC721SeaDrop} from "seadrop/src/ERC721SeaDrop.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 import {ICreatorExtensionTokenURI} from "@manifoldxyz/creator-core-solidity/contracts/extensions/ICreatorExtensionTokenURI.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -73,6 +74,17 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     ///         the per-rip `signatureVerified` flag on `Ripped` records state
     ///         off-chain, so no external getter is exposed.
     bool internal ripSignatureRequired;
+
+    /// @notice Merkle root committing each `packId` to its predetermined cards.
+    ///         The leaf for a pack is
+    ///         `keccak256(abi.encode(packId, cardIds, amounts, salt))`. Set/updated
+    ///         via `seedContents` — OWNER-MUTABLE at any time by design (no
+    ///         pre-mint lock): the root binds the `signer`, not the `owner`.
+    ///         `bytes32(0)` == unseeded (a state in which `deliverBatch` refuses
+    ///         to rip). This is the contents-integrity commitment: with a root in
+    ///         place a compromised `signer` can only deliver each pack's committed
+    ///         cards or revert — it cannot substitute, over-mint, or misdeliver.
+    bytes32 public contentsRoot;
 
     /// @notice Card-side configuration. Set at `initializeCards`, owner-updatable
     ///         via `updateConfig`. Read externally via `getConfig()`.
@@ -210,6 +222,33 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     }
 
     /**
+     * @notice Seed or update the Merkle root committing each pack's
+     *         predetermined cards. Owner-updatable at any time.
+     *
+     * @dev    TRUST MODEL: this root binds the `signer` — a compromised signer
+     *         can only ever deliver each pack's committed cards or revert, never
+     *         substitute/over-mint/misdeliver. It does NOT bind the `owner`: the
+     *         owner may re-seed a new root at any time (this is a deliberate
+     *         operational choice — a live drop needs to correct a bad sheet or a
+     *         late card swap). A re-seed is a trusted-owner power, in the same
+     *         class as `airdrop`, break-glass, and metadata updates. Every
+     *         (re-)seed emits `ContentsSeeded` so the change is publicly
+     *         monitorable.
+     *
+     *         Must be called after `initializeCards` so the sheet is built from
+     *         the REAL post-init contiguous card ids (`startingCardTokenId`) —
+     *         a correctness guard, not a trust guard.
+     *
+     * @param root_ The Merkle root over the pack->cards sheet. Each leaf is
+     *              `keccak256(abi.encode(packId, cardIds, amounts, salt))`.
+     */
+    function seedContents(bytes32 root_) external onlyOwner {
+        if (startingCardTokenId == 0) revert CardsNotInitialized();
+        contentsRoot = root_;
+        emit ContentsSeeded(root_);
+    }
+
+    /**
      * @notice Deliver a batch of collector-authorized rip permits. For each
      *         order: verify the permit (unless the off-switch is set), burn the
      *         pack, and mint its cards to the owner.
@@ -234,6 +273,7 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
         uint256 cardsPerPack = _config.cardsPerPack;
         uint256 maxCardsSupply = _config.maxCardsSupply;
         bool sigRequired = ripSignatureRequired;
+        if (contentsRoot == bytes32(0)) revert ContentsNotSeeded();
         uint256 len = orders.length;
 
         for (uint256 i = 0; i < len;) {
@@ -273,6 +313,23 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
                 }
             }
             if (sum != cardsPerPack) revert InvalidCardAmounts();
+
+            // Verify the pack's contents against the committed root. The leaf
+            // binds packId -> (cardIds, amounts, salt), so a compromised signer
+            // cannot substitute contents, swap another pack's cards onto this
+            // packId, or over-mint — it can only deliver the committed multiset
+            // or revert. abi.encode (NOT encodePacked) is load-bearing: it is
+            // canonical/injective over the typed tuple, so no two distinct
+            // orders share a leaf. Read `contentsRoot` from storage inline
+            // (rather than hoisting a local) to keep the loop off the
+            // stack-too-deep cliff without viaIR.
+            if (
+                !MerkleProof.verify(
+                    order.proof,
+                    contentsRoot,
+                    keccak256(abi.encode(order.packId, order.cardIds, order.amounts, order.salt))
+                )
+            ) revert ContentsMismatch();
 
             if (maxCardsSupply != 0 && mintedCards + sum > maxCardsSupply) {
                 revert MaxCardsSupplyExceeded();

@@ -10,6 +10,8 @@ import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifold
 
 import {MockSeaDropCaller} from "./mocks/MockSeaDropCaller.sol";
 
+import {Merkle} from "../../lib/murky/src/Merkle.sol";
+
 /**
  * @title  ManifoldPacksTestBase
  * @notice Shared Foundry harness for the ManifoldPacksSeaDropShim pack contract test suite.
@@ -100,6 +102,34 @@ contract ManifoldPacksTestBase is Test {
     ///         startingCardTokenId + NUM_CARD_DESIGNS).
     mapping(uint256 => uint256[4]) internal fixtureCards;
 
+    // ---------------------------------------------------------------------
+    // Merkle contents-commitment fixture. Each committed pack contributes a
+    // leaf keccak256(abi.encode(packId, cardIds, amounts, salt)); the root is
+    // seeded on-chain via seedContents. murky's Merkle (ascending-sorted pair
+    // hashing) matches OZ MerkleProof.verify's commutative _hashPair exactly, so
+    // proofs generated here verify against the contract. Root is owner-mutable
+    // any time (deliberate trust choice), so the harness can re-commit custom
+    // pack contents mid-test via _commitAndSeed.
+    // ---------------------------------------------------------------------
+
+    /// @notice murky tree generator/prover used to build real roots + proofs.
+    Merkle internal merkle;
+
+    /// @notice packIds committed into the tree, in insertion order (== leaf order).
+    uint256[] internal committedPackIds;
+
+    /// @notice packId => its 1-based index in `committedPackIds` (0 == absent).
+    mapping(uint256 => uint256) internal committedIndex;
+
+    /// @notice packId => committed card ids.
+    mapping(uint256 => uint256[]) internal committedCardIds;
+
+    /// @notice packId => committed amounts (parallel to committedCardIds).
+    mapping(uint256 => uint256[]) internal committedAmounts;
+
+    /// @notice packId => committed per-pack salt.
+    mapping(uint256 => bytes32) internal committedSalt;
+
     function setUp() public virtual {
         owner = vm.addr(OWNER_PK);
         collector = vm.addr(COLLECTOR_PK);
@@ -135,16 +165,18 @@ contract ManifoldPacksTestBase is Test {
         // Configure the backend signer.
         packs.setSigner(signerAddr);
 
-        // Allow SeaDrop minting: cap supply and mint the fixture packs to owner.
+        // Allow SeaDrop minting: cap supply (mint happens after the root is seeded).
         packs.setMaxSupply(MAX_PACKS);
 
         vm.stopPrank();
 
-        // Mint FIXTURE_PACK_COUNT packs to owner via the allowed SeaDrop caller.
-        // ERC721A starts token ids at 1, so packs are ids 1..FIXTURE_PACK_COUNT.
-        seaDropCaller.mint(address(packs), owner, FIXTURE_PACK_COUNT);
+        // Deploy the murky tree generator/prover.
+        merkle = new Merkle();
 
-        // Record the reserved card range and build the frozen sheet fixture.
+        // Record the reserved card range (available immediately after init) and
+        // build + commit the frozen sheet fixture BEFORE minting: each fixture
+        // pack commits to its four default cards. The root must exist before any
+        // deliverBatch, and the sheet must use the REAL post-init card ids.
         startingCardTokenId = packs.startingCardTokenId();
         for (uint256 packId = 1; packId <= FIXTURE_PACK_COUNT; packId++) {
             fixtureCards[packId] = [
@@ -153,7 +185,95 @@ contract ManifoldPacksTestBase is Test {
                 startingCardTokenId + 2,
                 startingCardTokenId + 3
             ];
+            (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(fixtureCards[packId]);
+            _commit(packId, ids, amounts, _defaultSalt(packId));
         }
+        _seed();
+
+        // Mint FIXTURE_PACK_COUNT packs to owner via the allowed SeaDrop caller.
+        // ERC721A starts token ids at 1, so packs are ids 1..FIXTURE_PACK_COUNT.
+        seaDropCaller.mint(address(packs), owner, FIXTURE_PACK_COUNT);
+    }
+
+    // ---------------------------------------------------------------------
+    // Merkle commitment helpers.
+    // ---------------------------------------------------------------------
+
+    /// @notice Deterministic per-pack salt for the default fixture commitment.
+    function _defaultSalt(uint256 packId) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("cxrds-salt", packId));
+    }
+
+    /// @notice The committed leaf for a pack: keccak256(abi.encode(packId,
+    ///         cardIds, amounts, salt)). Single-hashed, matching the contract.
+    function _leaf(
+        uint256 packId,
+        uint256[] memory cardIds,
+        uint256[] memory amounts,
+        bytes32 salt
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(packId, cardIds, amounts, salt));
+    }
+
+    /// @notice Record (or overwrite) a pack's committed contents in the harness
+    ///         tree bookkeeping. Does NOT touch the chain — call `_seed` after.
+    function _commit(
+        uint256 packId,
+        uint256[] memory cardIds,
+        uint256[] memory amounts,
+        bytes32 salt
+    ) internal {
+        if (committedIndex[packId] == 0) {
+            committedPackIds.push(packId);
+            committedIndex[packId] = committedPackIds.length; // 1-based
+        }
+        committedCardIds[packId] = cardIds;
+        committedAmounts[packId] = amounts;
+        committedSalt[packId] = salt;
+    }
+
+    /// @notice Build the current leaf set from all committed packs. Pads to a
+    ///         minimum of two leaves (murky refuses a single-leaf tree) with a
+    ///         sentinel leaf that maps to no real pack.
+    function _leaves() internal view returns (bytes32[] memory data) {
+        uint256 n = committedPackIds.length;
+        uint256 size = n < 2 ? 2 : n;
+        data = new bytes32[](size);
+        for (uint256 i = 0; i < n; i++) {
+            uint256 packId = committedPackIds[i];
+            data[i] = _leaf(packId, committedCardIds[packId], committedAmounts[packId], committedSalt[packId]);
+        }
+        // Pad with distinct sentinel leaves (never proven for a real order).
+        for (uint256 i = n; i < size; i++) {
+            data[i] = keccak256(abi.encodePacked("cxrds-pad", i));
+        }
+    }
+
+    /// @notice Recompute the root over all committed packs and seed it on-chain
+    ///         (owner-pranked). Safe to call repeatedly — the root is
+    ///         owner-mutable at any time.
+    function _seed() internal {
+        bytes32 root = merkle.getRoot(_leaves());
+        vm.prank(owner);
+        packs.seedContents(root);
+    }
+
+    /// @notice Commit a pack's custom contents AND re-seed in one step.
+    function _commitAndSeed(
+        uint256 packId,
+        uint256[] memory cardIds,
+        uint256[] memory amounts,
+        bytes32 salt
+    ) internal {
+        _commit(packId, cardIds, amounts, salt);
+        _seed();
+    }
+
+    /// @notice The Merkle proof for a committed pack against the current tree.
+    function _proofFor(uint256 packId) internal view returns (bytes32[] memory) {
+        uint256 idx1 = committedIndex[packId];
+        require(idx1 != 0, "pack not committed");
+        return merkle.getProof(_leaves(), idx1 - 1);
     }
 
     // ---------------------------------------------------------------------
@@ -290,7 +410,9 @@ contract ManifoldPacksTestBase is Test {
             cardIds: ids,
             amounts: amounts,
             deadline: deadline,
-            signature: signRipPermitBytes(privateKey, packId, deadline)
+            signature: signRipPermitBytes(privateKey, packId, deadline),
+            salt: committedSalt[packId],
+            proof: _proofOrEmpty(packId)
         });
     }
 
@@ -310,13 +432,25 @@ contract ManifoldPacksTestBase is Test {
             cardIds: cardIds,
             amounts: amounts,
             deadline: deadline,
-            signature: signRipPermitBytes(privateKey, packId, deadline)
+            signature: signRipPermitBytes(privateKey, packId, deadline),
+            salt: committedSalt[packId],
+            proof: _proofOrEmpty(packId)
         });
+    }
+
+    /// @notice The proof for `packId` if it is committed, else an empty proof
+    ///         (used by failure-axis tests that revert on signature / range /
+    ///         sum BEFORE the Merkle gate, so the proof is never reached).
+    function _proofOrEmpty(uint256 packId) internal view returns (bytes32[] memory) {
+        if (committedIndex[packId] == 0) return new bytes32[](0);
+        return _proofFor(packId);
     }
 
     /**
      * @notice Convenience: build a valid RipOrder for a fixture pack owned by
-     *         `owner`, signed by `owner`, with a far-future deadline.
+     *         `owner`, signed by `owner`, with a far-future deadline. The pack's
+     *         default four cards are pre-committed in setUp, so the attached
+     *         proof verifies against the seeded root.
      */
     function buildFixtureRipOrder(uint256 packId)
         internal

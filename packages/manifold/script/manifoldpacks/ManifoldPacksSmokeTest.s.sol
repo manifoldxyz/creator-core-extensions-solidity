@@ -142,8 +142,16 @@ contract ManifoldPacksSmokeTest is Script {
 
         // 11-12. Sign the RipPermit off-chain, then deliverBatch (burn + cards).
         uint256[4] memory cardIds = _pickCards(ctx.packs);
+
+        // 11a. Seed the contents commitment for this pack (owner action). Build a
+        //      2-leaf tree (pack leaf + sentinel) and seed its root; the matching
+        //      proof rides in the RipOrder. If the off-chain hashing did not match
+        //      the contract's MerkleProof.verify, the rip below would revert.
+        bytes32 salt = keccak256(abi.encodePacked("cxrds-smoke-salt", packId));
+        bytes32[] memory proof = _seedContents(ctx, packId, cardIds, salt);
+
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
-        orders[0] = _buildOrder(ctx, packId, cardIds);
+        orders[0] = _buildOrder(ctx, packId, cardIds, salt, proof);
         ctx.packs.deliverBatch(orders);
         console.log("LEG rip: deliverBatch submitted (pack burned + 4 cards minted).");
 
@@ -215,7 +223,13 @@ contract ManifoldPacksSmokeTest is Script {
      *         "ManifoldPacksSeaDropShim" even though the ERC721 collection name is "TEST"),
      *         sign it with the wallet key, and pack the RipOrder.
      */
-    function _buildOrder(Ctx memory ctx, uint256 packId, uint256[4] memory cardIds)
+    function _buildOrder(
+        Ctx memory ctx,
+        uint256 packId,
+        uint256[4] memory cardIds,
+        bytes32 salt,
+        bytes32[] memory proof
+    )
         internal
         view
         returns (IManifoldPacksSeaDropShim.RipOrder memory order)
@@ -245,8 +259,36 @@ contract ManifoldPacksSmokeTest is Script {
             cardIds: ids,
             amounts: amounts,
             deadline: deadline,
-            signature: abi.encodePacked(r, s, v)
+            signature: abi.encodePacked(r, s, v),
+            salt: salt,
+            proof: proof
         });
+    }
+
+    /**
+     * @notice Build a 2-leaf Merkle tree (the pack's committed leaf + a sentinel)
+     *         and seed its root via `seedContents`. Returns the proof (the
+     *         sibling) that the RipOrder carries. Uses sorted-pair hashing to
+     *         match OZ `MerkleProof.verify` in the contract.
+     */
+    function _seedContents(Ctx memory ctx, uint256 packId, uint256[4] memory cardIds, bytes32 salt)
+        internal
+        returns (bytes32[] memory proof)
+    {
+        uint256[] memory ids = new uint256[](4);
+        uint256[] memory amounts = new uint256[](4);
+        for (uint256 i = 0; i < 4; i++) {
+            ids[i] = cardIds[i];
+            amounts[i] = 1;
+        }
+        bytes32 leaf = keccak256(abi.encode(packId, ids, amounts, salt));
+        bytes32 sibling = keccak256(abi.encodePacked("cxrds-smoke-pad", packId));
+        bytes32 root =
+            leaf < sibling ? keccak256(abi.encodePacked(leaf, sibling)) : keccak256(abi.encodePacked(sibling, leaf));
+        ctx.packs.seedContents(root);
+        proof = new bytes32[](1);
+        proof[0] = sibling;
+        console.log("LEG seed: contents root committed for packId:", packId);
     }
 
     function _verify(Ctx memory ctx, uint256 packId, uint256[4] memory cardIds) internal {

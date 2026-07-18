@@ -83,6 +83,10 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
         uint256 cardId = bound(rawCardId, start, start + NUM_CARDS() - 1);
 
         uint256[4] memory cards = [cardId, cardId, cardId, cardId];
+        // Commit these fuzzed contents to pack 1 and seed, then rip. Foundry
+        // reverts state between fuzz runs, so this per-run commit is isolated.
+        (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cards);
+        _commitAndSeed(1, ids, amounts, _defaultSalt(1));
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, 1, cards, block.timestamp + 1 days);
 
@@ -173,7 +177,9 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
             cardIds: ids,
             amounts: amounts,
             deadline: orderDeadline, // != signed deadline -> digest mismatch
-            signature: signRipPermitBytes(OWNER_PK, 1, signedDeadline)
+            signature: signRipPermitBytes(OWNER_PK, 1, signedDeadline),
+            salt: bytes32(0),
+            proof: new bytes32[](0)
         });
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
@@ -196,7 +202,9 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
             cardIds: ids,
             amounts: amounts,
             deadline: deadline,
-            signature: signRipPermitBytes(OWNER_PK, signedPackId, deadline)
+            signature: signRipPermitBytes(OWNER_PK, signedPackId, deadline),
+            salt: bytes32(0),
+            proof: new bytes32[](0)
         });
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
@@ -216,6 +224,9 @@ contract ManifoldPacksCardsFuzz is ManifoldPacksTestBase {
 
     function _ripSingleCard(uint256 packId, uint256 cardId) internal {
         uint256[4] memory cards = [cardId, cardId, cardId, cardId];
+        // Commit these custom contents for the pack, then rip against the fresh root.
+        (uint256[] memory ids, uint256[] memory amounts) = _fixtureArrays(cards);
+        _commitAndSeed(packId, ids, amounts, _defaultSalt(packId));
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = buildRipOrder(OWNER_PK, packId, cards, block.timestamp + 1 days);
 

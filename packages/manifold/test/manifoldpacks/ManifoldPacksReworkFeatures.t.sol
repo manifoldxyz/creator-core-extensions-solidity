@@ -44,7 +44,9 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
             cardIds: ids,
             amounts: amounts,
             deadline: block.timestamp + 1 days,
-            signature: hex"deadbeef" // garbage
+            signature: hex"deadbeef", // garbage
+            salt: bytes32(0),
+            proof: new bytes32[](0)
         });
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
@@ -66,12 +68,18 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
             ids[i] = startingCardTokenId;
             amounts[i] = 1;
         }
+        // Commit pack 1 to these custom contents (4 copies of the first card) and
+        // re-seed, so the merkle gate passes even though the collector sig is
+        // skipped in break-glass mode.
+        _commitAndSeed(1, ids, amounts, _defaultSalt(1));
         IManifoldPacksSeaDropShim.RipOrder memory order = IManifoldPacksSeaDropShim.RipOrder({
             packId: 1,
             cardIds: ids,
             amounts: amounts,
             deadline: block.timestamp + 1 days,
-            signature: hex"" // empty
+            signature: hex"", // empty
+            salt: committedSalt[1],
+            proof: _proofFor(1)
         });
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
@@ -107,7 +115,9 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
             cardIds: ids,
             amounts: amounts,
             deadline: block.timestamp + 1 days,
-            signature: hex""
+            signature: hex"",
+            salt: committedSalt[1],
+            proof: _proofFor(1)
         });
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
@@ -147,7 +157,9 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
             cardIds: ids,
             amounts: amounts,
             deadline: block.timestamp + 1 days,
-            signature: signRipPermitBytes(OWNER_PK, 1, block.timestamp + 1 days)
+            signature: signRipPermitBytes(OWNER_PK, 1, block.timestamp + 1 days),
+            salt: committedSalt[1],
+            proof: _proofFor(1)
         });
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
         orders[0] = order;
@@ -175,6 +187,9 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
         ids[0] = startingCardTokenId;      amounts[0] = 2;
         ids[1] = startingCardTokenId + 1;  amounts[1] = 1;
         ids[2] = startingCardTokenId + 2;  amounts[2] = 1;
+
+        // Commit this duplicate-variation multiset to pack 1, then rip it.
+        _commitAndSeed(1, ids, amounts, _defaultSalt(1));
 
         IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrderDyn(OWNER_PK, 1, ids, amounts, block.timestamp + 1 days);

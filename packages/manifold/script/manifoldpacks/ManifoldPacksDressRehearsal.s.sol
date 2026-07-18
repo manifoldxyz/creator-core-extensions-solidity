@@ -96,9 +96,11 @@ contract ManifoldPacksDressRehearsal is Script {
         uint256 payerKey;
         uint256 collectorKey;
         uint256 signerKey;
+        uint256 ownerKey;
         address payer;
         address collector;
         address signer;
+        address ownerAddr;
         uint256 mintPrice;
         uint256 deadline;
     }
@@ -122,7 +124,9 @@ contract ManifoldPacksDressRehearsal is Script {
 
         uint256 packId = _legMint(ctx);
         uint256[4] memory cardIds = _pickCards(ctx.packs);
-        _legDeliver(ctx, packId, cardIds);
+        bytes32 salt = keccak256(abi.encodePacked("cxrds-dress-salt", packId));
+        bytes32[] memory proof = _legSeed(ctx, packId, cardIds, salt);
+        _legDeliver(ctx, packId, cardIds, salt, proof);
         _verify(ctx, packId, cardIds);
 
         console.log("collector ETH after (must equal before):", ctx.collector.balance);
@@ -138,9 +142,11 @@ contract ManifoldPacksDressRehearsal is Script {
         ctx.payerKey = vm.envUint("PAYER_PRIVATE_KEY");
         ctx.collectorKey = vm.envUint("COLLECTOR_PRIVATE_KEY");
         ctx.signerKey = vm.envUint("SIGNER_PRIVATE_KEY");
+        ctx.ownerKey = vm.envUint("OWNER_PRIVATE_KEY");
         ctx.payer = vm.addr(ctx.payerKey);
         ctx.collector = vm.addr(ctx.collectorKey);
         ctx.signer = vm.addr(ctx.signerKey);
+        ctx.ownerAddr = vm.addr(ctx.ownerKey);
         ctx.mintPrice = vm.envOr("MINT_PRICE_WEI", DEFAULT_MINT_PRICE);
         ctx.deadline = vm.envOr("PERMIT_DEADLINE", block.timestamp + 1 hours);
     }
@@ -167,13 +173,56 @@ contract ManifoldPacksDressRehearsal is Script {
     }
 
     /**
+     * @notice LEG 1.5: seed the contents commitment. The owner builds a Merkle
+     *         root over the pack's committed leaf
+     *         `keccak256(abi.encode(packId, cardIds, amounts, salt))` (padded to
+     *         two leaves — the minimum a tree needs) and seeds it on-chain via
+     *         `seedContents`. Returns the proof the signer will submit. This is
+     *         the live convention test: if the off-chain leaf/tree hashing did
+     *         not match the contract's `MerkleProof.verify`, LEG 3 would revert
+     *         `ContentsMismatch`.
+     */
+    function _legSeed(Ctx memory ctx, uint256 packId, uint256[4] memory cardIds, bytes32 salt)
+        internal
+        returns (bytes32[] memory proof)
+    {
+        uint256[] memory ids = new uint256[](4);
+        uint256[] memory amounts = new uint256[](4);
+        for (uint256 i = 0; i < 4; i++) {
+            ids[i] = cardIds[i];
+            amounts[i] = 1;
+        }
+        bytes32 leaf = keccak256(abi.encode(packId, ids, amounts, salt));
+        // Pad to two leaves (a single-leaf tree is degenerate). The sibling is a
+        // sentinel that maps to no real order. Sorted-pair hashing (matching OZ
+        // MerkleProof) means the root is keccak of the sorted (leaf, sibling).
+        bytes32 sibling = keccak256(abi.encodePacked("cxrds-dress-pad", packId));
+        bytes32 root =
+            leaf < sibling ? keccak256(abi.encodePacked(leaf, sibling)) : keccak256(abi.encodePacked(sibling, leaf));
+
+        proof = new bytes32[](1);
+        proof[0] = sibling;
+
+        vm.startBroadcast(ctx.ownerKey);
+        ctx.packs.seedContents(root);
+        vm.stopBroadcast();
+        console.log("LEG 1.5 done. owner seeded contents root committing packId:", packId);
+    }
+
+    /**
      * @notice LEG 2 (off-chain sign) + LEG 3 (deliverBatch). The collector signs
      *         a RipPermit off-chain (no tx, no gas); the signer submits ONE
      *         deliverBatch tx that atomically burns the pack and mints 4 cards.
      */
-    function _legDeliver(Ctx memory ctx, uint256 packId, uint256[4] memory cardIds) internal {
+    function _legDeliver(
+        Ctx memory ctx,
+        uint256 packId,
+        uint256[4] memory cardIds,
+        bytes32 salt,
+        bytes32[] memory proof
+    ) internal {
         IManifoldPacksSeaDropShim.RipOrder memory order =
-            _buildSignedOrder(ctx.packs, ctx.collectorKey, packId, cardIds, ctx.deadline);
+            _buildSignedOrder(ctx.packs, ctx.collectorKey, packId, cardIds, ctx.deadline, salt, proof);
         console.log("LEG 2 done. Collector signed RipPermit off-chain. deadline:", ctx.deadline);
         console.log("collector ETH after signing:", ctx.collector.balance, "(unchanged)");
 
@@ -279,7 +328,9 @@ contract ManifoldPacksDressRehearsal is Script {
         uint256 collectorKey,
         uint256 packId,
         uint256[4] memory cardIds,
-        uint256 deadline
+        uint256 deadline,
+        bytes32 salt,
+        bytes32[] memory proof
     ) internal view returns (IManifoldPacksSeaDropShim.RipOrder memory order) {
         bytes32 domainSeparator = keccak256(
             abi.encode(
@@ -312,7 +363,9 @@ contract ManifoldPacksDressRehearsal is Script {
             cardIds: ids,
             amounts: amounts,
             deadline: deadline,
-            signature: abi.encodePacked(r, s, v)
+            signature: abi.encodePacked(r, s, v),
+            salt: salt,
+            proof: proof
         });
     }
 }

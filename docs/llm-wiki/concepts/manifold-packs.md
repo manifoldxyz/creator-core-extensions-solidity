@@ -1,7 +1,7 @@
 ---
 title: ManifoldPacksSeaDropShim (gasless rip — pack burn → cards)
 created: 2026-07-16
-updated: 2026-07-16
+updated: 2026-07-17
 type: concept
 package: manifold
 tags: [contract, interface, struct, event, error, erc721, erc1155, seadrop, burn-redeem, signature, eip1271, config, collectible, pitfall]
@@ -45,15 +45,28 @@ Set once at `initializeCards(cardsCreator, config)` and mutated via `updateConfi
 ```solidity
 struct RipOrder {
     uint256   packId;    // ERC721 pack tokenId to rip (burn); also the replay lock
-    uint256[] cardIds;   // card variation ids to mint — relay data, NOT signed
+    uint256[] cardIds;   // card variation ids to mint — bound to the committed leaf
     uint256[] amounts;   // per-cardIds unit counts; sum MUST equal config.cardsPerPack
     uint256   deadline;  // unix ts after which the order reverts PermitExpired
     bytes     signature; // collector's sig over the typed payload (ECDSA OR EIP-1271 blob)
+    bytes32   salt;      // per-pack CSPRNG salt in the committed leaf (surprise-until-burn)
+    bytes32[] proof;     // Merkle proof of the pack's committed (packId,cardIds,amounts,salt) leaf
 }
 ```
-^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L93]
+^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L92]
 
-The signed EIP-712 payload is only `RipPermit(uint256 packId, uint256 deadline)` — **`cardIds`/`amounts` are chosen by the backend and validated on-chain (range check + `sum(amounts) == cardsPerPack`), not signed**; they are relay data. `cardIds`/`amounts` are **dynamic arrays** (a pack may contain **duplicate variations** — e.g. `cardIds=[A,B,C]`, `amounts=[2,1,1]` for a 4-card pack), and the real runtime "wrong count" guard is `sum(amounts) == cardsPerPack`. ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L60]
+The signed EIP-712 payload is only `RipPermit(uint256 packId, uint256 deadline)` — **`cardIds`/`amounts` are not part of the collector's signature**, but they are **NO LONGER free backend choice**: they are bound to the frozen `contentsRoot` via `salt`+`proof` (see the Contents commitment section). On-chain they are still also validated by the range check + `sum(amounts) == cardsPerPack`. `cardIds`/`amounts` are **dynamic arrays** (a pack may contain **duplicate variations** — e.g. `cardIds=[A,B,C]`, `amounts=[2,1,1]` for a 4-card pack). ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L60]
+
+## Contents commitment (the F1 fix — Merkle delivery check)
+
+`deliverBatch` gates each rip on a **Merkle-root contents commitment**, closing the finding that a compromised `signer` could deliver arbitrary in-range cards. Each pack's exact contents are committed as a leaf `keccak256(abi.encode(packId, cardIds, amounts, salt))`; the order carries the `salt`+`proof`, and the contract computes the leaf from the SAME `order.packId`/`cardIds`/`amounts`/`salt` and requires `MerkleProof.verify(order.proof, contentsRoot, leaf)` → else `ContentsMismatch`. If `contentsRoot == bytes32(0)`, `deliverBatch` reverts `ContentsNotSeeded` (the contract refuses to rip until a commitment exists). ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L318]
+
+- **`abi.encode` (NOT `encodePacked`) is load-bearing.** It is canonical/injective over the typed tuple; `encodePacked` would open the adjacent-dynamic-array boundary-shift collision between `cardIds` and `amounts`. Do not "optimize" it.
+- **`packId` is inside the leaf.** The same `order.packId` field feeds `ownerOf`, the permit digest, the leaf, and `_burn` — so pack X's committed cards cannot be delivered against pack Y (cross-pack swap → `ContentsMismatch`).
+- **Hash convention.** Leaves are **single-hashed**; internal nodes use OZ `MerkleProof`'s sorted-pair commutative `_hashPair`. Off-chain tree builders must match (the test suite uses murky's `Merkle`, whose `hashLeafPairs` sorts ascending — same convention; `test_happyPath_realProof` proves a real murky proof verifies on-chain, the anti-bricking check).
+- **`salt`** blinds each leaf so a pack's contents can't be brute-forced from the sibling-leaf hashes that every burn's proof publishes (surprise-until-burn). Salt loss = that pack can never rip; salt leak = surprise lost, integrity intact.
+
+**`seedContents(bytes32 root_) external onlyOwner`** sets/updates the root (reverts `CardsNotInitialized` before init — the sheet must use real post-init card ids), emits `ContentsSeeded`. **TRUST MODEL (deliberate):** the root binds the **`signer`**, not the **`owner`**. There is intentionally **NO `_totalMinted()==0` lock** — the owner may re-seed at any time (to correct a bad sheet / late card swap in a live drop), a trusted-owner power in the same class as `airdrop`/break-glass/metadata. Consequence: a compromised **signer** can only ever deliver each pack's committed cards or revert (cannot substitute/over-mint/misdeliver); a compromised **owner** can re-commit — accepted, monitorable via the `ContentsSeeded` event. Note: changing `cardsPerPack` without re-seeding bricks rips (committed `amounts` sums no longer match) until a matching re-seed — an operational responsibility, not a contract invariant. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L225]
 
 ## External surface
 
@@ -74,8 +87,9 @@ Per order in `deliverBatch`: ^[manifold/contracts/manifoldpacks/ManifoldPacksSea
 2. `address packOwner = ownerOf(order.packId)` — a burned/nonexistent pack **reverts ERC721A's `OwnerQueryForNonexistentToken`** (the replay lock).
 3. **If `ripSignatureRequired`** (default): `SignatureChecker.isValidSignatureNow(packOwner, digest, order.signature)` where `digest = _hashTypedDataV4(keccak256(abi.encode(RIP_TYPEHASH, packId, deadline)))`. `false` → `InvalidPermit`. This validates **both** EOA ECDSA signatures **and** EIP-1271 contract-wallet signatures. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L291]
 4. Validate `cardIds`/`amounts`: matched non-empty lengths, every id in `[startingCardTokenId, startingCardTokenId + numberOfVariations)`, and `sum(amounts) == cardsPerPack` → else `InvalidCardAmounts` / `InvalidCardIds`.
-5. Enforce `mintedCards + sum <= maxCardsSupply` (when the cap is non-zero) → else `MaxCardsSupplyExceeded`; bump `mintedCards`.
-6. `_burn(packId)`, then `mintExtensionExisting(to=[packOwner], cardIds, amounts)`; emit `Ripped(packId, packOwner, cardIds, amounts, ripSignatureRequired)`.
+5. **Contents commitment:** `MerkleProof.verify(order.proof, contentsRoot, keccak256(abi.encode(packId, cardIds, amounts, salt)))` → else `ContentsMismatch`. (The whole batch also reverts `ContentsNotSeeded` up front if `contentsRoot == bytes32(0)`.)
+6. Enforce `mintedCards + sum <= maxCardsSupply` (when the cap is non-zero) → else `MaxCardsSupplyExceeded`; bump `mintedCards`.
+7. `_burn(packId)`, then `mintExtensionExisting(to=[packOwner], cardIds, amounts)`; emit `Ripped(packId, packOwner, cardIds, amounts, ripSignatureRequired)`.
 
 **There are NO nonces and no burn-credit ledger.** Replay is structural: a used permit's pack is burned, so `ownerOf` reverts and it can never be redeemed twice. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L285]
 
@@ -100,9 +114,11 @@ Per order in `deliverBatch`: ^[manifold/contracts/manifoldpacks/ManifoldPacksSea
 | `CannotChangeVariations()` | `updateConfig` changes `numberOfVariations` (fixed at init) ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L228] |
 | `InvalidCardsCreator()` | `initializeCards` given a zero cards-core address ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L234] |
 | `CannotLowerMaxBeyondMinted()` | `updateConfig` sets `maxCardsSupply` below `mintedCards` ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L241] |
-| `CardsAlreadyInitialized()` / `CardsNotInitialized()` | double `initializeCards`, or `updateConfig` before init ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L251] |
+| `CardsAlreadyInitialized()` / `CardsNotInitialized()` | double `initializeCards`, or `updateConfig`/`seedContents` before init ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L251] |
+| `ContentsNotSeeded()` | `deliverBatch` called while `contentsRoot == bytes32(0)` ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L296] |
+| `ContentsMismatch()` | an order's `(cardIds, amounts, salt)` do not hash to a committed leaf for `packId` (Merkle proof fails) ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L305] |
 
-Pinned `deliverBatch` error order: `OnlySigner → RipNotStarted → RipEnded → PermitExpired → [ownerOf revert] → InvalidPermit → InvalidCardAmounts → InvalidCardIds → MaxCardsSupplyExceeded`. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L260]
+Pinned `deliverBatch` error order: `OnlySigner → RipNotStarted → RipEnded → ContentsNotSeeded → PermitExpired → [ownerOf revert] → InvalidPermit → InvalidCardAmounts → InvalidCardIds → ContentsMismatch → MaxCardsSupplyExceeded`. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L260]
 
 ## Pitfalls
 
@@ -112,6 +128,8 @@ Pinned `deliverBatch` error order: `OnlySigner → RipNotStarted → RipEnded �
 - **`initializeCards` reserves ids by minting *zero* amounts.** The amounts array is all zeros — `mintExtensionNew` registers new tokenIds without minting units; units are minted on demand at rip time. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L152]
 - **`numberOfVariations` is capped at 255.** The uint8 variation cap (`MAX_UINT_8`) is enforced at init and on raise — raising past 255 reverts `InvalidConfig`. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L207]
 - **`startingCardTokenId == 0` is the uninitialized sentinel.** Creator-core ids start at 1, so `0` safely doubles as "not yet initialized". ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L67]
+- **Merkle leaf/tree hash convention must match OZ, or every rip bricks.** Leaves are single-hashed `keccak256(abi.encode(packId, cardIds, amounts, salt))`; internal nodes use OZ `MerkleProof`'s sorted-pair `_hashPair`. An off-chain builder that double-hashes leaves (OZ `StandardMerkleTree` default) or hashes pairs unsorted will produce proofs that ALL revert `ContentsMismatch`. End-to-end test one real proof against the deployed verifier before mint (the in-suite `test_happyPath_realProof` does this with murky). ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L318]
+- **The contents root is owner-mutable (no pre-mint lock).** `seedContents` has no `_totalMinted()==0` gate — the owner can re-seed any time. This binds the *signer* (can't substitute contents), NOT the *owner* (already trusted). Changing `cardsPerPack` without a matching re-seed bricks all rips until re-seeded. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L225]
 
 ## Open questions
 
