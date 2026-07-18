@@ -86,6 +86,16 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     ///         cards or revert — it cannot substitute, over-mint, or misdeliver.
     bytes32 public contentsRoot;
 
+    /// @notice When true, SECONDARY pack transfers (and the approvals that enable
+    ///         them) revert `TransfersPaused`. The owner flips this via
+    ///         `updateTransfersPaused` to stop trading on demand. Mirrors OpenSea's
+    ///         `ERC721SeaDropPausable`, with ONE deliberate divergence: (a) it
+    ///         defaults to `false` (trading ON) — upstream defaults to paused,
+    ///         which would brick the intentional sealed-pack secondary market on
+    ///         deploy; and (b) the pause NEVER blocks mint or the rip burn (see
+    ///         `_beforeTokenTransfers`), only wallet-to-wallet / marketplace moves.
+    bool public transfersPaused;
+
     /// @notice Card-side configuration. Set at `initializeCards`, owner-updatable
     ///         via `updateConfig`. Read externally via `getConfig()`.
     PackConfig internal _config;
@@ -219,6 +229,24 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     function setRipSignatureRequired(bool required) external onlyOwner {
         ripSignatureRequired = required;
         emit RipSignatureRequirementUpdated(required);
+    }
+
+    /**
+     * @notice Pause or unpause SECONDARY pack transfers. When paused, ordinary
+     *         wallet-to-wallet / marketplace transfers and new approvals revert
+     *         `TransfersPaused`; mint and the rip burn are NEVER blocked. Lets the
+     *         owner stop trading on demand.
+     *
+     * @dev    Mirrors OpenSea `ERC721SeaDropPausable.updateTransfersPaused`, but
+     *         the pause is scoped to secondary moves only (see
+     *         `_beforeTokenTransfers`) so an active pause cannot brick the rip
+     *         flow or the primary drop.
+     *
+     * @param paused The new pause state.
+     */
+    function updateTransfersPaused(bool paused) external onlyOwner {
+        transfersPaused = paused;
+        emit TransfersPausedChanged(paused);
     }
 
     /**
@@ -440,5 +468,49 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
         return
             interfaceId == type(ICreatorExtensionTokenURI).interfaceId ||
             super.supportsInterface(interfaceId);
+    }
+
+    // ---------------------------------------------------------------------
+    // Pausable secondary transfers (OpenSea ERC721SeaDropPausable mechanic,
+    // scoped so the pause NEVER blocks mint or the rip burn).
+    // ---------------------------------------------------------------------
+
+    /**
+     * @notice Block new approvals while transfers are paused (an approval only
+     *         exists to enable a secondary transfer). Mirrors
+     *         `ERC721SeaDropPausable.setApprovalForAll`.
+     */
+    function setApprovalForAll(address operator, bool approved) public virtual override {
+        if (transfersPaused) revert TransfersPaused();
+        super.setApprovalForAll(operator, approved);
+    }
+
+    /**
+     * @notice Block new single-token approvals while transfers are paused.
+     *         Mirrors `ERC721SeaDropPausable.approve`.
+     */
+    function approve(address to, uint256 tokenId) public virtual override {
+        if (transfersPaused) revert TransfersPaused();
+        super.approve(to, tokenId);
+    }
+
+    /**
+     * @notice Gate SECONDARY transfers on the pause. Diverges from
+     *         `ERC721SeaDropPausable` (which reverts on any `from != 0`, thereby
+     *         blocking burns too): here mint (`from == 0`) AND the rip burn
+     *         (`to == 0`) always proceed — only wallet-to-wallet / marketplace
+     *         moves (`from != 0 && to != 0`) are pausable. Without the `to != 0`
+     *         carve-out an active pause would brick every collector's rip.
+     */
+    function _beforeTokenTransfers(
+        address from,
+        address to,
+        uint256 startTokenId,
+        uint256 quantity
+    ) internal virtual override {
+        if (from != address(0) && to != address(0) && transfersPaused) {
+            revert TransfersPaused();
+        }
+        super._beforeTokenTransfers(from, to, startTokenId, quantity);
     }
 }

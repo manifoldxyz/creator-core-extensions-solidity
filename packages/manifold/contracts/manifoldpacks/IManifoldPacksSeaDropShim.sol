@@ -172,6 +172,15 @@ interface IManifoldPacksSeaDropShim {
     event RipSignatureRequirementUpdated(bool required);
 
     /**
+     * @notice Emitted when the owner pauses or unpauses secondary transfers via
+     *         `updateTransfersPaused`. Mint and the rip burn are never affected —
+     *         only wallet-to-wallet / marketplace (secondary) pack transfers.
+     *
+     * @param paused The new value of `transfersPaused`.
+     */
+    event TransfersPausedChanged(bool paused);
+
+    /**
      * @notice Emitted when the owner seeds or updates the Merkle contents root
      *         via `seedContents`. Fires on every (re-)seed so that a root change
      *         — a trusted-owner power — is publicly monitorable on-chain.
@@ -288,6 +297,14 @@ interface IManifoldPacksSeaDropShim {
      *         `recipients` / `cardIds` / `amounts` arrays.
      */
     error InvalidAirdrop();
+
+    /**
+     * @notice Reverts when a SECONDARY transfer (or a new approval) is attempted
+     *         while `transfersPaused` is true. Mint and the rip burn are never
+     *         gated by the pause — only wallet-to-wallet / marketplace transfers
+     *         and the approvals that enable them.
+     */
+    error TransfersPaused();
 
     /**
      * @notice Reverts when `deliverBatch` is called while `contentsRoot` is
