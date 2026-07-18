@@ -21,9 +21,6 @@ import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifold
  *         test_ownerCanReseedAfterMint — so there is NO _totalMinted()==0 lock.
  */
 contract ManifoldPacksMerkleTest is ManifoldPacksTestBase {
-    /// @notice Mirror of IManifoldPacksSeaDropShim.ContentsSeeded for expectEmit.
-    event ContentsSeeded(bytes32 root);
-
     // ---------------------------------------------------------------------
     // 1. Happy path — a real proof for a committed pack rips (convention test).
     // ---------------------------------------------------------------------
@@ -199,12 +196,11 @@ contract ManifoldPacksMerkleTest is ManifoldPacksTestBase {
         packs.seedContents(keccak256("x"));
     }
 
-    function test_seedContents_emitsEvent() public {
+    function test_seedContents_setsRoot() public {
         bytes32 root = keccak256("emit-root");
-        vm.expectEmit(false, false, false, true, address(packs));
-        emit ContentsSeeded(root);
         vm.prank(owner);
         packs.seedContents(root);
+        assertEq(packs.contentsRoot(), root);
     }
 
     // ---------------------------------------------------------------------

@@ -200,7 +200,6 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     function seedContents(bytes32 root_) external onlyOwner {
         if (startingCardTokenId == 0) revert CardsNotInitialized();
         contentsRoot = root_;
-        emit ContentsSeeded(root_);
     }
 
     /**

@@ -142,14 +142,6 @@ interface IManifoldPacksSeaDropShim {
     event TransfersPausedChanged(bool paused);
 
     /**
-     * @notice Emitted when the owner seeds or updates the Merkle contents root
-     *         via `seedContents`.
-     *
-     * @param root The new Merkle root committing each pack's cards.
-     */
-    event ContentsSeeded(bytes32 root);
-
-    /**
      * @notice Reverts when `deliverBatch` is called by any address other than
      *         the configured `signer`.
      */
