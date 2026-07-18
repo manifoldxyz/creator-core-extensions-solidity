@@ -24,27 +24,17 @@ import {IManifoldPacksSeaDropShim} from "./IManifoldPacksSeaDropShim.sol";
  *         phase opens, the authorized `signer` submits batches of
  *         collector-authorized EIP-712 `RipPermit`s via `deliverBatch`: for each
  *         permit the contract validates the permit against the current pack
- *         owner (EOA ECDSA OR EIP-1271 contract wallet via OpenZeppelin
- *         `SignatureChecker`), burns the pack, and mints the pack's
- *         predetermined cards to the owner on the cards core via
- *         `mintExtensionExisting`. The flow is atomic (any single failure
- *         reverts the whole batch) and gasless for the collector.
+ *         owner, burns the pack, and mints the pack's
+ *         cards to the owner on the cards core via
+ *         `mintExtensionExisting`.
  *
  *         Card-side parameters live in an owner-configurable `PackConfig`
  *         (variation count, cards-per-pack, rip window, optional supply cap,
  *         metadata location), set once at `initializeCards` and updatable via
  *         `updateConfig`.
- *
- *         As a card-metadata extension, this contract also implements
- *         `ICreatorExtensionTokenURI` — the cards core delegates
- *         `tokenURI(creator, tokenId)` resolution back here, and we serve a
- *         folder-pattern URI derived from `config.cardsLocation`. Pack metadata
- *         is left to the inherited `ERC721ContractMetadata`/`ERC721SeaDrop`
- *         behavior (no bespoke pack `tokenURI` override).
  */
 contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTokenURI, IManifoldPacksSeaDropShim {
     /// @notice Upper bound on `numberOfVariations` — the uint8 variation cap
-    ///         (mirrors Serendipity `MAX_UINT_8`).
     uint256 internal constant MAX_UINT_8 = 0xff;
 
     /// @notice EIP-712 typehash of the collector-signed rip authorization.
@@ -69,32 +59,11 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     uint256 public mintedCards;
 
     /// @notice Whether every rip requires a valid owner permit. Defaults to
-    ///         `true`. When `false`, signature verification is skipped and the
-    ///         trusted `signer` alone authorizes burns (break-glass). Internal:
-    ///         the per-rip `signatureVerified` flag on `Ripped` records state
-    ///         off-chain, so no external getter is exposed.
+    ///         `true`.
     bool internal ripSignatureRequired;
 
-    /// @notice Merkle root committing each `packId` to its predetermined cards.
-    ///         The leaf for a pack is
-    ///         `keccak256(abi.encode(packId, cardIds, amounts, salt))`. Set/updated
-    ///         via `seedContents` — OWNER-MUTABLE at any time by design (no
-    ///         pre-mint lock): the root binds the `signer`, not the `owner`.
-    ///         `bytes32(0)` == unseeded (a state in which `deliverBatch` refuses
-    ///         to rip). This is the contents-integrity commitment: with a root in
-    ///         place a compromised `signer` can only deliver each pack's committed
-    ///         cards or revert — it cannot substitute, over-mint, or misdeliver.
     bytes32 public contentsRoot;
 
-    /// @notice When true, SECONDARY pack transfers (and the approvals that enable
-    ///         them) revert `TransfersPaused`. The owner flips this via
-    ///         `updateTransfersPaused` to stop/allow trading on demand. Mirrors
-    ///         OpenSea's `ERC721SeaDropPausable`: it **defaults to `true`
-    ///         (trading OFF) on deploy** — the owner opens the secondary market
-    ///         with `updateTransfersPaused(false)` when ready. The pause NEVER
-    ///         blocks mint or the rip burn (see `_beforeTokenTransfers`), only
-    ///         wallet-to-wallet / marketplace moves, so a paused-on-deploy
-    ///         contract still mints the primary drop and lets collectors rip.
     bool public transfersPaused;
 
     /// @notice Card-side configuration. Set at `initializeCards`, owner-updatable
@@ -119,17 +88,8 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
         address[] memory allowedSeaDrop_,
         address initialOwner_
     ) ERC721SeaDrop(name_, symbol_, allowedSeaDrop_) EIP712("ManifoldPacksSeaDropShim", "1") {
-        // Default ON: every rip requires a valid owner permit unless the owner
-        // explicitly flips the break-glass off-switch.
         ripSignatureRequired = true;
-        // Default PAUSED: secondary trading is off on deploy (matches upstream
-        // ERC721SeaDropPausable). The owner opens trading with
-        // updateTransfersPaused(false) when ready. Mint and the rip burn are
-        // never gated by the pause, so this does not block the primary drop or
-        // collectors ripping their packs.
         transfersPaused = true;
-        // ERC721SeaDrop's TwoStepOwnable constructor already set the owner to
-        // msg.sender; transfer to the explicit initialOwner (CREATE2-safe).
         _transferOwnership(initialOwner_);
     }
 
@@ -142,7 +102,7 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
      *         reserved id as `startingCardTokenId`.
      *
      * @dev    Must be called after this contract has been registered as an
-     *         extension on the cards core via `registerExtension` (an admin
+     *         extension on the creator core via `registerExtension` (an admin
      *         action on the cards core). Reverts `CardsAlreadyInitialized` if
      *         already initialized.
      *
@@ -225,12 +185,6 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
     /**
      * @notice Toggle whether every rip requires a valid owner permit.
      *
-     * @dev    BREAK-GLASS: setting this to `false` SKIPS signature verification
-     *         entirely — the trusted `signer` alone authorizes burns, so a
-     *         compromised signer could rip ANY pack. Use only as an emergency
-     *         control. The `Ripped` event's `signatureVerified` flag records
-     *         which rips ran unverified.
-     *
      * @param required The new requirement value.
      */
     function setRipSignatureRequired(bool required) external onlyOwner {
@@ -238,45 +192,11 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
         emit RipSignatureRequirementUpdated(required);
     }
 
-    /**
-     * @notice Pause or unpause SECONDARY pack transfers. When paused, ordinary
-     *         wallet-to-wallet / marketplace transfers and new approvals revert
-     *         `TransfersPaused`; mint and the rip burn are NEVER blocked. Lets the
-     *         owner stop trading on demand.
-     *
-     * @dev    Mirrors OpenSea `ERC721SeaDropPausable.updateTransfersPaused`, but
-     *         the pause is scoped to secondary moves only (see
-     *         `_beforeTokenTransfers`) so an active pause cannot brick the rip
-     *         flow or the primary drop.
-     *
-     * @param paused The new pause state.
-     */
     function updateTransfersPaused(bool paused) external onlyOwner {
         transfersPaused = paused;
         emit TransfersPausedChanged(paused);
     }
 
-    /**
-     * @notice Seed or update the Merkle root committing each pack's
-     *         predetermined cards. Owner-updatable at any time.
-     *
-     * @dev    TRUST MODEL: this root binds the `signer` — a compromised signer
-     *         can only ever deliver each pack's committed cards or revert, never
-     *         substitute/over-mint/misdeliver. It does NOT bind the `owner`: the
-     *         owner may re-seed a new root at any time (this is a deliberate
-     *         operational choice — a live drop needs to correct a bad sheet or a
-     *         late card swap). A re-seed is a trusted-owner power, in the same
-     *         class as `airdrop`, break-glass, and metadata updates. Every
-     *         (re-)seed emits `ContentsSeeded` so the change is publicly
-     *         monitorable.
-     *
-     *         Must be called after `initializeCards` so the sheet is built from
-     *         the REAL post-init contiguous card ids (`startingCardTokenId`) —
-     *         a correctness guard, not a trust guard.
-     *
-     * @param root_ The Merkle root over the pack->cards sheet. Each leaf is
-     *              `keccak256(abi.encode(packId, cardIds, amounts, salt))`.
-     */
     function seedContents(bytes32 root_) external onlyOwner {
         if (startingCardTokenId == 0) revert CardsNotInitialized();
         contentsRoot = root_;
@@ -285,13 +205,8 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
 
     /**
      * @notice Deliver a batch of collector-authorized rip permits. For each
-     *         order: verify the permit (unless the off-switch is set), burn the
+     *         order: verify the permit, burn the
      *         pack, and mint its cards to the owner.
-     *
-     * @dev    Callable only by `signer`, only within the configured rip window.
-     *         No nonces and no burn-credit ledger: replay is prevented
-     *         structurally because a burned pack makes `ownerOf(packId)` revert
-     *         ERC721A's `OwnerQueryForNonexistentToken`.
      *
      * @param orders The rip orders to process.
      */
@@ -316,12 +231,10 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
 
             if (block.timestamp > order.deadline) revert PermitExpired();
 
-            // Reverts ERC721A's OwnerQueryForNonexistentToken for a burned or
-            // nonexistent pack — the replay/duplicate lock.
             address packOwner = ownerOf(order.packId);
 
             // Verify the collector's permit against the current owner (EOA ECDSA
-            // OR EIP-1271 contract wallet). Skipped in break-glass mode.
+            // OR EIP-1271 contract wallet)
             if (sigRequired) {
                 bytes32 digest = _hashTypedDataV4(
                     keccak256(abi.encode(RIP_TYPEHASH, order.packId, order.deadline))
@@ -331,8 +244,6 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
                 }
             }
 
-            // Validate the card ids/amounts: matched non-empty lengths, every id
-            // in the reserved variation range, and sum(amounts) == cardsPerPack.
             uint256 n = order.cardIds.length;
             if (n == 0 || n != order.amounts.length) revert InvalidCardAmounts();
 
@@ -349,15 +260,6 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
             }
             if (sum != cardsPerPack) revert InvalidCardAmounts();
 
-            // Verify the pack's contents against the committed root. The leaf
-            // binds packId -> (cardIds, amounts, salt), so a compromised signer
-            // cannot substitute contents, swap another pack's cards onto this
-            // packId, or over-mint — it can only deliver the committed multiset
-            // or revert. abi.encode (NOT encodePacked) is load-bearing: it is
-            // canonical/injective over the typed tuple, so no two distinct
-            // orders share a leaf. Read `contentsRoot` from storage inline
-            // (rather than hoisting a local) to keep the loop off the
-            // stack-too-deep cliff without viaIR.
             if (
                 !MerkleProof.verify(
                     order.proof,
@@ -388,26 +290,7 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
 
     /**
      * @notice Owner airdrop: mint reserved card variations directly to
-     *         recipients, bypassing the pack-burn rip flow. An admin escape
-     *         hatch for corrections, giveaways, or partner allocations.
-     *
-     * @dev    Parallel arrays: recipient `recipients[i]` receives `amounts[i]`
-     *         units of card variation `cardIds[i]`. All three lengths must be
-     *         equal and non-zero (to give one recipient several cards, repeat
-     *         the address across entries). Every `cardIds[i]` must fall in the
-     *         reserved variation range. `onlyOwner`.
-     *
-     *         DELIBERATELY independent of the rip budget: unlike the reference
-     *         lazy-claim airdrop (which counts toward the claim total and
-     *         auto-raises the max), this does NOT touch `mintedCards` or
-     *         `config.maxCardsSupply`. Those govern RIP output (pack economics:
-     *         packs * cardsPerPack) and coupling an airdrop into them could
-     *         starve unripped packs of their cap headroom and make them
-     *         permanently un-rippable. Airdropped card supply is still fully
-     *         accounted on the cards core via `totalSupply(cardId)`.
-     *
-     *         No rip-window gate (`ripStartDate`/`ripEndDate` are not checked)
-     *         — the owner may airdrop any time after `initializeCards`.
+     *         recipients.
      *
      * @param recipients The addresses to receive cards (parallel to cardIds/amounts).
      * @param cardIds    The card variation tokenIds to mint (each in range).
@@ -435,34 +318,17 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
             }
         }
 
-        // Airdrops count toward the minted total, mirroring lazy-claim's
-        // airdrop (ERC1155LazyPayableClaimCore.airdrop): bump `mintedCards`
-        // and, if a cap is set and would be exceeded, RAISE it to the new
-        // total so an airdrop is never blocked by the cap. This makes
-        // `maxCardsSupply` a real total-supply figure (rips + airdrops), not
-        // a rip-only budget. Trade-off: an airdrop that pushes `mintedCards`
-        // up to the cap leaves zero headroom for future rips until the owner
-        // raises `maxCardsSupply` again via `updateConfig`.
         mintedCards += totalAmount;
         if (_config.maxCardsSupply != 0 && mintedCards > _config.maxCardsSupply) {
             _config.maxCardsSupply = mintedCards;
         }
 
-        // Parallel-array mint: for len == 1 the cards core does a single mint;
-        // for len > 1 it mints cardIds[i] (amounts[i]) to recipients[i].
         IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(recipients, cardIds, amounts);
 
         emit Airdropped(recipients, cardIds, amounts);
     }
 
     /**
-     * @notice Card metadata resolution delegated by the cards core
-     *         (`ICreatorExtensionTokenURI`). When `config.tokenURIExtension` is
-     *         set (non-zero), resolution is delegated verbatim to that external
-     *         resolver: `ICreatorExtensionTokenURI(tokenURIExtension).tokenURI(creator, tokenId)`.
-     *         Otherwise it serves the built-in folder-pattern URI:
-     *         `cardsLocation + (tokenId - startingCardTokenId + 1)`, so the
-     *         first reserved card variation maps to `.../1`.
      *
      * @param creator The cards-core contract querying the URI (passed through
      *                to an external resolver so a shared resolver can key on it).
@@ -501,38 +367,16 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
             super.supportsInterface(interfaceId);
     }
 
-    // ---------------------------------------------------------------------
-    // Pausable secondary transfers (OpenSea ERC721SeaDropPausable mechanic,
-    // scoped so the pause NEVER blocks mint or the rip burn).
-    // ---------------------------------------------------------------------
-
-    /**
-     * @notice Block new approvals while transfers are paused (an approval only
-     *         exists to enable a secondary transfer). Mirrors
-     *         `ERC721SeaDropPausable.setApprovalForAll`.
-     */
     function setApprovalForAll(address operator, bool approved) public virtual override {
         if (transfersPaused) revert TransfersPaused();
         super.setApprovalForAll(operator, approved);
     }
 
-    /**
-     * @notice Block new single-token approvals while transfers are paused.
-     *         Mirrors `ERC721SeaDropPausable.approve`.
-     */
     function approve(address to, uint256 tokenId) public virtual override {
         if (transfersPaused) revert TransfersPaused();
         super.approve(to, tokenId);
     }
 
-    /**
-     * @notice Gate SECONDARY transfers on the pause. Diverges from
-     *         `ERC721SeaDropPausable` (which reverts on any `from != 0`, thereby
-     *         blocking burns too): here mint (`from == 0`) AND the rip burn
-     *         (`to == 0`) always proceed — only wallet-to-wallet / marketplace
-     *         moves (`from != 0 && to != 0`) are pausable. Without the `to != 0`
-     *         carve-out an active pause would brick every collector's rip.
-     */
     function _beforeTokenTransfers(
         address from,
         address to,
