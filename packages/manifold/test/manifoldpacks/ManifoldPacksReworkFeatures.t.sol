@@ -144,7 +144,11 @@ contract ManifoldPacksReworkFeatures is ManifoldPacksTestBase {
         // an EIP-1271 signature that SignatureChecker validates.
         MockERC1271Wallet smartWallet = new MockERC1271Wallet(owner);
 
-        // Transfer fixture pack 1 into the smart wallet.
+        // Transfer fixture pack 1 into the smart wallet. Trading is paused by
+        // default, so open it first (this test exercises EIP-1271 ripping, not
+        // the pause).
+        vm.prank(owner);
+        packs.updateTransfersPaused(false);
         vm.prank(owner);
         packs.transferFrom(owner, address(smartWallet), 1);
         assertEq(packs.ownerOf(1), address(smartWallet), "smart wallet holds pack");

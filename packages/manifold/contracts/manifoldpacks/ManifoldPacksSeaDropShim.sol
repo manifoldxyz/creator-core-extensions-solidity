@@ -88,12 +88,13 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
 
     /// @notice When true, SECONDARY pack transfers (and the approvals that enable
     ///         them) revert `TransfersPaused`. The owner flips this via
-    ///         `updateTransfersPaused` to stop trading on demand. Mirrors OpenSea's
-    ///         `ERC721SeaDropPausable`, with ONE deliberate divergence: (a) it
-    ///         defaults to `false` (trading ON) — upstream defaults to paused,
-    ///         which would brick the intentional sealed-pack secondary market on
-    ///         deploy; and (b) the pause NEVER blocks mint or the rip burn (see
-    ///         `_beforeTokenTransfers`), only wallet-to-wallet / marketplace moves.
+    ///         `updateTransfersPaused` to stop/allow trading on demand. Mirrors
+    ///         OpenSea's `ERC721SeaDropPausable`: it **defaults to `true`
+    ///         (trading OFF) on deploy** — the owner opens the secondary market
+    ///         with `updateTransfersPaused(false)` when ready. The pause NEVER
+    ///         blocks mint or the rip burn (see `_beforeTokenTransfers`), only
+    ///         wallet-to-wallet / marketplace moves, so a paused-on-deploy
+    ///         contract still mints the primary drop and lets collectors rip.
     bool public transfersPaused;
 
     /// @notice Card-side configuration. Set at `initializeCards`, owner-updatable
@@ -121,6 +122,12 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
         // Default ON: every rip requires a valid owner permit unless the owner
         // explicitly flips the break-glass off-switch.
         ripSignatureRequired = true;
+        // Default PAUSED: secondary trading is off on deploy (matches upstream
+        // ERC721SeaDropPausable). The owner opens trading with
+        // updateTransfersPaused(false) when ready. Mint and the rip burn are
+        // never gated by the pause, so this does not block the primary drop or
+        // collectors ripping their packs.
+        transfersPaused = true;
         // ERC721SeaDrop's TwoStepOwnable constructor already set the owner to
         // msg.sender; transfer to the explicit initialOwner (CREATE2-safe).
         _transferOwnership(initialOwner_);
@@ -418,12 +425,27 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
 
         uint256 start = startingCardTokenId;
         uint256 rangeEnd = start + _config.numberOfVariations;
+        uint256 totalAmount;
         for (uint256 i = 0; i < len;) {
             uint256 cardId = cardIds[i];
             if (cardId < start || cardId >= rangeEnd) revert InvalidCardIds();
+            totalAmount += amounts[i];
             unchecked {
                 ++i;
             }
+        }
+
+        // Airdrops count toward the minted total, mirroring lazy-claim's
+        // airdrop (ERC1155LazyPayableClaimCore.airdrop): bump `mintedCards`
+        // and, if a cap is set and would be exceeded, RAISE it to the new
+        // total so an airdrop is never blocked by the cap. This makes
+        // `maxCardsSupply` a real total-supply figure (rips + airdrops), not
+        // a rip-only budget. Trade-off: an airdrop that pushes `mintedCards`
+        // up to the cap leaves zero headroom for future rips until the owner
+        // raises `maxCardsSupply` again via `updateConfig`.
+        mintedCards += totalAmount;
+        if (_config.maxCardsSupply != 0 && mintedCards > _config.maxCardsSupply) {
+            _config.maxCardsSupply = mintedCards;
         }
 
         // Parallel-array mint: for len == 1 the cards core does a single mint;

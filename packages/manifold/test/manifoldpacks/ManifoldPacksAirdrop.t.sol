@@ -11,8 +11,9 @@ import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
  * @notice Tests for the owner airdrop escape hatch: mint reserved card
  *         variations directly to recipients, bypassing the pack-burn rip flow.
  *         Verifies access control, array validation, range checks, rip-window
- *         independence, and — critically — that airdrops do NOT consume or
- *         corrupt the rip budget (`mintedCards` / `maxCardsSupply`).
+ *         independence, and that airdrops COUNT toward the minted total
+ *         (`mintedCards`), auto-raising `maxCardsSupply` when needed — lazy-claim
+ *         parity, so `maxCardsSupply` is a true total-supply cap (rips + airdrops).
  */
 contract ManifoldPacksAirdrop is ManifoldPacksTestBase {
     // Re-declared here so vm.expectEmit can reference the event shape.
@@ -137,29 +138,59 @@ contract ManifoldPacksAirdrop is ManifoldPacksTestBase {
         assertEq(IERC1155(address(creator)).balanceOf(alice, startingCardTokenId), 1, "airdrop ignores rip window");
     }
 
-    /// @notice The critical invariant: airdrop must NOT touch mintedCards or the
-    ///         rip cap, so a full-budget rip still succeeds afterwards.
-    function test_airdropDoesNotConsumeRipBudget() public {
+    /// @notice Airdrops now count toward the minted total (lazy-claim parity):
+    ///         `mintedCards` increases by the airdropped amount, and if a cap is
+    ///         set and would be exceeded the cap is RAISED to the new total so
+    ///         the airdrop is never blocked. `maxCardsSupply` is therefore a real
+    ///         total-supply figure (rips + airdrops), not a rip-only budget.
+    function test_airdropIncrementsMintedAndRaisesCap() public {
         // Set a tight cap equal to exactly one pack's worth of cards.
         _setMaxCardsSupply(CARDS_PER_PACK);
         assertEq(packs.mintedCards(), 0, "no cards minted yet");
 
-        // Airdrop a bunch of cards — more than the cap.
+        // Airdrop more than the cap — it succeeds AND auto-raises the cap.
+        uint256 airdropAmount = CARDS_PER_PACK * 10;
         (address[] memory tos, uint256[] memory ids, uint256[] memory amts) =
-            _single(alice, startingCardTokenId, CARDS_PER_PACK * 10);
+            _single(alice, startingCardTokenId, airdropAmount);
         vm.prank(owner);
         packs.airdrop(tos, ids, amts);
 
-        // mintedCards untouched by the airdrop.
-        assertEq(packs.mintedCards(), 0, "airdrop did not touch mintedCards");
+        // mintedCards bumped by the airdropped amount.
+        assertEq(packs.mintedCards(), airdropAmount, "airdrop counted toward mintedCards");
+        // Cap auto-raised to the new total (was CARDS_PER_PACK, now airdropAmount).
+        assertEq(packs.getConfig().maxCardsSupply, airdropAmount, "cap raised to new minted total");
 
-        // A full-cap rip of a fixture pack still succeeds (budget intact).
+        // TRADE-OFF: the cap was raised to EXACTLY mintedCards, so there is zero
+        // headroom left — a subsequent rip reverts until the owner raises the cap.
         IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](1);
+        orders[0] = buildFixtureRipOrder(1);
+        vm.prank(signerAddr);
+        vm.expectRevert(IManifoldPacksSeaDropShim.MaxCardsSupplyExceeded.selector);
+        packs.deliverBatch(orders);
+
+        // Owner raises the cap to make room, then the rip goes through and adds
+        // to the running total.
+        _setMaxCardsSupply(airdropAmount + CARDS_PER_PACK);
         orders[0] = buildFixtureRipOrder(1);
         vm.prank(signerAddr);
         packs.deliverBatch(orders);
 
-        assertEq(packs.mintedCards(), CARDS_PER_PACK, "rip consumed exactly one pack of budget");
+        assertEq(packs.mintedCards(), airdropAmount + CARDS_PER_PACK, "rip adds to the airdrop total");
+    }
+
+    /// @notice With an UNLIMITED cap (maxCardsSupply == 0), an airdrop still
+    ///         increments mintedCards but leaves the cap at 0 (unlimited).
+    function test_airdropUnderUnlimitedCapIncrementsMintedOnly() public {
+        // Default config has maxCardsSupply == 0 (unlimited).
+        assertEq(packs.getConfig().maxCardsSupply, 0, "cap unlimited by default");
+
+        (address[] memory tos, uint256[] memory ids, uint256[] memory amts) =
+            _single(alice, startingCardTokenId, 7);
+        vm.prank(owner);
+        packs.airdrop(tos, ids, amts);
+
+        assertEq(packs.mintedCards(), 7, "airdrop counted toward mintedCards");
+        assertEq(packs.getConfig().maxCardsSupply, 0, "unlimited cap stays unlimited");
     }
 
     function test_airdropBeforeInitializeCardsReverts() public {

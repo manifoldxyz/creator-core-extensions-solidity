@@ -125,7 +125,10 @@ contract ManifoldPacksRip is ManifoldPacksTestBase {
         uint256[4] memory cards = cardsForPack(packId);
 
         // Sealed transfer: owner -> collector (collector is a keyed wallet so
-        // it can sign its own permit).
+        // it can sign its own permit). Trading is paused by default, so open it
+        // first (this test exercises the rip flow, not the pause).
+        vm.prank(owner);
+        packs.updateTransfersPaused(false);
         vm.prank(owner);
         packs.transferFrom(owner, collector, packId);
         assertEq(packs.ownerOf(packId), collector, "pack transferred to collector");

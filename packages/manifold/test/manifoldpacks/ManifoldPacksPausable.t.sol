@@ -10,8 +10,9 @@ import {IManifoldPacksSeaDropShim} from "../../contracts/manifoldpacks/IManifold
  *         ERC721SeaDropPausable mechanic, scoped so it never blocks mint or the
  *         rip burn).
  *
- *         Key divergences from upstream ERC721SeaDropPausable, all asserted here:
- *           - defaults UNPAUSED (upstream defaults paused);
+ *         Key traits vs upstream ERC721SeaDropPausable, all asserted here:
+ *           - defaults PAUSED (matches upstream) — trading is off on deploy and
+ *             the owner opens it with updateTransfersPaused(false);
  *           - the rip burn still succeeds while paused (upstream reverts on any
  *             `from != 0`, which would brick every rip);
  *           - mint still succeeds while paused.
@@ -24,8 +25,8 @@ contract ManifoldPacksPausable is ManifoldPacksTestBase {
     // Defaults + setter.
     // ---------------------------------------------------------------------
 
-    function test_defaultsUnpaused() public {
-        assertEq(packs.transfersPaused(), false, "trading ON by default");
+    function test_defaultsPaused() public {
+        assertEq(packs.transfersPaused(), true, "trading OFF (paused) by default");
     }
 
     function test_updateTransfersPaused_onlyOwner() public {
@@ -124,10 +125,20 @@ contract ManifoldPacksPausable is ManifoldPacksTestBase {
         assertEq(packs.ownerOf(1), collector, "transfer works after unpause");
     }
 
-    function test_unpausedTransferWorksByDefault() public {
-        // No pause ever set — secondary transfer works out of the box.
+    function test_ownerCanOpenTradingThenTransfer() public {
+        // Default is PAUSED; owner opens trading, then a secondary transfer works.
+        vm.prank(owner);
+        packs.updateTransfersPaused(false);
+
         vm.prank(owner);
         packs.transferFrom(owner, collector, 2);
-        assertEq(packs.ownerOf(2), collector, "default-unpaused transfer works");
+        assertEq(packs.ownerOf(2), collector, "transfer works once owner opens trading");
+    }
+
+    function test_defaultPausedBlocksSecondaryTransfer() public {
+        // No pause call at all — default-paused blocks a secondary transfer out of the box.
+        vm.prank(owner);
+        vm.expectRevert(IManifoldPacksSeaDropShim.TransfersPaused.selector);
+        packs.transferFrom(owner, collector, 2);
     }
 }

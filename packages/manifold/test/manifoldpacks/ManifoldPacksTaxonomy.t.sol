@@ -132,7 +132,11 @@ contract ManifoldPacksTaxonomy is ManifoldPacksTestBase {
         IManifoldPacksSeaDropShim.RipOrder memory order =
             buildRipOrder(OWNER_PK, packId, cardsForPack(packId), block.timestamp + 1 days);
 
-        // Then transfers the pack to collector, staling the signature.
+        // Then transfers the pack to collector, staling the signature. Trading
+        // is paused by default, so open it first (this test exercises stale
+        // permits, not the pause).
+        vm.prank(owner);
+        packs.updateTransfersPaused(false);
         vm.prank(owner);
         packs.transferFrom(owner, collector, packId);
 
