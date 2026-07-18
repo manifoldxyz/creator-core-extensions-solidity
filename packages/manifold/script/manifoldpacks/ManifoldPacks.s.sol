@@ -281,7 +281,8 @@ contract DeployManifoldPacks is Script {
             numberOfVariations: NUMBER_OF_VARIATIONS,
             ripStartDate: ripStart,
             ripEndDate: ripEnd,
-            cardsLocation: cardsLocation
+            cardsLocation: cardsLocation,
+            tokenURIExtension: address(0)
         });
     }
 

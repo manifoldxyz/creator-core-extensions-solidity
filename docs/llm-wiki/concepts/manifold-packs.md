@@ -1,7 +1,7 @@
 ---
 title: ManifoldPacksSeaDropShim (gasless rip — pack burn → cards)
 created: 2026-07-16
-updated: 2026-07-17
+updated: 2026-07-18
 type: concept
 package: manifold
 tags: [contract, interface, struct, event, error, erc721, erc1155, seadrop, burn-redeem, signature, eip1271, config, collectible, pitfall]
@@ -33,12 +33,13 @@ struct PackConfig {
     uint256 numberOfVariations;  // contiguous ids reserved on the cards core; > 0, <= 255; raise-only
     uint256 ripStartDate;        // inclusive lower rip gate
     uint256 ripEndDate;          // 0 == no end; else must be > ripStartDate
-    string  cardsLocation;       // folder-pattern base URI for card metadata
+    string  cardsLocation;       // folder-pattern base URI for card metadata (ignored when tokenURIExtension set)
+    address tokenURIExtension;    // 0 == use cardsLocation folder pattern; else delegate tokenURI to this ICreatorExtensionTokenURI
 }
 ```
 ^[manifold/contracts/manifoldpacks/IManifoldPacksSeaDropShim.sol#L51]
 
-Set once at `initializeCards(cardsCreator, config)` and mutated via `updateConfig(config)` (both `onlyOwner`). `numberOfVariations` is **fixed at init** — `updateConfig` reverts `CannotChangeVariations` if it differs (mirrors Serendipity's `CannotChangeTokenVariations`); `cardsPerPack`, the rip window, and `cardsLocation` stay freely updatable; `maxCardsSupply` can't drop below `mintedCards`. This replaces the old `CARDS_PER_PACK` / `NUM_CARD_DESIGNS` constants and the standalone `setRipStart` / `setCardsLocation` setters (all removed). **The cards-core address is a parameter of `initializeCards`, not the constructor** — the pack contract can be deployed before the cards core exists. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L145]
+Set once at `initializeCards(cardsCreator, config)` and mutated via `updateConfig(config)` (both `onlyOwner`). `numberOfVariations` is **fixed at init** — `updateConfig` reverts `CannotChangeVariations` if it differs (mirrors Serendipity's `CannotChangeTokenVariations`); `cardsPerPack`, the rip window, `cardsLocation`, and `tokenURIExtension` stay freely updatable; `maxCardsSupply` can't drop below `mintedCards`. This replaces the old `CARDS_PER_PACK` / `NUM_CARD_DESIGNS` constants and the standalone `setRipStart` / `setCardsLocation` setters (all removed). **The cards-core address is a parameter of `initializeCards`, not the constructor** — the pack contract can be deployed before the cards core exists. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L145]
 
 ## The `RipOrder` struct (`IManifoldPacksSeaDropShim.sol`)
 
@@ -77,7 +78,7 @@ The signed EIP-712 payload is only `RipPermit(uint256 packId, uint256 deadline)`
 - **`updateTransfersPaused(bool) external onlyOwner`** — pause/unpause SECONDARY pack transfers (owner "stop trading" switch). While paused, `transferFrom`/`safeTransferFrom` between non-zero addresses, `approve`, and `setApprovalForAll` revert `TransfersPaused`; **mint and the rip burn are never blocked**. Adapts OpenSea's `ERC721SeaDropPausable` with two deliberate divergences: **defaults to `false`/unpaused** (upstream defaults paused, which would brick the intentional sealed-pack secondary market on deploy) and the pause is **scoped to secondary moves** via the `_beforeTokenTransfers` `from != 0 && to != 0` guard (upstream reverts on any `from != 0`, blocking burns too). Emits `TransfersPausedChanged`. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L247]
 - **`airdrop(address[] calldata recipients, uint256[] calldata cardIds, uint256[] calldata amounts) external onlyOwner nonReentrant`** — owner escape hatch that mints reserved card variations **directly**, bypassing the pack-burn rip flow (corrections, giveaways, partner allocations). Parallel arrays: `recipients[i]` gets `amounts[i]` of `cardIds[i]`; all three lengths must be equal and non-zero, every `cardIds[i]` must be in the reserved range (else `InvalidCardIds`), reverts `CardsNotInitialized` before init and `InvalidAirdrop` on empty/mismatched arrays. Emits `Airdropped`. **Deliberately independent of the rip budget** — does NOT touch `mintedCards` / `config.maxCardsSupply` (those govern rip output = packs × cardsPerPack; coupling an airdrop in could starve unripped packs of cap headroom and make them un-rippable). No rip-window gate. Diverges from the reference lazy-claim `airdrop`, which counts toward the claim total and auto-raises the max. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L298]
 - **`getConfig() external view returns (PackConfig)`** — read the current card config. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L215]
-- **`tokenURI(address, uint256 tokenId) external view override returns (string)`** — the **card** (`ICreatorExtensionTokenURI`) surface delegated by the cards core: folder-pattern `cardsLocation + (tokenId - startingCardTokenId + 1)`, so the first reserved variation maps to `.../1`. **The pack (ERC721A/SeaDrop) `tokenURI` is NOT overridden** — packs use stock `ERC721ContractMetadata`/SeaDrop metadata. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L347]
+- **`tokenURI(address creator, uint256 tokenId) external view override returns (string)`** — the **card** (`ICreatorExtensionTokenURI`) surface delegated by the cards core. When `config.tokenURIExtension` is set (non-zero) it delegates verbatim to `ICreatorExtensionTokenURI(tokenURIExtension).tokenURI(creator, tokenId)` (mirrors lazy-claim's `StorageProtocol.ADDRESS` delegation — points metadata at an on-chain renderer / resolver without redeploying); otherwise it serves folder-pattern `cardsLocation + (tokenId - startingCardTokenId + 1)`, so the first reserved variation maps to `.../1`. **The pack (ERC721A/SeaDrop) `tokenURI` is NOT overridden** — packs use stock `ERC721ContractMetadata`/SeaDrop metadata. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L347]
 - `supportsInterface` adds `type(ICreatorExtensionTokenURI).interfaceId` on top of the ERC721SeaDrop surface. ^[manifold/contracts/manifoldpacks/ManifoldPacksSeaDropShim.sol#L363]
 
 ## The RipPermit consent model (no nonces — the burn IS the lock)

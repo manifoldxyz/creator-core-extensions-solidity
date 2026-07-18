@@ -289,7 +289,8 @@ contract ManifoldPacksTestBase is Test {
             numberOfVariations: NUM_CARD_DESIGNS,
             ripStartDate: block.timestamp,
             ripEndDate: 0,
-            cardsLocation: ""
+            cardsLocation: "",
+            tokenURIExtension: address(0)
         });
     }
 

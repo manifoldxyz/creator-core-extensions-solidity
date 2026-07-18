@@ -46,6 +46,18 @@ interface IManifoldPacksSeaDropShim {
      * @param cardsLocation     Folder-pattern base URI for card metadata. Card
      *                          `tokenURI` is `cardsLocation + (tokenId -
      *                          startingCardTokenId + 1)`. Freely updatable.
+     *                          IGNORED when `tokenURIExtension` is set.
+     * @param tokenURIExtension Optional external metadata resolver. When set to
+     *                          a non-zero address, card `tokenURI` is delegated
+     *                          verbatim to
+     *                          `ICreatorExtensionTokenURI(tokenURIExtension).tokenURI(creator, tokenId)`
+     *                          and the built-in `cardsLocation` folder pattern
+     *                          is bypassed. `address(0)` (the default) keeps the
+     *                          built-in folder-pattern resolution. Freely
+     *                          updatable — lets the owner point metadata at an
+     *                          on-chain renderer or a future resolver contract
+     *                          without redeploying. Mirrors lazy-claim's
+     *                          `StorageProtocol.ADDRESS` delegation.
      */
     struct PackConfig {
         uint256 maxCardsSupply;
@@ -54,6 +66,7 @@ interface IManifoldPacksSeaDropShim {
         uint256 ripStartDate;
         uint256 ripEndDate;
         string cardsLocation;
+        address tokenURIExtension;
     }
 
     /**

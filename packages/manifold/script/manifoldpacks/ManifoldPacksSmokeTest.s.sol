@@ -197,7 +197,8 @@ contract ManifoldPacksSmokeTest is Script {
             numberOfVariations: NUM_VARIATIONS,
             ripStartDate: 1, // always in the past => rip open immediately
             ripEndDate: 0, // no end
-            cardsLocation: "https://example.com/manifoldpacks/cards/"
+            cardsLocation: "https://example.com/manifoldpacks/cards/",
+            tokenURIExtension: address(0)
         });
     }
 

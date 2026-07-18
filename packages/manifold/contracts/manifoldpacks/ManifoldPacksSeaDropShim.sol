@@ -435,19 +435,28 @@ contract ManifoldPacksSeaDropShim is ERC721SeaDrop, EIP712, ICreatorExtensionTok
 
     /**
      * @notice Card metadata resolution delegated by the cards core
-     *         (`ICreatorExtensionTokenURI`). Serves a folder-pattern URI:
+     *         (`ICreatorExtensionTokenURI`). When `config.tokenURIExtension` is
+     *         set (non-zero), resolution is delegated verbatim to that external
+     *         resolver: `ICreatorExtensionTokenURI(tokenURIExtension).tokenURI(creator, tokenId)`.
+     *         Otherwise it serves the built-in folder-pattern URI:
      *         `cardsLocation + (tokenId - startingCardTokenId + 1)`, so the
      *         first reserved card variation maps to `.../1`.
      *
+     * @param creator The cards-core contract querying the URI (passed through
+     *                to an external resolver so a shared resolver can key on it).
      * @param tokenId The ERC1155 card variation tokenId on the cards core.
-     * @return The folder-pattern metadata URI for the card.
+     * @return The metadata URI for the card.
      */
-    function tokenURI(address, uint256 tokenId)
+    function tokenURI(address creator, uint256 tokenId)
         external
         view
         override
         returns (string memory)
     {
+        address ext = _config.tokenURIExtension;
+        if (ext != address(0)) {
+            return ICreatorExtensionTokenURI(ext).tokenURI(creator, tokenId);
+        }
         uint256 index = tokenId - startingCardTokenId + 1;
         return string(abi.encodePacked(_config.cardsLocation, _toString(index)));
     }
