@@ -177,4 +177,37 @@ contract ManifoldPacksBatch is ManifoldPacksTestBase {
 
         vm.stopPrank();
     }
+
+    // ---------------------------------------------------------------------
+    // Batch at scale: rip ALL fixture packs (FIXTURE_PACK_COUNT) in one
+    // deliverBatch call — settles atomically, every pack burned, full card
+    // accounting, and mintedCards == FIXTURE_PACK_COUNT * CARDS_PER_PACK.
+    // ---------------------------------------------------------------------
+
+    function test_fullFixtureBatchSettlesAtomically() public {
+        uint256 n = FIXTURE_PACK_COUNT;
+
+        IManifoldPacksSeaDropShim.RipOrder[] memory orders = new IManifoldPacksSeaDropShim.RipOrder[](n);
+        for (uint256 i = 0; i < n; i++) {
+            orders[i] = buildFixtureRipOrder(i + 1);
+        }
+
+        vm.prank(signerAddr);
+        packs.deliverBatch(orders);
+
+        // Every fixture pack burned.
+        for (uint256 packId = 1; packId <= n; packId++) {
+            vm.expectRevert();
+            packs.ownerOf(packId);
+        }
+
+        // Each fixture pack mints one of each of the four contiguous cards, so
+        // the owner holds `n` of each of the four designs.
+        for (uint256 k = 0; k < 4; k++) {
+            assertEq(creator.balanceOf(owner, startingCardTokenId + k), n, "card balance == pack count");
+        }
+
+        // mintedCards accounting: n packs * 4 cards each.
+        assertEq(packs.mintedCards(), n * CARDS_PER_PACK, "mintedCards == n * cardsPerPack");
+    }
 }

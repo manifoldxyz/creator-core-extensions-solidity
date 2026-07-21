@@ -489,7 +489,7 @@ contract ManifoldPacksTestBase is Test {
     // Sanity test — verifies the harness wiring compiles and initializes.
     // ---------------------------------------------------------------------
 
-    function testHarnessSetup() public {
+    function testHarnessSetup() public virtual {
         assertEq(packs.owner(), owner, "packs owner");
         assertEq(packs.signer(), signerAddr, "backend signer");
         assertEq(packs.getConfig().ripStartDate, block.timestamp, "ripStart open");
