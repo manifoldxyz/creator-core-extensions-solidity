@@ -125,6 +125,26 @@ contract ManifoldPacksPausable is ManifoldPacksTestBase {
         assertEq(packs.ownerOf(1), collector, "transfer works after unpause");
     }
 
+    function test_unpausedAllowsApprove() public {
+        // Default is PAUSED; opening trading must let approve() through and set state.
+        vm.prank(owner);
+        packs.updateTransfersPaused(false);
+
+        vm.prank(owner);
+        packs.approve(collector, 1);
+        assertEq(packs.getApproved(1), collector, "approve sets token approval once unpaused");
+    }
+
+    function test_unpausedAllowsSetApprovalForAll() public {
+        // Default is PAUSED; opening trading must let setApprovalForAll() through.
+        vm.prank(owner);
+        packs.updateTransfersPaused(false);
+
+        vm.prank(owner);
+        packs.setApprovalForAll(collector, true);
+        assertEq(packs.isApprovedForAll(owner, collector), true, "operator approval set once unpaused");
+    }
+
     function test_ownerCanOpenTradingThenTransfer() public {
         // Default is PAUSED; owner opens trading, then a secondary transfer works.
         vm.prank(owner);
