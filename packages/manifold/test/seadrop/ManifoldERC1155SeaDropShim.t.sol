@@ -46,6 +46,8 @@ contract ManifoldERC1155SeaDropShimTest is
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
     /// @dev Mirror of ISeaDropTokenContractMetadata.MaxSupplyUpdated for vm.expectEmit.
     event MaxSupplyUpdated(uint256 newMaxSupply);
+    /// @dev Mirror of ManifoldERC1155SeaDropShim.ManifoldSeaDropShimDeployed for vm.expectEmit.
+    event ManifoldSeaDropShimDeployed(address indexed creatorContract);
     string internal constant NAME = "Manifold SeaDrop Shim";
     string internal constant SYMBOL = "MSS";
 
@@ -121,6 +123,14 @@ contract ManifoldERC1155SeaDropShimTest is
             address(creator),
             address(0)
         );
+    }
+
+    function testConstructorEmitsCreatorContract() public {
+        address[] memory allowedSeaDrop = new address[](1);
+        allowedSeaDrop[0] = address(seadrop);
+        vm.expectEmit(true, false, false, true);
+        emit ManifoldSeaDropShimDeployed(address(creator));
+        new ManifoldERC1155SeaDropShim(NAME, SYMBOL, allowedSeaDrop, address(creator), address(this));
     }
 
     function testConstructorPopulatesAllowedSeaDrop() public {
