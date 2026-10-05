@@ -30,7 +30,7 @@ import {ReentrantMinter} from "./mocks/ReentrantMinter.sol";
  *         setUp deploys a real ERC1155Creator (Manifold Creator Core), the
  *         stock SeaDrop v1 implementation contract, and the shim — bound to
  *         both — then registers the shim as an extension on the creator
- *         contract. Tests then call `initialize()` and friends as the shim
+ *         contract. Tests then call `initialize(uri)` and friends as the shim
  *         owner (which is the deploy address, i.e. this test contract).
  *
  *         The shim's owner is the test contract itself by default — we deploy
@@ -44,6 +44,10 @@ contract ManifoldERC1155SeaDropShimTest is
 {
     /// @dev Mirror of ManifoldERC1155SeaDropShim.TokenURIUpdated for vm.expectEmit.
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
+    /// @dev Mirror of ISeaDropTokenContractMetadata.MaxSupplyUpdated for vm.expectEmit.
+    event MaxSupplyUpdated(uint256 newMaxSupply);
+    /// @dev Mirror of ManifoldERC1155SeaDropShim.ManifoldSeaDropShimDeployed for vm.expectEmit.
+    event ManifoldSeaDropShimDeployed(address indexed creatorContract);
     string internal constant NAME = "Manifold SeaDrop Shim";
     string internal constant SYMBOL = "MSS";
 
@@ -121,11 +125,19 @@ contract ManifoldERC1155SeaDropShimTest is
         );
     }
 
+    function testConstructorEmitsCreatorContract() public {
+        address[] memory allowedSeaDrop = new address[](1);
+        allowedSeaDrop[0] = address(seadrop);
+        vm.expectEmit(true, false, false, true);
+        emit ManifoldSeaDropShimDeployed(address(creator));
+        new ManifoldERC1155SeaDropShim(NAME, SYMBOL, allowedSeaDrop, address(creator), address(this));
+    }
+
     function testConstructorPopulatesAllowedSeaDrop() public {
         // Calling `getMintStats` and then `mintSeaDrop` from the SeaDrop
         // contract is the public-surface proof; here we just verify
         // that an unallowed caller is rejected.
-        shim.initialize();
+        shim.initialize("");
         vm.prank(address(0xDEAD));
         vm.expectRevert(); // OnlyAllowedSeaDrop
         shim.mintSeaDrop(alice, 1);
@@ -137,20 +149,20 @@ contract ManifoldERC1155SeaDropShimTest is
 
     function testInitializeSetsTokenId() public {
         assertEq(shim.tokenId(), 0);
-        shim.initialize();
+        shim.initialize("");
         assertEq(shim.tokenId(), 1, "first mintExtensionNew should mint id 1");
     }
 
     function testInitializeRevertsForNonOwner() public {
         vm.prank(alice);
         vm.expectRevert(); // TwoStepOwnable: onlyOwner
-        shim.initialize();
+        shim.initialize("");
     }
 
     function testInitializeRevertsWhenAlreadyInitialized() public {
-        shim.initialize();
+        shim.initialize("");
         vm.expectRevert(ManifoldERC1155SeaDropShim.AlreadyInitializedShim.selector);
-        shim.initialize();
+        shim.initialize("");
     }
 
     function testInitializeRevertsWhenShimNotRegisteredAsExtension() public {
@@ -166,7 +178,95 @@ contract ManifoldERC1155SeaDropShimTest is
         );
 
         vm.expectRevert(); // creator core "Must be registered extension"
-        unregistered.initialize();
+        unregistered.initialize("");
+    }
+
+    function testInitializeSetsTokenURI() public {
+        string memory uri = "ar://initial-metadata";
+        vm.expectEmit(true, false, false, true, address(shim));
+        emit TokenURIUpdated(1, uri);
+        shim.initialize(uri);
+        assertEq(creator.uri(shim.tokenId()), uri);
+    }
+
+    function testInitializeWithEmptyURILeavesURIUnsetAndUpdatable() public {
+        shim.initialize("");
+        shim.updateURI("ar://later");
+        assertEq(creator.uri(shim.tokenId()), "ar://later");
+    }
+
+    // -------------------------------------------------------------------
+    // airdrop()
+    // -------------------------------------------------------------------
+
+    function _recipients() internal view returns (address[] memory r, uint256[] memory a) {
+        r = new address[](2);
+        r[0] = alice;
+        r[1] = bob;
+        a = new uint256[](2);
+        a[0] = 3;
+        a[1] = 7;
+    }
+
+    function testAirdropMintsToRecipients() public {
+        shim.initialize("");
+        shim.setMaxSupply(100);
+        (address[] memory r, uint256[] memory a) = _recipients();
+        shim.airdrop(r, a);
+        uint256 id = shim.tokenId();
+        assertEq(IERC1155(address(creator)).balanceOf(alice, id), 3);
+        assertEq(IERC1155(address(creator)).balanceOf(bob, id), 7);
+        (uint256 aliceMinted, uint256 total, uint256 max) = shim.getMintStats(alice);
+        assertEq(aliceMinted, 0, "airdrop must not count toward per-wallet mints");
+        assertEq(total, 10, "airdrop counts toward total minted");
+        assertEq(max, 100, "max supply unchanged when airdrop fits");
+    }
+
+    function testAirdropRaisesMaxSupplyWhenExceeded() public {
+        shim.initialize("");
+        shim.setMaxSupply(5);
+        (address[] memory r, uint256[] memory a) = _recipients();
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit MaxSupplyUpdated(10);
+        shim.airdrop(r, a);
+        assertEq(shim.maxSupply(), 10);
+    }
+
+    function testAirdropCountsTowardSeaDropCap() public {
+        shim.initialize("");
+        shim.setMaxSupply(12);
+        (address[] memory r, uint256[] memory a) = _recipients();
+        shim.airdrop(r, a);
+        vm.prank(address(seadrop));
+        shim.mintSeaDrop(alice, 2);
+        vm.prank(address(seadrop));
+        vm.expectRevert(abi.encodeWithSelector(MintQuantityExceedsMaxSupply.selector, 13, 12));
+        shim.mintSeaDrop(alice, 1);
+    }
+
+    function testAirdropRevertsForNonOwner() public {
+        shim.initialize("");
+        (address[] memory r, uint256[] memory a) = _recipients();
+        vm.prank(alice);
+        vm.expectRevert(); // TwoStepOwnable: onlyOwner
+        shim.airdrop(r, a);
+    }
+
+    function testAirdropRevertsBeforeInitialize() public {
+        (address[] memory r, uint256[] memory a) = _recipients();
+        vm.expectRevert(ManifoldERC1155SeaDropShim.NotInitialized.selector);
+        shim.airdrop(r, a);
+    }
+
+    function testAirdropRevertsOnLengthMismatch() public {
+        shim.initialize("");
+        address[] memory r = new address[](2);
+        r[0] = alice;
+        r[1] = bob;
+        uint256[] memory a = new uint256[](1);
+        a[0] = 1;
+        vm.expectRevert(ManifoldERC1155SeaDropShim.InvalidAirdrop.selector);
+        shim.airdrop(r, a);
     }
 
     // -------------------------------------------------------------------
@@ -174,7 +274,7 @@ contract ManifoldERC1155SeaDropShimTest is
     // -------------------------------------------------------------------
 
     function testMintSeaDropRevertsForUnallowedCaller() public {
-        shim.initialize();
+        shim.initialize("");
         vm.prank(address(0xDEAD));
         vm.expectRevert();
         shim.mintSeaDrop(alice, 1);
@@ -213,7 +313,7 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testMintSeaDropMintsERC1155BalanceToMinter() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
         uint256 tokenId = shim.tokenId();
 
@@ -224,7 +324,7 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testMintSeaDropIncrementsCounters() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         vm.prank(address(seadrop));
@@ -241,7 +341,7 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testMintSeaDropAccumulatesAcrossCallsAndWallets() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         vm.prank(address(seadrop));
@@ -261,7 +361,7 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testMintSeaDropRevertsWhenQuantityExceedsMaxSupply() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(10);
 
         vm.prank(address(seadrop));
@@ -276,7 +376,7 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testMintSeaDropAllowsMaxSupplyThenRevertsNextMint() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(5);
 
         vm.prank(address(seadrop));
@@ -291,7 +391,7 @@ contract ManifoldERC1155SeaDropShimTest is
 
     function testMintSeaDropAllowsLargeSupply() public {
         // Confirm there is no uint24 ceiling — shim accounting uses uint256.
-        shim.initialize();
+        shim.initialize("");
         uint256 large = 100_000;
         shim.setMaxSupply(large);
 
@@ -321,7 +421,7 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testGetMintStatsReflectsMaxSupplyChange() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(42);
         (, , uint256 maxSupply) = shim.getMintStats(alice);
         assertEq(maxSupply, 42);
@@ -332,7 +432,7 @@ contract ManifoldERC1155SeaDropShimTest is
     // -------------------------------------------------------------------
 
     function testEndToEndPublicDropMintViaSeaDrop() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         // Configure public drop on real SeaDrop via the inherited owner-gated
@@ -371,7 +471,7 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testSeaDropEnforcesPerWalletCapAcrossPublicMints() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         PublicDrop memory pd = PublicDrop({
@@ -417,7 +517,7 @@ contract ManifoldERC1155SeaDropShimTest is
     // -------------------------------------------------------------------
 
     function testUpdateURISetsCreatorTokenURI() public {
-        shim.initialize();
+        shim.initialize("");
         uint256 tokenId = shim.tokenId();
 
         vm.expectEmit(true, false, false, true, address(shim));
@@ -433,14 +533,14 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testUpdateURIRevertsForNonOwner() public {
-        shim.initialize();
+        shim.initialize("");
         vm.prank(alice);
         vm.expectRevert(); // TwoStepOwnable: OnlyOwner
         shim.updateURI("ipfs://hijack");
     }
 
     function testUpdateURIIsRewriteableForReveal() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(10);
         uint256 tokenId = shim.tokenId();
 
@@ -461,7 +561,7 @@ contract ManifoldERC1155SeaDropShimTest is
     // -------------------------------------------------------------------
 
     function testMintSeaDropBlocksReentrancyViaERC1155Receiver() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         ReentrantMinter attacker = new ReentrantMinter(address(shim));
@@ -492,7 +592,7 @@ contract ManifoldERC1155SeaDropShimTest is
     // -------------------------------------------------------------------
 
     function testEndToEndAllowListMintViaSeaDrop() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         // Allowlist params for `alice`. Single-leaf merkle tree means
@@ -543,7 +643,7 @@ contract ManifoldERC1155SeaDropShimTest is
         // SeaDrop reads `getMintStats(minter).minterNumMinted` which is our
         // shim-local counter — this test proves an allowlist mint counts
         // toward the public-phase per-wallet cap, and vice-versa.
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         // Allowlist phase: free, cap 2.
@@ -608,7 +708,7 @@ contract ManifoldERC1155SeaDropShimTest is
     // -------------------------------------------------------------------
 
     function testPublicMintSplitsPaymentBetweenCreatorAndFeeRecipient() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         PublicDrop memory pd = PublicDrop({
@@ -653,7 +753,7 @@ contract ManifoldERC1155SeaDropShimTest is
     }
 
     function testPublicMintRevertsForUnallowedFeeRecipient() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         PublicDrop memory pd = PublicDrop({
@@ -678,7 +778,7 @@ contract ManifoldERC1155SeaDropShimTest is
     // -------------------------------------------------------------------
 
     function testUpdateAllowedSeaDropRevokesAccess() public {
-        shim.initialize();
+        shim.initialize("");
         shim.setMaxSupply(100);
 
         // Verify the original SeaDrop can mint.

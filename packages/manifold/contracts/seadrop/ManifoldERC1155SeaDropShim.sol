@@ -28,14 +28,15 @@ import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/
  *           1. Deploy this shim (constructor sets immutable creator).
  *           2. Call `creator.registerExtension(shim, "")` on the Manifold
  *              Creator Core contract.
- *           3. Call `shim.initialize()` to seed the ERC1155 tokenId on the
- *              creator contract via `mintExtensionNew` (amount=0).
+ *           3. Call `shim.initialize(uri)` to seed the ERC1155 tokenId on the
+ *              creator contract via `mintExtensionNew` (amount=0), with
+ *              its metadata URI.
  *           4. Use the inherited `multiConfigure` (or individual setters) to
  *              push `publicDrop` / `allowList` / fee recipients to SeaDrop.
  *
  *         Token metadata (`tokenURI`) is served by the underlying Manifold
- *         creator contract and is set out-of-band (Studio UI or direct admin
- *         call). Drop-page metadata (`contractURI`, `baseURI`) is served by
+ *         creator contract. It is set by `initialize(uri)` and rewritten via
+ *         `updateURI` (only the shim can, as the token's extension). Drop-page metadata (`contractURI`, `baseURI`) is served by
  *         this shim via the inherited `ERC721ContractMetadata` surface.
  */
 contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
@@ -45,14 +46,21 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     /// @notice Reverts if the constructor is given a zero `initialOwner_`.
     error InitialOwnerIsZeroAddress();
 
-    /// @notice Reverts if `updateURI` is called before `initialize()`.
+    /// @notice Reverts if `updateURI` or `airdrop` is called before `initialize()`.
     error NotInitialized();
+
+    /// @notice Reverts if `airdrop` recipients and amounts lengths differ.
+    error InvalidAirdrop();
 
     /// @notice Emitted when the bound tokenId's metadata URI is updated on
     ///         the underlying Manifold Creator Core contract. Off-chain
     ///         indexers (OpenSea, Manifold's own metadata pipeline) listen
     ///         for this to refresh cached metadata after a reveal.
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
+
+    /// @notice Emitted once at deployment so indexers (OpenSea) can map this
+    ///         shim to the Manifold Creator Core contract it mints on.
+    event ManifoldSeaDropShimDeployed(address indexed creatorContract);
 
     /// @notice The Manifold Creator Core contract this shim mints on.
     address public immutable creatorContractAddress;
@@ -94,6 +102,7 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     ) ERC721SeaDrop(name_, symbol_, allowedSeaDrop_) {
         if (initialOwner_ == address(0)) revert InitialOwnerIsZeroAddress();
         creatorContractAddress = creatorContractAddress_;
+        emit ManifoldSeaDropShimDeployed(creatorContractAddress_);
         // ERC721SeaDrop's TwoStepOwnable constructor already set the owner
         // to msg.sender; transfer to the explicit initialOwner.
         _transferOwnership(initialOwner_);
@@ -111,8 +120,11 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
      *         Must be called after the shim has been registered as an
      *         extension on the creator contract via `registerExtension`.
      *         Reverts if called twice.
+     *
+     * @param uri_ The metadata URI for the new tokenId. An empty string
+     *             leaves it unset (set later via `updateURI`).
      */
-    function initialize() external onlyOwner {
+    function initialize(string calldata uri_) external onlyOwner {
         if (tokenId != 0) revert AlreadyInitializedShim();
 
         address[] memory to = new address[](1);
@@ -120,13 +132,62 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
         uint256[] memory amounts = new uint256[](1);
         // amounts[0] = 0 — registers the tokenId without minting.
         string[] memory uris = new string[](1);
-        // uris[0] = "" — token URI is set on the creator contract out-of-band.
+        uris[0] = uri_;
 
         uint256[] memory mintedTokenIds = IERC1155CreatorCore(
             creatorContractAddress
         ).mintExtensionNew(to, amounts, uris);
 
         tokenId = mintedTokenIds[0];
+
+        if (bytes(uri_).length > 0) {
+            emit TokenURIUpdated(tokenId, uri_);
+        }
+    }
+
+    /**
+     * @notice Owner airdrop of the bound tokenId, mirroring
+     *         `ERC1155LazyPayableClaimCore.airdrop`: airdropped amounts count
+     *         toward the total minted, and the max supply is raised to the
+     *         new total if the airdrop exceeds it. Per-wallet mint counts
+     *         are not affected.
+     *
+     * @param recipients Addresses to airdrop to.
+     * @param amounts    Number of tokens to airdrop to each recipient.
+     */
+    function airdrop(address[] calldata recipients, uint256[] calldata amounts)
+        external
+        onlyOwner
+        nonReentrant
+    {
+        if (tokenId == 0) revert NotInitialized();
+        if (recipients.length != amounts.length) revert InvalidAirdrop();
+
+        uint256 totalAmount;
+        for (uint256 i; i < amounts.length; ) {
+            totalAmount += amounts[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 newTotal = _shimTotalMinted + totalAmount;
+        if (newTotal > 2**64 - 1) {
+            revert CannotExceedMaxSupplyOfUint64(newTotal);
+        }
+        _shimTotalMinted = newTotal;
+        if (newTotal > _maxSupply) {
+            _maxSupply = newTotal;
+            emit MaxSupplyUpdated(newTotal);
+        }
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = tokenId;
+        IERC1155CreatorCore(creatorContractAddress).mintExtensionExisting(
+            recipients,
+            ids,
+            amounts
+        );
     }
 
     /**
