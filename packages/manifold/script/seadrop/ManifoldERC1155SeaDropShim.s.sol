@@ -30,7 +30,7 @@ import "../../contracts/seadrop/ManifoldERC1155SeaDropShim.sol";
  *   1. From a creator-admin wallet on the target Manifold Creator Core:
  *      `creator.registerExtension(shim, "")`
  *   2. From the shim owner (INITIAL_OWNER):
- *      `shim.initialize()`           — seeds the ERC1155 tokenId
+ *      `shim.initialize(uri)`        — seeds the ERC1155 tokenId + metadata URI
  *   3. From the shim owner:
  *      `shim.setMaxSupply(N)` and/or `shim.multiConfigure(cfg)` to push
  *      drop config to SeaDrop.
