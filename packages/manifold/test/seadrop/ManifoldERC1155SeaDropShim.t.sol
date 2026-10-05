@@ -30,7 +30,7 @@ import {ReentrantMinter} from "./mocks/ReentrantMinter.sol";
  *         setUp deploys a real ERC1155Creator (Manifold Creator Core), the
  *         stock SeaDrop v1 implementation contract, and the shim — bound to
  *         both — then registers the shim as an extension on the creator
- *         contract. Tests then call `initialize()` and friends as the shim
+ *         contract. Tests then call `initialize(uri)` and friends as the shim
  *         owner (which is the deploy address, i.e. this test contract).
  *
  *         The shim's owner is the test contract itself by default — we deploy

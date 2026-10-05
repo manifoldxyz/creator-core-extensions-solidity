@@ -35,8 +35,8 @@ import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/
  *              push `publicDrop` / `allowList` / fee recipients to SeaDrop.
  *
  *         Token metadata (`tokenURI`) is served by the underlying Manifold
- *         creator contract and is set out-of-band (Studio UI or direct admin
- *         call). Drop-page metadata (`contractURI`, `baseURI`) is served by
+ *         creator contract. It is set by `initialize(uri)` and rewritten via
+ *         `updateURI` (only the shim can, as the token's extension). Drop-page metadata (`contractURI`, `baseURI`) is served by
  *         this shim via the inherited `ERC721ContractMetadata` surface.
  */
 contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
