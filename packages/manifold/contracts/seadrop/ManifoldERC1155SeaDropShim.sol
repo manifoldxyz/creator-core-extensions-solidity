@@ -59,8 +59,10 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
 
     /// @notice Emitted once at deployment so indexers (OpenSea) can map this
-    ///         shim to the Manifold Creator Core contract it mints on.
-    event ManifoldSeaDropShimDeployed(address indexed creatorContract);
+    ///         shim to the creator contract it mints on. Deliberately generic
+    ///         (not Manifold-specific) so any SeaDrop wrapper can emit the
+    ///         same event and indexers only wire it up once.
+    event SeaDropShimDeployed(address indexed creatorContract);
 
     /// @notice The Manifold Creator Core contract this shim mints on.
     address public immutable creatorContractAddress;
@@ -102,7 +104,7 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     ) ERC721SeaDrop(name_, symbol_, allowedSeaDrop_) {
         if (initialOwner_ == address(0)) revert InitialOwnerIsZeroAddress();
         creatorContractAddress = creatorContractAddress_;
-        emit ManifoldSeaDropShimDeployed(creatorContractAddress_);
+        emit SeaDropShimDeployed(creatorContractAddress_);
         // ERC721SeaDrop's TwoStepOwnable constructor already set the owner
         // to msg.sender; transfer to the explicit initialOwner.
         _transferOwnership(initialOwner_);
