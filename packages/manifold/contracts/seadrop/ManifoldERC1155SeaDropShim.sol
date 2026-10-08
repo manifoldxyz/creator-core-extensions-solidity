@@ -59,10 +59,10 @@ contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
 
     /// @notice Emitted once at deployment so indexers (OpenSea) can map this
-    ///         shim to the token contract it mints on. Deliberately generic
+    ///         shim to the creator contract it mints on. Deliberately generic
     ///         (not Manifold-specific) so any SeaDrop wrapper can emit the
     ///         same event and indexers only wire it up once.
-    event SeaDropShimDeployed(address indexed tokenContract);
+    event SeaDropShimDeployed(address indexed creatorContract);
 
     /// @notice The Manifold Creator Core contract this shim mints on.
     address public immutable creatorContractAddress;

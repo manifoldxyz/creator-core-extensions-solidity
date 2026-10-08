@@ -47,7 +47,7 @@ contract ManifoldERC1155SeaDropShimTest is
     /// @dev Mirror of ISeaDropTokenContractMetadata.MaxSupplyUpdated for vm.expectEmit.
     event MaxSupplyUpdated(uint256 newMaxSupply);
     /// @dev Mirror of ManifoldERC1155SeaDropShim.SeaDropShimDeployed for vm.expectEmit.
-    event SeaDropShimDeployed(address indexed tokenContract);
+    event SeaDropShimDeployed(address indexed creatorContract);
     string internal constant NAME = "Manifold SeaDrop Shim";
     string internal constant SYMBOL = "MSS";
 
