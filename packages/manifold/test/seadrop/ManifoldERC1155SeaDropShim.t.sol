@@ -23,6 +23,8 @@ import {
 } from "seadrop/src/lib/ERC721SeaDropStructsErrorsAndEvents.sol";
 
 import {ReentrantMinter} from "./mocks/ReentrantMinter.sol";
+import {RejectAllApprover} from "./mocks/RejectAllApprover.sol";
+import {IERC1155CreatorExtensionApproveTransfer} from "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC1155/IERC1155CreatorExtensionApproveTransfer.sol";
 
 /**
  * @notice Foundry harness for ManifoldERC1155SeaDropShim.
@@ -48,6 +50,10 @@ contract ManifoldERC1155SeaDropShimTest is
     event MaxSupplyUpdated(uint256 newMaxSupply);
     /// @dev Mirror of ManifoldERC1155SeaDropShim.SeaDropShimDeployed for vm.expectEmit.
     event SeaDropShimDeployed(address indexed creatorContract);
+    /// @dev Mirror of ManifoldERC1155SeaDropShim.TransferLockUpdated for vm.expectEmit.
+    event TransferLockUpdated(uint256 unlockTime);
+    /// @dev Mirror of ERC1155CreatorCore.ExtensionApproveTransferUpdated for vm.expectEmit.
+    event ExtensionApproveTransferUpdated(address indexed extension, bool enabled);
     string internal constant NAME = "Manifold SeaDrop Shim";
     string internal constant SYMBOL = "MSS";
 
@@ -800,5 +806,280 @@ contract ManifoldERC1155SeaDropShimTest is
         vm.prank(alice);
         vm.expectRevert();
         shim.updateAllowedSeaDrop(empty);
+    }
+
+    // -------------------------------------------------------------------
+    // Transfer lock
+    // -------------------------------------------------------------------
+
+    bytes internal constant APPROVAL_FAILURE = "Extension approval failure";
+
+    function _lockedDrop() internal returns (uint256 id) {
+        shim.initialize("");
+        shim.setMaxSupply(100);
+        (address[] memory r, uint256[] memory a) = _recipients();
+        shim.airdrop(r, a); // alice 3, bob 7
+        id = shim.tokenId();
+        shim.setTransferLock(block.timestamp + 1 days);
+    }
+
+    function _transfer(address from, address to, uint256 id, uint256 amount) internal {
+        vm.prank(from);
+        IERC1155(address(creator)).safeTransferFrom(from, to, id, amount, "");
+    }
+
+    function testSupportsApproveTransferInterfaces() public {
+        assertTrue(shim.supportsInterface(type(IERC1155CreatorExtensionApproveTransfer).interfaceId));
+        assertTrue(shim.supportsInterface(0x93a80b14), "v1 approve-transfer id");
+        // Existing surface unchanged.
+        assertTrue(shim.supportsInterface(type(INonFungibleSeaDropToken).interfaceId));
+        assertTrue(shim.supportsInterface(type(ISeaDropTokenContractMetadata).interfaceId));
+        assertTrue(shim.supportsInterface(0x01ffc9a7), "ERC165");
+        assertTrue(shim.supportsInterface(0x2a55205a), "ERC2981");
+        assertFalse(shim.supportsInterface(0xffffffff));
+    }
+
+    function testRegisterOptsInAndInitializeOptsOut() public {
+        // setUp's registerExtension opted the shim in (it advertises the
+        // interface). initialize() must opt it back out.
+        vm.expectEmit(true, false, false, true, address(creator));
+        emit ExtensionApproveTransferUpdated(address(shim), false);
+        shim.initialize("");
+    }
+
+    function testUnlockedDropDoesNotConsultShim() public {
+        shim.initialize("");
+        shim.setMaxSupply(100);
+        (address[] memory r, uint256[] memory a) = _recipients();
+        shim.airdrop(r, a);
+        uint256 id = shim.tokenId();
+
+        // Prove the shim is opted out: a contract-wide approver that rejects
+        // everything is what the creator consults for this token.
+        RejectAllApprover reject = new RejectAllApprover();
+        creator.setApproveTransfer(address(reject));
+        vm.prank(alice);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(alice, bob, id, 1, "");
+
+        // Without a base approver, transfers go through untouched.
+        creator.setApproveTransfer(address(0));
+        _transfer(alice, bob, id, 1);
+        assertEq(IERC1155(address(creator)).balanceOf(bob, id), 8);
+    }
+
+    function testLockBlocksTransfers() public {
+        uint256 id = _lockedDrop();
+
+        vm.prank(alice);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(alice, bob, id, 1, "");
+
+        // Batch transfers too.
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = id;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1;
+        vm.prank(alice);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeBatchTransferFrom(alice, bob, ids, amounts, "");
+
+        // Approved operators (marketplaces) too.
+        vm.prank(alice);
+        IERC1155(address(creator)).setApprovalForAll(feeRecipient, true);
+        vm.prank(feeRecipient);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(alice, bob, id, 1, "");
+
+        // Sending to a dead address is a transfer, not a burn.
+        vm.prank(alice);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(alice, address(0xdEaD), id, 1, "");
+    }
+
+    function testLockAllowsMintsAirdropsAndBurns() public {
+        uint256 id = _lockedDrop();
+
+        // SeaDrop mint.
+        vm.prank(address(seadrop));
+        shim.mintSeaDrop(alice, 2);
+        assertEq(IERC1155(address(creator)).balanceOf(alice, id), 5);
+
+        // Owner airdrop.
+        address[] memory r = new address[](1);
+        r[0] = bob;
+        uint256[] memory a = new uint256[](1);
+        a[0] = 1;
+        shim.airdrop(r, a);
+        assertEq(IERC1155(address(creator)).balanceOf(bob, id), 8);
+
+        // Holder burn through the creator contract.
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = id;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 2;
+        vm.prank(alice);
+        creator.burn(alice, ids, amounts);
+        assertEq(IERC1155(address(creator)).balanceOf(alice, id), 3);
+    }
+
+    function testLockOnlyAffectsShimToken() public {
+        uint256 id = _lockedDrop();
+
+        // A base token on the same creator contract stays transferable.
+        address[] memory to = new address[](1);
+        to[0] = alice;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 5;
+        string[] memory uris = new string[](1);
+        uint256 baseId = creator.mintBaseNew(to, amounts, uris)[0];
+        _transfer(alice, bob, baseId, 1);
+        assertEq(IERC1155(address(creator)).balanceOf(bob, baseId), 1);
+
+        // So does a token from a second, unlocked shim.
+        address[] memory allowedSeaDrop = new address[](1);
+        allowedSeaDrop[0] = address(seadrop);
+        ManifoldERC1155SeaDropShim other = new ManifoldERC1155SeaDropShim(
+            NAME, SYMBOL, allowedSeaDrop, address(creator), address(this)
+        );
+        creator.registerExtension(address(other), "");
+        other.initialize("");
+        other.setMaxSupply(10);
+        address[] memory r = new address[](1);
+        r[0] = alice;
+        uint256[] memory a = new uint256[](1);
+        a[0] = 1;
+        other.airdrop(r, a);
+        _transfer(alice, bob, other.tokenId(), 1);
+
+        // The locked token is still locked.
+        vm.prank(alice);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(alice, bob, id, 1, "");
+    }
+
+    function testLockExpiresOnItsOwn() public {
+        uint256 id = _lockedDrop();
+        uint256 until = shim.transferLockUntil();
+
+        vm.warp(until - 1);
+        vm.prank(alice);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(alice, bob, id, 1, "");
+
+        vm.warp(until);
+        _transfer(alice, bob, id, 1);
+        assertEq(IERC1155(address(creator)).balanceOf(bob, id), 8);
+    }
+
+    function testUnlockNowOptsOut() public {
+        uint256 id = _lockedDrop();
+
+        vm.expectEmit(true, false, false, true, address(creator));
+        emit ExtensionApproveTransferUpdated(address(shim), false);
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit TransferLockUpdated(0);
+        shim.setTransferLock(0);
+
+        assertEq(shim.transferLockUntil(), 0);
+        _transfer(alice, bob, id, 1);
+    }
+
+    function testSetTransferLockInPastOptsOut() public {
+        shim.initialize("");
+        vm.warp(1000);
+        vm.expectEmit(true, false, false, true, address(creator));
+        emit ExtensionApproveTransferUpdated(address(shim), false);
+        shim.setTransferLock(999);
+    }
+
+    function testSetTransferLockOptsInAndEmits() public {
+        shim.initialize("");
+        uint256 until = block.timestamp + 1 days;
+        vm.expectEmit(true, false, false, true, address(creator));
+        emit ExtensionApproveTransferUpdated(address(shim), true);
+        vm.expectEmit(false, false, false, true, address(shim));
+        emit TransferLockUpdated(until);
+        shim.setTransferLock(until);
+        assertEq(shim.transferLockUntil(), until);
+    }
+
+    function testLockHasNoUpperBound() public {
+        uint256 id = _lockedDrop();
+        shim.setTransferLock(type(uint256).max);
+        vm.warp(block.timestamp + 365 days * 100);
+        vm.prank(alice);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(alice, bob, id, 1, "");
+        shim.setTransferLock(0);
+        _transfer(alice, bob, id, 1);
+    }
+
+    function testLockOverridesContractWideApprover() public {
+        uint256 id = _lockedDrop();
+        RejectAllApprover reject = new RejectAllApprover();
+        creator.setApproveTransfer(address(reject));
+
+        // Once the lock time passes the shim (still opted in) approves, and
+        // the contract-wide approver is not consulted for this token.
+        vm.warp(shim.transferLockUntil());
+        _transfer(alice, bob, id, 1);
+
+        // After an explicit unlock the shim opts out and the contract-wide
+        // approver applies again.
+        shim.setTransferLock(0);
+        vm.prank(alice);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(alice, bob, id, 1, "");
+    }
+
+    function testCreatorAdminCanSetTransferLock() public {
+        uint256 id = _lockedDrop();
+        address carol = address(0xCA201);
+        creator.approveAdmin(carol);
+        // Ownership of the drop moves away; the creator admin keeps control.
+        shim.transferOwnership(alice);
+
+        vm.prank(carol);
+        shim.setTransferLock(0);
+        _transfer(alice, bob, id, 1);
+    }
+
+    function testSetTransferLockRevertsForStranger() public {
+        shim.initialize("");
+        vm.prank(alice);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.OnlyOwnerOrCreatorAdmin.selector);
+        shim.setTransferLock(block.timestamp + 1 days);
+    }
+
+    function testSetTransferLockRevertsBeforeInitialize() public {
+        vm.expectRevert(ManifoldERC1155SeaDropShim.NotInitialized.selector);
+        shim.setTransferLock(block.timestamp + 1 days);
+    }
+
+    function testSetApproveTransferAuthAndCreatorCheck() public {
+        shim.initialize("");
+
+        vm.prank(alice);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.OnlyOwnerOrCreatorAdmin.selector);
+        shim.setApproveTransfer(address(creator), true);
+
+        vm.expectRevert(ManifoldERC1155SeaDropShim.InvalidCreator.selector);
+        shim.setApproveTransfer(address(0xBAD), true);
+
+        vm.expectEmit(true, false, false, true, address(creator));
+        emit ExtensionApproveTransferUpdated(address(shim), true);
+        shim.setApproveTransfer(address(creator), true);
+    }
+
+    function testApproveTransferViews() public {
+        shim.initialize("");
+        uint256[] memory none = new uint256[](0);
+        assertTrue(shim.approveTransfer(address(0), alice, bob, none, none));
+        shim.setTransferLock(block.timestamp + 1 days);
+        assertFalse(shim.approveTransfer(address(0), alice, bob, none, none));
+        assertTrue(shim.approveTransfer(address(0), alice, address(0), none, none), "burn");
+        assertFalse(shim.approveTransfer(alice, bob, none, none), "v1 variant");
+        assertTrue(shim.approveTransfer(alice, address(0), none, none), "v1 burn");
     }
 }
