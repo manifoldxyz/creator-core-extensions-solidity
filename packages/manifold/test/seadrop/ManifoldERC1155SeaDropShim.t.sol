@@ -924,6 +924,33 @@ contract ManifoldERC1155SeaDropShimTest is
         assertEq(IERC1155(address(creator)).balanceOf(alice, id), 3);
     }
 
+    function testLockAllowsPublicMintThroughSeaDrop() public {
+        uint256 id = _lockedDrop();
+        PublicDrop memory pd = PublicDrop({
+            mintPrice: 0.01 ether,
+            startTime: uint48(block.timestamp),
+            endTime: uint48(block.timestamp + 1 days),
+            maxTotalMintableByWallet: 5,
+            feeBps: 0,
+            restrictFeeRecipients: true
+        });
+        shim.updatePublicDrop(address(seadrop), pd);
+        shim.updateCreatorPayoutAddress(address(seadrop), payoutAddress);
+        shim.updateAllowedFeeRecipient(address(seadrop), feeRecipient, true);
+
+        // A collector with no prior balance mints through SeaDrop mid-lock.
+        address carol = address(0xCA201);
+        vm.deal(carol, 0.02 ether);
+        vm.prank(carol);
+        seadrop.mintPublic{value: 0.02 ether}(address(shim), feeRecipient, address(0), 2);
+        assertEq(IERC1155(address(creator)).balanceOf(carol, id), 2);
+
+        // ...and still can't pass them on until the lock ends.
+        vm.prank(carol);
+        vm.expectRevert(APPROVAL_FAILURE);
+        IERC1155(address(creator)).safeTransferFrom(carol, alice, id, 1, "");
+    }
+
     function testLockOnlyAffectsShimToken() public {
         uint256 id = _lockedDrop();
 

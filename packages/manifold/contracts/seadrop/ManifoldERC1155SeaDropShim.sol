@@ -87,8 +87,8 @@ contract ManifoldERC1155SeaDropShim is
     event TransferLockUpdated(uint256 unlockTime);
 
     /// @dev ERC-165 id of the pre-v2 Creator Core approve-transfer interface
-    ///      (`approveTransfer(address,address,uint256[],uint256[])`), as in
-    ///      `ERC1155Soulbound`. Older creator contracts check this id.
+    ///      (`approveTransfer(address,address,uint256[],uint256[])`).
+    ///      Older creator contracts check this id.
     bytes4 private constant IERC1155CreatorExtensionApproveTransfer_v1 = 0x93a80b14;
 
     /// @notice The Manifold Creator Core contract this shim mints on.
