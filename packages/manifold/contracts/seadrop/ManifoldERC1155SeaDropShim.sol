@@ -5,6 +5,7 @@ import {ERC721SeaDrop} from "seadrop/src/ERC721SeaDrop.sol";
 import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 import {IERC1155CreatorExtensionApproveTransfer} from "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC1155/IERC1155CreatorExtensionApproveTransfer.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IAdminControl} from "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 
 /**
  * @title  ManifoldERC1155SeaDropShim
@@ -29,6 +30,9 @@ contract ManifoldERC1155SeaDropShim is
 
     /// @notice Reverts if `setApproveTransfer` names another creator contract.
     error InvalidCreator();
+
+    /// @notice Reverts if the caller is not an admin of the creator contract.
+    error CreatorAdminRequired();
 
     /// @notice Emitted when the token's metadata URI is set.
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
@@ -60,6 +64,12 @@ contract ManifoldERC1155SeaDropShim is
     ///         blocked. 0 or a past time means unlocked.
     uint256 public transferLockUntil;
 
+    /// @notice Restricts a call to admins of the creator contract.
+    modifier creatorAdminRequired() {
+        _creatorAdminRequired();
+        _;
+    }
+
     /**
      * @param name_                   Collection name.
      * @param symbol_                 Collection symbol.
@@ -87,7 +97,7 @@ contract ManifoldERC1155SeaDropShim is
      *
      * @param uri_ Token metadata URI. Empty leaves it unset.
      */
-    function initialize(string calldata uri_) external onlyOwner {
+    function initialize(string calldata uri_) external creatorAdminRequired {
         if (tokenId != 0) revert AlreadyInitializedShim();
 
         address[] memory to = new address[](1);
@@ -117,7 +127,7 @@ contract ManifoldERC1155SeaDropShim is
      *
      * @param until Unix time (seconds) when transfers open.
      */
-    function setTransferLock(uint256 until) external onlyOwner {
+    function setTransferLock(uint256 until) external creatorAdminRequired {
         if (tokenId == 0) revert NotInitialized();
         transferLockUntil = until;
         IERC1155CreatorCore(creatorContractAddress).setApproveTransferExtension(
@@ -133,7 +143,7 @@ contract ManifoldERC1155SeaDropShim is
     function setApproveTransfer(address creator, bool enabled)
         external
         override
-        onlyOwner
+        creatorAdminRequired
     {
         if (creator != creatorContractAddress) revert InvalidCreator();
         IERC1155CreatorCore(creatorContractAddress).setApproveTransferExtension(enabled);
@@ -184,7 +194,7 @@ contract ManifoldERC1155SeaDropShim is
      */
     function airdrop(address[] calldata recipients, uint256[] calldata amounts)
         external
-        onlyOwner
+        creatorAdminRequired
         nonReentrant
     {
         if (tokenId == 0) revert NotInitialized();
@@ -268,12 +278,18 @@ contract ManifoldERC1155SeaDropShim is
     }
 
     /// @notice Set the metadata URI of `tokenId`.
-    function updateURI(string calldata uri_) external onlyOwner {
+    function updateURI(string calldata uri_) external creatorAdminRequired {
         if (tokenId == 0) revert NotInitialized();
         IERC1155CreatorCore(creatorContractAddress).setTokenURIExtension(
             tokenId,
             uri_
         );
         emit TokenURIUpdated(tokenId, uri_);
+    }
+
+    function _creatorAdminRequired() internal view {
+        if (!IAdminControl(creatorContractAddress).isAdmin(msg.sender)) {
+            revert CreatorAdminRequired();
+        }
     }
 }

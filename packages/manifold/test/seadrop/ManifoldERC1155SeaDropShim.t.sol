@@ -160,9 +160,9 @@ contract ManifoldERC1155SeaDropShimTest is
         assertEq(shim.tokenId(), 1, "first mintExtensionNew should mint id 1");
     }
 
-    function testInitializeRevertsForNonOwner() public {
+    function testInitializeRevertsForNonAdmin() public {
         vm.prank(alice);
-        vm.expectRevert(); // TwoStepOwnable: onlyOwner
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
         shim.initialize("");
     }
 
@@ -251,11 +251,11 @@ contract ManifoldERC1155SeaDropShimTest is
         shim.mintSeaDrop(alice, 1);
     }
 
-    function testAirdropRevertsForNonOwner() public {
+    function testAirdropRevertsForNonAdmin() public {
         shim.initialize("");
         (address[] memory r, uint256[] memory a) = _recipients();
         vm.prank(alice);
-        vm.expectRevert(); // TwoStepOwnable: onlyOwner
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
         shim.airdrop(r, a);
     }
 
@@ -539,10 +539,10 @@ contract ManifoldERC1155SeaDropShimTest is
         shim.updateURI("ipfs://nope");
     }
 
-    function testUpdateURIRevertsForNonOwner() public {
+    function testUpdateURIRevertsForNonAdmin() public {
         shim.initialize("");
         vm.prank(alice);
-        vm.expectRevert(); // TwoStepOwnable: OnlyOwner
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
         shim.updateURI("ipfs://hijack");
     }
 
@@ -1061,24 +1061,103 @@ contract ManifoldERC1155SeaDropShimTest is
         IERC1155(address(creator)).safeTransferFrom(alice, bob, id, 1, "");
     }
 
-    function testCreatorAdminCannotSetTransferLock() public {
-        _lockedDrop();
+    // -------------------------------------------------------------------
+    // Auth: token actions require a creator admin; drop config stays owner
+    // -------------------------------------------------------------------
+
+    function testCreatorAdminWhoIsNotShimOwnerRunsTokenActions() public {
         address carol = address(0xCA201);
         creator.approveAdmin(carol);
+        assertTrue(shim.owner() != carol);
 
-        vm.prank(carol);
-        vm.expectRevert(TwoStepOwnable.OnlyOwner.selector);
+        vm.startPrank(carol);
+        shim.initialize("ar://one");
+        uint256 id = shim.tokenId();
+        address[] memory r = new address[](1);
+        r[0] = alice;
+        uint256[] memory a = new uint256[](1);
+        a[0] = 2;
+        shim.airdrop(r, a);
+        shim.updateURI("ar://two");
+        shim.setTransferLock(block.timestamp + 1 days);
         shim.setTransferLock(0);
+        shim.setApproveTransfer(address(creator), false);
+        vm.stopPrank();
+
+        assertEq(IERC1155(address(creator)).balanceOf(alice, id), 2);
+        assertEq(creator.uri(id), "ar://two");
+    }
+
+    function testShimOwnerWhoIsNotCreatorAdminIsRejected() public {
+        address[] memory allowedSeaDrop = new address[](1);
+        allowedSeaDrop[0] = address(seadrop);
+        ManifoldERC1155SeaDropShim s = new ManifoldERC1155SeaDropShim(
+            NAME, SYMBOL, allowedSeaDrop, address(creator), alice
+        );
+        creator.registerExtension(address(s), "");
+
+        vm.prank(alice);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
+        s.initialize("");
+
+        s.initialize(""); // this test contract owns the creator contract
+        address[] memory r = new address[](1);
+        r[0] = bob;
+        uint256[] memory a = new uint256[](1);
+        a[0] = 1;
+
+        vm.startPrank(alice);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
+        s.airdrop(r, a);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
+        s.updateURI("ar://hijack");
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
+        s.setTransferLock(block.timestamp + 1 days);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
+        s.setApproveTransfer(address(creator), true);
+
+        // SeaDrop drop config stays with the shim owner.
+        s.setMaxSupply(50);
+        vm.stopPrank();
+        assertEq(s.maxSupply(), 50);
+    }
+
+    function testRevokedCreatorAdminLosesTokenActions() public {
+        address carol = address(0xCA201);
+        creator.approveAdmin(carol);
+        vm.prank(carol);
+        shim.initialize("");
+        creator.revokeAdmin(carol);
 
         vm.prank(carol);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
+        shim.updateURI("ar://late");
+    }
+
+    function testCreatorAdminCannotChangeSeaDropConfig() public {
+        address carol = address(0xCA201);
+        creator.approveAdmin(carol);
+        vm.prank(carol);
         vm.expectRevert(TwoStepOwnable.OnlyOwner.selector);
-        shim.setApproveTransfer(address(creator), false);
+        shim.setMaxSupply(50);
+    }
+
+    function testCreatorAdminCanUnlockAfterOwnerRenounces() public {
+        uint256 id = _lockedDrop();
+        shim.setTransferLock(type(uint256).max);
+        shim.renounceOwnership();
+
+        address carol = address(0xCA201);
+        creator.approveAdmin(carol);
+        vm.prank(carol);
+        shim.setTransferLock(0);
+        _transfer(alice, bob, id, 1);
     }
 
     function testSetTransferLockRevertsForStranger() public {
         shim.initialize("");
         vm.prank(alice);
-        vm.expectRevert(TwoStepOwnable.OnlyOwner.selector);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
         shim.setTransferLock(block.timestamp + 1 days);
     }
 
@@ -1091,7 +1170,7 @@ contract ManifoldERC1155SeaDropShimTest is
         shim.initialize("");
 
         vm.prank(alice);
-        vm.expectRevert(TwoStepOwnable.OnlyOwner.selector);
+        vm.expectRevert(ManifoldERC1155SeaDropShim.CreatorAdminRequired.selector);
         shim.setApproveTransfer(address(creator), true);
 
         vm.expectRevert(ManifoldERC1155SeaDropShim.InvalidCreator.selector);
