@@ -4,41 +4,7 @@ pragma solidity ^0.8.17;
 import {ERC721SeaDrop} from "seadrop/src/ERC721SeaDrop.sol";
 import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
 
-/**
- * @title  ManifoldERC1155SeaDropShim
- * @notice SeaDrop-compatible registration surface for an ERC1155 drop on a
- *         Manifold Creator Core contract.
- *
- *         OpenSea's drop indexer keys all drop state on `msg.sender` of the
- *         registration calls (`updatePublicDrop`, `updateAllowList`, etc.) and
- *         expects that address to be a SeaDrop-compatible NFT contract. This
- *         shim inherits `ERC721SeaDrop` so OpenSea sees the full surface it
- *         expects, while actual mints are routed to a single ERC1155 tokenId
- *         on a Manifold Creator Core contract via `mintExtensionExisting`.
- *
- *         The shim's own ERC721 supply stays at 0 forever — ERC721A's internal
- *         counters are unused. Per-wallet caps + max supply are tracked
- *         locally and reported through `getMintStats` so SeaDrop's enforcement
- *         hits real numbers.
- *
- *         Auth model: `onlyOwner` (TwoStepOwnable) inherited from
- *         `ERC721SeaDrop`. The deploy wallet owns the drop config.
- *
- *         Deployment order:
- *           1. Deploy this shim (constructor sets immutable creator).
- *           2. Call `creator.registerExtension(shim, "")` on the Manifold
- *              Creator Core contract.
- *           3. Call `shim.initialize(uri)` to seed the ERC1155 tokenId on the
- *              creator contract via `mintExtensionNew` (amount=0), with
- *              its metadata URI.
- *           4. Use the inherited `multiConfigure` (or individual setters) to
- *              push `publicDrop` / `allowList` / fee recipients to SeaDrop.
- *
- *         Token metadata (`tokenURI`) is served by the underlying Manifold
- *         creator contract. It is set by `initialize(uri)` and rewritten via
- *         `updateURI` (only the shim can, as the token's extension). Drop-page metadata (`contractURI`, `baseURI`) is served by
- *         this shim via the inherited `ERC721ContractMetadata` surface.
- */
+/// @notice Sells one ERC1155 token on a Manifold creator contract through OpenSea SeaDrop.
 contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     /// @notice Reverts if `initialize()` is called more than once.
     error AlreadyInitializedShim();
