@@ -3,80 +3,97 @@ pragma solidity ^0.8.17;
 
 import {ERC721SeaDrop} from "seadrop/src/ERC721SeaDrop.sol";
 import {IERC1155CreatorCore} from "@manifoldxyz/creator-core-solidity/contracts/core/IERC1155CreatorCore.sol";
-import {IERC1155CreatorExtensionApproveTransfer} from "@manifoldxyz/creator-core-solidity/contracts/extensions/ERC1155/IERC1155CreatorExtensionApproveTransfer.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {IAdminControl} from "@manifoldxyz/libraries-solidity/contracts/access/IAdminControl.sol";
 
 /**
  * @title  ManifoldERC1155SeaDropShim
- * @notice Sells one ERC1155 token on a Manifold creator contract through
- *         OpenSea SeaDrop.
+ * @notice SeaDrop-compatible registration surface for an ERC1155 drop on a
+ *         Manifold Creator Core contract.
+ *
+ *         OpenSea's drop indexer keys all drop state on `msg.sender` of the
+ *         registration calls (`updatePublicDrop`, `updateAllowList`, etc.) and
+ *         expects that address to be a SeaDrop-compatible NFT contract. This
+ *         shim inherits `ERC721SeaDrop` so OpenSea sees the full surface it
+ *         expects, while actual mints are routed to a single ERC1155 tokenId
+ *         on a Manifold Creator Core contract via `mintExtensionExisting`.
+ *
+ *         The shim's own ERC721 supply stays at 0 forever — ERC721A's internal
+ *         counters are unused. Per-wallet caps + max supply are tracked
+ *         locally and reported through `getMintStats` so SeaDrop's enforcement
+ *         hits real numbers.
+ *
+ *         Auth model: `onlyOwner` (TwoStepOwnable) inherited from
+ *         `ERC721SeaDrop`. The deploy wallet owns the drop config.
+ *
+ *         Deployment order:
+ *           1. Deploy this shim (constructor sets immutable creator).
+ *           2. Call `creator.registerExtension(shim, "")` on the Manifold
+ *              Creator Core contract.
+ *           3. Call `shim.initialize(uri)` to seed the ERC1155 tokenId on the
+ *              creator contract via `mintExtensionNew` (amount=0), with
+ *              its metadata URI.
+ *           4. Use the inherited `multiConfigure` (or individual setters) to
+ *              push `publicDrop` / `allowList` / fee recipients to SeaDrop.
+ *
+ *         Token metadata (`tokenURI`) is served by the underlying Manifold
+ *         creator contract. It is set by `initialize(uri)` and rewritten via
+ *         `updateURI` (only the shim can, as the token's extension). Drop-page metadata (`contractURI`, `baseURI`) is served by
+ *         this shim via the inherited `ERC721ContractMetadata` surface.
  */
-contract ManifoldERC1155SeaDropShim is
-    ERC721SeaDrop,
-    IERC1155CreatorExtensionApproveTransfer
-{
+contract ManifoldERC1155SeaDropShim is ERC721SeaDrop {
     /// @notice Reverts if `initialize()` is called more than once.
     error AlreadyInitializedShim();
 
     /// @notice Reverts if the constructor is given a zero `initialOwner_`.
     error InitialOwnerIsZeroAddress();
 
-    /// @notice Reverts if called before `initialize()`.
+    /// @notice Reverts if `updateURI` or `airdrop` is called before `initialize()`.
     error NotInitialized();
 
     /// @notice Reverts if `airdrop` recipients and amounts lengths differ.
     error InvalidAirdrop();
 
-    /// @notice Reverts if `setApproveTransfer` names another creator contract.
-    error InvalidCreator();
-
-    /// @notice Reverts if the caller is not an admin of the creator contract.
-    error CreatorAdminRequired();
-
-    /// @notice Emitted when the token's metadata URI is set.
+    /// @notice Emitted when the bound tokenId's metadata URI is updated on
+    ///         the underlying Manifold Creator Core contract. Off-chain
+    ///         indexers (OpenSea, Manifold's own metadata pipeline) listen
+    ///         for this to refresh cached metadata after a reveal.
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
 
-    /// @notice Emitted at deployment with the creator contract this shim
-    ///         mints on.
+    /// @notice Emitted once at deployment so indexers (OpenSea) can map this
+    ///         shim to the creator contract it mints on. Deliberately generic
+    ///         (not Manifold-specific) so any SeaDrop wrapper can emit the
+    ///         same event and indexers only wire it up once.
     event SeaDropShimDeployed(address indexed creatorContract);
 
-    /// @notice Emitted when the transfer lock changes. 0 means unlocked.
-    event TransferLockUpdated(uint256 unlockTime);
-
-    /// @dev ERC-165 id of the legacy approve-transfer interface, checked by
-    ///      older creator contracts.
-    bytes4 private constant IERC1155CreatorExtensionApproveTransfer_v1 = 0x93a80b14;
-
-    /// @notice The creator contract this shim mints on.
+    /// @notice The Manifold Creator Core contract this shim mints on.
     address public immutable creatorContractAddress;
 
-    /// @notice The token this shim mints. Zero until `initialize()`.
+    /// @notice The ERC1155 tokenId on the creator contract this shim mints.
+    ///         Set exactly once by `initialize()`. Zero until initialized.
     uint256 public tokenId;
 
-    /// @notice Total minted through this shim, for the max-supply cap.
+    /// @notice Total mints routed through this shim. Used for SeaDrop's
+    ///         max-supply enforcement (the shim's ERC721A `_totalMinted()`
+    ///         stays at 0 forever, so we cannot rely on it).
     uint256 internal _shimTotalMinted;
 
-    /// @notice Minted per wallet through this shim, for the per-wallet cap.
+    /// @notice Per-minter mint count routed through this shim. Used for
+    ///         SeaDrop's per-wallet cap enforcement.
     mapping(address => uint256) internal _shimMinterNumMinted;
 
-    /// @notice Unix time (seconds) until which transfers of `tokenId` are
-    ///         blocked. 0 or a past time means unlocked.
-    uint256 public transferLockUntil;
-
-    /// @notice Restricts a call to admins of the creator contract.
-    modifier creatorAdminRequired() {
-        _creatorAdminRequired();
-        _;
-    }
-
     /**
-     * @param name_                   Collection name.
-     * @param symbol_                 Collection symbol.
-     * @param allowedSeaDrop_         SeaDrop contracts allowed to mint.
-     * @param creatorContractAddress_ Creator contract to mint on.
-     * @param initialOwner_           Drop owner. Set explicitly because a
-     *                                CREATE2 factory is the deployer.
+     * @notice Deploy the shim.
+     *
+     * @param name_                     ERC721 name (used by ERC721A).
+     * @param symbol_                   ERC721 symbol (used by ERC721A).
+     * @param allowedSeaDrop_           SeaDrop contract addresses allowed to
+     *                                  call `mintSeaDrop` on this shim.
+     * @param creatorContractAddress_   Manifold Creator Core contract.
+     * @param initialOwner_             The wallet to transfer ownership to
+     *                                  immediately after deploy. Required
+     *                                  when deploying through a CREATE2
+     *                                  factory (where the broadcaster is the
+     *                                  factory address, not the intended
+     *                                  drop admin).
      */
     constructor(
         string memory name_,
@@ -88,21 +105,34 @@ contract ManifoldERC1155SeaDropShim is
         if (initialOwner_ == address(0)) revert InitialOwnerIsZeroAddress();
         creatorContractAddress = creatorContractAddress_;
         emit SeaDropShimDeployed(creatorContractAddress_);
+        // ERC721SeaDrop's TwoStepOwnable constructor already set the owner
+        // to msg.sender; transfer to the explicit initialOwner.
         _transferOwnership(initialOwner_);
     }
 
     /**
-     * @notice Create the token on the creator contract, with no supply.
-     *         Call once, after this shim is registered as an extension.
+     * @notice Seed the ERC1155 `tokenId` on the Manifold Creator Core contract.
      *
-     * @param uri_ Token metadata URI. Empty leaves it unset.
+     *         Calls `mintExtensionNew` on the creator with amount=0 to register
+     *         the tokenId and bind it to this shim as the originating
+     *         extension (Creator Core enforces `_tokenExtension[tokenId] ==
+     *         msg.sender` inside `mintExtensionExisting`, so the shim must be
+     *         the extension that created the tokenId).
+     *
+     *         Must be called after the shim has been registered as an
+     *         extension on the creator contract via `registerExtension`.
+     *         Reverts if called twice.
+     *
+     * @param uri_ The metadata URI for the new tokenId. An empty string
+     *             leaves it unset (set later via `updateURI`).
      */
-    function initialize(string calldata uri_) external creatorAdminRequired {
+    function initialize(string calldata uri_) external onlyOwner {
         if (tokenId != 0) revert AlreadyInitializedShim();
 
         address[] memory to = new address[](1);
         to[0] = msg.sender;
         uint256[] memory amounts = new uint256[](1);
+        // amounts[0] = 0 — registers the tokenId without minting.
         string[] memory uris = new string[](1);
         uris[0] = uri_;
 
@@ -112,89 +142,24 @@ contract ManifoldERC1155SeaDropShim is
 
         tokenId = mintedTokenIds[0];
 
-        // Registration turns transfer checks on. Turn them off so unlocked
-        // drops pay no extra gas per transfer.
-        IERC1155CreatorCore(creatorContractAddress).setApproveTransferExtension(false);
-
         if (bytes(uri_).length > 0) {
             emit TokenURIUpdated(tokenId, uri_);
         }
     }
 
     /**
-     * @notice Block transfers of `tokenId` until `until`. Mints and burns
-     *         still work. Pass 0 to unlock now.
+     * @notice Owner airdrop of the bound tokenId, mirroring
+     *         `ERC1155LazyPayableClaimCore.airdrop`: airdropped amounts count
+     *         toward the total minted, and the max supply is raised to the
+     *         new total if the airdrop exceeds it. Per-wallet mint counts
+     *         are not affected.
      *
-     * @param until Unix time (seconds) when transfers open.
-     */
-    function setTransferLock(uint256 until) external creatorAdminRequired {
-        if (tokenId == 0) revert NotInitialized();
-        transferLockUntil = until;
-        IERC1155CreatorCore(creatorContractAddress).setApproveTransferExtension(
-            until > block.timestamp
-        );
-        emit TransferLockUpdated(until);
-    }
-
-    /**
-     * @notice Turn the creator's transfer checks for `tokenId` on or off.
-     *         Prefer `setTransferLock`, which keeps this in sync.
-     */
-    function setApproveTransfer(address creator, bool enabled)
-        external
-        override
-        creatorAdminRequired
-    {
-        if (creator != creatorContractAddress) revert InvalidCreator();
-        IERC1155CreatorCore(creatorContractAddress).setApproveTransferExtension(enabled);
-    }
-
-    /**
-     * @notice Called by the creator contract on transfers of `tokenId`.
-     *         Allows burns, and other transfers once the lock has passed.
-     */
-    function approveTransfer(address, address, address to, uint256[] calldata, uint256[] calldata)
-        external
-        view
-        override
-        returns (bool)
-    {
-        return _transferAllowed(to);
-    }
-
-    /// @notice Legacy variant of `approveTransfer`.
-    function approveTransfer(address, address to, uint256[] calldata, uint256[] calldata)
-        external
-        view
-        returns (bool)
-    {
-        return _transferAllowed(to);
-    }
-
-    function _transferAllowed(address to) internal view returns (bool) {
-        return to == address(0) || block.timestamp >= transferLockUntil;
-    }
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(ERC721SeaDrop, IERC165)
-        returns (bool)
-    {
-        return
-            interfaceId == type(IERC1155CreatorExtensionApproveTransfer).interfaceId ||
-            interfaceId == IERC1155CreatorExtensionApproveTransfer_v1 ||
-            super.supportsInterface(interfaceId);
-    }
-
-    /**
-     * @notice Mint `tokenId` to recipients. Counts toward total minted and
-     *         raises max supply if exceeded. Per-wallet counts unchanged.
+     * @param recipients Addresses to airdrop to.
+     * @param amounts    Number of tokens to airdrop to each recipient.
      */
     function airdrop(address[] calldata recipients, uint256[] calldata amounts)
         external
-        creatorAdminRequired
+        onlyOwner
         nonReentrant
     {
         if (tokenId == 0) revert NotInitialized();
@@ -227,25 +192,37 @@ contract ManifoldERC1155SeaDropShim is
         );
     }
 
-    /// @notice Called by SeaDrop to mint `quantity` of `tokenId` to `minter`.
+    /**
+     * @notice Mint via SeaDrop. Routes to `mintExtensionExisting` on the
+     *         Manifold Creator Core contract for the bound `tokenId`.
+     *
+     * @param minter   The address to mint to.
+     * @param quantity The number of ERC1155 tokens to mint.
+     */
     function mintSeaDrop(address minter, uint256 quantity)
         external
         override
         nonReentrant
     {
+        // Ensure the SeaDrop is allowed.
         _onlyAllowedSeaDrop(msg.sender);
 
-        // SeaDrop checks this too; re-check here.
+        // Extra safety check to ensure the max supply is not exceeded.
+        // SeaDrop already checks against `getMintStats` before calling, but
+        // this guards against misconfigured callers.
         uint256 newTotal = _shimTotalMinted + quantity;
         uint256 cap = maxSupply();
         if (newTotal > cap) {
             revert MintQuantityExceedsMaxSupply(newTotal, cap);
         }
 
-        // Update counts before the external call.
+        // Update local accounting *before* the external call so SeaDrop's
+        // re-entry checks see consistent state. The `nonReentrant` modifier
+        // is the primary defense; this is belt-and-suspenders.
         _shimMinterNumMinted[minter] += quantity;
         _shimTotalMinted = newTotal;
 
+        // Route the mint to the underlying Manifold Creator Core contract.
         address[] memory to = new address[](1);
         to[0] = minter;
         uint256[] memory ids = new uint256[](1);
@@ -260,8 +237,17 @@ contract ManifoldERC1155SeaDropShim is
         );
     }
 
-    /// @notice Mint counts SeaDrop uses for its caps. Counts only mints
-    ///         made through this shim.
+    /**
+     * @notice Returns the mint stats SeaDrop uses to enforce per-wallet and
+     *         max-supply caps. The shim's ERC721A counters are unused and
+     *         always zero, so we report the shim-local counters instead.
+     *
+     *         Note: per-wallet counts only see mints routed through this
+     *         shim — not mints from other extensions registered on the same
+     *         creator contract.
+     *
+     * @param minter The minter address.
+     */
     function getMintStats(address minter)
         external
         view
@@ -277,19 +263,30 @@ contract ManifoldERC1155SeaDropShim is
         maxSupply_ = maxSupply();
     }
 
-    /// @notice Set the metadata URI of `tokenId`.
-    function updateURI(string calldata uri_) external creatorAdminRequired {
+    /**
+     * @notice Update the metadata URI for the bound ERC1155 tokenId on the
+     *         Manifold Creator Core contract.
+     *
+     *         Creator Core gates `setTokenURIExtension` on `msg.sender`
+     *         being the registered extension that originally minted the
+     *         tokenId — that's this shim — so this passthrough is the only
+     *         way to drive token metadata after `initialize()`. Auth is
+     *         `onlyOwner` (the deploy wallet); see contract-level NatSpec
+     *         for the auth-model rationale.
+     *
+     *         `creator.uri(tokenId)` returns this value verbatim — no
+     *         tokenId suffix, no prefix — because we're writing the
+     *         per-token override (`_tokenURIs[tokenId]`), which Creator
+     *         Core's URI resolution prefers over the extension base URI.
+     *
+     * @param uri_ The metadata URI to set for the bound tokenId.
+     */
+    function updateURI(string calldata uri_) external onlyOwner {
         if (tokenId == 0) revert NotInitialized();
         IERC1155CreatorCore(creatorContractAddress).setTokenURIExtension(
             tokenId,
             uri_
         );
         emit TokenURIUpdated(tokenId, uri_);
-    }
-
-    function _creatorAdminRequired() internal view {
-        if (!IAdminControl(creatorContractAddress).isAdmin(msg.sender)) {
-            revert CreatorAdminRequired();
-        }
     }
 }
