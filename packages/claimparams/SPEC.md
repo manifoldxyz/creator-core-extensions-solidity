@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Owner | Don (design), StudioGM (build) |
-| Status | Draft rev 3, 2026-11-18 (single claim) |
+| Status | Built, rev 4, 2026-11-18 |
 | Repos | creator-core-extensions-solidity (new package `packages/claimparams`) |
 
 ## Summary
@@ -52,9 +52,10 @@ mapping(uint24 => bytes) private _params;
 ### Deploy and set up
 
 - **Claim first.** The creator makes the ERC721 claim in Studio. Its instance id goes into the constructor with the claim extension address, the creator contract and `PARAMS_LENGTH`.
+- **The claim extension must support `StorageProtocol.ADDRESS`.** The current lazy claim release (V8) does. The previous release (V7), which Studio uses today, rejects it.
 - **The deploy script checks the claim.** Before sending, it reads `getClaim` and stops unless `contractVersion >= 3`, `erc20 == address(0)` and `signingAddress == address(0)`. `mintProxy` can't charge ERC20 to this contract or mint signature claims, and v3 is needed to find a token's mint order from `tokenData`. The contract itself doesn't repeat these checks.
 - **Creator admin only.** `setRenderer` and `lockRenderer` require `IAdminControl(CREATOR_CONTRACT).isAdmin(msg.sender)`. The contract has no owner.
-- **Point the claim here.** The admin calls `CLAIM.updateTokenURIParams(CREATOR_CONTRACT, INSTANCE_ID, StorageProtocol.ADDRESS, false, <20-byte address of this contract>)`.
+- **Point the claim here.** The admin calls `CLAIM.updateTokenURIParams(CREATOR_CONTRACT, INSTANCE_ID, StorageProtocol.ADDRESS, false, location)`. `location` is the 20 raw bytes of this contract's address, not its `0x…` text. Block explorer forms send the text, so the deploy script prints the exact calldata to send.
 - **Lock is one-way.** After `lockRenderer`, `setRenderer` reverts. Params writes are not affected.
 
 ```mermaid
@@ -74,7 +75,8 @@ sequenceDiagram
 - **One call.** `mint(params, mintIndex, merkleProof)` is payable and mints one token to `msg.sender`.
 - **Exact price.** `msg.value` must equal `mintPrice()`, which is `claim.cost` plus `CLAIM.MINT_FEE_MERKLE()` if the claim has a merkle root, or `CLAIM.MINT_FEE()` if not. Both are read live, so the creator can add or remove an allowlist mid-sale. `mintProxy` always charges the fee and keeps any overpayment, so an exact check stops overpaid ETH from getting stuck.
 - **Allowlist.** With a merkle root, `mintIndex` and `merkleProof` pass through as one-element arrays, and the claim checks the leaf for `msg.sender` (`mintFor`). With no root, the call passes empty arrays and the two arguments are ignored.
-- **Write before the mint call.** The mint order is `getClaim().total + 1`, read before `mintProxy`. The claim increments `total` before it mints, and the mint's `onERC721Received` callback can re-enter, so a re-entrant mint gets a later mint order. Params are written first, then `mintProxy` is called. If the claim reverts, the write reverts with it.
+- **Write before the mint call.** The mint order is `getClaim().total + 1`, read before `mintProxy`. Params are written first, then `mintProxy` is called. If the claim reverts, the write reverts with it.
+- **No re-entrant mints.** The creator contract's `mintExtension` is `nonReentrant`, so a second mint from `onERC721Received` reverts. A `setParams` from the callback reverts too, because the params are already set.
 - **Claim rules still apply.** Start and end dates, `totalMax`, `walletMax` and the allowlist are all checked by the claim.
 
 ```mermaid
@@ -149,6 +151,7 @@ stateDiagram-v2
 - **Price.** Same as the claim: `cost` plus the claim's mint fee. This contract charges no fee and never holds ETH after a call.
 - **One claim per deploy.** Another claim needs its own deploy.
 - **ERC721 only.** An ERC1155 claim gives every mint the same token id, so params can't be stored per token.
+- **Gas.** A mint with 64-byte params costs about 63k gas more than a direct claim mint.
 - **One token per `mint` call.** Params are per token.
 - **Params are permanent.** No function changes or deletes params once set, including for the creator.
 - **Creator's escape hatch.** The creator admin can always repoint the claim's `tokenURI` with `updateTokenURIParams`. Params stay in this contract but stop showing. `lockRenderer` does not prevent that.
@@ -182,16 +185,17 @@ event ParamsSet(uint24 indexed mintOrder, bytes params);
 
 | Repo | Change |
 |---|---|
-| creator-core-extensions-solidity | New package `packages/claimparams`: `ERC721ClaimParams.sol`, `IERC721ClaimParams.sol`, Foundry tests, a deploy script that checks the claim, `foundry.toml`, `remappings.txt`, `forge-std` submodule. Claim interfaces from `@manifoldxyz/creator-core-extensions-solidity`; `Base64` and `Strings` from OpenZeppelin. No existing file changes. |
+| creator-core-extensions-solidity | New package `packages/claimparams`: `ERC721ClaimParams.sol`, `IERC721ClaimParams.sol`, unit and Sepolia fork tests, a deploy script that checks the claim, `foundry.toml`, `remappings.txt`, `forge-std` submodule. The claim interfaces come from `packages/manifold` through a remapping. No existing file changes. |
 
 ## Rollout
 
 | Step | Safe alone because | Revert |
 |---|---|---|
 | 1. Merge the package with tests | New files only. Nothing calls it. | Delete the package. |
-| 2. Sepolia: make a claim on a v3 test contract, deploy, point the claim, mint (open and allowlist) | Testnet | Not needed |
-| 3. Mainnet: make the claim, deploy, `setRenderer`, point the claim | Holds no funds and has no owner. Nothing shows until the claim points here. | Repoint the claim with `updateTokenURIParams`. |
-| 4. `lockRenderer` | Params are already safe without it. | None. **Point of no return.** |
+| 2. Sepolia: make a claim on the V8 extension, deploy, point the claim, mint | Testnet | Not needed |
+| 3. V8 lazy claim extension deployed on mainnet | Separate launch; the claim must be created on V8. | Not needed |
+| 4. Mainnet: make the claim on V8, deploy, `setRenderer`, point the claim | Holds no funds and has no owner. Nothing shows until the claim points here. | Repoint the claim with `updateTokenURIParams`. |
+| 5. `lockRenderer` | Params are already safe without it. | None. **Point of no return.** |
 
 ## Risks
 
@@ -201,6 +205,7 @@ event ParamsSet(uint24 indexed mintOrder, bytes params);
 - **K4 Unescaped renderer strings.** A `"` in `description` breaks the JSON. The creator can fix it with `setRenderer` before lock.
 - **K5 Renderer availability.** The params are on chain, but the live token depends on the renderer URL staying up. Arweave renderers don't expire.
 - **K6 One preview for all tokens.** Marketplace grids show the same `image` for every token until someone opens it. A per-token image would need an SVG built on chain.
+- **K7 Claim made on the wrong extension.** A claim created on V7 can't point at this contract. Create the claim on V8.
 
 ## Tests
 
@@ -208,10 +213,10 @@ event ParamsSet(uint24 indexed mintOrder, bytes params);
 - **Exact price.** `msg.value` one wei over or under `mintPrice()` reverts. After a mint, this contract's balance is 0.
 - **Allowlist.** With a merkle root, a valid `mintIndex` and proof mint and pay the merkle fee. An invalid proof, someone else's leaf, or a reused index reverts.
 - **Claim limits.** `walletMax`, `totalMax`, and the start and end dates revert through `mint` the same as through the claim.
-- **Re-entrant mint.** A contract minter that calls `mint` again from `onERC721Received` gets two tokens, each with its own params at its own mint order.
+- **Re-entrant mint.** A contract minter that calls `mint` again from `onERC721Received` gets one token. The inner mint reverts and leaves no params behind.
 - **Length.** Params shorter or longer than `PARAMS_LENGTH` revert on `mint` and `setParams`.
 - **Holder fallback.** A direct claim mint has empty params, and its holder sets them once. A second `setParams` reverts, and so does a non-holder. A token from another extension, or from another claim on the same contract, also reverts.
 - **Mint never overwrites.** Params set by `mint` can't be changed by `setParams` or a later `mint`.
 - **Renderer admin.** A non-admin `setRenderer` or `lockRenderer` reverts. After lock, `setRenderer` reverts and `setParams` still works.
 - **Empty params.** A token with no params renders `params=0x` in `animation_url` and the same static `image`.
-- **Fork test.** On a Sepolia fork against the live ERC721 claim extension and a v3 creator contract: deploy, point the claim, mint, and read `tokenURI` through the creator contract.
+- **Fork test.** On a Sepolia fork against the live V8 ERC721 claim extension: deploy, point the claim, mint, and read `tokenURI` through the creator contract. A second test shows V7 rejects `StorageProtocol.ADDRESS`.
