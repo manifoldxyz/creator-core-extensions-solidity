@@ -1,0 +1,18 @@
+{
+  "name": "@manifoldxyz/claimparams-solidity",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mint through an ERC721 lazy claim with per-token params, and render the claim's tokenURI from them",
+  "license": "MIT",
+  "dependencies": {
+    "@manifoldxyz/creator-core-solidity": "3.0.0",
+    "@manifoldxyz/libraries-solidity": "1.0.4",
+    "@openzeppelin/contracts": "4.8.1",
+    "@openzeppelin/contracts-upgradeable": "4.9.6"
+  },
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test --no-match-contract Fork",
+    "test:fork": "forge test --match-contract Fork"
+  }
+}

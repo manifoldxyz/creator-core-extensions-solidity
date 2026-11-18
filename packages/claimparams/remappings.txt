@@ -1,0 +1,6 @@
+forge-std/=lib/forge-std/src/
+@manifoldxyz/creator-core-extensions-solidity/=../manifold/
+@manifoldxyz/creator-core-solidity/=node_modules/@manifoldxyz/creator-core-solidity/
+@manifoldxyz/libraries-solidity/=node_modules/@manifoldxyz/libraries-solidity/
+@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
+@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
