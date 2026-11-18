@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Owner | Don (design), StudioGM (build) |
-| Status | Draft rev 2, 2026-11-18 (single claim) |
+| Status | Draft rev 3, 2026-11-18 (single claim) |
 | Repos | creator-core-extensions-solidity (new package `packages/claimparams`) |
 
 ## Summary
@@ -11,7 +11,7 @@
 - One deploy serves one ERC721 lazy claim: one creator contract and one instance, fixed at deploy.
 - A collector mints from that claim and stores a few bytes of **params** for the token in the same transaction, with one signature.
 - The same contract is the claim's metadata source: the claim points at it with `StorageProtocol.ADDRESS`, and it builds each token's `tokenURI` from the renderer settings plus that token's params.
-- An off-chain renderer (for example an HTML page on Arweave) gets the params in the `image` and `animation_url` query string and draws the token from them.
+- An off-chain renderer (for example an HTML page on Arweave) gets the params in the `animation_url` query string and draws the token from them. `image` is one static preview shared by every token.
 - Params are set once per token and never change. The creator admin can edit the renderer settings until they lock them.
 
 **Params:** raw bytes of a fixed length (`PARAMS_LENGTH`) that the minter chooses. The contract stores and returns them without decoding them. Only the renderer knows the byte layout.
@@ -23,16 +23,16 @@
 | Storage | Why we store it |
 |---|---|
 | `CLAIM`, `CREATOR_CONTRACT`, `INSTANCE_ID`, `PARAMS_LENGTH` (immutable) | The one claim this contract mints through and renders for, and the exact params size. Set in the constructor. |
-| `_renderer` | The name, description and renderer URIs the creator admin sets. `tokenURI` can't be built without them. |
-| `_locked` | Once true, `_renderer` can't change. |
+| `renderer` | The name, description, preview image and renderer URI the creator admin sets. `tokenURI` can't be built without them. |
+| `locked` | Once true, `renderer` can't change. |
 | `_params`, keyed by mint order | Each token's params. They are the token's content and can't be rebuilt from anything else. |
 
 ```solidity
 struct Renderer {
     string name;           // rendered as "<name> #<mintOrder>"
     string description;
-    string imageURI;       // base for "image"; empty = field omitted
-    string animationURI;   // base for "animation_url"; empty = field omitted
+    string imageURI;       // static preview, same for every token
+    string animationURI;   // renderer base; params go in its query string
 }
 
 IERC721LazyPayableClaim public immutable CLAIM;
@@ -40,8 +40,8 @@ address public immutable CREATOR_CONTRACT;
 uint256 public immutable INSTANCE_ID;
 uint16 public immutable PARAMS_LENGTH;
 
-Renderer private _renderer;
-bool private _locked;
+Renderer public renderer;
+bool public locked;
 mapping(uint24 => bytes) private _params;
 ```
 
@@ -129,21 +129,20 @@ stateDiagram-v2
 
 ### Render tokenURI
 
-- **Called by the claim.** The claim's `tokenURI(creator, tokenId)` calls `tokenURI(creatorContract, tokenId, instanceId, mintOrder)` here. It reverts unless the creator contract and instance id match the immutables.
+- **Called by the claim.** The claim's `tokenURI(creator, tokenId)` calls `tokenURI(creatorContract, tokenId, instanceId, mintOrder)` here. Only `mintOrder` is used.
 - **Output.** `data:application/json;base64,` of:
 
 ```json
 {
   "name": "<name> #<mintOrder>",
   "description": "<description>",
-  "image": "<imageURI>?params=0x<hex>&mintOrder=<mintOrder>",
-  "animation_url": "<animationURI>?params=0x<hex>&mintOrder=<mintOrder>",
-  "params": "0x<hex>"
+  "image": "<imageURI>",
+  "animation_url": "<animationURI>?params=0x<hex>&mintOrder=<mintOrder>"
 }
 ```
 
 - **Empty params** render as `params=0x`, so the renderer can show an empty state.
-- **Fields with an empty base URI** are left out.
+- **Why `image` is static.** Marketplaces need a real image file there, and a static file ignores a query string. The live token is `animation_url`.
 
 ## Rules
 
@@ -168,7 +167,6 @@ stateDiagram-v2
 | `tokenURI(address creatorContract, uint256 tokenId, uint256 instanceId, uint24 mintOrder)` | claim, view | `IERC721LazyPayableClaimMetadata`. Returns the JSON above. |
 | `mintPrice()` | view | The exact `msg.value` for `mint`, so a frontend doesn't compute fees. |
 | `getParams(uint24 mintOrder)` | view | The params, empty if not set. |
-| `getRenderer()` | view | The renderer settings and whether they are locked. |
 
 Events:
 
@@ -201,7 +199,8 @@ event ParamsSet(uint24 indexed mintOrder, bytes params);
 - **K2 The creator can repoint metadata.** `updateTokenURIParams` is creator-admin only on the claim and can't be locked from here. Say "permanent unless the creator repoints it".
 - **K3 Claim settings change after deploy.** If the creator later adds a signer, `mint` reverts on the claim. Only the creator can cause it, and removing the signer fixes it.
 - **K4 Unescaped renderer strings.** A `"` in `description` breaks the JSON. The creator can fix it with `setRenderer` before lock.
-- **K5 Renderer availability.** The params are on chain, but the image depends on the renderer URL staying up. Arweave renderers don't expire.
+- **K5 Renderer availability.** The params are on chain, but the live token depends on the renderer URL staying up. Arweave renderers don't expire.
+- **K6 One preview for all tokens.** Marketplace grids show the same `image` for every token until someone opens it. A per-token image would need an SVG built on chain.
 
 ## Tests
 
@@ -214,6 +213,5 @@ event ParamsSet(uint24 indexed mintOrder, bytes params);
 - **Holder fallback.** A direct claim mint has empty params, and its holder sets them once. A second `setParams` reverts, and so does a non-holder. A token from another extension, or from another claim on the same contract, also reverts.
 - **Mint never overwrites.** Params set by `mint` can't be changed by `setParams` or a later `mint`.
 - **Renderer admin.** A non-admin `setRenderer` or `lockRenderer` reverts. After lock, `setRenderer` reverts and `setParams` still works.
-- **Wrong target.** `tokenURI` with another creator contract or instance id reverts.
-- **Empty params and empty URIs.** `tokenURI` renders `params=0x` and leaves out `image` or `animation_url` when its base is empty.
+- **Empty params.** A token with no params renders `params=0x` in `animation_url` and the same static `image`.
 - **Fork test.** On a Sepolia fork against the live ERC721 claim extension and a v3 creator contract: deploy, point the claim, mint, and read `tokenURI` through the creator contract.
