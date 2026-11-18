@@ -102,6 +102,20 @@ The `packages/manifold/script/` directory contains Forge deployment scripts for 
 forge script script/ERC721LazyPayableClaim.s.sol --rpc-url <RPC_URL> --broadcast
 ```
 
+`script/deploy.sh` wraps those scripts for shared extensions that deploy through the CREATE2 deployer (the claim contracts). It reads the deployer key from `PRIVATE_KEY`, works on any network, and is safe to run again:
+
+```bash
+# First deploy of a new version, for example on a testnet. Without PRIVATE_KEY it only previews.
+PRIVATE_KEY=0x... RPC_URL=<RPC_URL> script/deploy.sh ERC721LazyPayableClaim
+
+# The same build on another chain, then hand ownership to the owner of the previous version there.
+PRIVATE_KEY=0x... RPC_URL=<RPC_URL> \
+  EXPECTED_ADDRESS=<address on the first chain> NEW_OWNER_FROM=<previous version address> \
+  script/deploy.sh ERC721LazyPayableClaim
+```
+
+It works out the address before sending anything, stops if it is not `EXPECTED_ADDRESS`, reports an address that already has code instead of deploying, and asks before each transaction. One run sends the deploy and, if a new owner is given, a second `transferOwnership` transaction. The salt and constructor arguments still come from `script/<Contract>.s.sol`. All options are listed at the top of the script (`script/deploy.sh --help`).
+
 ## Environment Variables
 
 | Variable | Description | Required |

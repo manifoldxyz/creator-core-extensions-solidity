@@ -23,3 +23,6 @@
 
 ## [2026-07-15] lint | 0 issues
 - broken links: 0 | orphans: 0 | missing frontmatter: 0 | oversized pages: 0
+
+## [2026-11-18] update | repo-overview: deploy.sh wrapper
+- Added `packages/manifold/script/deploy.sh` to the deploy scripts line (CREATE2 deploy wrapper for the per-contract `.s.sol` scripts).

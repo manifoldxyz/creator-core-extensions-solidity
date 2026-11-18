@@ -1,7 +1,7 @@
 ---
 title: Repo Overview — creator-core-extensions-solidity
 created: 2026-07-15
-updated: 2026-07-15
+updated: 2026-11-18
 type: overview
 package: repo
 tags: [overview, contract, erc721, erc1155]
@@ -70,7 +70,7 @@ Exceptions: the `edition` and `lazywhitelist` packages use a **Template/Implemen
 - **Foundry primary** (`forge build` / `forge test`), Truffle for legacy tests. Test matrix: Truffle on `edition`/`lazywhitelist`/`redeem`/`manifold`; Forge on `dynamic`/`enumerable`/`manifold`.
 - Each package is independent — `cd packages/<pkg>` then `yarn install` (needs `NPM_TOKEN` for `@manifoldxyz` scoped deps).
 - Submodules: `forge-std` (v1.5.6), `operator-filter-registry` (v1.4.1), `murky` (Merkle trees).
-- Deploy scripts: `packages/manifold/script/*.s.sol`.
+- Deploy scripts: `packages/manifold/script/*.s.sol` (one per contract: salt + constructor args). `packages/manifold/script/deploy.sh <Contract>` wraps them for CREATE2 deploys on any chain: key from `PRIVATE_KEY`, address predicted before sending, `EXPECTED_ADDRESS` guard, optional ownership handover (`NEW_OWNER` / `NEW_OWNER_FROM`), or `COPY_FROM_TX` to reuse the exact bytes of an earlier deployment.
 
 ## Version lineage (the traps)
 
