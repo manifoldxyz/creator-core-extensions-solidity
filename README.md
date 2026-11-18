@@ -108,14 +108,13 @@ forge script script/ERC721LazyPayableClaim.s.sol --rpc-url <RPC_URL> --broadcast
 # First deploy of a new version, for example on a testnet. Without PRIVATE_KEY it only previews.
 PRIVATE_KEY=0x... RPC_URL=<RPC_URL> script/deploy.sh ERC721LazyPayableClaim
 
-# The same bytes on another chain, then hand ownership to the owner of the previous version there.
+# The same build on another chain, then hand ownership to the owner of the previous version there.
 PRIVATE_KEY=0x... RPC_URL=<RPC_URL> \
-  COPY_FROM_TX=<deploy tx hash> COPY_FROM_RPC_URL=<rpc of the chain that tx is on> \
   EXPECTED_ADDRESS=<address on the first chain> NEW_OWNER_FROM=<previous version address> \
   script/deploy.sh ERC721LazyPayableClaim
 ```
 
-It works out the address before sending anything, stops if it is not `EXPECTED_ADDRESS`, reports an address that already has code instead of deploying, and asks before each transaction. The salt and constructor arguments still come from `script/<Contract>.s.sol`. All options are listed at the top of the script (`script/deploy.sh --help`).
+It works out the address before sending anything, stops if it is not `EXPECTED_ADDRESS`, reports an address that already has code instead of deploying, and asks before each transaction. One run sends the deploy and, if a new owner is given, a second `transferOwnership` transaction. The salt and constructor arguments still come from `script/<Contract>.s.sol`. All options are listed at the top of the script (`script/deploy.sh --help`).
 
 ## Environment Variables
 

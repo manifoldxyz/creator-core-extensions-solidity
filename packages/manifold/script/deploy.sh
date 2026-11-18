@@ -24,16 +24,19 @@
 #   NEW_OWNER          After deploying, transfer ownership to this address.
 #   NEW_OWNER_FROM     Same, but take the address from owner() of this contract on the target
 #                      chain. Point it at the previous version to reuse that chain's Safe.
-#   COPY_FROM_TX       Skip the build and reuse the exact bytes of an earlier deployment:
-#   COPY_FROM_RPC_URL  its deploy transaction hash, and the rpc of the chain it is on.
 #   YES=1              Do not ask before sending.
+#   COPY_FROM_TX       Optional. Skip the build and reuse the exact bytes of an earlier
+#   COPY_FROM_RPC_URL  deployment: its deploy transaction hash, and the rpc of its chain.
+#
+# One run sends up to two transactions: the deploy, then transferOwnership if a new owner is
+# given. The constructor sets INITIAL_OWNER, and the address depends on it, so the handover
+# is a second transaction from that wallet.
 #
 # Examples
 #   First deploy of a new version, on a testnet:
 #     RPC_URL=$SEPOLIA_RPC script/deploy.sh ERC721LazyPayableClaim
-#   The same bytes on another chain, handing ownership to the owner of the previous version:
-#     RPC_URL=$BASE_RPC COPY_FROM_TX=0x... COPY_FROM_RPC_URL=$SEPOLIA_RPC \
-#       EXPECTED_ADDRESS=0x... NEW_OWNER_FROM=0x... script/deploy.sh ERC721LazyPayableClaim
+#   The same build on another chain, handing ownership to the owner of the previous version:
+#     RPC_URL=$BASE_RPC EXPECTED_ADDRESS=0x... NEW_OWNER_FROM=0x... script/deploy.sh ERC721LazyPayableClaim
 #   Preview or collision test, without a key:
 #     RPC_URL=$SEPOLIA_RPC INITIAL_OWNER=0x... script/deploy.sh ERC721LazyPayableClaim
 set -euo pipefail
@@ -125,6 +128,20 @@ if [ -n "${EXPECTED_ADDRESS:-}" ]; then
 fi
 if [ -n "$SIGNER" ]; then echo "signer    $SIGNER, balance $(cast balance "$SIGNER" --ether --rpc-url "$RPC_URL")"; fi
 
+# ---- who should own it afterwards ----
+TARGET=${NEW_OWNER:-}
+if [ -n "${NEW_OWNER_FROM:-}" ]; then
+  from_owner=$(owner_of "$NEW_OWNER_FROM")
+  [ -n "$from_owner" ] || die "could not read owner() of NEW_OWNER_FROM $NEW_OWNER_FROM on chain $CHAIN_ID"
+  [ -z "$TARGET" ] || same "$TARGET" "$from_owner" || die "NEW_OWNER $TARGET is not the owner of $NEW_OWNER_FROM ($from_owner)"
+  TARGET=$from_owner
+fi
+if [ -n "$TARGET" ]; then
+  same "$TARGET" $ZERO && die "the new owner is the zero address"
+  if [ "$(code_at "$TARGET")" != "0x" ]; then kind="a contract"; else kind="a plain wallet"; fi
+  echo "new owner $TARGET ($kind)"
+fi
+
 # ---- deploy ----
 if [ "$(code_at "$ADDRESS")" != "0x" ]; then
   echo "already deployed: $ADDRESS has code on chain $CHAIN_ID. CREATE2 only gives this address to these exact bytes, so there is nothing to deploy."
@@ -132,6 +149,9 @@ elif [ -z "$SIGNER" ]; then
   echo "not deployed on chain $CHAIN_ID yet. Preview only: set PRIVATE_KEY to deploy."
   exit 0
 else
+  if [ -n "$TARGET" ] && [ -n "${OWNER_FOR_BUILD:-}" ] && ! same "$OWNER_FOR_BUILD" "$TARGET" && ! same "$OWNER_FOR_BUILD" "$SIGNER"; then
+    die "the initial owner is $OWNER_FOR_BUILD but the signer is $SIGNER, so this run could deploy but not hand ownership to $TARGET. Nothing sent."
+  fi
   predicted=$(cast call $CREATE2 "$DATA" --from "$SIGNER" --rpc-url "$RPC_URL") || die "the deploy simulation failed"
   same "$predicted" "$ADDRESS" || die "the simulation returned $predicted, expected $ADDRESS"
   confirm "Deploy $CONTRACT on chain $CHAIN_ID to $ADDRESS."
@@ -157,19 +177,10 @@ if [ -z "$OWNER" ]; then
   echo "done: $CONTRACT is at $ADDRESS on chain $CHAIN_ID"
   exit 0
 fi
-TARGET=${NEW_OWNER:-}
-if [ -n "${NEW_OWNER_FROM:-}" ]; then
-  from_owner=$(owner_of "$NEW_OWNER_FROM")
-  [ -n "$from_owner" ] || die "could not read owner() of NEW_OWNER_FROM $NEW_OWNER_FROM on chain $CHAIN_ID"
-  [ -z "$TARGET" ] || same "$TARGET" "$from_owner" || die "NEW_OWNER $TARGET is not the owner of $NEW_OWNER_FROM ($from_owner)"
-  TARGET=$from_owner
-fi
 if [ -z "$TARGET" ]; then
   echo "done: $CONTRACT is at $ADDRESS on chain $CHAIN_ID, owner $OWNER (no NEW_OWNER given, ownership left as is)"
   exit 0
 fi
-same "$TARGET" $ZERO && die "the new owner is the zero address"
-if [ "$(code_at "$TARGET")" != "0x" ]; then kind="a contract"; else kind="a plain wallet"; fi
 if same "$OWNER" "$TARGET"; then
   echo "owner is already $OWNER"
 elif [ -z "$SIGNER" ]; then
